@@ -23,7 +23,9 @@
 //!   `reference/lich-5/lib/main/main.rb:57`); one without is what the player
 //!   typed, passed on after Lich's own hooks (`plan/51` §4, item 3);
 //! - what the player types that Hydra does not take goes to its standard
-//!   input, as a frontend's typing does (`SessionHandle::send_typed_at`);
+//!   input, as a frontend's typing does (`SessionHandle::send_typed_at`),
+//!   and Hydra's own lines that start with Lich's `;`
+//!   (`cena_session::script::lich`, the player's typing);
 //! - what it would show a frontend comes out of its standard output, which
 //!   is to be the character's text (`plan/51` §7, step 3). Until then it is
 //!   read and let go, so Lich never waits to write it.
@@ -39,7 +41,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use cena_session::script::Sending;
-use cena_session::script::lich::{Attached, LichDoor, LineFrom, WIRE_CHUNKS};
+use cena_session::script::lich::{Attached, LICH_SYMBOL, LichDoor, LineFrom, WIRE_CHUNKS};
 use cena_session::{Notice, NoticeKind};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
@@ -78,9 +80,6 @@ const VERSION: &str = "/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML";
 /// does nothing.
 const STORMFRONT: &str =
     r#"trace_var(:$frontend) { |name| $frontend = "stormfront" if name == "unknown" }"#;
-
-/// Lich's own command symbol, `$lich_char`, unless its player chose another.
-const LICH_SYMBOL: char = ';';
 
 /// Runs `lich.rbw` as Ruby would run it, after [`STORMFRONT`]: `$0` names
 /// it, as Lich finds its folders by it (`reference/lich-5/lib/constants.rb:1`).

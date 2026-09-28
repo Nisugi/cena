@@ -6,8 +6,12 @@
 # As Lich does (reference/lich-5/lib/main/main.rb:564-606 and 837-843), it
 # reads a key and a version line from its standard input, connects to -g's
 # host and port, and says both there; then the game's bytes it is handed go to
-# its standard output, and what is typed on its standard input goes to the
-# game as typed. Closing its standard input stops it.
+# its standard output. Closing its standard input stops it.
+#
+# What is typed on its standard input: a `;` line starts a script, which here
+# puts the rest of the line after the script's name, as Lich's scripts put,
+# with `<c>`; anything else goes to the game as typed, after one alias, `gg`
+# for `get gem`, as Lich's alias script would have it.
 #
 # Once it has seen a prompt it acts as a script would, once: it puts `look`
 # as Lich's scripts do, with `<c>`, and says what its frontend is, having set
@@ -38,6 +42,10 @@ rescue IOError, SystemCallError
 end
 
 while (line = $stdin.gets)
-  game.write(line)
+  if line.start_with?(';')
+    game.write("<c>#{line.sub(/\A;\S+\s*/, '')}")
+  else
+    game.write(line.chomp == 'gg' ? "get gem\n" : line)
+  end
 end
 game.close

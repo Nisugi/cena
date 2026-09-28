@@ -18,15 +18,29 @@
 //!
 //! # The player's typing
 //!
-//! What the player types at a frontend
-//! ([`SessionHandle::send_typed_at`]) is Hydra's first: a line with the
-//! command symbol, or one a behavior takes bare (`crate::command::claimant`).
-//! The rest goes to Lich instead of the game, so Lich's commands, aliases and
-//! upstream hooks have it, and Lich sends what it makes of it. The author's
-//! answer for the symbol both use (`plan/51` §6, question 3): *"if they're
-//! running lich would probably change hydra's command character to . or
-//! something"*. Hydra's own lines on the manual path (`;multi`'s, a relayed
-//! `;to`) go to the game, as a Lich script's `put` never meets Lich's hooks.
+//! The symbol a line starts with says whose it is (the author, 2026-09-28):
+//! *"command starting with the lich command character ; get sent to lich.
+//! commands sent with the hydra command character . get sent to hydra."* And
+//! the rest of what the player types goes to Lich too, as it does in Lich,
+//! for its aliases and hooks to have it: *"damn I guess commands have to go
+//! to lich then"*.
+//!
+//! So on the manual path ([`SessionHandle::send_manual_at`]), a line is
+//! Hydra's first: its symbol, or a behavior's taking it bare
+//! (`crate::command::claimant`). Then:
+//!
+//! - a line with [`LICH_SYMBOL`] is Lich's, handed to its standard input,
+//!   and never the game's, as a line with Hydra's symbol is never the
+//!   game's: with no Lich running, the player is told;
+//! - what the player typed ([`SessionHandle::send_typed_at`]) is Lich's while
+//!   one runs, and Lich sends what it makes of it; with none, the game's;
+//! - Hydra's own lines (`;multi`'s, a relayed `;to`) go to the game, past
+//!   Lich's hooks, as a Lich script's `put` never meets them: an alias
+//!   turning a line into a `;multi` of itself would otherwise never end.
+//!
+//! The symbol both use (`plan/51` §6, question 3): *"if they're running lich
+//! would probably change hydra's command character to . or something"*; until
+//! then the line is Hydra's, and Lich's commands are out of reach.
 //!
 //! # Kept up, and let go
 //!
@@ -63,6 +77,10 @@ pub const WIRE_CHUNKS: usize = 4_096;
 /// them the player's line is refused, to be typed again.
 pub const TYPED_LINES: usize = 64;
 
+/// What starts a line for the player's Lich: Lich's own `$lich_char`. A
+/// player who changed Lich's changes nothing here yet.
+pub const LICH_SYMBOL: char = ';';
+
 /// The only way the player's Lich acts on a session.
 ///
 /// Built by [`SessionHandle::lich_door`], for `cena-agent`, which holds this
@@ -87,7 +105,8 @@ pub enum LineFrom {
 pub struct Attached {
     /// The game's bytes, as they came.
     pub wire: Wire,
-    /// What the player types that Hydra does not take.
+    /// What the player types that Hydra does not take, and Hydra's own
+    /// lines with [`LICH_SYMBOL`].
     pub typing: Typing,
 }
 
@@ -98,7 +117,7 @@ pub struct Wire {
     behind: Arc<AtomicBool>,
 }
 
-/// What the player types for a Lich, a line at a time.
+/// The lines for a Lich's standard input, one at a time.
 #[derive(Debug)]
 pub struct Typing(mpsc::Receiver<String>);
 
@@ -170,9 +189,9 @@ impl SessionHandle {
 
 impl LichDoor {
     /// Attach a Lich from here on: the next chunk of the game's bytes is its
-    /// first, and the next line the player types that Hydra does not take is
-    /// its. `None` while another is attached: one per character. It stays
-    /// attached until what this returns is dropped.
+    /// first, and the next line typed for it is its. `None` while another is
+    /// attached: one per character. It stays attached until what this returns
+    /// is dropped.
     #[must_use]
     pub fn attach(&self) -> Option<Attached> {
         let (bytes, wire) = mpsc::channel(WIRE_CHUNKS);
@@ -236,44 +255,66 @@ mod tests {
     use crate::command::claimant::{Claimed, Desk};
     use crate::lifecycle::GenerationCell;
     use crate::observation::EventPublisher;
-    use crate::{Outcome, SessionHandle};
+    use crate::{Event, Outcome, SessionHandle};
 
     /// No actor answers here, so a line sent to the game waits this long.
     const DEADLINE: Duration = Duration::from_millis(10);
 
-    /// A character's handle, the publisher its chunks arrive through, and
-    /// its actor's inbox, where a line sent to the game lands.
-    fn character() -> (
-        SessionHandle,
-        EventPublisher,
-        tokio::sync::mpsc::Receiver<Inbox>,
-    ) {
-        let (sender, inbox) = tokio::sync::mpsc::channel(8);
-        let generation = GenerationCell::default();
-        let publisher =
-            EventPublisher::from_legacy(tokio::sync::broadcast::channel(8).0, generation.clone());
-        let handle = SessionHandle::publishing_to(sender, generation, publisher.clone());
-        (handle, publisher, inbox)
+    /// Around a character with no actor: where its chunks arrive, what the
+    /// actor is given for the game, and what the player is told.
+    struct Around {
+        publisher: EventPublisher,
+        inbox: tokio::sync::mpsc::Receiver<Inbox>,
+        told: tokio::sync::broadcast::Receiver<Event>,
     }
 
-    /// The line the actor was given for the game, if any.
-    fn for_the_game(inbox: &mut tokio::sync::mpsc::Receiver<Inbox>) -> Option<String> {
-        match inbox.try_recv().ok()? {
-            Inbox::Command(envelope) => Some(envelope.line),
-            _ => None,
+    fn character() -> (SessionHandle, Around) {
+        let (sender, inbox) = tokio::sync::mpsc::channel(8);
+        let generation = GenerationCell::default();
+        let (events, told) = tokio::sync::broadcast::channel(8);
+        let publisher = EventPublisher::from_legacy(events, generation.clone());
+        let handle = SessionHandle::publishing_to(sender, generation, publisher.clone());
+        (
+            handle,
+            Around {
+                publisher,
+                inbox,
+                told,
+            },
+        )
+    }
+
+    impl Around {
+        /// The line the actor was given for the game, if any.
+        fn for_the_game(&mut self) -> Option<String> {
+            match self.inbox.try_recv().ok()? {
+                Inbox::Command(envelope) => Some(envelope.line),
+                _ => None,
+            }
+        }
+
+        /// What the player was last told, if anything.
+        fn told(&mut self) -> Option<String> {
+            let mut last = None;
+            while let Ok(event) = self.told.try_recv() {
+                if let Event::Notice(notice) = event {
+                    last = notice.lines().first().cloned();
+                }
+            }
+            last
         }
     }
 
     #[tokio::test]
     async fn the_game_bytes_reach_one_lich_per_character() {
-        let (handle, publisher, _inbox) = character();
+        let (handle, around) = character();
         let door = handle.lich_door();
         let mut lich = door.attach().expect("the first Lich");
         assert!(
             door.attach().is_none(),
             "a second, while the first is attached"
         );
-        publisher.wire(b"<prompt time=\"1\">&gt;</prompt>\n");
+        around.publisher.wire(b"<prompt time=\"1\">&gt;</prompt>\n");
         assert_eq!(
             lich.wire.next().await.as_deref(),
             Some(&b"<prompt time=\"1\">&gt;</prompt>\n"[..]),
@@ -285,10 +326,10 @@ mod tests {
 
     #[tokio::test]
     async fn a_lich_that_falls_behind_is_let_go_not_waited_on() {
-        let (handle, publisher, _inbox) = character();
+        let (handle, around) = character();
         let Attached { mut wire, .. } = handle.lich_door().attach().expect("the first Lich");
         for _ in 0..=WIRE_CHUNKS {
-            publisher.wire(b"x");
+            around.publisher.wire(b"x");
         }
         let mut read = 0;
         while wire.next().await.is_some() {
@@ -298,12 +339,12 @@ mod tests {
         assert!(wire.fell_behind());
     }
 
-    /// Hydra's commands are Hydra's; the rest of what the player types is
-    /// Lich's while it runs, and the game's once it stops. Hydra's own lines
-    /// go to the game.
+    /// `.` is Hydra's; what else the player types is Lich's while it runs;
+    /// Hydra's own lines reach Lich only with `;`. With no Lich, a `;` line
+    /// goes nowhere and the player is told, and the rest goes to the game.
     #[tokio::test]
-    async fn what_the_player_types_goes_to_lich_after_hydra() {
-        let (handle, _publisher, mut inbox) = character();
+    async fn the_symbol_and_the_typist_say_whose_a_line_is() {
+        let (handle, mut around) = character();
         let ran = Arc::new(Mutex::new(Vec::<String>::new()));
         let running = Arc::clone(&ran);
         let desk = Desk::new(
@@ -321,30 +362,34 @@ mod tests {
             .send_typed_at(generation, ".go2 bank", DEADLINE)
             .await;
         assert_eq!(typed, Outcome::Handled);
-        let typed = handle
-            .send_typed_at(generation, ";e echo 1", DEADLINE)
+        assert_eq!(*ran.lock().unwrap(), ["go2 bank"], "Hydra's");
+        for line in [";e echo 1", "gg"] {
+            let typed = handle.send_typed_at(generation, line, DEADLINE).await;
+            assert_eq!(typed, Outcome::Handled);
+            assert_eq!(lich.typing.next().await.as_deref(), Some(line));
+        }
+        assert_eq!(around.for_the_game(), None, "both Lich's");
+        // Hydra's own lines: `;` for Lich (a relayed `.to Name ;go2 bank`),
+        // the rest past it.
+        handle
+            .send_manual_at(generation, ";go2 bank", DEADLINE)
             .await;
-        assert_eq!(typed, Outcome::Handled);
-        assert_eq!(
-            *ran.lock().unwrap(),
-            ["go2 bank"],
-            "Hydra's, with its symbol"
-        );
-        assert_eq!(lich.typing.next().await.as_deref(), Some(";e echo 1"));
-
+        assert_eq!(lich.typing.next().await.as_deref(), Some(";go2 bank"));
         handle.send_manual_at(generation, "look", DEADLINE).await;
-        assert_eq!(
-            for_the_game(&mut inbox).as_deref(),
-            Some("look"),
-            "Hydra's own line"
-        );
+        assert_eq!(around.for_the_game().as_deref(), Some("look"));
 
         drop(lich);
-        handle.send_typed_at(generation, "exp", DEADLINE).await;
-        assert_eq!(
-            for_the_game(&mut inbox).as_deref(),
-            Some("exp"),
-            "Lich stopped"
+        let typed = handle
+            .send_typed_at(generation, ";e echo 2", DEADLINE)
+            .await;
+        assert_eq!(typed, Outcome::Handled);
+        assert_eq!(around.for_the_game(), None, "never the game's");
+        assert!(
+            around
+                .told()
+                .is_some_and(|told| told.contains("Lich is not running")),
         );
+        handle.send_typed_at(generation, "exp", DEADLINE).await;
+        assert_eq!(around.for_the_game().as_deref(), Some("exp"), "no Lich");
     }
 }

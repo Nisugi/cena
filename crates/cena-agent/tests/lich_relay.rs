@@ -111,9 +111,10 @@ fn standin(ruby: PathBuf) -> Launch {
     }
 }
 
-/// Lich takes the relay as its game: it is handed the login, its script's
-/// line goes to the game as Lich's, what the player types goes to it and
-/// then to the game as the player's, and it stops when asked. Hydra's symbol
+/// Lich takes the relay as its game: it is handed the login, and its
+/// script's line goes to the game as Lich's. What the player types goes to
+/// it: a `;` line starts one of its scripts, and a plain one meets its alias
+/// and goes to the game as the player's. It stops when asked. Hydra's symbol
 /// here is Lich's, and the player is told what that means.
 #[tokio::test(flavor = "multi_thread")]
 async fn lich_takes_hydra_as_its_game() {
@@ -131,16 +132,15 @@ async fn lich_takes_hydra_as_its_game() {
         Some(Origin::Lich)
     );
 
-    assert_eq!(
-        character.types("say hi").await,
-        Outcome::Handled,
-        "Lich's to send"
-    );
-    assert_eq!(character.sent("say hi").await, Some(Origin::Manual));
+    // No Hydra commands run here, so `;` is Lich's.
+    assert_eq!(character.types(";put look around").await, Outcome::Handled);
+    assert_eq!(character.sent("look around").await, Some(Origin::Lich));
+    assert_eq!(character.types("gg").await, Outcome::Handled, "Lich's");
+    assert_eq!(character.sent("get gem").await, Some(Origin::Manual));
 
     assert_eq!(
         character.transcript.lines(),
-        ["look", "frontend stormfront", "say hi"]
+        ["look", "frontend stormfront", "look around", "get gem"]
     );
     assert_eq!(character.stop().await, Some(Ended::Stopped));
 }

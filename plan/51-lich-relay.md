@@ -155,12 +155,15 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
   lines without it are the player's typing, and count as attendance.
 - **Lich is told it serves `stormfront`** (question 2): `--stormfront` with a Lich that has
   §4 item 1's fix, and `trace_var` on one that doesn't (§4 item 1, the fallback).
-- **The player's typing** (question 3): the command symbol decides, as it does today
-  (`crates/cena-session/src/command/claimant.rs`, `commands.symbol` in the character's
-  settings). A line starting with Hydra's symbol is Hydra's, and so is one a `Bare` behavior
-  takes. Everything else goes to Lich's stdin instead of the game, so Lich's commands,
-  aliases and upstream hooks see it. A player running Lich moves Hydra's symbol off `;`, to
-  `.` say, and `;` reaches Lich. Switching Lich on while both are `;` says so once.
+- **The player's typing** (question 3, and the author's rule below): Hydra's symbol first,
+  as it is today (`crates/cena-session/src/command/claimant.rs`, `commands.symbol` in the
+  character's settings), and so is a line a `Bare` behavior takes. A line with Lich's `;`
+  is Lich's. With no Lich running it goes nowhere, and the player is told, as with an unknown
+  Hydra command. The rest of what the player types goes to Lich while it runs, for its
+  aliases and hooks, and to the game when it doesn't. Hydra's own lines (`.multi`, a relayed
+  `.to`) reach Lich only with `;`; plain ones go straight to the game, since a Lich alias
+  that expanded into a `.multi` of itself would never end. A player running Lich moves
+  Hydra's symbol off `;`, to `.` say. Switching Lich on while both are `;` says so once.
 - **The display** (question 1): for a character with Lich on, the play window's text comes
   from Lich's stdout, parsed by the same parser, so squelches and script output show as they
   would in any frontend. The panels (vitals, room, hands, compass) stay on Hydra's model.
@@ -184,6 +187,12 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
    (e.g. `;lich sorter`)? Or Lich's first while Lich is on?
    AUTHOR: *"if they're running lich would probably change hydra's command character to .
    or something"*. The symbol already is a setting (§5, the player's typing).
+   AUTHOR, the same day, on where each line goes: *"commands typed in hydra go to the game.
+   command starting with the lich command character ; get sent to lich. commands sent with
+   the hydra command character . get sent to hydra."* Told that plain lines past Lich would
+   miss its aliases and typing hooks: *"damn I guess commands have to go to lich then"*. So
+   `.` is Hydra's, `;` is Lich's, and the rest of the typing goes to Lich too while it runs
+   (§5).
 4. **On a reconnect**: keep Lich running (recommended), or restart it the way stock Lich
    does?
    AUTHOR: *"we can keep lich running sure, but it's scripts aren't gonna magically keep
@@ -231,21 +240,24 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
      comes next.
 2. Typing routed: Hydra's symbol and `Bare` takers, then Lich's stdin.
 
-   **BUILT 2026-09-28.** In `SessionHandle::send_typed_at`, the path the window and Despana
-   type through (`crates/cena-session/src/command/round_trip.rs`), a line goes through the
-   bridge's input hooks and then Hydra's desk. What the desk doesn't take goes to the attached
-   Lich's stdin instead of the game, answered `Outcome::Handled`, whose meaning widens to
-   "Hydra took it". A new outcome would break five matches, one of them in the GUI file
-   `gui-widgets` is changing. Past 64 lines waiting (typed while Lich starts), a line is refused
-   `Transient`. Hydra's own lines on the manual path (`send_manual_at`: `;multi`, a relayed
-   `;to`) still go to the game. The door is now `LichDoor::attach`, giving the relay the byte
-   copy and the typing together. Starting a Lich while Hydra's symbol is Lich's `;` tells the
-   player once that Lich's commands can't be reached, and how to change it. The agent's
-   contracts list `lich` among the `sent` origins.
-   - **Tests.** In the session: the desk runs `.go2 bank`, Lich gets `;e echo 1`,
-     `send_manual_at`'s `look` goes to the game, and once Lich is gone typing goes to the
-     game. A mutation that hands lines over before the desk fails it. The stand-in and the
-     real Lich (11.3 s) now type through `send_typed_at`.
+   **BUILT 2026-09-28**, with the author's rule (§6, question 3), on the manual path
+   (`crates/cena-session/src/command/round_trip.rs`). A line goes to Hydra's desk first.
+   Then a line with Lich's `;` (`LICH_SYMBOL`) goes to Lich, or, with none running, nowhere,
+   and the player is told. What the player typed at a frontend (`send_typed_at`, after the
+   bridge's input hooks) goes to Lich while it runs. The rest goes to the game. A line given
+   to Lich is answered `Outcome::Handled`, whose meaning widens to "Hydra took it": a new
+   outcome would break five matches, one in the GUI file `gui-widgets` is changing. Past 64
+   lines waiting (typed while Lich starts), a line is refused `Transient`. The door is now
+   `LichDoor::attach`, giving the relay the byte copy and the typing together. Starting a
+   Lich while Hydra's symbol is Lich's `;` tells the player once that Lich's commands can't
+   be reached, and how to change it. The agent's contracts list `lich` among the `sent`
+   origins.
+   - **Tests.** In the session: `.go2 bank` runs on Hydra; `;e echo 1` and `gg` go to Lich,
+     not the game; Hydra's own `;go2 bank` goes to Lich, and its `look` to the game. With
+     Lich gone, `;e echo 2` goes nowhere and the player is told, and `exp` goes to the game.
+     Moving the hand-off ahead of the desk fails it. The stand-in now runs a `;` line as a
+     script and has one alias: `;put look around` reaches the game as Lich's, and `gg` as
+     the player's `get gem`. The real Lich (11.4 s) types through `send_typed_at`.
 3. The display from Lich's stdout.
 4. Starting late: the login kept and replayed, then the latest room.
 5. The switch: settings for Lich's path, and a *Lich* switch on the card and the play window.

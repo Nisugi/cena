@@ -153,10 +153,10 @@ impl SessionHandle {
     /// Lich script's `put` never meets them: a hook turning a line into a
     /// `;multi` of itself would otherwise never end.
     ///
-    /// **With the player's Lich attached** (`crate::script::lich`), a typed
-    /// line Hydra does not take goes to Lich instead of the game, and is
-    /// [`Outcome::Handled`]: Lich sends what it makes of it. Hydra's own lines
-    /// on the manual path do not, for the hooks' reason.
+    /// **With the player's Lich running** (`crate::script::lich`), what the
+    /// player types that Hydra does not take is Lich's, so its aliases and
+    /// hooks have it, and Lich sends what it makes of it. Hydra's own lines
+    /// reach Lich only with Lich's symbol, for the hooks' reason.
     pub async fn send_typed_at(
         &self,
         generation: Generation,
@@ -181,6 +181,9 @@ impl SessionHandle {
     /// The generation is checked before any command, including a typed quit
     /// or one of Hydra's own, can act. This uses the ordinary manual queue and
     /// never claims or cancels behavior authority.
+    ///
+    /// A line with Lich's symbol is the player's Lich's, and goes to it rather
+    /// than the game (`crate::script::lich`).
     pub async fn send_manual_at(
         &self,
         generation: Generation,
@@ -191,7 +194,7 @@ impl SessionHandle {
     }
 
     /// [`Self::send_manual_at`]; `typed` when the player typed it at a
-    /// frontend, which the player's Lich has before the game.
+    /// frontend, which a running Lich has before the game.
     async fn manual_at(
         &self,
         generation: Generation,
@@ -233,12 +236,25 @@ impl SessionHandle {
             }
             return Outcome::Handled;
         }
-        // Past Hydra, the player's Lich has it, if one runs here: it sends
-        // what its commands, aliases and hooks make of it (`plan/51` §5).
-        match typed.then(|| self.hand_to_lich(line)).flatten() {
-            Some(true) => return Outcome::Handled,
-            Some(false) => return Outcome::Refused(Refusal::Transient),
-            None => {}
+        // Past Hydra: a line with Lich's symbol is the player's Lich's, and
+        // never the game's, as one with Hydra's is never the game's. What the
+        // player typed is Lich's too while one runs (`crate::script::lich`).
+        let lichs = line
+            .trim_start()
+            .starts_with(crate::script::lich::LICH_SYMBOL);
+        if lichs || typed {
+            match self.hand_to_lich(line) {
+                Some(true) => return Outcome::Handled,
+                Some(false) => return Outcome::Refused(Refusal::Transient),
+                None if lichs => {
+                    self.say(crate::notice::Notice::line(
+                        crate::notice::NoticeKind::Error,
+                        format!("Lich is not running for this character: {}", line.trim()),
+                    ));
+                    return Outcome::Handled;
+                }
+                None => {}
+            }
         }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {
