@@ -30,15 +30,20 @@ pub(super) struct Asking {
 }
 
 impl Play {
-    /// Act on `link`, clicked at `at`.
-    pub(super) fn clicked(&mut self, context: &egui::Context, link: RunLink, at: Pos2) {
+    /// Act on `link`, clicked at `at`, the character as `state` has it.
+    pub(super) fn clicked(
+        &mut self,
+        context: &egui::Context,
+        (link, at): (RunLink, Pos2),
+        state: Option<&cena_session::GameState>,
+    ) {
         match link {
             RunLink::Command { command } => self.out = Some(Asked::Send(command)),
             RunLink::Url { href } => context.open_url(egui::OpenUrl::new_tab(href)),
             RunLink::Object { exist, noun, coord } => {
                 if let Some(command) = coord
                     .as_deref()
-                    .and_then(|coord| link_command(coord, (&exist, &noun)))
+                    .and_then(|coord| link_command(coord, (&exist, &noun), state))
                 {
                     self.out = Some(Asked::Send(command));
                     return;
