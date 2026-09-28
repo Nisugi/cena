@@ -20,14 +20,15 @@ use std::io;
 use std::path::Path;
 use std::sync::{Arc, Mutex, PoisonError};
 
+mod caster;
 mod panel;
-mod settings;
+pub(crate) mod settings;
 
 use crate::commands::{Commands, Took};
 use cena_behavior::group::{Boards, Place};
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
-use cena_behavior::spellcaster::{self, CasterProfile};
+use cena_behavior::spellcaster;
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Register hunt's words. The character's instance and name, when the login
@@ -68,16 +69,18 @@ pub(crate) fn open(
         panel::show(desk, handle.session(), party.window.as_ref());
     }
     let leader = who.as_ref().map(|(_, name)| name.clone());
-    // The spellcaster profile, held so a typed line is judged without a
-    // file read, and read again after `;sc` changes it.
-    let caster = Arc::new(Mutex::new(read_caster(&dir, who.as_ref())));
+    // The spellcaster profile, held so a typed line is judged without
+    // reading the file, and read again when the file has changed: by `;sc`,
+    // the settings menu, or a hand (`plan/50` §2 item 3).
+    let caster = Arc::new(Mutex::new(caster::Caster::read(&dir, who.as_ref())));
     if let Some(desk) = desk.clone() {
         let (handler, observer, caster) = (handle.clone(), observer.clone(), Arc::clone(&caster));
+        let (dir, who) = (dir.clone(), who.clone());
         let took = handle.set_bare(Arc::new(move |line: &str| {
             let words = caster
                 .lock()
                 .ok()
-                .and_then(|profile| spellcaster::typed(&profile, line));
+                .and_then(|mut held| spellcaster::typed(held.current(&dir, who.as_ref()), line));
             words.is_some_and(|words| {
                 // Typed at the prompt: nobody waits for it.
                 drop(start(&desk, &handler, &observer, Command::Sc(words)));
@@ -135,13 +138,8 @@ pub(crate) fn open(
             // -- so not on the session's own thread; `run` names each.
             command => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
-                let caster = Arc::clone(&caster);
                 Took::Started(tokio::task::spawn_blocking(move || {
-                    let sc = matches!(command, Command::ScEdit(_));
                     run(&handle, &dir, who.as_ref(), command);
-                    if sc && let Ok(mut held) = caster.lock() {
-                        *held = read_caster(&dir, who.as_ref());
-                    }
                 }))
             }
         };
@@ -294,15 +292,6 @@ fn start_placed(
             )),
         }
     })
-}
-
-/// The character's spellcaster profile, or the default when there is no
-/// file or it does not read.
-fn read_caster(dir: &Path, who: Option<&(String, String)>) -> CasterProfile {
-    who.and_then(|(i, n)| spellcaster::path(dir, i, n))
-        .and_then(|path| std::fs::read_to_string(path).ok())
-        .and_then(|text| CasterProfile::parse(&text).ok())
-        .unwrap_or_default()
 }
 
 /// What is said to the player.

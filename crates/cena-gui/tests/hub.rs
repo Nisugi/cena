@@ -130,6 +130,15 @@ fn a_headless_character_offers_its_window() {
     assert_eq!(harness.state().asked, [HubAction::Open(1)]);
 }
 
+/// The hub's Settings button opens the one settings menu.
+#[test]
+fn the_hub_opens_the_settings_menu() {
+    let mut harness = hub(board());
+    harness.get_by_label("Settings").click();
+    harness.run();
+    assert_eq!(harness.state().asked, [HubAction::Settings]);
+}
+
 /// Shutting down ends every character, so it asks first; keeping on asks
 /// nothing.
 #[test]

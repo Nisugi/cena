@@ -30,7 +30,7 @@ use crate::layout::Library;
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
 use crate::widget::Character;
-use crate::{Hub, Sessions};
+use crate::{Hub, Menu, MenuView, Sessions};
 
 /// The window's title: the product's name (`CLAUDE.md`: anything
 /// user-facing is Hydra, not the working name).
@@ -58,6 +58,8 @@ pub struct App {
     numpad: Vec<String>,
     /// `NumLock`, as the last numpad press showed it.
     numlock: Option<bool>,
+    /// The settings menu, the one every way in opens (`plan/50` §7).
+    menu: Menu,
 }
 
 /// One character's play window.
@@ -84,6 +86,7 @@ impl App {
             catch_again: true,
             numpad: Vec::new(),
             numlock: None,
+            menu: Menu::default(),
         }
     }
 
@@ -153,10 +156,53 @@ impl App {
                     window.open = true;
                 }
             }
+            Some(HubAction::Settings) => self.menu.open_for(None),
             None => {}
         }
         for seat in &seats {
-            self.play(ui.ctx(), seat, &seats);
+            if self.play(ui.ctx(), seat, &seats) {
+                // The character's own settings, by its roster name.
+                let name = glance
+                    .roster
+                    .iter()
+                    .find(|card| card.character.eq_ignore_ascii_case(&seat.name))
+                    .map(crate::menu::roster_name);
+                self.menu.open_for(name);
+            }
+        }
+        self.settings(ui.ctx(), &glance);
+    }
+
+    /// The settings menu, in a window of its own, while it is open
+    /// (`plan/50` §7 step 1).
+    fn settings(&mut self, context: &egui::Context, glance: &crate::sessions::Glance) {
+        if !self.menu.open {
+            return;
+        }
+        let view = MenuView {
+            roster: &glance.roster,
+            pages: glance
+                .settings
+                .as_ref()
+                .map(|(whose, pages)| (whose.as_str(), pages.as_slice())),
+            said: glance.said.as_ref().map(|(said, _)| said.as_str()),
+        };
+        let menu = &mut self.menu;
+        let (asked, closed) = context.show_viewport_immediate(
+            egui::ViewportId::from_hash_of("settings"),
+            egui::ViewportBuilder::default()
+                .with_title(format!("Settings — {TITLE}"))
+                .with_inner_size([760.0, 560.0]),
+            |ui, _class| {
+                let closed = ui.input(|input| input.viewport().close_requested());
+                (menu.show(ui, &view), closed)
+            },
+        );
+        if closed {
+            self.menu.open = false;
+        }
+        if let Some(request) = asked {
+            self.sessions.ask(request);
         }
     }
 
@@ -175,15 +221,16 @@ impl App {
     }
 
     /// Show `seat`'s play window, if open, and act on what it asked. The
-    /// other `seats` are the characters its widgets may follow.
-    fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>, seats: &[Arc<Seat>]) {
+    /// other `seats` are the characters its widgets may follow. Whether it
+    /// asked for the settings menu, which the app opens on its character.
+    fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>, seats: &[Arc<Seat>]) -> bool {
         let (keys, numpad, keys_said) = (&self.keys, &mut self.numpad, &self.keys_said);
         let numlock = self.numlock;
         let Some(window) = self.plays.get_mut(&seat.id.0) else {
-            return;
+            return false;
         };
         if !window.open {
-            return;
+            return false;
         }
         let snapshot = lock(&seat.snapshot).clone();
         let lifecycle = lock(&seat.card).lifecycle.clone();
@@ -242,6 +289,7 @@ impl App {
             Some(Asked::SavePreset(preset)) => self.presets.keep(preset),
             Some(Asked::ForgetPreset(name)) => self.presets.forget(&name),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
+            Some(Asked::Settings) => return true,
             Some(Asked::Stop) => {
                 let symbol = seat
                     .handle
@@ -251,6 +299,7 @@ impl App {
             }
             None => {}
         }
+        false
     }
 
     /// The window was asked to close. With a character still playing, it
@@ -400,6 +449,51 @@ mod tests {
         harness.run();
         harness.run();
         assert!(harness.query_by_role(Role::TextInput).is_some(), "reopened");
+    }
+
+    /// The one settings menu opens from the hub on the roster's first
+    /// character, and from a play window on its own (`plan/50` §7 step 1),
+    /// in a window of its own.
+    #[test]
+    fn the_settings_menu_opens_from_the_hub_and_from_a_play_window() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("a runtime");
+        let sessions = Sessions::new(runtime.handle().clone());
+        sessions.seat_for_test(handle(), "Ashryn");
+        let card = |character: &str| cena_ui::RosterCard {
+            character: character.to_owned(),
+            account: "acct".to_owned(),
+            game: "GS3".to_owned(),
+            kept: true,
+            favourite: false,
+        };
+        sessions.roster(vec![card("Baelor"), card("Ashryn")]);
+        let mut harness = Harness::builder()
+            .with_size((1200.0, 900.0))
+            .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
+        harness.run();
+        assert!(!harness.state().menu.open);
+        // The hub's is drawn first, then the play window's.
+        if let Some(hubs) = harness.get_all_by_label("Settings").next() {
+            hubs.click();
+        }
+        harness.run();
+        assert!(harness.state().menu.open);
+        assert_eq!(harness.state().menu.character(), Some("GS3:Baelor"));
+        assert!(
+            harness.query_by_label("Reading the settings...").is_some(),
+            "its window"
+        );
+
+        harness.state_mut().menu.open = false;
+        harness.run();
+        if let Some(play) = harness.get_all_by_label("Settings").nth(1) {
+            play.click();
+        }
+        harness.run();
+        assert!(harness.state().menu.open);
+        assert_eq!(harness.state().menu.character(), Some("GS3:Ashryn"));
     }
 
     /// A bound key sends its line on the character whose window has it, as

@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 use cena_session::{
     Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
 };
+use cena_ui::settings::Page;
 use cena_ui::{
     HubControl, HubRequest, HuntView, Listing, MergedHistory, MergedLine, RosterCard, SessionCard,
 };
@@ -52,6 +53,8 @@ struct Shared {
     roster: Mutex<Vec<RosterCard>>,
     /// The last account whose characters the binary listed.
     listing: Mutex<Option<Listing>>,
+    /// The settings menu's pages the binary last gave, and for whom.
+    settings: Mutex<Option<(String, Vec<Page>)>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
     /// The binary's answer to the last request, and when it came.
@@ -132,6 +135,7 @@ pub(crate) struct Glance {
     pub(crate) offered: Vec<String>,
     pub(crate) roster: Vec<RosterCard>,
     pub(crate) listing: Option<Listing>,
+    pub(crate) settings: Option<(String, Vec<Page>)>,
     pub(crate) merged: Vec<MergedLine>,
     /// The binary's last answer, while it is fresh, and how long it has left.
     pub(crate) said: Option<(String, Duration)>,
@@ -151,6 +155,7 @@ impl Sessions {
                 offered: Mutex::default(),
                 roster: Mutex::default(),
                 listing: Mutex::default(),
+                settings: Mutex::default(),
                 merged: Arc::default(),
                 said: Mutex::default(),
             }),
@@ -227,6 +232,13 @@ impl Sessions {
         self.shared.window.wake();
     }
 
+    /// The settings menu's pages for `character` (`GAME:Name`), as the
+    /// binary built them from its files (`plan/50` §7 step 1).
+    pub fn settings(&self, character: String, pages: Vec<Page>) {
+        *lock(&self.shared.settings) = Some((character, pages));
+        self.shared.window.wake();
+    }
+
     /// Close the window: the run is over. Called by the binary once every
     /// character has quit, however the ending began.
     pub fn close(&self) {
@@ -267,7 +279,10 @@ impl Sessions {
         let shared = Arc::clone(&self.shared);
         self.shared.runtime.spawn(async move {
             let said = control(request).await;
-            *lock(&shared.said) = Some((said, Instant::now()));
+            // An empty answer says nothing: what was asked for is shown.
+            if !said.is_empty() {
+                *lock(&shared.said) = Some((said, Instant::now()));
+            }
             shared.window.wake();
         });
     }
@@ -290,6 +305,7 @@ impl Sessions {
             offered: lock(&self.shared.offered).clone(),
             roster: lock(&self.shared.roster).clone(),
             listing: lock(&self.shared.listing).clone(),
+            settings: lock(&self.shared.settings).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
             said,
         }

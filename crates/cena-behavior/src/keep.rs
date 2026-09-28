@@ -43,6 +43,31 @@ pub struct KeepProfile {
     pub power: bool,
 }
 
+/// Every setting, in the struct's order: what the settings menu shows.
+pub const TABLE: &[crate::settings::Key] = {
+    use crate::settings::{Key, KeyKind};
+    &[
+        Key {
+            name: "spells",
+            label: "Spells kept up",
+            help: "Spell numbers, in the order they are checked. `;keep add` and `;keep del` change them too.",
+            kind: KeyKind::Numbers,
+        },
+        Key {
+            name: "nocast",
+            label: "Rooms not to cast in",
+            help: "Map room ids where nothing is cast.",
+            kind: KeyKind::Numbers,
+        },
+        Key {
+            name: "power",
+            label: "Sigil of Power",
+            help: "Use Sigil of Power when mana is 25 short.",
+            kind: KeyKind::Toggle,
+        },
+    ]
+};
+
 impl Default for KeepProfile {
     fn default() -> Self {
         Self {

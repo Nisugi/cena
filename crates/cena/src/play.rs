@@ -32,8 +32,8 @@ use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::{
-    batch, combat, connector, frontend, interrupt, launcher, learn, loot, roster, secrets, setup,
-    sorter, travel, triggers, watch,
+    batch, combat, connector, frontend, interrupt, launcher, learn, loot, pages, roster, secrets,
+    setup, sorter, travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -363,6 +363,14 @@ impl Table {
             HubRequest::Remember(saved) => launcher::remember(&self.dir, &saved),
             HubRequest::Characters(account) => {
                 launcher::characters(&self.pin, account, self.gui.as_ref()).await
+            }
+            HubRequest::Settings(character) => {
+                pages::send(&self.dir, &character, self.gui.as_ref())
+            }
+            HubRequest::Change(change) => {
+                let said = pages::apply(&self.dir, &change);
+                let problem = pages::send(&self.dir, &change.character, self.gui.as_ref());
+                if problem.is_empty() { said } else { problem }
             }
             HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {

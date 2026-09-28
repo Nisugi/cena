@@ -45,6 +45,12 @@ pub enum HubRequest {
     Characters(Account),
     /// Put this character on the roster without playing it.
     Remember(Saved),
+    /// The settings menu's pages for this character, named as the roster
+    /// names it (`GAME:Name`). The binary answers with a line and gives the
+    /// window the pages.
+    Settings(String),
+    /// Change one setting from the menu.
+    Change(crate::settings::Change),
 }
 
 /// An account logged in to list its characters: the Not launched tab's login,

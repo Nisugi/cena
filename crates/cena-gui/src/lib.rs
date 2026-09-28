@@ -21,6 +21,7 @@ mod hub;
 mod keys;
 mod launch;
 mod layout;
+mod menu;
 mod play;
 mod sessions;
 mod snap;
@@ -30,4 +31,5 @@ mod widget;
 
 pub use app::{App, TITLE, run};
 pub use hub::{CardWidth, Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
+pub use menu::{Menu, MenuView, roster_name, typed};
 pub use sessions::Sessions;

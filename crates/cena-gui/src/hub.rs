@@ -46,6 +46,8 @@ pub enum HubAction {
     Ask(HubRequest),
     /// Open this session's play window: the window's own business.
     Open(u32),
+    /// Open the settings menu (`plan/50` §7 step 1).
+    Settings,
 }
 
 /// What the hub shows this frame, gathered by the window from its sessions.
@@ -128,7 +130,11 @@ impl Hub {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 // With nothing playing there is nothing to lose, so it does
                 // not ask, as closing the window does not (author, 2026-09-27).
-                if ui.button("Shut down").clicked() {
+                let shut = ui.button("Shut down");
+                if ui.button("Settings").clicked() {
+                    asked = Some(HubAction::Settings);
+                }
+                if shut.clicked() {
                     if playing {
                         self.confirming = true;
                     } else {

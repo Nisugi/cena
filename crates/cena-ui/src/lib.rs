@@ -8,6 +8,7 @@ mod input;
 mod lines;
 mod merge;
 mod projection;
+pub mod settings;
 mod view;
 mod wire;
 

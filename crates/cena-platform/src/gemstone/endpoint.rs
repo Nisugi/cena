@@ -74,6 +74,23 @@ pub const GAMES: [(&str, &str); 3] = [
     ("GST", "Prime Test"),
 ];
 
+/// The instance each game names itself once logged in, which a character's
+/// files are named by (`<app game=...>`, the model's `instance`): the code a
+/// login asks for, and that name. Prime is VERIFIED in the committed
+/// fixtures (`<app char="Baelor" game="Prime" ...>`); Shattered and Test are
+/// the model's own list (`crates/cena-model/src/state/character.rs:265`).
+pub const INSTANCES: [(&str, &str); 3] = [("GS3", "Prime"), ("GSF", "Shattered"), ("GST", "Test")];
+
+/// The instance the game `code` names itself, ignoring case: `None` for a
+/// code Hydra does not know.
+#[must_use]
+pub fn instance(code: &str) -> Option<&'static str> {
+    INSTANCES
+        .iter()
+        .find(|(known, _)| known.eq_ignore_ascii_case(code.trim()))
+        .map(|(_, name)| *name)
+}
+
 /// One endpoint pair: the two spellings of the same game server.
 type Pair = (&'static str, u16);
 
@@ -130,12 +147,24 @@ pub fn other_spelling(host: &str, port: u16) -> Option<(&'static str, u16)> {
 // path -- the same reason the table itself is here. The behavioural tests that
 // need no hostname stayed in the integration test.
 mod tests {
-    use super::{DEFAULT_GAME_CODE, ENDPOINT_PAIRS, GAMES, other_spelling};
+    use super::{DEFAULT_GAME_CODE, ENDPOINT_PAIRS, GAMES, INSTANCES, instance, other_spelling};
 
     /// A launcher's game starts where a login that names none goes.
     #[test]
     fn the_default_game_is_one_a_launcher_offers() {
         assert!(GAMES.iter().any(|(code, _)| *code == DEFAULT_GAME_CODE));
+    }
+
+    /// Every game a launcher offers has the instance its files are named
+    /// by, found whatever the case of its code.
+    #[test]
+    fn every_game_names_its_instance() {
+        for (code, _) in GAMES {
+            assert!(INSTANCES.iter().any(|(known, _)| *known == code), "{code}");
+        }
+        assert_eq!(instance(" gs3 "), Some("Prime"));
+        assert_eq!(instance("GST"), Some("Test"));
+        assert_eq!(instance("DR"), None);
     }
 
     #[test]

@@ -54,6 +54,7 @@ mod launcher;
 mod learn;
 mod loot;
 mod map_context;
+mod pages;
 mod play;
 mod relay;
 mod roster;

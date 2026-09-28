@@ -51,6 +51,8 @@ pub(crate) enum Asked {
     SavePreset(crate::layout::Preset),
     /// Forget the preset of this name.
     ForgetPreset(String),
+    /// Open the settings menu on this character (`plan/50` §7 step 1).
+    Settings,
 }
 
 /// What a play window shows this frame.
@@ -167,6 +169,7 @@ impl Play {
         let mut changed = false;
         match top {
             Some(draw::Top::Stop) => asked = Some(Asked::Stop),
+            Some(draw::Top::Settings) => asked = Some(Asked::Settings),
             Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
             Some(draw::Top::Fit) => {
                 self.layout = None;

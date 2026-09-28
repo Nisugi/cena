@@ -64,6 +64,61 @@ pub struct CasterProfile {
     pub typed: bool,
 }
 
+/// Every setting, in the struct's order: what the settings menu shows.
+pub const TABLE: &[crate::settings::Key] = {
+    use crate::settings::{Key, KeyKind};
+    &[
+        Key {
+            name: "alias",
+            label: "Aliases",
+            help: "Names for spells. Changed with `;sc alias <spell> <name>`.",
+            kind: KeyKind::Map,
+        },
+        Key {
+            name: "verbs",
+            label: "Verbs",
+            help: "The verb for a spell or an alias. Changed with `;sc verb`.",
+            kind: KeyKind::Map,
+        },
+        Key {
+            name: "stance",
+            label: "Stances",
+            help: "The stance taken for a spell or an alias. Changed with `;sc stance`.",
+            kind: KeyKind::Map,
+        },
+        Key {
+            name: "channel",
+            label: "Channel",
+            help: "Channel what the spell table says can be.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "conserve",
+            label: "Conserve",
+            help: "Refuse a cast short of mana, or at a target not here.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "safety",
+            label: "Safety",
+            help: "Refuse an attack spell with nothing hostile here.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "stance_all",
+            label: "Offensive stance where wanted",
+            help: "Take the offensive stance for what the spell table marks as wanting it.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "typed",
+            label: "Cast typed spell numbers",
+            help: "A typed 401, or an alias, with no ;sc before it, is cast.",
+            kind: KeyKind::Toggle,
+        },
+    ]
+};
+
 impl Default for CasterProfile {
     /// Everything empty and off, but `typed`: spellcaster exists to catch
     /// what is typed.

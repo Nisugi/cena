@@ -321,6 +321,27 @@ Claude's order, each step shippable and committed on its own:
    - *The first pages:* Heal and Waggle, then Keep and Spellcaster.
    - *A test* that holds each table to its profile's fields, as VellumFE's registry test
      does.
+
+   **BUILT 2026-09-27.**
+   - *The description:* `crates/cena-ui/src/settings.rs`. A row says whether its page's
+     file sets it (*Use default* puts it back) or it is at its default.
+   - *The tables:* each profile's `TABLE` beside its struct, the key's label, help and kind
+     (`crates/cena-behavior/src/settings.rs`, `shown`). Heal's and waggle's tests, and
+     `crates/cena-behavior/tests/keep.rs` and `crates/cena-behavior/tests/spellcaster.rs`,
+     hold each table to its struct's fields.
+   - *The writer:* `change` in `crates/cena/src/hunt/settings.rs`, which `;heal set` and
+     `;waggle set` now call too. The binary builds the pages and applies a change
+     (`crates/cena/src/pages.rs`); a file that does not read is shown with why and never
+     written over.
+   - *The menu:* `crates/cena-gui/src/menu.rs`, in its own native window. A value is
+     checked against its kind before anything is sent, and written as the command would
+     type it. A map (spellcaster's aliases, verbs, stances) is shown, not edited: its
+     command changes it.
+   - *Seen at once:* the spellcaster profile, which a typed spell number reads, is read again
+     when its file changes (`crates/cena/src/hunt/caster.rs`), so a change from the menu
+     does not wait for a restart.
+   - *Checked:* 15 mutants over the menu, the pages, the writer, the tables and the reload,
+     all caught.
 2. **Hydra's own page**, kept in the window's own file: the card width, and closing a play
    window when its session closes (§6 item 11, off). Also the **Keys** page: keybinds for
    every character, edited with a key pressed rather than typed.

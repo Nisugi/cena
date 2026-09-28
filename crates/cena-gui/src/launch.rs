@@ -94,7 +94,7 @@ fn roster_name(game: &str, character: &str) -> String {
 
 /// What a player calls the game `code` names: its name, or the code itself
 /// when Hydra knows no name for it.
-fn game_name(code: &str) -> &str {
+pub(crate) fn game_name(code: &str) -> &str {
     GAMES
         .iter()
         .find(|(known, _)| known.eq_ignore_ascii_case(code))

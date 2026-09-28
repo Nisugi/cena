@@ -42,6 +42,8 @@ pub(super) enum Top {
     NewCustom,
     /// The Add-a-widget list was asked for.
     AddWidget,
+    /// The settings menu was asked for.
+    Settings,
 }
 
 /// The top bar: who, how connected, the keybinds, the layout's grid, Stop;
@@ -65,6 +67,13 @@ pub(super) fn top(
                 .clicked()
             {
                 asked = Some(Top::Stop);
+            }
+            if ui
+                .button("Settings")
+                .on_hover_text("This character's settings, and Hydra's")
+                .clicked()
+            {
+                asked = Some(Top::Settings);
             }
             ui.menu_button("Keys", |ui| {
                 for said in view.keys {

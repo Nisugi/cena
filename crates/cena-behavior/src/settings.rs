@@ -44,6 +44,125 @@ pub enum Stored<T> {
     Broken(String),
 }
 
+/// One setting as the settings menu shows it (`plan/50` §7 step 1): its
+/// key in the file, what a player calls it, a line of what it does, and the
+/// kind of value it takes. Each profile keeps a table of these beside its
+/// struct, one per field, in the struct's order; a test holds the two
+/// together, as `VellumFE`'s settings registry does.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Key {
+    /// The key in the file.
+    pub name: &'static str,
+    /// What a player calls it.
+    pub label: &'static str,
+    /// A line of what it does.
+    pub help: &'static str,
+    /// The kind of value it takes.
+    pub kind: KeyKind,
+}
+
+/// The kind of value a setting takes, which decides how it is edited.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum KeyKind {
+    /// On or off.
+    Toggle,
+    /// A whole number, from `min` to `max`.
+    Whole {
+        /// The least.
+        min: u32,
+        /// The most.
+        max: u32,
+    },
+    /// A number, from `min` to `max`.
+    Number {
+        /// The least.
+        min: f64,
+        /// The most.
+        max: f64,
+    },
+    /// Words.
+    Text,
+    /// A list of whole numbers: spells, rooms.
+    Numbers,
+    /// A list of words.
+    Words,
+    /// Names each given a value, changed with the behavior's own command
+    /// (`;sc alias`): shown, not edited, in the menu.
+    Map,
+}
+
+/// The names of `table`'s keys, in its order.
+#[must_use]
+pub fn names(table: &[Key]) -> Vec<&'static str> {
+    table.iter().map(|key| key.name).collect()
+}
+
+/// A setting's value as a profile holds it, for the settings menu: numbers
+/// as the file writes them, so nothing is lost to a conversion.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Held {
+    /// On or off.
+    Bool(bool),
+    /// A number or words, as written.
+    Text(String),
+    /// A list, each item as written.
+    List(Vec<String>),
+    /// Names each given a value.
+    Map(Vec<(String, String)>),
+}
+
+/// One of a table's settings as a profile holds it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Shown {
+    /// Which setting.
+    pub key: Key,
+    /// Its value in effect; `None` when it is unset and has no default.
+    pub value: Option<Held>,
+    /// Whether the file itself sets it, rather than the default.
+    pub here: bool,
+}
+
+/// Each of `table`'s settings, in its order, as the file's text `own` holds
+/// it. `canonical` is the same text read back as the behavior reads it, its
+/// defaults filled in.
+///
+/// # Errors
+///
+/// Either text is not TOML.
+pub fn shown(own: &str, canonical: &str, table: &[Key]) -> Result<Vec<Shown>, String> {
+    let own: Table = own.parse().map_err(|e: toml::de::Error| e.to_string())?;
+    let full: Table = canonical
+        .parse()
+        .map_err(|e: toml::de::Error| e.to_string())?;
+    Ok(table
+        .iter()
+        .map(|key| Shown {
+            key: *key,
+            value: full.get(key.name).map(held),
+            here: own.contains_key(key.name),
+        })
+        .collect())
+}
+
+/// A TOML value as the menu shows it.
+fn held(value: &Value) -> Held {
+    let item = |value: &Value| match value {
+        Value::String(text) => text.clone(),
+        other => other.to_string(),
+    };
+    match value {
+        Value::Boolean(on) => Held::Bool(*on),
+        Value::Array(items) => Held::List(items.iter().map(item).collect()),
+        Value::Table(table) => Held::Map(
+            table
+                .iter()
+                .map(|(name, value)| (name.clone(), item(value)))
+                .collect(),
+        ),
+        other => Held::Text(item(other)),
+    }
+}
+
 /// Read a settings file with `parse`.
 pub fn read<T>(path: &Path, parse: impl FnOnce(&str) -> Result<T, String>) -> Stored<T> {
     match std::fs::read_to_string(path) {
@@ -420,5 +539,52 @@ mod tests {
         let (_, removed) = unset("[rooms]\nhunting = 1\n", "rest.fried")?;
         assert!(!removed);
         Ok(())
+    }
+
+    /// Each setting is shown with its value in effect -- the file's own, or
+    /// the default the behavior fills in -- and whether the file sets it; a
+    /// list, a map and an unset one each as they are.
+    #[test]
+    fn a_setting_is_shown_with_where_it_comes_from() {
+        use super::{Held, Key, KeyKind, shown};
+        let key = |name: &'static str, kind| Key {
+            name,
+            label: name,
+            help: "",
+            kind,
+        };
+        let table = [
+            key("on", KeyKind::Toggle),
+            key("list", KeyKind::Numbers),
+            key("map", KeyKind::Map),
+            key("none", KeyKind::Text),
+        ];
+        let canonical = "on = true
+list = [1, 2]
+
+[map]
+boom = 910
+";
+        let shown = shown(
+            "on = true
+",
+            canonical,
+            &table,
+        )
+        .expect("both read");
+        let held: Vec<(Option<Held>, bool)> = shown
+            .into_iter()
+            .map(|shown| (shown.value, shown.here))
+            .collect();
+        assert_eq!(
+            held,
+            [
+                (Some(Held::Bool(true)), true),
+                (Some(Held::List(vec!["1".into(), "2".into()])), false),
+                (Some(Held::Map(vec![("boom".into(), "910".into())])), false),
+                (None, false),
+            ]
+        );
+        assert!(super::shown("x = [", "", &table).is_err());
     }
 }

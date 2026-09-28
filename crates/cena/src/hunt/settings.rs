@@ -9,7 +9,9 @@ use std::path::{Path, PathBuf};
 use cena_behavior::heal::{self, HealProfile};
 use cena_behavior::hunt::command::{Of, Setting, Topic, help as help_for};
 use cena_behavior::hunt::{self, LoadError};
-use cena_behavior::settings::{self, Stored};
+use cena_behavior::keep::{self, KeepProfile};
+use cena_behavior::settings::{self, Key, Stored};
+use cena_behavior::spellcaster::{self, CasterProfile};
 use cena_behavior::waggle::{self, WaggleProfile};
 use cena_session::NoticeKind;
 
@@ -176,93 +178,163 @@ pub(super) fn stored<T: Default>(
     }
 }
 
-/// A character's own profile: what it is called, where it is, and how the
-/// behavior reads it.
-struct Kind {
-    label: &'static str,
-    path: fn(&Path, &str, &str) -> Option<PathBuf>,
+/// A character's own profile: what it is called, where it is, how the
+/// behavior reads it, and its settings. The `;heal` and `;waggle` commands
+/// and the settings menu (`crate::pages`) change it through [`change`], the
+/// one writer, so the two cannot disagree about a value.
+pub(crate) struct Profile {
+    /// What the menu names its page by.
+    pub(crate) id: &'static str,
+    /// What a player calls it.
+    pub(crate) label: &'static str,
+    /// Where the character's file is.
+    pub(crate) path: fn(&Path, &str, &str) -> Option<PathBuf>,
     /// The file's text read as the behavior reads it and written back whole:
     /// every setting, the defaults included.
-    canonical: fn(&str) -> Result<String, String>,
-    keys: &'static [&'static str],
+    pub(crate) canonical: fn(&str) -> Result<String, String>,
+    /// Its settings, in the struct's order.
+    pub(crate) table: &'static [Key],
+    /// When a change takes effect, as the menu says it.
+    pub(crate) takes: &'static str,
 }
 
-fn kind(of: Of) -> Kind {
-    match of {
-        Of::Heal => Kind {
+fn heal_canonical(text: &str) -> Result<String, String> {
+    HealProfile::parse(text)?.to_toml()
+}
+
+fn waggle_canonical(text: &str) -> Result<String, String> {
+    WaggleProfile::parse(text)?.to_toml()
+}
+
+fn keep_canonical(text: &str) -> Result<String, String> {
+    KeepProfile::parse(text)?.to_toml()
+}
+
+fn caster_canonical(text: &str) -> Result<String, String> {
+    CasterProfile::parse(text)?.to_toml()
+}
+
+/// Every character profile the menu shows, in its order.
+pub(crate) fn profiles() -> [Profile; 4] {
+    [
+        Profile {
+            id: "heal",
             label: "Heal",
             path: heal::path,
-            canonical: |text| HealProfile::parse(text)?.to_toml(),
-            keys: heal::profile::KEYS,
+            canonical: heal_canonical,
+            table: heal::profile::TABLE,
+            takes: "the next time Heal runs",
         },
-        Of::Waggle => Kind {
+        Profile {
+            id: "waggle",
             label: "Waggle",
             path: waggle::path,
-            canonical: |text| WaggleProfile::parse(text)?.to_toml(),
-            keys: waggle::KEYS,
+            canonical: waggle_canonical,
+            table: waggle::TABLE,
+            takes: "the next time Waggle runs",
         },
-    }
+        Profile {
+            id: "keep",
+            label: "Keep",
+            path: keep::path,
+            canonical: keep_canonical,
+            table: keep::TABLE,
+            takes: "the next time Keep runs",
+        },
+        Profile {
+            id: "sc",
+            label: "Spellcaster",
+            path: spellcaster::path,
+            canonical: caster_canonical,
+            table: spellcaster::TABLE,
+            takes: "at once",
+        },
+    ]
+}
+
+fn of_profile(of: Of) -> Profile {
+    let id = match of {
+        Of::Heal => "heal",
+        Of::Waggle => "waggle",
+    };
+    let [heal, waggle, ..] = profiles();
+    if id == heal.id { heal } else { waggle }
+}
+
+/// Set `key` in the profile at `path` to `value`, or put it back to its
+/// default when `None`. The result is read back as the behavior will read
+/// it before anything is saved, and a file that is there and does not read
+/// is never written over. Says what was done, or why nothing was.
+///
+/// # Errors
+///
+/// Why nothing was saved, in words for the player.
+pub(crate) fn change(
+    profile: &Profile,
+    path: &Path,
+    key: &str,
+    value: Option<&str>,
+) -> Result<String, String> {
+    let label = profile.label;
+    let old = match settings::read_text(path) {
+        Stored::Found(text) => text,
+        Stored::Missing => String::new(),
+        Stored::Broken(why) => return Err(format!("{label}: nothing was changed: {why}")),
+    };
+    let changed = match value {
+        Some(value) => settings::set(&old, key, settings::typed(value)).and_then(|(text, _)| {
+            let now = settings::text_lines(&text, Some(key))?.join(", ");
+            Ok((text, now))
+        }),
+        None => settings::unset(&old, key)
+            .map(|(text, _)| (text, format!("{key} is back to its default"))),
+    };
+    let (text, done) = changed
+        .and_then(|(text, done)| (profile.canonical)(&text).map(|_| (text, done)))
+        .map_err(|why| {
+            format!(
+                "{label}: not saved: {why}. The settings are {}.",
+                settings::names(profile.table).join(", ")
+            )
+        })?;
+    settings::save(path, &text).map_err(|e| format!("{label}: {done}, but not saved: {e}"))?;
+    Ok(format!("{label}: {done}."))
 }
 
 /// `;heal set|unset|show`, `;waggle set|unset|show`: this character's
 /// profile, changed or listed. The first `set` makes it.
 pub(super) fn profile(dir: &Path, who: Who<'_>, of: Of, setting: &Setting, say: Say<'_>) {
-    let kind = kind(of);
-    let label = kind.label;
-    let Some(path) = who.and_then(|(i, n)| (kind.path)(dir, i, n)) else {
+    let profile = of_profile(of);
+    let label = profile.label;
+    let Some(path) = who.and_then(|(i, n)| (profile.path)(dir, i, n)) else {
         say(
             NoticeKind::Error,
             format!("{label}: the game has not said who this is yet."),
         );
         return;
     };
-    let old = match settings::read_text(&path) {
-        Stored::Found(text) => text,
-        Stored::Missing => String::new(),
-        Stored::Broken(why) => {
-            say(
-                NoticeKind::Error,
-                format!("{label}: nothing was changed: {why}"),
-            );
-            return;
+    let done = match setting {
+        Setting::Show => {
+            return match settings::read_text(&path) {
+                Stored::Found(text) => show_profile(&profile, &text, say),
+                Stored::Missing => show_profile(&profile, "", say),
+                Stored::Broken(why) => say(NoticeKind::Error, format!("{label}: {why}")),
+            };
         }
+        Setting::Set { key, value } => change(&profile, &path, key, Some(value)),
+        Setting::Unset(key) => change(&profile, &path, key, None),
     };
-    let changed = match setting {
-        Setting::Show => return show_profile(&kind, &old, say),
-        Setting::Set { key, value } => {
-            settings::set(&old, key, settings::typed(value)).and_then(|(text, _)| {
-                let now = settings::text_lines(&text, Some(key))?.join(", ");
-                Ok((text, now))
-            })
-        }
-        Setting::Unset(key) => settings::unset(&old, key)
-            .map(|(text, _)| (text, format!("{key} is back to its default"))),
-    };
-    // Read as the behavior will read it before anything is saved.
-    let checked = changed.and_then(|(text, done)| (kind.canonical)(&text).map(|_| (text, done)));
-    match checked {
-        Err(why) => say(
-            NoticeKind::Error,
-            format!(
-                "{label}: not saved: {why}. The settings are {}.",
-                kind.keys.join(", ")
-            ),
-        ),
-        Ok((text, done)) => match settings::save(&path, &text) {
-            Ok(()) => say(NoticeKind::Info, format!("{label}: {done}.")),
-            Err(e) => say(
-                NoticeKind::Error,
-                format!("{label}: {done}, but not saved: {e}"),
-            ),
-        },
+    match done {
+        Ok(done) => say(NoticeKind::Info, done),
+        Err(why) => say(NoticeKind::Error, why),
     }
 }
 
 /// Every setting, the defaults included, and the ones not set.
-fn show_profile(kind: &Kind, text: &str, say: Say<'_>) {
-    let label = kind.label;
-    let shown = (kind.canonical)(text).and_then(|canonical| {
-        let unset = settings::not_set(&canonical, kind.keys)?;
+fn show_profile(profile: &Profile, text: &str, say: Say<'_>) {
+    let label = profile.label;
+    let shown = (profile.canonical)(text).and_then(|canonical| {
+        let unset = settings::not_set(&canonical, &settings::names(profile.table))?;
         settings::text_lines(&canonical, None).map(|lines| (lines, unset))
     });
     match shown {

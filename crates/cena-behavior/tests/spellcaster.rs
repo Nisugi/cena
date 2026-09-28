@@ -80,3 +80,16 @@ fn a_typed_number_or_alias_is_a_spell_until_switched_off() {
         "a file that does not say keeps it on"
     );
 }
+
+/// The settings menu's table is every field, in order: a field added to the
+/// profile and not there would never be shown (`plan/50` §7 step 1).
+#[test]
+fn the_menus_table_is_every_setting() {
+    let table = toml::Table::try_from(cena_behavior::spellcaster::CasterProfile::default())
+        .expect("a profile is a table");
+    let keys: Vec<&str> = table.keys().map(String::as_str).collect();
+    assert_eq!(
+        keys,
+        cena_behavior::settings::names(cena_behavior::spellcaster::TABLE)
+    );
+}
