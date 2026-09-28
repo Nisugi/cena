@@ -91,7 +91,7 @@ async fn sessions_are_added_numbered_and_run_side_by_side() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn a_second_session_on_one_account_is_refused_until_the_first_is_removed() {
+async fn a_second_session_on_one_account_is_refused_until_the_first_has_stopped() {
     let mut host = Host::new();
     let (first, _) = game();
     let (second, _) = game();
@@ -112,13 +112,35 @@ async fn a_second_session_on_one_account_is_refused_until_the_first_is_removed()
         })
     );
 
-    // Removed, the account is free at once -- before the stop finishes.
-    let removed = host.take(nisugi).expect("in the table");
+    // Removed, the account stays taken while the session stops and is
+    // closed after, and is free once it is let go of; another account never
+    // waits (the crate review of 2026-09-28, R11: it was free at once).
+    let (removed, stopping) = host.take(nisugi).expect("in the table");
+    let (fourth, _) = game();
+    let (fifth, _) = game();
+    assert_eq!(
+        host.add(who("acct1", "Sugiin"), fourth, |s| s),
+        Err(AddError::AccountStopping {
+            account: "acct1".to_owned(),
+            by: "Nisugi".to_owned(),
+        })
+    );
+    host.add(who("ACCT2", "Nerten"), fifth, |s| s)
+        .expect("another account at once");
+    let _ = removed.stop().await;
+    let (sixth, _) = game();
+    assert!(
+        matches!(
+            host.add(who("ACCT1", "Sugiin"), sixth, |s| s),
+            Err(AddError::AccountStopping { .. })
+        ),
+        "stopped, and still closing what it left"
+    );
+    drop(stopping);
     let sugiin = host
         .add(who("ACCT1", "Sugiin"), third, |s| s)
         .expect("the account is free");
     assert_ne!(sugiin, nisugi, "an id is never reused");
-    let _ = removed.stop().await;
     let _ = stop_all(host.take_all()).await;
 }
 
@@ -139,7 +161,7 @@ async fn removing_one_sends_its_quit_and_leaves_the_others_running() {
             .expect("logs in");
     }
 
-    let end = host.take(a).expect("in the table").stop().await;
+    let end = host.take(a).expect("in the table").0.stop().await;
     assert!(
         a_transcript.lines().iter().any(|line| line == "quit"),
         "a removed session says goodbye to the game: {:?}",

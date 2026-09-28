@@ -392,7 +392,7 @@ impl Table {
     /// does not wait on them.
     async fn remove(&self, id: SessionId) -> String {
         match self.take_off(id).await {
-            Some((character, _)) => format!("{character} has quit."),
+            Some((character, ..)) => format!("{character} has quit."),
             None => "That character is no longer on the table.".to_owned(),
         }
     }
@@ -424,9 +424,11 @@ impl Table {
             None => "That character is no longer on the table.".to_owned(),
             Some(true) => "That character is still connected.".to_owned(),
             Some(false) => {
-                let Some((character, login)) = self.take_off(id).await else {
+                let Some((character, login, closed)) = self.take_off(id).await else {
                     return "That character is no longer on the table.".to_owned();
                 };
+                // Its account is taken until what it left is closed.
+                let _ = closed.await;
                 match hub_login(&self.dir, &login) {
                     Ok(typed) => match self.start(typed).await {
                         Ok(_) => format!("Reconnecting {character}."),
@@ -439,9 +441,14 @@ impl Table {
     }
 
     /// Take session `id` off the table and stop it; its loose ends are closed
-    /// in the background. Its character and roster name, when it was there.
-    async fn take_off(&self, id: SessionId) -> Option<(String, String)> {
-        let hosted = self.host.lock().await.take(id)?;
+    /// in the background, and its account stays taken until they are
+    /// (`cena_host::Stopping`). Its character and roster name, when it was
+    /// there, and the closing.
+    async fn take_off(
+        &self,
+        id: SessionId,
+    ) -> Option<(String, String, tokio::task::JoinHandle<()>)> {
+        let (hosted, stopping) = self.host.lock().await.take(id)?;
         if let Some(web) = &self.web {
             web.detach(id);
         }
@@ -455,11 +462,14 @@ impl Table {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&id)?;
         self.party.unseat(id);
-        let named = (one.character.clone(), one.login.clone());
+        let (character, login) = (one.character.clone(), one.login.clone());
         // A character still in the process holds its logs open (`setup`'s
         // FLUSH_WAIT has why); the hub is not made to wait for that.
-        tokio::spawn(finish(one, end));
-        Some(named)
+        let closed = tokio::spawn(async move {
+            finish(one, end).await;
+            drop(stopping);
+        });
+        Some((character, login, closed))
     }
 
     /// Tell the hubs which characters they can add: in the roster, with a saved

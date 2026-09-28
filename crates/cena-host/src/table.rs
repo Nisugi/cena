@@ -1,6 +1,7 @@
 //! The table itself. See the crate docs for why it is shaped this way.
 
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use cena_session::{
@@ -41,6 +42,16 @@ pub enum AddError {
         /// The character already online on it.
         by: String,
     },
+    /// The account's last character was taken off the table and is still
+    /// stopping: logging out, and closing what it leaves behind. A second
+    /// character now would log in beside the first's goodbye
+    /// (the crate review of 2026-09-28, R11).
+    AccountStopping {
+        /// The account asked for.
+        account: String,
+        /// The character still stopping on it.
+        by: String,
+    },
 }
 
 impl std::fmt::Display for AddError {
@@ -50,6 +61,10 @@ impl std::fmt::Display for AddError {
                 f,
                 "{by} is already logged in on account {account}; the game allows one \
                  character per account at a time"
+            ),
+            Self::AccountStopping { account, by } => write!(
+                f,
+                "{by} is still logging out of account {account}; try again in a moment"
             ),
         }
     }
@@ -109,6 +124,30 @@ pub struct Host {
     /// -- a frontend holding a removed session's id cannot reach a new one.
     next: u32,
     sessions: BTreeMap<SessionId, Hosted>,
+    /// Who each session taken off the table and not yet let go of is
+    /// ([`Stopping`]): its account stays taken.
+    stopping: Arc<Mutex<BTreeMap<SessionId, Who>>>,
+}
+
+/// A session taken off the table ([`Host::take`]) and stopping: its account
+/// stays taken until this is dropped, after the stop and whatever the
+/// caller closes after it -- its logs, its records. Another account is never
+/// held up (the crate review of 2026-09-28, R11: the account was free the moment the
+/// session left the table, before its `quit` had gone).
+#[derive(Debug)]
+#[must_use = "dropping it frees the account at once"]
+pub struct Stopping {
+    stopping: Arc<Mutex<BTreeMap<SessionId, Who>>>,
+    id: SessionId,
+}
+
+impl Drop for Stopping {
+    fn drop(&mut self) {
+        self.stopping
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&self.id);
+    }
 }
 
 impl Host {
@@ -126,7 +165,9 @@ impl Host {
     /// # Errors
     ///
     /// [`AddError::AccountInUse`] when a running session already holds the
-    /// account. Accounts compare without regard to case, as the game's do.
+    /// account, and [`AddError::AccountStopping`] while one taken off the
+    /// table is still stopping. Accounts compare without regard to case, as
+    /// the game's do.
     pub fn add<C>(
         &mut self,
         who: Who,
@@ -145,6 +186,19 @@ impl Host {
             return Err(AddError::AccountInUse {
                 account: who.account,
                 by: holder.who.character.clone(),
+            });
+        }
+        let stopping = self
+            .stopping
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .find(|stopping| stopping.account.eq_ignore_ascii_case(&who.account))
+            .map(|stopping| stopping.character.clone());
+        if let Some(by) = stopping {
+            return Err(AddError::AccountStopping {
+                account: who.account,
+                by,
             });
         }
         let id = SessionId(self.next);
@@ -179,9 +233,18 @@ impl Host {
     }
 
     /// Remove a session from the table, to be [`Hosted::stop`]ped by the
-    /// caller. Immediate: its account is free for a new session at once.
-    pub fn take(&mut self, id: SessionId) -> Option<Hosted> {
-        self.sessions.remove(&id)
+    /// caller. Its account stays taken until the [`Stopping`] is dropped.
+    pub fn take(&mut self, id: SessionId) -> Option<(Hosted, Stopping)> {
+        let hosted = self.sessions.remove(&id)?;
+        self.stopping
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(id, hosted.who.clone());
+        let stopping = Stopping {
+            stopping: Arc::clone(&self.stopping),
+            id,
+        };
+        Some((hosted, stopping))
     }
 
     /// Remove every session, in the order they were added.
