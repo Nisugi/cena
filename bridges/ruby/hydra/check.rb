@@ -71,7 +71,7 @@ module Hydra
              'and its facts as data (plan/46 6.2)'
     # From worst to least: a verdict is the worst kind found.
     KINDS = %w[stops markup windows differs].freeze
-    MARKUP_CALLS = %i[status_tags toggle_status want_downstream_xml want_downstream_xml=].freeze
+    MARKUP_CALLS = %i[status_tags toggle_status want_downstream_xml want_downstream_xml= quiet_command_xml].freeze
     MARKUP_GLOBALS = /\A\$_(?:SERVER|CLIENT|DETACHABLE|LASTUPSTREAM)/
 
     # Lich's own state, which no script sees under Hydra.
@@ -521,6 +521,10 @@ module Hydra
           found(node, 'markup', name.to_s.delete_suffix('='), MARKUP)
           return
         end
+        if name == :issue_command && !text_only?(node)
+          found(node, 'markup', 'issue_command', MARKUP)
+          return
+        end
         return if guarded?(name.to_s)
 
         receiver = node.receiver
@@ -537,6 +541,16 @@ module Hydra
           answered?(resolve(path), name) || unanswered(node, path, ".#{name}")
         when Prism::CallNode
           instance_of_hydras(node, receiver, name)
+        end
+      end
+
+      # `issue_command(..., usexml: false)`: the command's text, not its markup.
+      def text_only?(node)
+        Array(node.arguments&.arguments).any? do |argument|
+          argument.is_a?(Prism::KeywordHashNode) && argument.elements.any? do |pair|
+            pair.is_a?(Prism::AssocNode) && pair.key.is_a?(Prism::SymbolNode) &&
+              pair.key.unescaped == 'usexml' && pair.value.is_a?(Prism::FalseNode)
+          end
         end
       end
 

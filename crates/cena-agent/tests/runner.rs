@@ -321,6 +321,50 @@ async fn a_script_casts_as_lichs_scripts_do() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// **`Lich::Util`** (`plan/46` §11 step 10): Lich's own commands, the
+/// command's text read as the script reads the game's; one that reads the
+/// markup says so.
+#[tokio::test(flavor = "current_thread")]
+async fn a_scripts_quiet_command_reads_the_text() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("util");
+    let scripts = scripts_with(&dir, "utiltest.lic").unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[
+                (
+                    "flag",
+                    b"You may also access these settings through the SET command.\nBreathe: ON\nYou will not engage in war in towns with active justice.\n<prompt time=\"1002\">&gt;</prompt>\n",
+                ),
+                (
+                    "info",
+                    b"Name: Nisugi Race: Half-Elf  Profession: Ranger\n   Mana: 20   Silver: 1,234\n<prompt time=\"1003\">&gt;</prompt>\n",
+                ),
+            ],
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
+    let heard = running.run("utiltest", "utiltest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[utiltest: quiet: 3 You will not engage in war in towns with active justice.]",
+        "[utiltest: silver: 1234]",
+        "[utiltest: xml: reads the game's markup]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// **The map and the stores** (`plan/46` §11 step 2): `Room.current` named
 /// by Hydra, its `wayto` walked with Lich's own `move`, and `CharSettings`
 /// kept in `lich.db3` from one runner to the next: the second runner is a

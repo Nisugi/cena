@@ -62,8 +62,7 @@ end
 # Each is loaded the first time a script names it (Ruby's autoload), as the
 # libraries Lich loads before any script are (engine.rb): loaded at start,
 # they took some 100 ms of a runner's start (plan/46 section 9), half of it
-# `ostruct`. `Lich::Util` is loaded now: its commands are named not yet
-# answered below.
+# `ostruct`. `Lich::Util` is loaded now, for the one change below.
 require File.join(LIB_DIR, 'util', 'util.rb')
 {
   Lich::Gemstone => {
@@ -86,6 +85,23 @@ require File.join(LIB_DIR, 'util', 'util.rb')
     names.each { |name| scope.autoload(name, File.join(LIB_DIR, file)) }
   end
 end
-%i[issue_command quiet_command quiet_command_xml silver_count].each do |name|
-  Hydra.unanswered(Lich::Util.singleton_class, name, 'send the command and wait for its lines with dothistimeout')
+
+# Lich::Util's commands (plan/46 section 11, step 10) run as Lich's own:
+# the command sent, its lines read as the script reads the game's, and with
+# `quiet` hidden from the player by a display hook (hooks.rb). Those that
+# read the game's markup -- `usexml`, `issue_command`'s default, and
+# `quiet_command_xml` -- are the markup's (section 6.2, step 11), and say so
+# rather than wait out their timeout for lines that never come.
+module Hydra
+  module UtilMarkup
+    def issue_command(*args, usexml: true, **options)
+      if usexml
+        raise NotImplementedError, "Lich::Util.issue_command reads the game's markup (usexml), which Hydra does not " \
+                                   'give scripts yet (plan/46): pass usexml: false and match the text'
+      end
+
+      super
+    end
+  end
 end
+Lich::Util.singleton_class.prepend(Hydra::UtilMarkup)

@@ -29,3 +29,5 @@ echo Stats.level, Skills.edged_weapons, CMan.known?('bearhug'), Wounds.head, Res
 Infomon.sync
 leader = Group::Leader
 Skills.trading = 5
+Lich::Util.issue_command('info', /Name/)
+Lich::Util.issue_command('info', /Name/, /Mana/, usexml: false)
