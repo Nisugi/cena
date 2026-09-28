@@ -41,9 +41,17 @@ require 'tmpdir'
 
 SCRIPT_DIR = ENV.fetch('HYDRA_SCRIPTS', Dir.pwd)
 # Where Lich's engine keeps its data as it loads: the runner's, as Hydra
-# passes it, or a folder of the checker's own, gone when it is done.
+# passes it, or a folder of the checker's own, gone when it is done. Lich's
+# stores hold `lich.db3` open, and Windows removes no open file, so they
+# are closed first: without it every check left its folder behind.
 DATA_DIR = ENV.fetch('HYDRA_DATA') do
-  Dir.mktmpdir('hydra-check').tap { |dir| at_exit { FileUtils.rm_rf(dir) } }
+  Dir.mktmpdir('hydra-check').tap do |dir|
+    at_exit do
+      Sequel::DATABASES.each(&:disconnect) if defined?(Sequel::DATABASES)
+      Lich.db.close if defined?(Lich.db) && !Lich.db.closed?
+      FileUtils.rm_rf(dir)
+    end
+  end
 end
 $lich_char = ENV.fetch('HYDRA_SYMBOL', ';')
 
