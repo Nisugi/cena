@@ -425,15 +425,18 @@ impl Menu {
                 }
             }
             (RowKind::Map, value) => {
-                let shown = match value {
-                    Value::Map(pairs) if !pairs.is_empty() => pairs
-                        .iter()
-                        .map(|(name, value)| format!("{name} = {value}"))
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    _ => "none".to_owned(),
+                // Read-only, whatever the value: a hunt page shows a
+                // character's own setting, or a table of targets, as words
+                // (`cena/src/hunt_pages.rs`). Only nothing is "none": a
+                // non-map value read as none hid the setting in effect (the
+                // crate review of 2026-09-28, R12).
+                let words = shown(value);
+                let words = if words.is_empty() {
+                    "none".to_owned()
+                } else {
+                    words
                 };
-                ui.label(shown).on_hover_text(&row.help);
+                ui.label(words).on_hover_text(&row.help);
             }
             (kind, value) => {
                 let shown = shown(value);

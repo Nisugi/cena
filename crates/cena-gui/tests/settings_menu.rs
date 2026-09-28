@@ -600,3 +600,48 @@ fn a_way_in_opens_the_menu_at_its_page() {
     harness.run();
     assert_eq!(harness.state().menu.page(), Some("hunt:ojandhaart"));
 }
+
+/// A read-only row shows the value in effect, in the form a hunt page gives
+/// it -- a character's own setting as words -- and only nothing as "none"
+/// (the crate review of 2026-09-28, R12: a resting room of 29877 showed
+/// "none").
+#[test]
+fn a_read_only_row_shows_the_value_in_effect() {
+    let read_only =
+        |key: &str, label: &str, value: Value| row(key, label, RowKind::Map, value, false);
+    let hunt = page(
+        "hunt:p",
+        "Hunt: p",
+        vec![
+            read_only(
+                "rooms.resting",
+                "Resting room",
+                Value::Text("29877".to_owned()),
+            ),
+            read_only(
+                "targets",
+                "Targets",
+                Value::List(vec!["kobold".to_owned(), "rat".to_owned()]),
+            ),
+            read_only("spells", "Spells", Value::Map(Vec::new())),
+            read_only(
+                "stances",
+                "Stances",
+                Value::Map(vec![("attack".to_owned(), "offensive".to_owned())]),
+            ),
+        ],
+    );
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        pages: Some(("GS3:Nisugi".to_owned(), vec![hunt])),
+        ..Board::default()
+    };
+    board.menu.open_for(Some("GS3:Nisugi".to_owned()));
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    for shown in ["29877", "kobold, rat", "none", "attack = offensive"] {
+        assert!(harness.query_by_label(shown).is_some(), "{shown}");
+    }
+}
