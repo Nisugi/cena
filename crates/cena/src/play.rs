@@ -239,6 +239,7 @@ impl Table {
         let who = Who {
             account: account.clone(),
             character: character.clone(),
+            game: game.clone(),
         };
         let connector = LiveConnector::new(typed, connector::login_provider(), self.pin.clone());
         let mut host = self.host.lock().await;
@@ -453,7 +454,7 @@ impl Table {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&id)?;
-        self.party.unseat(&one.character);
+        self.party.unseat(id);
         let named = (one.character.clone(), one.login.clone());
         // A character still in the process holds its logs open (`setup`'s
         // FLUSH_WAIT has why); the hub is not made to wait for that.
@@ -468,32 +469,16 @@ impl Table {
         if self.web.is_none() && self.gui.is_none() {
             return;
         }
-        let running: Vec<String> = self
+        let running: Vec<(String, String)> = self
             .host
             .lock()
             .await
             .sessions()
             .filter(|(_, hosted)| hosted.is_running())
-            .map(|(_, hosted)| hosted.who.character.to_lowercase())
+            .map(|(_, hosted)| (hosted.who.game.clone(), hosted.who.character.clone()))
             .collect();
         let roster = roster::all(&self.dir).unwrap_or_default();
-        let available = roster
-            .iter()
-            .filter(|e| !running.contains(&e.character.to_lowercase()))
-            .filter(|e| secrets::saved(&e.account))
-            .map(|e| {
-                let twice = roster
-                    .iter()
-                    .filter(|other| other.character.eq_ignore_ascii_case(&e.character))
-                    .count()
-                    > 1;
-                if twice {
-                    format!("{}:{}", e.game_code, e.character)
-                } else {
-                    e.character.clone()
-                }
-            })
-            .collect::<Vec<String>>();
+        let available = roster::available(&roster, &running, secrets::saved);
         if let Some(web) = &self.web {
             web.sessions().offer(available.clone());
         }
@@ -522,7 +507,11 @@ impl Table {
                 let host = host.lock().await;
                 host.sessions()
                     .filter(|(_, hosted)| hosted.is_running())
-                    .map(|(_, hosted)| (hosted.who.character.clone(), hosted.handle.clone()))
+                    .map(|(_, hosted)| crate::relay::Running {
+                        game: hosted.who.game.clone(),
+                        name: hosted.who.character.clone(),
+                        handle: hosted.handle.clone(),
+                    })
                     .collect()
             })
         })

@@ -322,3 +322,23 @@ fn the_new_login_tab_as_drawn() {
     log_in(&mut harness, "orsen01", "hunter2");
     harness.snapshot("hub_new_login_listed");
 }
+
+/// One name on two games is two characters: Ashryn playing on GS3 does not
+/// hide the Ashryn on Shattered, which waits to be launched (the crate review of 2026-09-28, R6).
+#[test]
+fn a_name_playing_on_one_game_waits_on_another() {
+    let mut waiting = board();
+    waiting
+        .roster
+        .push(roster_card("Ashryn", "ashryn02", "GSF", true));
+    let harness = not_launched(waiting);
+    assert!(harness.query_by_label("Not launched (3)").is_some());
+    assert!(
+        harness.query_by_label("Shattered · ashryn02").is_some(),
+        "Shattered's Ashryn"
+    );
+    assert!(
+        harness.query_by_label("Prime · ashryn01").is_none(),
+        "not Prime's, which is playing"
+    );
+}

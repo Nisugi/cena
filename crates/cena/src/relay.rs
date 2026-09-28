@@ -14,7 +14,9 @@
 //! Two words, kept apart, so a character named All is never a broadcast.
 //! The line goes on each character as if typed there: its own command line
 //! first (`;to Baelor ;go2 bank` walks Baelor), then the game. A character is
-//! named in full, or by the start of its name when only one fits.
+//! named in full, or by the start of its name when only one fits; one whose
+//! name is on two games is named with its game, `;to GSF:Baelor look`, and
+//! the name alone is refused rather than sent to either (the crate review of 2026-09-28, R6).
 
 use std::future::Future;
 use std::pin::Pin;
@@ -25,11 +27,38 @@ use cena_session::{Notice, NoticeKind, Outcome, SessionHandle};
 
 use crate::commands::{Commands, Took};
 
-/// The characters running now, each by name with its handle: what a relay
-/// may send on. A closure, so the session table stays the binary's.
-pub(crate) type Characters = Arc<
-    dyn Fn() -> Pin<Box<dyn Future<Output = Vec<(String, SessionHandle)>> + Send>> + Send + Sync,
->;
+/// The characters running now: what a relay may send on. A closure, so the
+/// session table stays the binary's.
+pub(crate) type Characters =
+    Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Vec<Running>> + Send>> + Send + Sync>;
+
+/// A character running now.
+#[derive(Clone)]
+pub(crate) struct Running {
+    /// The game it is on, by its code (`GS3`).
+    pub(crate) game: String,
+    /// Its name.
+    pub(crate) name: String,
+    /// Its session.
+    pub(crate) handle: SessionHandle,
+}
+
+impl Running {
+    /// How the player tells it apart among `running`: its name, with its
+    /// game when another there has the same name.
+    fn label(&self, running: &[Running]) -> String {
+        let twice = running
+            .iter()
+            .filter(|other| other.name.eq_ignore_ascii_case(&self.name))
+            .count()
+            > 1;
+        if twice {
+            format!("{}:{}", self.game, self.name)
+        } else {
+            self.name.clone()
+        }
+    }
+}
 
 /// How long a relayed line waits for its answer, as a typed one does.
 const DEADLINE: Duration = Duration::from_secs(10);
@@ -76,36 +105,58 @@ pub(crate) fn parse(line: &str) -> Option<Result<Relay, &'static str>> {
     None
 }
 
-/// The character `name` picks among `running`: its whole name, whatever the
-/// case, or else the one whose name starts so.
+/// The character `typed` picks among `running`: `GAME:Name` on that game,
+/// or a name on whichever game has it. Its whole name, whatever the case,
+/// or else the one whose name starts so.
 ///
 /// # Errors
 ///
-/// What to tell the player: nobody fits, or more than one does.
-pub(crate) fn pick<'a>(
-    name: &str,
-    running: &'a [(String, SessionHandle)],
-) -> Result<&'a (String, SessionHandle), String> {
-    if let Some(exact) = running
-        .iter()
-        .find(|(character, _)| character.eq_ignore_ascii_case(name))
-    {
-        return Ok(exact);
-    }
-    let lower = name.to_lowercase();
-    let fits: Vec<&(String, SessionHandle)> = running
-        .iter()
-        .filter(|(character, _)| character.to_lowercase().starts_with(&lower))
+/// What to tell the player: nobody fits, or more than one does -- a whole
+/// name on two games among them, which went to the first found
+/// (the crate review of 2026-09-28, R6).
+pub(crate) fn pick<'a>(typed: &str, running: &'a [Running]) -> Result<&'a Running, String> {
+    let (game, name) = match typed.split_once(':') {
+        Some((game, name)) => (Some(game.trim()), name.trim()),
+        None => (None, typed),
+    };
+    let on_game = || {
+        running
+            .iter()
+            .filter(move |one| game.is_none_or(|game| one.game.eq_ignore_ascii_case(game)))
+    };
+    let exact: Vec<&Running> = on_game()
+        .filter(|one| one.name.eq_ignore_ascii_case(name))
         .collect();
+    let lower = name.to_lowercase();
+    let fits = if exact.is_empty() {
+        on_game()
+            .filter(|one| one.name.to_lowercase().starts_with(&lower))
+            .collect()
+    } else {
+        exact
+    };
+    let labels = |fits: &[&Running]| {
+        fits.iter()
+            .map(|one| one.label(running))
+            .collect::<Vec<_>>()
+    };
     match fits.as_slice() {
         [one] => Ok(one),
-        [] => Err(format!("To: no character named {name} is running here.")),
+        [] => Err(format!("To: no character named {typed} is running here.")),
+        [first, rest @ ..]
+            if rest
+                .iter()
+                .all(|one| one.name.eq_ignore_ascii_case(&first.name)) =>
+        {
+            Err(format!(
+                "To: {} is on more than one game; say which, as {}.",
+                first.name,
+                labels(&fits).join(" or ")
+            ))
+        }
         many => Err(format!(
-            "To: {name} could be {}; say more of the name.",
-            many.iter()
-                .map(|(character, _)| character.as_str())
-                .collect::<Vec<_>>()
-                .join(" or ")
+            "To: {typed} could be {}; say more of the name.",
+            labels(many).join(" or ")
         )),
     }
 }
@@ -131,7 +182,7 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, characters: Char
 
 /// Send `relay` on the characters it names among `running`, saying on `told`
 /// -- the character it was typed on -- whatever did not go.
-async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[(String, SessionHandle)]) {
+async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[Running]) {
     let (targets, line) = match relay {
         Relay::To { name, line } => match pick(name, running) {
             Ok(one) => (vec![one.clone()], line),
@@ -143,14 +194,15 @@ async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[(String, Sessi
         Relay::All(line) => (running.to_vec(), line),
     };
     if matches!(relay, Relay::All(_)) {
-        let names: Vec<&str> = targets.iter().map(|(name, _)| name.as_str()).collect();
+        let names: Vec<String> = targets.iter().map(|one| one.label(running)).collect();
         told.say(Notice::line(
             NoticeKind::Info,
             format!("All: {line} -- on {}.", names.join(", ")),
         ));
     }
     let mut sending = tokio::task::JoinSet::new();
-    for (name, target) in targets {
+    for target in targets {
+        let (name, target) = (target.label(running), target.handle);
         let line = line.clone();
         sending.spawn(async move {
             let outcome = target

@@ -24,6 +24,9 @@ pub struct Who {
     pub account: String,
     /// The character, as the player names it.
     pub character: String,
+    /// The game it is on, by its code (`GS3`): with the name, which character
+    /// it is, since one name can be on two games (the crate review of 2026-09-28, R6).
+    pub game: String,
 }
 
 /// Why a session was not added.

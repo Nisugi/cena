@@ -15,21 +15,23 @@
 //! the binary (`CLAUDE.md`, Credentials). What it calls is tested in
 //! `cena-behavior`; what is untested is the wiring here.
 
-use std::collections::BTreeMap;
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
 mod caster;
 mod panel;
+mod party;
 pub(crate) mod settings;
 
 use crate::commands::{Commands, Took};
-use cena_behavior::group::{Boards, Place};
+use cena_behavior::group::Place;
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
 use cena_behavior::spellcaster;
 use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
+pub(crate) use party::Party;
+use party::{form, take_seat};
 
 /// Register hunt's words. The character's instance and name, when the login
 /// has said them, choose the character level of the chain; `map` is the one
@@ -62,13 +64,13 @@ pub(crate) fn open(
     if let Some(desk) = desk.clone() {
         commands.stops("hunt", Arc::new(move || desk.stop()));
     }
-    if let (Some(desk), Some((_, name))) = (&desk, &who) {
-        take_seat(party, name, desk, handle, &observer);
+    if let (Some(desk), Some(who)) = (&desk, &who) {
+        take_seat(party, who, desk, handle, &observer);
     }
     if let Some(desk) = &desk {
         panel::show(desk, handle.session(), party.window.as_ref());
     }
-    let leader = who.as_ref().map(|(_, name)| name.clone());
+    let leader = who.clone();
     // The spellcaster profile, held so a typed line is judged without
     // reading the file, and read again when the file has changed: by `;sc`,
     // the settings menu, or a hand (`plan/50` §2 item 3).
@@ -146,117 +148,6 @@ pub(crate) fn open(
         Some(took)
     }));
     eprintln!("[hunt] ready: `hunt help` lists the commands and how to change a setting");
-}
-
-/// What every character's hunt in this Hydra shares: each group's board, so
-/// a leader's hunt and its followers' meet (`plan/39` §5), and each
-/// character's seat, so a leader can start its followers' hunts.
-///
-/// **Owned by the session table** (`play.rs`) and handed to each character's
-/// hunt as it opens. It was two process globals, which `plan/05` Rule 5.2
-/// forbids ("No process globals. None.") and `every_static_is_allowlisted`
-/// caught: shared state belongs to what owns the sessions, not to the process.
-#[derive(Clone)]
-pub(crate) struct Party {
-    boards: Arc<Boards>,
-    seats: Arc<Mutex<BTreeMap<String, Seat>>>,
-    /// The window, when there is one: each hunt's reports go to its Hunt
-    /// pane (`plan/47` step 8, `hunt/panel.rs`).
-    window: Option<cena_gui::Sessions>,
-}
-
-impl Party {
-    /// No groups and no seats yet; hunts shown in `window`, when there is one.
-    pub(crate) fn new(window: Option<cena_gui::Sessions>) -> Self {
-        Self {
-            boards: Boards::new(),
-            seats: Arc::default(),
-            window,
-        }
-    }
-
-    /// A character left the table: a leader can no longer start its hunt.
-    /// Without this, a stopped character's seat stayed, and `hunt ... with`
-    /// named it would have started a hunt on a session that was gone.
-    pub(crate) fn unseat(&self, name: &str) {
-        self.seats
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(name);
-    }
-}
-
-/// A character's hunt desk and session: what a leader's `hunt <name> with`
-/// starts a follower's hunt on.
-#[derive(Clone)]
-struct Seat {
-    desk: Arc<Desk>,
-    handle: SessionHandle,
-    observer: SessionObserver,
-}
-
-/// This character's seat, for a leader to start its hunt from.
-fn take_seat(
-    party: &Party,
-    name: &str,
-    desk: &Arc<Desk>,
-    handle: &SessionHandle,
-    observer: &SessionObserver,
-) {
-    let seat = Seat {
-        desk: Arc::clone(desk),
-        handle: handle.clone(),
-        observer: observer.clone(),
-    };
-    party
-        .seats
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .insert(name.to_owned(), seat);
-}
-
-/// `hunt <name> with A B`: each named character's own hunt on the profile
-/// of that name, following `leader`; then the leader's, waiting for them
-/// (`plan/39` §8, question 2). A name this Hydra is not running is said,
-/// and hunted without.
-fn form(
-    seats: &Mutex<BTreeMap<String, Seat>>,
-    desk: &Arc<Desk>,
-    handle: &SessionHandle,
-    observer: &SessionObserver,
-    leader: &str,
-    name: String,
-    with: &[String],
-) -> tokio::task::JoinHandle<()> {
-    let seats = seats.lock().unwrap_or_else(PoisonError::into_inner).clone();
-    let mut followers = Vec::new();
-    for member in with {
-        match seats.get(member).filter(|_| member != leader) {
-            Some(seat) => {
-                drop(start_placed(
-                    &seat.desk,
-                    &seat.handle,
-                    &seat.observer,
-                    Command::Run(name.clone()),
-                    Place::Follow(leader.to_owned()),
-                ));
-                followers.push(member.clone());
-            }
-            None => handle.say(Notice::line(
-                NoticeKind::Warn,
-                format!(
-                    "Hunt: {member} is not a character this Hydra is running; hunting without them."
-                ),
-            )),
-        }
-    }
-    start_placed(
-        desk,
-        handle,
-        observer,
-        Command::Run(name),
-        Place::Lead(followers),
-    )
 }
 
 /// Run `command` on the hunt desk, once the session can be read. The task

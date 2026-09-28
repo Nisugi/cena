@@ -11,10 +11,18 @@ fn handle() -> SessionHandle {
     )
 }
 
-fn running(names: &[&str]) -> Vec<(String, SessionHandle)> {
+/// Characters running, each `GAME:Name`, or a name alone on ONE.
+fn running(names: &[&str]) -> Vec<Running> {
     names
         .iter()
-        .map(|name| ((*name).to_owned(), handle()))
+        .map(|named| {
+            let (game, name) = named.split_once(':').unwrap_or(("ONE", named));
+            Running {
+                game: game.to_owned(),
+                name: name.to_owned(),
+                handle: handle(),
+            }
+        })
         .collect()
 }
 
@@ -39,7 +47,7 @@ fn the_two_words_and_what_they_carry() {
 #[test]
 fn a_character_is_picked_by_its_name_or_its_start() {
     let characters = running(&["Ashryn", "Ashkar", "Baelor", "All"]);
-    let picked = |name: &str| pick(name, &characters).map(|(name, _)| name.clone());
+    let picked = |name: &str| pick(name, &characters).map(|one| one.name.clone());
     assert_eq!(picked("baelor"), Ok("Baelor".to_owned()));
     assert_eq!(picked("Bae"), Ok("Baelor".to_owned()));
     assert_eq!(picked("all"), Ok("All".to_owned()));
@@ -52,9 +60,36 @@ fn a_character_is_picked_by_its_name_or_its_start() {
     // A whole name is never ambiguous, however many names it starts.
     let nested = running(&["Ash", "Ashryn"]);
     assert_eq!(
-        pick("ash", &nested).map(|(name, _)| name.clone()),
+        pick("ash", &nested).map(|one| one.name.clone()),
         Ok("Ash".to_owned())
     );
+}
+
+/// One name on two games is two characters: the name alone is refused,
+/// saying how to name each, and `GAME:Name` picks one, by the start of its
+/// name too (the crate review of 2026-09-28, R6: the name alone went to
+/// whichever was found first).
+#[test]
+fn a_name_on_two_games_is_named_with_its_game() {
+    let characters = running(&["ONE:Baelor", "TWO:Baelor", "ONE:Ashryn"]);
+    let picked =
+        |name: &str| pick(name, &characters).map(|one| format!("{}:{}", one.game, one.name));
+    let Err(which) = picked("baelor") else {
+        panic!("on two games");
+    };
+    assert!(
+        which.contains("more than one game") && which.contains("ONE:Baelor or TWO:Baelor"),
+        "{which}"
+    );
+    assert!(picked("Bae").is_err(), "nor by its start");
+    assert_eq!(picked("two:baelor"), Ok("TWO:Baelor".to_owned()));
+    assert_eq!(picked("ONE:Bae"), Ok("ONE:Baelor".to_owned()));
+    assert_eq!(
+        picked("Ash"),
+        Ok("ONE:Ashryn".to_owned()),
+        "one game, no need"
+    );
+    assert!(picked("TWO:Ashryn").is_err(), "not on that game");
 }
 
 /// What a scripted character was told, as text.
@@ -68,26 +103,44 @@ fn told(events: &mut tokio::sync::broadcast::Receiver<Event>) -> Vec<String> {
     said
 }
 
-/// Two characters on scripted games: a line typed on Ashryn with `;to`
-/// goes to Baelor's game and not Ashryn's; with `;all`, to both.
+/// Characters on scripted games: a line typed on Ashryn with `;to` goes to
+/// Baelor's game and not Ashryn's; with `;all`, to every one. A Baelor on
+/// another game is reached by its game, and the name alone reaches neither.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_relay_sends_on_the_character_it_names() {
     let prompt = b"<prompt time=\"1\">&gt;</prompt>\n";
     let (a_source, a_sent) = AnsweringSource::new(prompt);
     let (b_source, b_sent) = AnsweringSource::new(prompt);
+    let (f_source, f_sent) = AnsweringSource::new(prompt);
     let ashryn = Session::numbered(SessionId(0), a_source);
     let baelor = Session::numbered(SessionId(1), b_source);
-    let (a, b) = (ashryn.handle(), baelor.handle());
+    let other = Session::numbered(SessionId(2), f_source);
+    let (a, b, f) = (ashryn.handle(), baelor.handle(), other.handle());
     let (_, mut heard) = ashryn.subscribe();
     tokio::spawn(ashryn.into_actor().run());
     tokio::spawn(baelor.into_actor().run());
     let commands = Commands::install(&a);
-    let listed = vec![("Ashryn".to_owned(), a.clone()), ("Baelor".to_owned(), b)];
+    let on = |game: &str, name: &str, handle: &SessionHandle| Running {
+        game: game.to_owned(),
+        name: name.to_owned(),
+        handle: handle.clone(),
+    };
+    let two = vec![on("ONE", "Ashryn", &a), on("ONE", "Baelor", &b)];
+    let three = vec![
+        on("ONE", "Ashryn", &a),
+        on("ONE", "Baelor", &b),
+        on("TWO", "Baelor", &f),
+    ];
+    let listed = Arc::new(std::sync::Mutex::new(two));
+    let listing = Arc::clone(&listed);
     open(
         &a,
         &commands,
         Arc::new(move || {
-            let listed = listed.clone();
+            let listed = listing
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .clone();
             Box::pin(async move { listed })
         }),
     );
@@ -120,4 +173,18 @@ async fn a_relay_sends_on_the_character_it_names() {
             .iter()
             .any(|said| said.contains("no character named Lorwyn")),
     );
+
+    tokio::spawn(other.into_actor().run());
+    *listed
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = three;
+    typed(";to baelor sit").await;
+    assert!(
+        told(&mut heard)
+            .iter()
+            .any(|said| said.contains("more than one game")),
+    );
+    typed(";to TWO:Baelor kneel").await;
+    assert_eq!(f_sent.lines(), ["kneel"]);
+    assert_eq!(b_sent.lines(), ["look", "stand"], "not the other Baelor");
 }

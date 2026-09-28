@@ -194,16 +194,31 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 /// a needle miss.
 const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
     (
-        "crates/cena/src/hunt.rs",
+        "crates/cena/src/hunt/party.rs",
         "Seat",
         "One character's hunt desk and session, kept in the session table's Party \
      (plan/39 Stage 4) so that a leader's `hunt <profile> with <names>` can start \
      each follower's hunt on the follower's own session. A clone of that \
      session's handle, on the type's own terms (every field shared: see Viewed \
-     below), so it cannot drift; and it goes when its character leaves the table \
-     (`Party::unseat`, called from play.rs's take_off), so it never outlives the \
-     session. Found 2026-09-27, when this test first ran against this tree: its \
-     build had been scanning another checkout.",
+     below), so it cannot drift; and it goes when its session leaves the table \
+     (`Party::unseat`, by SessionId, called from play.rs's take_off), so it \
+     never outlives the session. Found 2026-09-27, when this test first ran \
+     against this tree: its build had been scanning another checkout. Moved \
+     from hunt.rs 2026-09-28, when the seats were keyed by session rather than \
+     by name (the crate review of that day, R6).",
+    ),
+    (
+        "crates/cena/src/relay.rs",
+        "Running",
+        "A character a `;to`/`;all` relay may send on (plan/47 step 5): the \
+     list is built afresh from the session table each time a relay is typed \
+     and dropped when that relay has sent, so it is never kept. It was a \
+     (String, SessionHandle) tuple, which this scan does not see; a struct \
+     since 2026-09-28, to carry the game beside the name (the crate review of \
+     that day, R6). A clone on the type's own terms (see Viewed below), and \
+     its sends are generation-pinned (send_manual_at with the target's \
+     generation), so a session that reconnected refuses rather than takes \
+     them.",
     ),
     (
         "crates/cena-web/src/server.rs",

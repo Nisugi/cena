@@ -1,7 +1,9 @@
 use super::*;
 use cena_session::{GameState, SessionId};
 use std::collections::VecDeque;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
+
+use cena_ui::{LifecycleView, SessionCard};
 
 fn snapshot(cursor: u64, lifecycle: State, room: Option<&str>) -> Snapshot {
     let mut state = GameState::default();
@@ -145,6 +147,7 @@ async fn the_card_follows_its_session() {
     let now = card(&seat);
     assert_eq!(now.lifecycle, LifecycleView::Ready);
     assert_eq!(now.room.as_deref(), Some("Rawknuckle's"));
+    assert_eq!(now.game, seat.game, "its game kept: the launcher reads it");
 }
 
 /// A busy owner is asked again; an owner gone ends the feed, and the card

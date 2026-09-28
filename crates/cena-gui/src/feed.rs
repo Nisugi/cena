@@ -12,17 +12,22 @@
 //! hub's merged history.
 
 use std::future::Future;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use cena_session::observation::{catch_up, retrying};
 use cena_session::{
     Event, Generation, ObserveError, ObservedEvent, SessionObserver, Snapshot, State,
 };
-use cena_ui::{LifecycleView, MergedHistory, SessionCard, SessionView, painted, story_lines};
+use cena_ui::{MergedHistory, painted, story_lines};
 use tokio::sync::broadcast;
 
 use crate::sessions::{Seat, Wake, lock};
+
+mod card;
+#[cfg(test)]
+use card::lifecycle;
+use card::show;
 
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 
@@ -152,47 +157,6 @@ impl Seen {
         self.cursor = event.cursor;
         self.generation = event.generation;
         true
-    }
-}
-
-/// Put `snapshot` on the seat, and its card, and wake the window.
-fn show(seat: &Seat, snapshot: Snapshot, window: &Wake) {
-    // The feed wakes every 100 ms while a roundtime runs, so the live `R>`
-    // is settled within a tick of its end.
-    lock(&seat.story).settle(&snapshot.state);
-    let view = SessionView::project(
-        &snapshot.state,
-        &snapshot.triggers,
-        lifecycle(&snapshot),
-        snapshot.state.game_time_now(),
-    );
-    *lock(&seat.snapshot) = Some(Arc::new(snapshot));
-    {
-        let mut card = seat.card.lock().unwrap_or_else(PoisonError::into_inner);
-        *card = SessionCard::of(card.session.clone(), card.name.clone(), Some(&view));
-    }
-    window.wake();
-}
-
-/// How the session is connected, in the web hub's terms. The same mapping
-/// as Despana's (`cena-web/src/presentation/hub.rs`, `lifecycle`): it joins
-/// a `cena-session` type to a `cena-ui` one, so it can only live above both,
-/// in each frontend.
-pub(crate) fn lifecycle(snapshot: &Snapshot) -> LifecycleView {
-    match snapshot.lifecycle {
-        State::Ready => LifecycleView::Ready,
-        State::Closed => LifecycleView::Closed {
-            detail: snapshot.stopped.clone(),
-        },
-        State::Reconnecting => LifecycleView::Reconnecting {
-            attempt: snapshot.retry.as_ref().map(|retry| retry.attempt),
-            retry_delay_ms: snapshot
-                .retry
-                .as_ref()
-                .map(|retry| u64::try_from(retry.delay.as_millis()).unwrap_or(u64::MAX)),
-            detail: snapshot.retry.as_ref().map(|retry| retry.detail.clone()),
-        },
-        State::Connecting | State::Authenticating | State::Syncing => LifecycleView::Connecting,
     }
 }
 

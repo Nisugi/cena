@@ -192,6 +192,40 @@ pub(crate) fn favourite(dir: &Path, name: &str, star: bool) -> io::Result<Option
     })
 }
 
+/// The characters on `roster` the hub may start: not `running` -- each a
+/// game and a name -- and with a password `saved` for its account. Each by
+/// its name, or as `GAME:Name` when the roster has the name on more than one
+/// game. Running is by game and name: a character of one name on another
+/// game is not this one (the crate review of 2026-09-28, R6: it hid it).
+pub(crate) fn available(
+    roster: &[Entry],
+    running: &[(String, String)],
+    saved: impl Fn(&str) -> bool,
+) -> Vec<String> {
+    roster
+        .iter()
+        .filter(|e| {
+            !running.iter().any(|(game, character)| {
+                game.eq_ignore_ascii_case(&e.game_code)
+                    && character.eq_ignore_ascii_case(&e.character)
+            })
+        })
+        .filter(|e| saved(&e.account))
+        .map(|e| {
+            let twice = roster
+                .iter()
+                .filter(|other| other.character.eq_ignore_ascii_case(&e.character))
+                .count()
+                > 1;
+            if twice {
+                format!("{}:{}", e.game_code, e.character)
+            } else {
+                e.character.clone()
+            }
+        })
+        .collect()
+}
+
 /// Run `change` -- a read of the roster, a change and its write -- with no
 /// other change to the file between: a login records its character while
 /// the launcher stars another, and each keeps its change
@@ -356,5 +390,22 @@ mod tests {
             "and the first"
         );
         std::fs::remove_dir_all(&dir)
+    }
+
+    /// A character of one name on two games: the one playing is not
+    /// offered, the other is, by its game (the crate review of 2026-09-28, R6).
+    #[test]
+    fn one_name_on_two_games_is_two_characters() {
+        let roster = [
+            entry("GS3", "Nisugi", "ACCT1"),
+            entry("GSF", "Nisugi", "ACCT2"),
+            entry("GS3", "Nerten", "ACCT3"),
+            entry("GS3", "Dicate", "LOCKED"),
+        ];
+        let running = [("GS3".to_owned(), "nisugi".to_owned())];
+        assert_eq!(
+            available(&roster, &running, |account| account != "LOCKED"),
+            ["GSF:Nisugi", "Nerten"]
+        );
     }
 }

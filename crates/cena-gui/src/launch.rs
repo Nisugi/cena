@@ -101,12 +101,13 @@ pub(crate) fn game_name(code: &str) -> &str {
         .map_or(code, |(_, name)| name)
 }
 
-/// Whether `character` is on the session table, live or closed: it is not
-/// waiting to be launched.
-fn on_table(view: &HubView<'_>, character: &str) -> bool {
-    view.cards
-        .iter()
-        .any(|card| card.name.eq_ignore_ascii_case(character))
+/// Whether `character` on `game` is on the session table, live or closed:
+/// it is not waiting to be launched. By game and name: one name on another
+/// game is another character (the crate review of 2026-09-28, R6: it hid this one).
+fn on_table(view: &HubView<'_>, game: &str, character: &str) -> bool {
+    view.cards.iter().any(|card| {
+        card.game.eq_ignore_ascii_case(game) && card.name.eq_ignore_ascii_case(character)
+    })
 }
 
 /// The roster's characters not on the table, starred first, then by name:
@@ -116,7 +117,7 @@ pub(crate) fn waiting<'a>(view: &HubView<'a>) -> Vec<&'a RosterCard> {
     let mut waiting: Vec<&RosterCard> = view
         .roster
         .iter()
-        .filter(|card| !on_table(view, &card.character))
+        .filter(|card| !on_table(view, &card.game, &card.character))
         .collect();
     waiting.sort_by_key(|card| (!card.favourite, card.character.to_lowercase()));
     waiting
@@ -377,7 +378,7 @@ impl Launch {
                             None => saved(true),
                         });
                     }
-                    if on_table(view, character) {
+                    if on_table(view, &listing.game, character) {
                         ui.weak("Playing");
                     } else if ui.button("Play").clicked() {
                         *asked = Some(HubAction::Ask(HubRequest::Login(Login {
@@ -417,5 +418,33 @@ fn kept(ui: &mut egui::Ui, roster: &[RosterCard], asked: &mut Option<HubAction>)
                 )));
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// On the table is by game and name: the same name on another game is
+    /// another character, whether on the Not launched tab or in an
+    /// account's list (the crate review of 2026-09-28, R6).
+    #[test]
+    fn on_the_table_is_by_game_and_name() {
+        let cards = [cena_ui::SessionCard {
+            game: "GS3".to_owned(),
+            ..cena_ui::SessionCard::of("0".to_owned(), "Ashryn".to_owned(), None)
+        }];
+        let view = HubView {
+            cards: &cards,
+            offered: &[],
+            roster: &[],
+            listing: None,
+            merged: &[],
+            said: None,
+            windowed: &[],
+        };
+        assert!(on_table(&view, "gs3", "ashryn"));
+        assert!(!on_table(&view, "GSF", "Ashryn"));
+        assert!(!on_table(&view, "GS3", "Baelor"));
     }
 }

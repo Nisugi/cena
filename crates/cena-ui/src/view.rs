@@ -350,6 +350,11 @@ pub struct SessionCard {
     /// The character's name, as the session table knows it; empty when the
     /// caller gave none.
     pub name: String,
+    /// The game it is on, by its code (`GS3`): with `name`, which character
+    /// it is, since one name can be on two games (the crate review of 2026-09-28, R6).
+    /// Empty from a server that does not say.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub game: String,
     /// Connection state; `Connecting` until the session has a view at all.
     pub lifecycle: LifecycleView,
     /// The four gauges, each unknown until the game reports it.
@@ -372,6 +377,7 @@ impl SessionCard {
             Some(view) => Self {
                 session,
                 name,
+                game: String::new(),
                 lifecycle: view.lifecycle.clone(),
                 vitals: view.vitals.clone(),
                 roundtime: view.roundtime.clone(),
@@ -381,6 +387,7 @@ impl SessionCard {
             None => Self {
                 session,
                 name,
+                game: String::new(),
                 lifecycle: LifecycleView::Connecting,
                 vitals: VitalsView::default(),
                 roundtime: RoundtimeView::default(),

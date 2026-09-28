@@ -108,7 +108,10 @@ impl Seat {
     pub(crate) fn new(handle: SessionHandle, name: &str, game: &str) -> Self {
         let id = handle.session();
         Self {
-            card: Mutex::new(SessionCard::of(id.0.to_string(), name.to_owned(), None)),
+            card: Mutex::new(SessionCard {
+                game: game.to_owned(),
+                ..SessionCard::of(id.0.to_string(), name.to_owned(), None)
+            }),
             snapshot: Mutex::default(),
             story: Mutex::default(),
             hunt: Mutex::default(),
@@ -117,6 +120,23 @@ impl Seat {
             id,
             name: name.to_owned(),
             game: game.to_owned(),
+        }
+    }
+
+    /// It, as `from`'s window offers it to follow: by its name on the same
+    /// game, and as `GAME:Name` on another, so one name on two games is two
+    /// characters to follow, and a widget following a name follows the one
+    /// on its own window's game (the crate review of 2026-09-28, R6).
+    pub(crate) fn seen_from(&self, from: &Seat) -> crate::widget::Character {
+        let name = if self.game.eq_ignore_ascii_case(&from.game) {
+            self.name.clone()
+        } else {
+            format!("{}:{}", self.game, self.name)
+        };
+        crate::widget::Character {
+            name,
+            snapshot: lock(&self.snapshot).clone(),
+            hunt: lock(&self.hunt).clone(),
         }
     }
 
@@ -451,5 +471,35 @@ mod tests {
         // It goes when it said it would: the window's next frame is then.
         assert!(sessions.glance_at(almost + left).said.is_none());
         assert!(sessions.glance_at(after + SAID_FOR).said.is_none());
+    }
+
+    /// A handle with no session behind it.
+    fn handle() -> SessionHandle {
+        SessionHandle::new(
+            tokio::sync::mpsc::channel(1).0,
+            cena_session::GenerationCell::default(),
+            tokio::sync::broadcast::channel(1).0,
+        )
+    }
+
+    /// Another window's character is offered to follow by its name on the
+    /// same game, and with its game on another: one name on two games is
+    /// two characters, and a name alone follows the one on the window's own
+    /// game (the crate review of 2026-09-28, R6).
+    #[test]
+    fn one_name_on_another_game_is_followed_by_its_game() {
+        let seat = |name: &str, game: &str| Seat::new(handle(), name, game);
+        let (mine, same, other) = (
+            seat("Ashryn", "GS3"),
+            seat("Baelor", "GS3"),
+            seat("Baelor", "GSF"),
+        );
+        assert_eq!(same.seen_from(&mine).name, "Baelor");
+        assert_eq!(other.seen_from(&mine).name, "GSF:Baelor");
+        assert_eq!(
+            lock(&other.card).game,
+            "GSF",
+            "its card says its game, for the launcher"
+        );
     }
 }

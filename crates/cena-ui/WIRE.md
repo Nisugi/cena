@@ -27,6 +27,10 @@ group nobody has stated yet. When supplied it contains `leader` (the leader's
 name, or null when this character leads) and `members` (the other members'
 names, the leader not among them). A hub card carries the same `group`.
 
+A hub card's `game` is optional and additive (added within version 1,
+2026-09-28): the code of the game the character is on (`GS3`), since one name
+can be on two games. Absent from a server that does not say.
+
 | Kind | Other fields | Meaning |
 | --- | --- | --- |
 | `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the hub is served -- except by a server built for one session (`WebServer::bind`), which serves that session. |

@@ -29,6 +29,7 @@ fn who(account: &str, character: &str) -> Who {
     Who {
         account: account.to_owned(),
         character: character.to_owned(),
+        game: "GS3".to_owned(),
     }
 }
 

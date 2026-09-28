@@ -251,11 +251,7 @@ impl App {
         let others: Vec<Character> = seats
             .iter()
             .filter(|other| other.id != seat.id)
-            .map(|other| Character {
-                name: other.name.clone(),
-                snapshot: lock(&other.snapshot).clone(),
-                hunt: lock(&other.hunt).clone(),
-            })
+            .map(|other| other.seen_from(seat))
             .collect();
         let builder = egui::ViewportBuilder::default()
             .with_title(format!("{} — {TITLE}", seat.name))

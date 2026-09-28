@@ -48,10 +48,12 @@ pub fn vital(percent: u32) -> VitalView {
     }
 }
 
+/// A card for `name` on GS3.
 pub fn card(session: &str, name: &str, lifecycle: LifecycleView) -> SessionCard {
     SessionCard {
         session: session.to_owned(),
         name: name.to_owned(),
+        game: "GS3".to_owned(),
         lifecycle,
         vitals: VitalsView {
             health: None,
