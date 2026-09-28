@@ -7,7 +7,8 @@
 //! words, not Lich's, and the Ruby bridge makes Lich's names of them. What
 //! a script needs beyond an agent's read is added here: how many rooms the
 //! character has arrived in (what Lich's `move` watches), the room's
-//! description and exits as text, the map's room, and the target.
+//! description and exits as text, the map's room, the target, and the
+//! character's sheet (`super::sheet`).
 //!
 //! **Unknown stays unknown**, as in the projection: a list the game has not
 //! stated is `null`, a map room nobody could name is `null`.
@@ -18,6 +19,7 @@ use cena_map::{Map, Origin, RoomId};
 use cena_session::{GameState, Runs, Snapshot};
 use serde::Serialize;
 
+use super::sheet::{Sheet, sheet};
 use crate::projection::{CharacterState, project};
 
 /// The map, and how a room is named on it: what lets a runner answer
@@ -67,6 +69,10 @@ pub struct Local {
     /// The spells the character's spell list names, by number; `null` until
     /// the game has sent the list.
     pub known_spells: Option<Vec<u32>>,
+    /// What the game has said of the character: stats, skills, PSMs,
+    /// society, experience (`super::sheet`).
+    #[serde(flatten)]
+    pub sheet: Sheet,
 }
 
 /// Where the character is on the map, followed from one copy to the next:
@@ -111,5 +117,6 @@ pub fn local(character: &str, snapshot: &Snapshot, map_room: Option<u32>) -> Loc
                 .map(|(number, _)| number)
                 .collect()
         }),
+        sheet: sheet(state),
     }
 }

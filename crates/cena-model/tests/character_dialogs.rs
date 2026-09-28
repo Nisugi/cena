@@ -361,3 +361,47 @@ fn the_shroud_flag_does_not_outlive_its_effect_list() {
 
     assert!(!state.character.shrouded);
 }
+
+/// The mind bar with the experience the game puts on it, verbatim from
+/// `crates/cena-behavior/tests/fixtures/arch_kill.xml`.
+const MIND_BAR: &[u8] = b"<dialogData id='expr'>\
+<progressBar id='mindState' value='25' text='fresh and clear' top='45' left='3' field_exp='270' max_field_exp='1403' ascension_exp='24899176' fashlonae='1' lumnis='4' exp='43904921' until_next='79' align='n' width='160' height='15'/>\
+</dialogData>\n";
+
+#[test]
+fn the_mind_bar_carries_experience() {
+    let state = fold(MIND_BAR);
+    let exp = &state.character.experience;
+
+    assert_eq!(exp.mind_state.as_deref(), Some("fresh and clear"));
+    assert_eq!(exp.field_experience, Some(270));
+    assert_eq!(exp.field_experience_max, Some(1403));
+    assert_eq!(exp.ascension_experience, Some(24_899_176));
+    assert_eq!(exp.experience, Some(43_904_921));
+    assert_eq!(exp.mind_bar.until_next, Some(79));
+    assert_eq!(exp.mind_bar.lumnis, Some(4));
+    assert_eq!(exp.mind_bar.fashlonae, Some(1));
+    assert_eq!(exp.mind_bar.rpa, None);
+}
+
+#[test]
+fn a_mind_bar_without_the_gift_says_it_is_gone() {
+    // Lumnis, rpa and fashlonae are sent only while they apply
+    // (`lib/common/xmlparser.rb:733-740`); the numbers are only ever set.
+    let mut wire = MIND_BAR.to_vec();
+    wire.extend_from_slice(
+        b"<dialogData id='expr'><progressBar id='mindState' value='30' text='fresh and clear' top='45' left='3' rpa='1.5' align='n' width='160' height='15'/></dialogData>\n",
+    );
+    let state = fold(&wire);
+    let exp = &state.character.experience;
+
+    assert_eq!(exp.mind_bar.lumnis, None);
+    assert_eq!(exp.mind_bar.fashlonae, None);
+    assert_eq!(exp.mind_bar.rpa.as_deref(), Some("1.5"));
+    assert_eq!(
+        exp.field_experience,
+        Some(270),
+        "a bar without it says nothing of it"
+    );
+    assert_eq!(exp.mind_bar.until_next, Some(79));
+}

@@ -54,6 +54,7 @@ pub mod currency;
 pub mod enhancive;
 pub mod experience_report;
 pub mod injured;
+pub mod mind_bar;
 pub mod profile;
 pub mod psm;
 pub mod shadow;
@@ -141,6 +142,8 @@ pub struct Experience {
     pub recent_deaths: Option<u32>,
     /// The gift of Lumnis, as far as it can be known. See [`Gift`].
     pub gift: Gift,
+    /// What the mind bar alone says of advancement ([`mind_bar`]).
+    pub mind_bar: mind_bar::MindBar,
 }
 
 /// The gift of Lumnis: 360 minutes of doubled experience, once a week.
@@ -468,12 +471,18 @@ impl Character {
     /// Returns whether it was consumed, so the caller can fall through to the
     /// vitals path for everything else. The enclosing dialog is what separates
     /// these from vitals: the same `<progressBar>` shape carries all of them.
-    pub(super) fn apply_bar(&mut self, dialog: &str, id: &str, text: &str, percent: u32) -> bool {
-        let text = (!text.is_empty()).then(|| text.to_owned());
+    pub(super) fn apply_bar(
+        &mut self,
+        dialog: &str,
+        bar: &cena_protocol::frame::ProgressBar,
+    ) -> bool {
+        let (id, percent) = (bar.id.as_str(), bar.percent);
+        let text = (!bar.text.is_empty()).then(|| bar.text.clone());
         match (dialog, id) {
             ("expr", "mindState") => {
                 self.experience.mind_state = text;
                 self.experience.mind_percent = Some(percent);
+                mind_bar::read(&mut self.experience, &bar.attrs);
             }
             ("expr", "nextLvlPB") => {
                 // Lich's gift pulse: counted only when the TEXT CHANGES, not

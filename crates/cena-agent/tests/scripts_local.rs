@@ -225,3 +225,117 @@ async fn a_mapped_room_is_named_and_answered() {
         .unwrap();
     assert_eq!(room["map"], false);
 }
+
+/// What the scripted game says to `info`, `skills` and `society`, in the
+/// game's words (`crates/cena-model/tests/character_blocks.rs`,
+/// `character_skills.rs`), and an experience window.
+const SHEET: &[(&str, &[u8])] = &[
+    (
+        "info",
+        b"Name: Nisugi Race: Half-Elf  Profession: Ranger\n\
+Gender: Male    Age: 36    Expr: 43904921    Level: 100\n\
+    Strength (STR):   110 (30)    ...  115 (32)    ...  120 (35)\n\
+<prompt time=\"2\">&gt;</prompt>\n",
+    ),
+    (
+        "skills",
+        b" Nisugi (at level 100), your current skill bonuses and ranks (including all modifiers) are:\n\
+  Skill Name                         | Current Current\n\
+                                     |   Bonus   Ranks\n\
+  Two Weapon Combat..................|     312     212\n\
+  Elemental Lore - Air...............|     150      50\n\
+\n\
+Spell Lists\n\
+  Minor Elemental....................|              75\n\
+\n\
+Training Points: 3673 Phy 0 Mnt\n\
+<prompt time=\"3\">&gt;</prompt>\n",
+    ),
+    (
+        "society",
+        b"   You are a member in the Order of Voln at step 12.\n<prompt time=\"4\">&gt;</prompt>\n",
+    ),
+    (
+        "exp",
+        b"<dialogData id='expr'><label id='yourLvl' value='Level 100' top='0' left='0'/>\
+<progressBar id='mindState' value='25' text='fresh and clear' top='45' left='3' field_exp='270' max_field_exp='1403' ascension_exp='24899176' lumnis='4' exp='43904921' until_next='79'/>\
+</dialogData>\n<prompt time=\"5\">&gt;</prompt>\n",
+    ),
+];
+
+#[tokio::test(flavor = "current_thread")]
+async fn the_copy_carries_the_characters_sheet() {
+    let (handle, observer) = character(SHEET);
+    let runners = Runners::default();
+    let token = runners
+        .admit("Nisugi", handle.script_door(), &observer)
+        .await
+        .unwrap();
+    let app = router(runners.clone(), &CancellationToken::new());
+
+    let first = heard_until(&app, &token, |events| !events.is_empty())
+        .await
+        .unwrap();
+    let fields = &first[0]["fields"];
+    assert_eq!(
+        fields["skills"],
+        serde_json::json!({}),
+        "never read: {fields}"
+    );
+    assert_eq!(fields["psms"], serde_json::json!({}));
+    assert_eq!(fields["society"], serde_json::Value::Null);
+    assert_eq!(
+        fields["experience"]["field_experience"],
+        serde_json::Value::Null
+    );
+
+    for (line, _) in SHEET {
+        call(&app, &token, "send", serde_json::json!({ "line": line }))
+            .await
+            .unwrap();
+    }
+    let events = heard_until(&app, &token, |events| {
+        events
+            .iter()
+            .any(|e| e["kind"] == "prompt" && e["time"] == 5)
+    })
+    .await
+    .unwrap();
+    let mut copy = serde_json::Map::new();
+    for event in events.iter().filter(|e| e["kind"] == "state") {
+        copy.extend(event["fields"].as_object().cloned().unwrap_or_default());
+    }
+
+    assert_eq!(copy["identity"]["race"], "Half-Elf");
+    assert_eq!(copy["identity"]["profession"], "Ranger");
+    assert_eq!(copy["identity"]["age"], 36);
+    let strength = &copy["stats"]["strength"];
+    assert_eq!(
+        strength["base"],
+        serde_json::json!({"value": 110, "bonus": 30})
+    );
+    assert_eq!(
+        strength["ascended"],
+        serde_json::json!({"value": 115, "bonus": 32})
+    );
+    assert_eq!(
+        strength["enhanced"],
+        serde_json::json!({"value": 120, "bonus": 35})
+    );
+    assert_eq!(
+        copy["skills"]["two_weapon_combat"],
+        serde_json::json!({"ranks": 212, "bonus": 312})
+    );
+    assert_eq!(copy["skills"]["elemental_lore_air"]["ranks"], 50);
+    assert_eq!(copy["circles"]["Minor Elemental"], 75);
+    assert_eq!(
+        copy["society"],
+        serde_json::json!({"name": "Order of Voln", "rank": 12})
+    );
+    let experience = &copy["experience"];
+    assert_eq!(experience["level"], 100);
+    assert_eq!(experience["field_experience"], 270);
+    assert_eq!(experience["field_experience_max"], 1403);
+    assert_eq!(experience["until_next"], 79);
+    assert_eq!(experience["lumnis"], 4);
+}

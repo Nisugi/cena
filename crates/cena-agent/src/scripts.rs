@@ -46,6 +46,7 @@ mod hooks;
 pub mod listening;
 pub mod local;
 pub mod runner;
+pub mod sheet;
 pub mod tools;
 mod watch;
 

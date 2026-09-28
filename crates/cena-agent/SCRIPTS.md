@@ -86,6 +86,24 @@ stated is `null`), less what only counts the clock (`clock`, `captured_unix_ms`,
 | `target` | the id of the creature the character targets |
 | `known_spells` | the numbers of the spells the character's spell list names; `null` until the game has sent the list |
 
+And the character's sheet: what the game has said of the character in `info`, `skills`,
+`experience`, `society`, `resource`, `wealth` and the PSM lists, as Hydra read it. Here too a
+table never read is absent and a value never stated `null`, never zero.
+
+| Field | Is |
+|---|---|
+| `identity` | `race`, `profession`, `gender`, `age`, and the `account`'s tier (`Premium`...) |
+| `stats` | by name (`strength`), each `{ base, ascended, enhanced }`, each `{ value, bonus }` or `null`: `base` is `info full`'s, `ascended` and `enhanced` `info`'s two columns |
+| `skills` | by key (`two_weapon_combat`, `elemental_lore_air`), each `{ ranks, bonus }` |
+| `circles` | ranks by spell circle, as the table names it (`Minor Elemental`) |
+| `psms` | ranks by category (`armor`, `cman`, `feat`, `shield`, `weapon`) and mnemonic (`bearhug`); a category whose list was never read is absent, and a mnemonic missing from a list read is not known |
+| `warcries` | the warcries known, by short name (`bellow`, `yowlp`, `growl`, `shout`, `cry`, `holler`) |
+| `society` | `{ name, rank }`: `name` is `null` when the game said none; the field is `null` until it said |
+| `citizenship` | `{ town }`, the same way |
+| `resources` | `kind` (the profession's, `Essence`...), `weekly`, `total`, `suffused`, `voln_favor`, `covert_arts_charges`, `shadow_essence` |
+| `currency` | each balance stated, by name: `silver`, `silver_container`, `silver_total`, `notes`, `tickets`, `gold`, `blackscrip`, `bloodscrip`, `ethereal_scrip`, `soul_shards`, `raikhen`, `aevit`, `gigas_artifact_fragments`, `redsteel_marks`, `dust` |
+| `experience` | `level`, `experience`, `next_level` (the bar's text) and `next_level_percent`, `until_next`, `field_experience` and `field_experience_max`, `ascension_experience`, `total_experience`, `long_term_experience`, `deeds`, `fame`, `deaths_sting` (`Light`...), `recent_deaths`, and while they apply `lumnis`, `rpa` (as the game sends it) and `fashlonae` |
+
 A field a runner does not know is ignored, and new ones come without a new version.
 
 ## `room` `{ id }`
