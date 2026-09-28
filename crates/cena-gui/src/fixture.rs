@@ -90,6 +90,13 @@ pub(crate) fn story() -> Story {
         )))),
         None,
     );
+    story.hear(
+        &observed(Event::Frame(Box::new(Frame::Prompt {
+            time: "1000".to_owned(),
+            text: ">".to_owned(),
+        }))),
+        None,
+    );
     story.typed("look");
     story.tell(Notice::line(
         NoticeKind::Info,

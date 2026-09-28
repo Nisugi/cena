@@ -47,7 +47,8 @@ fn texts(story: &Story) -> Vec<String> {
             Shown::Game(runs) | Shown::From(_, runs) => {
                 runs.iter().map(|run| run.text.as_str()).collect()
             }
-            Shown::Typed(line) => format!("> {line}"),
+            Shown::Typed { prompt, line } => format!("{prompt}{line}"),
+            Shown::Prompt(prompt) => prompt.clone(),
             Shown::Gap => "(gap)".to_owned(),
         })
         .collect()
@@ -143,13 +144,59 @@ fn banners_are_kept_a_while_and_only_the_newest_few() {
     assert_eq!(story.alerts_at(now + ALERT_FOR).count(), 0, "and all go");
 }
 
+fn prompt(text: &str) -> Event {
+    Event::Frame(Box::new(Frame::Prompt {
+        time: "1000".to_owned(),
+        text: text.to_owned(),
+    }))
+}
+
+/// A prompt follows what the game said, and shows again when it changes
+/// (`R>` as roundtime starts), never twice in a row for nothing, nor empty,
+/// nor after lines a quiet command kept out; what the player types is
+/// echoed after the last prompt shown, as `VellumFE` echoes it.
+#[test]
+fn a_prompt_follows_what_the_game_said() {
+    let mut story = Story::default();
+    story.typed("look");
+    for event in [
+        said("", "[Town Square]"),
+        prompt(">"),
+        prompt(">"),
+        prompt("R>"),
+        said("", "You swing."),
+        prompt("R>"),
+        prompt(" "),
+        Event::Quiet(true),
+        said("", "Your inventory."),
+        prompt("R>"),
+        Event::Quiet(false),
+    ] {
+        story.hear(&observed(0, event), None);
+    }
+    story.typed("stance defensive");
+    assert_eq!(
+        texts(&story),
+        [
+            ">look",
+            "[Town Square]",
+            ">",
+            "R>",
+            "You swing.",
+            "R>",
+            "R>stance defensive"
+        ]
+    );
+    assert_eq!(story.heard, 2, "a prompt is not a line heard");
+}
+
 #[test]
 fn a_hole_is_marked_once_and_the_story_is_bounded() {
     let mut story = Story::default();
     story.typed("look");
     story.missed();
     story.missed();
-    assert_eq!(texts(&story), ["> look", "(gap)"]);
+    assert_eq!(texts(&story), [">look", "(gap)"]);
     for n in 0..MAX_STORY {
         story.hear(&observed(0, said("", &format!("line {n}"))), None);
     }

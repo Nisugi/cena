@@ -258,7 +258,7 @@ fn a_bound_key_sends_on_its_window() {
     harness.key_press(egui::Key::F5);
     harness.run();
     harness.run();
-    assert!(harness.query_by_label("> look").is_some());
+    assert!(harness.query_by_label(">look").is_some());
     assert_eq!(
         harness.get_by_role(Role::TextInput).value().as_deref(),
         Some(""),
@@ -320,7 +320,7 @@ fn a_line_before_any_snapshot_is_not_sent_and_says_so() {
     harness.key_press(egui::Key::Enter);
     harness.run();
     harness.run();
-    assert!(harness.query_by_label("> look").is_some());
+    assert!(harness.query_by_label(">look").is_some());
     assert!(
         harness
             .query_by_label("Not connected yet; nothing was sent.")
@@ -330,7 +330,7 @@ fn a_line_before_any_snapshot_is_not_sent_and_says_so() {
     harness.get_by_label("Stop").click();
     harness.run();
     harness.run();
-    assert!(harness.query_by_label("> ;stop").is_some());
+    assert!(harness.query_by_label(">;stop").is_some());
 }
 
 /// A custom window saved as a preset from a play window is kept in the

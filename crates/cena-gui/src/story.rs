@@ -1,6 +1,7 @@
 //! One character's story as its play window shows it (`plan/47` step 4):
-//! the game's lines, what the player typed, Hydra's own messages in their
-//! own pane, and a trigger's banners.
+//! the game's lines, its prompts, what the player typed, Hydra's own
+//! messages in their own pane, and a trigger's banners.
+//! How a prompt and an echo are shown is `prompt.rs`'s.
 //!
 //! The session already assembled, sorted and painted each line (`plan/45`
 //! §4a); this only decides whether the story shows it. A line on a stream
@@ -15,7 +16,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use cena_session::stream_windows::{Destination, MAIN};
-use cena_session::{Event, GameState, Generation, Notice, NoticeKind, ObservedEvent};
+use cena_session::{Event, Frame, GameState, Generation, Notice, NoticeKind, ObservedEvent};
 use cena_ui::{StyledRun, painted, story_lines};
 
 /// Lines a story keeps, newest last.
@@ -33,8 +34,16 @@ pub(crate) const ALERT_FOR: Duration = Duration::from_secs(10);
 pub(crate) enum Shown {
     /// A line the game sent, as the session painted it.
     Game(Vec<StyledRun>),
-    /// What the player typed here, echoed as sent.
-    Typed(String),
+    /// What the player typed here, echoed as sent after the prompt it
+    /// followed.
+    Typed {
+        /// The last prompt shown before it: `>`, `R>`.
+        prompt: String,
+        /// What was typed.
+        line: String,
+    },
+    /// The game's prompt, `>`: the end of what it said.
+    Prompt(String),
     /// Lines were lost here: the feed fell behind.
     Gap,
     /// A line of another stream, which the game sends to the story while
@@ -62,6 +71,10 @@ pub(crate) struct Story {
     pub(crate) streams: streams::Streams,
     /// Inside a quiet command's window.
     quiet: bool,
+    /// The last prompt shown; `>` before any.
+    prompt: Option<String>,
+    /// The story has had a line since the last prompt.
+    since_prompt: bool,
     /// The connection the last event came on.
     generation: Option<Generation>,
 }
@@ -107,6 +120,12 @@ impl Story {
                         Shown::From(line.stream.clone(), runs)
                     });
                     self.heard += 1;
+                    self.since_prompt = true;
+                }
+            }
+            Event::Frame(frame) => {
+                if let Frame::Prompt { text, .. } = frame.as_ref() {
+                    self.prompted(text);
                 }
             }
             Event::Notice(notice) => self.tell(notice.clone()),
@@ -129,11 +148,6 @@ impl Story {
         }
     }
 
-    /// The player typed `line` here.
-    pub(crate) fn typed(&mut self, line: &str) {
-        self.push(Shown::Typed(line.to_owned()));
-    }
-
     /// Hydra says `notice` to the player, in the messages pane.
     pub(crate) fn tell(&mut self, notice: Notice) {
         if notice.kind == NoticeKind::Debug {
@@ -154,7 +168,7 @@ impl Story {
             .map(|(_, text)| text.as_str())
     }
 
-    fn push(&mut self, shown: Shown) {
+    pub(super) fn push(&mut self, shown: Shown) {
         self.lines.push_back(shown);
         while self.lines.len() > MAX_STORY {
             self.lines.pop_front();
@@ -168,6 +182,7 @@ fn is_main(stream: &str) -> bool {
     stream.is_empty() || stream == MAIN
 }
 
+mod prompt;
 mod streams;
 
 #[cfg(test)]

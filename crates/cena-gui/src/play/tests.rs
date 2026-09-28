@@ -94,7 +94,7 @@ fn the_window_shows_what_a_player_glances_at() {
         "Maravel",
         "Obvious exits: north, out",
         "You swing a steel broadsword at a kobold!",
-        "> look",
+        ">look",
         "Hunt: resting until mana is 50%.",
         "A kobold is here!",
         "ojandhaart",

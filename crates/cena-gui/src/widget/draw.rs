@@ -395,8 +395,11 @@ fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, open: &[S
                             ui.label(text::job(runs, ui.style()));
                         }
                     }
-                    Shown::Typed(line) => {
-                        ui.weak(format!("> {line}"));
+                    Shown::Typed { prompt, line } => {
+                        ui.weak(format!("{prompt}{line}"));
+                    }
+                    Shown::Prompt(prompt) => {
+                        ui.weak(prompt);
                     }
                     Shown::Gap => {
                         ui.colored_label(WRONG, "Some lines were missed here.");

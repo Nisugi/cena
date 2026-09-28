@@ -57,7 +57,7 @@ fn each_widget_draws_what_it_shows() {
     let harness = drawn(Some(ashryn), Some(hunt));
     for label in [
         "You swing a steel broadsword at a kobold!",
-        "> look",
+        ">look",
         "HP 348/400 87%",
         "MP 48/120 40%",
         "SP ?",
