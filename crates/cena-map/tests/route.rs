@@ -192,3 +192,28 @@ fn the_route_names_which_of_two_parallel_exits_it_took() {
     );
     assert_eq!(routes.exits_to(RoomId(1)), Some(vec![]), "already there");
 }
+
+/// Lich's `dijkstra` answers every room it settled, with where each was
+/// reached from: the search's own tables, read whole.
+#[test]
+fn every_settled_room_says_where_it_was_reached_from() {
+    let map = map().unwrap();
+    let routes = map.routes(RoomId(1), Target::Everything, as_converted);
+    let settled: Vec<(RoomId, f64, Option<RoomId>)> = routes.settled().collect();
+    assert_eq!(
+        settled,
+        vec![
+            (RoomId(1), 0.0, None),
+            (RoomId(2), 1.0, Some(RoomId(1))),
+            (RoomId(3), 2.0, Some(RoomId(2))),
+            (RoomId(4), 3.0, Some(RoomId(3))),
+        ],
+        "5 has no priced way in, 6 is an island, 99 is not on the map"
+    );
+
+    let stopped = map.routes(RoomId(1), Target::Room(RoomId(2)), as_converted);
+    assert!(
+        stopped.settled().all(|(_, seconds, _)| seconds <= 1.0),
+        "a search that stopped answers only what it settled"
+    );
+}

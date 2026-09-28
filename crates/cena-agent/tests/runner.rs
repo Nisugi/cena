@@ -15,12 +15,15 @@
 mod support;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
+use cena_agent::scripts::local::Atlas;
 use cena_agent::scripts::runner::find_ruby;
 use cena_session::Origin;
 use support::{
-    DESCRIBED_ROOM, QUIET_ROOM, Running, World, in_the_quiet_glade, scripts_with, temp_dir,
+    DESCRIBED_ROOM, QUIET_GLADE, QUIET_ROOM, Running, World, by_number, in_the_quiet_glade,
+    scripts_with, temp_dir,
 };
 
 #[tokio::test(flavor = "current_thread")]
@@ -198,6 +201,62 @@ async fn a_script_reads_its_sheet_through_lichs_own_classes() {
         "[sheettest: psms: focus=5 hamstring=false dirtkick=false holler=false]",
         "[sheettest: injuries: head=2 neck=1 mode=2]",
         "[sheettest: after: refresh=false resources=nil]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The Quiet Glade on a road: `1 -- 2 -- 3 -- 4` at a second a step, a
+/// Bard's shortcut from 1 to 4, and an island, 5. Banks at 2, 4 and 5.
+const ROADS: &str = r#"[
+  {"id":1,"uid":[7000],"title":["[Quiet Glade]"],"exits":[{"to":2,"kind":"cardinal","cmd":"east","cost":1},
+     {"to":4,"kind":"go","cmd":"go shortcut","cost":{"when":{"profession":"Bard"},"then":0.5}}]},
+  {"id":2,"uid":[7002],"title":["[Road]"],"tags":["bank"],"exits":[{"to":3,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":3,"title":["[Town]"],"description":["A small town."],"tags":["town"],"exits":[{"to":4,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":4,"title":["[Bank]"],"tags":["bank"]},
+  {"id":5,"title":["[Island]"],"tags":["bank"]}
+]"#;
+
+/// **The map's questions** (`plan/46` §11 step 8): Lich's `Map.dijkstra`,
+/// `path_to`, the `find_nearest` family, `Map.list` (its rooms completing
+/// themselves when read), `estimate_time`, `ids_from_uid` and `tags`,
+/// answered from Hydra's map, the way priced for the character (not a
+/// Bard, so no shortcut).
+#[tokio::test(flavor = "current_thread")]
+async fn a_script_asks_the_map_as_lichs_scripts_do() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("map");
+    let scripts = scripts_with(&dir, "maptest.lic").unwrap();
+    let map = cena_map::Map::from_rooms(serde_json::from_str(ROADS).unwrap()).unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[("look", QUIET_GLADE)],
+            atlas: Some(Atlas {
+                map: Arc::new(map),
+                locate: by_number,
+                walker: Arc::new(|_, _| cena_map::Walker::default()),
+            }),
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
+    let heard = running.run("maptest", "maptest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[maptest: dijkstra: 3 3.0]",
+        "[maptest: path: [2, 3, 4] nowhere: nil]",
+        "[maptest: banks: 2 [2, 4] nearest: 3]",
+        "[maptest: list: 5 towns=[3] desc=[\"A small town.\"] ways={\"3\" => \"east\"}]",
+        "[maptest: time: 2.0 uid: [2] tags: [\"bank\", \"town\"]]",
     ] {
         assert!(
             heard.told.iter().any(|line| line == expected),

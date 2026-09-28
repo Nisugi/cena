@@ -15,7 +15,7 @@
 
 use std::sync::Arc;
 
-use cena_map::{Map, Origin, RoomId};
+use cena_map::{Map, Origin, RoomId, Walker};
 use cena_session::{GameState, Runs, Snapshot};
 use serde::Serialize;
 
@@ -32,11 +32,19 @@ pub struct Atlas {
     pub map: Arc<Map>,
     /// Name the room `state` shows, given where the character was.
     pub locate: Locate,
+    /// The character as travel's walker, which prices each exit for it: a
+    /// script's route (`route`, `seconds`) is costed as its own walk is.
+    pub walker: WalkerOf,
 }
 
 /// How a room is named: the map, what the game shows, where the character
 /// was; `None` when it cannot be named without a guess.
 pub type Locate = fn(&Map, &GameState, Origin) -> Option<RoomId>;
+
+/// The walker a character is in a state, by the name Hydra runs it as. The
+/// binary's is travel's own (`cena_behavior::travel::walker_from`, over the
+/// character's travel file).
+pub type WalkerOf = Arc<dyn Fn(&str, &GameState) -> Walker + Send + Sync>;
 
 impl std::fmt::Debug for Atlas {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

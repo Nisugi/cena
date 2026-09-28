@@ -149,7 +149,7 @@ impl Scripting {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            tool_router: Self::tool_router(),
+            tool_router: Self::tool_router() + Self::map_router(),
         }
     }
 
@@ -421,7 +421,7 @@ impl ServerHandler for Scripting {
 }
 
 /// The seat the request's token named.
-fn seat(parts: &Parts) -> Result<Arc<Seat>, ErrorData> {
+pub(super) fn seat(parts: &Parts) -> Result<Arc<Seat>, ErrorData> {
     parts
         .extensions
         .get::<Arc<Seat>>()
@@ -442,6 +442,6 @@ fn why(refusal: Refusal) -> &'static str {
     }
 }
 
-fn json(value: &impl serde::Serialize) -> Result<CallToolResult, ErrorData> {
+pub(super) fn json(value: &impl serde::Serialize) -> Result<CallToolResult, ErrorData> {
     Ok(CallToolResult::success(vec![ContentBlock::json(value)?]))
 }

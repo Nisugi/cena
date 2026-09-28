@@ -334,12 +334,7 @@ impl Desk {
         };
         match travel_store::load(&self.dir, instance, name) {
             Ok(file) => Traveller {
-                notes: TravelNotes {
-                    settings: file.settings.clone().into_iter().collect(),
-                    memories: file.memories.clone().into_iter().collect(),
-                    targets: file.targets.clone(),
-                    last_room: file.last_room,
-                },
+                notes: TravelNotes::of(&file),
                 file: Some(file),
             },
             Err(why) => {

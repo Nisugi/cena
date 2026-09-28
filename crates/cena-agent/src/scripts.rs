@@ -45,6 +45,7 @@ pub mod checker;
 mod hooks;
 pub mod listening;
 pub mod local;
+pub mod map_tools;
 pub mod runner;
 pub mod sheet;
 pub mod tools;

@@ -40,6 +40,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use cena_map::Walker;
+use cena_session::travel_store::TravelFile;
 use cena_session::{GameState, InventoryItem, SkillKind};
 
 use super::knows::{affordable_spells, circle_ranks, known_spells, skills_listed};
@@ -58,6 +59,19 @@ pub struct TravelNotes {
     /// Where the character was last known to be: a tie-breaker, not a fact
     /// (`travel_store::TravelFile::last_room`).
     pub last_room: Option<u32>,
+}
+
+impl TravelNotes {
+    /// What `file` holds.
+    #[must_use]
+    pub fn of(file: &TravelFile) -> Self {
+        Self {
+            settings: file.settings.clone().into_iter().collect(),
+            memories: file.memories.clone().into_iter().collect(),
+            targets: file.targets.clone(),
+            last_room: file.last_room,
+        }
+    }
 }
 
 /// The walker's facts, as the model and the travel file have them now.

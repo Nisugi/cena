@@ -117,6 +117,27 @@ and `exits`, each `{to, kind, cost?, dirto?}` with how it is crossed: `cmd` (a c
 send), or `steps`, `routine`, `pass` or `unported` (Hydra's travel crosses it; a runner asks
 Hydra to walk). `cost` is seconds when a number; absent, the exit is impassable.
 
+## The map's questions
+
+Each answers `{"map": false}` when Hydra runs without a map. A way is priced **for the
+character, as its own walk would be**: travel's pricing, over what Hydra knows of the character
+and its travel file, so an exit its profession, society or a pass opens is open, and one it
+cannot answer is shut.
+
+- **`route` `{ from, to? }`**: the shortest ways out of a room: `previous`, each room reached and
+  the room it was reached from, and `seconds`, each room reached and the seconds to it, both
+  keyed by the map's numbers as strings. `to` one room stops there; several, at the nearest of
+  them; absent, every room that can be reached. What the search did not settle is not answered.
+- **`seconds` `{ path }`**: what walking a path's rooms in order takes, each step at its
+  cheapest exit, a step with none counted as 0.2 seconds, as Lich counts it.
+- **`rooms` `{ after?, limit? }`**: every room, a page at a time in the order of their numbers,
+  each as `{ id, title, location, tags, uid }` (the rest is `room`'s): `{"map": true, "rooms":
+  [...], "next": n}`, where `next` is the `after` for the next page and `null` after the last.
+  `limit` is at most 5000, and so by default.
+- **`find` `{ tag? , uid? }`**: the rooms carrying a tag, or that the game numbers so, as `ids`
+  in order.
+- **`tags`**: every tag any room carries, in order.
+
 ## `spell` `{ number? , name? }`
 
 A spell of Hydra's spell table, by number or by name (ignoring case). Answers `{"spell": ...}`,

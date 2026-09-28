@@ -404,6 +404,7 @@ pub fn two_rooms() -> Option<Atlas> {
     Some(Atlas {
         map: Arc::new(Map::from_rooms(rooms).ok()?),
         locate: by_number,
+        walker: Arc::new(|_, _| cena_map::Walker::default()),
     })
 }
 

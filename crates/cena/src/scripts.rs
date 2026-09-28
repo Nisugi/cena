@@ -138,6 +138,7 @@ impl Scripts {
             Ok(context) => Runners::with_atlas(Atlas {
                 map: Arc::clone(&context.map),
                 locate: cena_behavior::travel::room_of,
+                walker: walker_of(dir),
             }),
             Err(_) => Runners::default(),
         };
@@ -228,6 +229,27 @@ impl Scripts {
     fn lock(&self) -> std::sync::MutexGuard<'_, BTreeMap<SessionId, Desk>> {
         self.desks.lock().unwrap_or_else(PoisonError::into_inner)
     }
+}
+
+/// The character as travel's walker, from its travel file in `dir`, as
+/// travel's desk makes one: what prices a script's route (`plan/46` §11
+/// step 8). A character the game has not named, or whose file cannot be
+/// read, walks with no notes, and what they alone open is shut to it.
+fn walker_of(dir: &Path) -> cena_agent::scripts::local::WalkerOf {
+    let dir = dir.to_owned();
+    Arc::new(move |_, state| {
+        let character = &state.character;
+        let notes = character
+            .instance
+            .as_deref()
+            .zip(character.name.as_deref())
+            .and_then(|(instance, name)| {
+                cena_session::travel_store::load(&dir, instance, name).ok()
+            })
+            .map(|file| cena_behavior::travel::TravelNotes::of(&file))
+            .unwrap_or_default();
+        cena_behavior::travel::walker_from(state, &notes, state.game_time_now().unwrap_or(0))
+    })
 }
 
 /// `;scripts`: where they are, `check <script>`, and `import <Lich

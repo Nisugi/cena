@@ -184,6 +184,7 @@ async fn a_mapped_room_is_named_and_answered() {
     let runners = Runners::with_atlas(Atlas {
         map,
         locate: by_number,
+        walker: Arc::new(|_, _| cena_map::Walker::default()),
     });
     let token = runners
         .admit("Nisugi", handle.script_door(), &observer)
@@ -338,4 +339,125 @@ async fn the_copy_carries_the_characters_sheet() {
     assert_eq!(experience["field_experience_max"], 1403);
     assert_eq!(experience["until_next"], 79);
     assert_eq!(experience["lumnis"], 4);
+}
+
+/// ```text
+///   1 --1s-- 2 --1s-- 3 --1s-- 4        the long way round: 3s
+///   1 --0.5s, a Bard's-------- 4        a shortcut only a Bard may take
+///   5                                   an island
+/// ```
+/// Banks at 2, 4 and 5; the town at 3; the game numbers 2 as 7002.
+const ROADS: &str = r#"[
+  {"id":1,"exits":[{"to":2,"kind":"cardinal","cmd":"east","cost":1},
+                   {"to":4,"kind":"go","cmd":"go shortcut","cost":{"when":{"profession":"Bard"},"then":0.5}}]},
+  {"id":2,"uid":[7002],"tags":["bank"],"exits":[{"to":3,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":3,"tags":["town"],"exits":[{"to":4,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":4,"tags":["bank"]},
+  {"id":5,"tags":["bank"]}
+]"#;
+
+/// A runner's app and token over [`ROADS`], its character walking as `walker`.
+async fn on_the_roads(walker: cena_map::Walker) -> Option<(axum::Router, String)> {
+    let map = Arc::new(Map::from_rooms(serde_json::from_str(ROADS).ok()?).ok()?);
+    let (handle, observer) = character(&[]);
+    let runners = Runners::with_atlas(Atlas {
+        map,
+        locate: by_number,
+        walker: Arc::new(move |_, _| walker.clone()),
+    });
+    let token = runners
+        .admit("Nisugi", handle.script_door(), &observer)
+        .await
+        .ok()?;
+    Some((router(runners, &CancellationToken::new()), token))
+}
+
+#[tokio::test(flavor = "current_thread")]
+async fn the_maps_questions_are_answered_for_the_walker() {
+    let (app, token) = on_the_roads(cena_map::Walker::default()).await.unwrap();
+    let bard = cena_map::Walker {
+        profession: Some("Bard".to_owned()),
+        ..cena_map::Walker::default()
+    };
+    let (bards, bards_token) = on_the_roads(bard).await.unwrap();
+    let ask = |app, token, tool, arguments| async move {
+        call(app, token, tool, arguments).await.unwrap()
+    };
+
+    let walked = ask(
+        &app,
+        &token,
+        "route",
+        serde_json::json!({"from": 1, "to": [4]}),
+    )
+    .await;
+    assert_eq!(
+        walked["previous"],
+        serde_json::json!({"2": 1, "3": 2, "4": 3})
+    );
+    assert_eq!(walked["seconds"]["4"], 3.0);
+    let sung = ask(
+        &bards,
+        &bards_token,
+        "route",
+        serde_json::json!({"from": 1, "to": [4]}),
+    )
+    .await;
+    assert_eq!(
+        sung["previous"]["4"], 1,
+        "a Bard takes the shortcut: {sung}"
+    );
+    assert_eq!(sung["seconds"]["4"], 0.5);
+
+    let everywhere = ask(&app, &token, "route", serde_json::json!({"from": 1})).await;
+    let reached: Vec<&String> = everywhere["seconds"].as_object().unwrap().keys().collect();
+    assert_eq!(reached, ["1", "2", "3", "4"], "5 is an island");
+    let nearest = ask(
+        &app,
+        &token,
+        "route",
+        serde_json::json!({"from": 1, "to": [4, 2]}),
+    )
+    .await;
+    assert_eq!(nearest["seconds"]["2"], 1.0);
+    assert!(
+        nearest["seconds"].get("4").is_none(),
+        "stopped at the nearest"
+    );
+
+    let path = ask(
+        &app,
+        &token,
+        "seconds",
+        serde_json::json!({"path": [1, 2, 3, 4]}),
+    )
+    .await;
+    assert_eq!(path["seconds"], 3.0);
+    let unpriced = ask(&app, &token, "seconds", serde_json::json!({"path": [1, 5]})).await;
+    assert_eq!(
+        unpriced["seconds"], 0.2,
+        "Lich's price for a step it cannot price"
+    );
+
+    let first = ask(&app, &token, "rooms", serde_json::json!({"limit": 2})).await;
+    assert_eq!(first["rooms"][1]["id"], 2);
+    assert_eq!(first["rooms"][1]["tags"][0], "bank");
+    assert_eq!(first["rooms"][1]["uid"][0], 7002);
+    assert_eq!(first["next"], 2);
+    let last = ask(
+        &app,
+        &token,
+        "rooms",
+        serde_json::json!({"after": 4, "limit": 2}),
+    )
+    .await;
+    assert_eq!(last["rooms"][0]["id"], 5);
+    assert_eq!(last["next"], serde_json::Value::Null);
+
+    let banks = ask(&app, &token, "find", serde_json::json!({"tag": "bank"})).await;
+    assert_eq!(banks["ids"], serde_json::json!([2, 4, 5]));
+    let numbered = ask(&app, &token, "find", serde_json::json!({"uid": 7002})).await;
+    assert_eq!(numbered["ids"], serde_json::json!([2]));
+    let tags = ask(&app, &token, "tags", serde_json::json!({})).await;
+    assert_eq!(tags["tags"], serde_json::json!(["bank", "town"]));
 }

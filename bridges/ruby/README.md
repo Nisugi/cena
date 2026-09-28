@@ -19,7 +19,7 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | `connection.rb` | `hydra-script/1`'s tools over MCP, one HTTP request per call |
 | `edge.rb` | where Lich's engine meets the world, answered by Hydra: `Game.puts`, `respond`, `_respond`, a script's `$stdout`, `Lich.log`, `Lich::Messaging`, and a `Frontend` saying Hydra is Wrayth's family |
 | `copy.rb` | the local copy of the character from Hydra's `state` events, `XMLData` answered from it by Lich's names, and Lich's `GameObj` filled from it |
-| `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's |
+| `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's; `Map.dijkstra`, `path_to`, the `find_nearest` family and `estimate_time` answered by Hydra, priced as the character's walk; `Map.list`, every room, asked once and completed as read |
 | `spell.rb` | `Spell[n]` from Hydra's spell table, evaluated for the character; known and up from the copy |
 | `infomon.rb` | Lich's `Infomon` answered from the copy's sheet: the stats, skills, circles, PSMs, society, resources, currency and experience by Lich's keys |
 | `gemstone.rb` | the game's own classes, loaded once `XMLData` is made as Lich's game loader loads them: `Stats`, `Skills`, `Spells`, `Society`, `Experience`, `Resources`, `Currency`, the PSMs, `Effects`, `Wounds`, `Scars`, `Injured`, over `infomon.rb`; and Lich's `CharacterStatus` from `games.rb`, which the runner does not load |

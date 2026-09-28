@@ -292,3 +292,28 @@ async fn a_typed_script_runs_and_leaving_the_table_stops_it() {
     assert_eq!(transcript.lines(), ["look", "look"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A script's route is priced as the character's own walk: from its travel
+/// file, what earlier crossings wrote down (`plan/46` §11 step 8); a
+/// character the game has not named walks with nothing remembered.
+#[test]
+fn a_scripts_walker_is_the_characters_travel_file() {
+    let dir = scratch("walker");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut file = cena_session::travel_store::TravelFile::new("GS3", "Nisugi");
+    file.memories
+        .insert("duskruin_origin".to_owned(), "228".to_owned());
+    cena_session::travel_store::save(&dir, &file).unwrap();
+    let mut state = cena_session::GameState::default();
+    state.character.instance = Some("GS3".to_owned());
+    state.character.name = Some("Nisugi".to_owned());
+
+    let walker = walker_of(&dir)("Nisugi", &state);
+    assert_eq!(
+        walker.memories.get("duskruin_origin").map(String::as_str),
+        Some("228")
+    );
+    let unnamed = walker_of(&dir)("Nisugi", &cena_session::GameState::default());
+    assert!(unnamed.memories.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
