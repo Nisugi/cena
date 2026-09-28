@@ -24,13 +24,15 @@
 //! comes later, after the window has closed, so while Lich shows the text
 //! the session leaves the report out itself, and publishes no `Quiet`: each
 //! line of main in the window is expected back, and left out when Lich
-//! passes it on, in order, among Lich's own lines
-//! ([`LichText::was_quiet`](crate::script::lich::LichText::was_quiet)).
-//! What Lich hid or changed of it is not waited for past
-//! [`QUIET_LAG`](crate::script::lich::QUIET_LAG). Lich's own quiet commands
-//! hide their prompt as well as their lines
+//! passes it on, in order, among Lich's own lines (`script/lich/text.rs`,
+//! `Echoes`). What Lich hid of it is passed over, and what it hid wholly is
+//! let go once Lich has shown enough else. Lich's own quiet commands hide
+//! their prompt as well as their lines
 //! (`reference/lich-5/lib/util/util.rb:177-178`), so the prompts cannot be
 //! counted to find where the report falls in what Lich wrote.
+//!
+//! What a Lich started late is handed of the past is left out the same way
+//! (`script/lich/kept.rs`).
 
 use std::sync::Arc;
 
@@ -38,7 +40,8 @@ use cena_model::line::Line;
 use cena_platform::ByteSource;
 
 use super::{Event, SessionActor};
-use crate::script::lich::{LichText, Showing};
+use crate::State;
+use crate::script::lich::{Key, LichText, Showing};
 
 /// A quiet command's window, while one is open.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -74,23 +77,22 @@ impl<S: ByteSource> SessionActor<S> {
     }
 
     /// Show what the player's Lich wrote: each line it finishes, as a line
-    /// the game finished would be, and each prompt, in order.
+    /// the game finished would be, and each prompt, in order; but what it
+    /// was expected to pass on and not to show.
     pub(super) fn show_lichs(&mut self, chunk: &[u8]) {
         let Some(text) = self.lich_text.as_mut() else {
             return;
         };
         for showing in text.read(chunk) {
+            if self
+                .lich_text
+                .as_mut()
+                .is_some_and(|text| text.echoes(&showing))
+            {
+                continue;
+            }
             match showing {
-                Showing::Line(line) => {
-                    let quiet = is_main(&line.stream)
-                        && self
-                            .lich_text
-                            .as_mut()
-                            .is_some_and(|text| text.was_quiet(&line.text()));
-                    if !quiet {
-                        self.show_lichs_line(Arc::new(line));
-                    }
-                }
+                Showing::Line(line) => self.show_lichs_line(Arc::new(line)),
                 Showing::Prompt(prompt) => {
                     let _ = self.events.send(Event::Prompt(prompt));
                 }
@@ -105,7 +107,20 @@ impl<S: ByteSource> SessionActor<S> {
             && is_main(&line.stream)
             && let Some(text) = self.lich_text.as_mut()
         {
-            text.expect_quiet(line.text());
+            text.expect_quiet(line);
         }
+    }
+
+    /// Keep `chunk`, which said `keys`, for a Lich started late
+    /// (`crate::script::lich`, started late): whether the connection was
+    /// ready once it was read, and whether the parser then held a part of a
+    /// line.
+    pub(super) fn keep_for_lich(&self, chunk: &[u8], keys: Vec<Key>) {
+        self.events.keep_for_lich(
+            chunk,
+            keys,
+            self.lifecycle != State::Syncing,
+            self.parser.pending_len() == 0,
+        );
     }
 }

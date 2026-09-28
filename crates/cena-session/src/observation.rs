@@ -182,11 +182,12 @@ pub(crate) struct EventPublisher {
     /// last read. Here for `sorting`'s reasons, which is also why a reconnect
     /// keeps the conditions' memory. None until the binary reads the file.
     triggers: Arc<Mutex<Answering>>,
-    /// The player's Lich, while one is attached (`crate::script::lich`):
-    /// where the game's bytes are copied, and the player's typing handed.
-    /// Here for `sorting`'s reasons: Lich stays up through a reconnect, and
-    /// sees the new login as more of the stream.
-    lich: Arc<Mutex<Option<crate::script::lich::Tap>>>,
+    /// The player's Lich (`crate::script::lich`): where the game's bytes are
+    /// copied and the player's typing handed while one is attached, and
+    /// what one started late is handed first. Here for `sorting`'s reasons:
+    /// Lich stays up through a reconnect, and sees the new login as more of
+    /// the stream.
+    lich: Arc<Mutex<crate::script::lich::Slot>>,
     /// What that Lich shows, waiting for the actor that shows it: a new
     /// Lich's until the actor's next turn, and between connections.
     lich_text: Arc<crate::script::lich::Parked>,
@@ -233,20 +234,22 @@ impl EventPublisher {
         }
     }
 
-    /// Attach the player's Lich from now on, and what it shows. False, and
-    /// both unused, while another is still attached: one Lich per character.
+    /// The player's Lich, as the session holds it.
+    fn lich(&self) -> std::sync::MutexGuard<'_, crate::script::lich::Slot> {
+        self.lich.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Attach the player's Lich from now on, and what it shows: whether it
+    /// was handed the login. `None`, and both unused, while another is still
+    /// attached: one Lich per character.
     pub(crate) fn attach_lich(
         &self,
         tap: crate::script::lich::Tap,
-        text: crate::script::lich::LichText,
-    ) -> bool {
-        let mut lich = self.lich.lock().unwrap_or_else(PoisonError::into_inner);
-        if lich.as_ref().is_some_and(crate::script::lich::Tap::is_open) {
-            return false;
-        }
-        *lich = Some(tap);
+        mut text: crate::script::lich::LichText,
+    ) -> Option<bool> {
+        let with_login = self.lich().attach(tap, &mut text)?;
         self.lich_text.park(text);
-        true
+        Some(with_login)
     }
 
     /// Where what the attached Lich shows waits for an actor.
@@ -256,35 +259,38 @@ impl EventPublisher {
 
     /// Whether a Lich is attached, and so shows the character's text.
     pub(crate) fn lich_attached(&self) -> bool {
-        self.lich
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .as_ref()
-            .is_some_and(crate::script::lich::Tap::is_open)
+        self.lich().attached()
     }
 
     /// Copy a chunk of the game's bytes, as it arrived, to the Lich attached,
     /// if one is: whether one took it, and so shows what it says. A Lich that
     /// stopped, or fell behind, is let go here.
     pub(crate) fn wire(&self, chunk: &[u8]) -> bool {
-        let mut lich = self.lich.lock().unwrap_or_else(PoisonError::into_inner);
-        let Some(tap) = lich.as_ref() else {
-            return false;
-        };
-        let took = tap.copy(chunk);
-        if !took {
-            *lich = None;
-        }
-        took
+        self.lich().wire(chunk)
+    }
+
+    /// Keep a chunk of the game's bytes for a Lich started late
+    /// (`crate::script::lich`, started late).
+    pub(crate) fn keep_for_lich(
+        &self,
+        chunk: &[u8],
+        keys: Vec<crate::script::lich::Key>,
+        ready: bool,
+        whole: bool,
+    ) {
+        self.lich().keep(chunk, keys, ready, whole);
+    }
+
+    /// A new connection: what a Lich started late is handed begins with its
+    /// login.
+    pub(crate) fn lich_connected(&self) {
+        self.lich().connected();
     }
 
     /// Hand a line the player typed to the Lich attached: `None` with none
     /// attached, and `Some(false)` when it has too many waiting.
     pub(crate) fn hand_to_lich(&self, line: &str) -> Option<bool> {
-        let lich = self.lich.lock().unwrap_or_else(PoisonError::into_inner);
-        lich.as_ref()
-            .filter(|tap| tap.is_open())
-            .map(|tap| tap.hand(line))
+        self.lich().hand(line)
     }
 
     /// A script runner's hooks.

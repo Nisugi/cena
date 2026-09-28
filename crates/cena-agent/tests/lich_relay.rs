@@ -12,7 +12,7 @@ use std::time::Duration;
 use cena_agent::lich::{Ended, Launch, run};
 use cena_agent::scripts::runner::find_ruby;
 use cena_platform::{AnsweringSource, TranscriptHandle};
-use cena_session::{Event, Origin, Outcome, Session, SessionHandle};
+use cena_session::{Event, Origin, Outcome, Session, SessionHandle, State};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
@@ -51,6 +51,38 @@ impl Character {
             stop,
             relay,
         }
+    }
+
+    /// A character already logged in when its Lich starts, as when the
+    /// player switches Lich on mid-session.
+    async fn start_late(launch: Launch) -> Option<Self> {
+        let (source, transcript) =
+            AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+        let session = Session::new(source);
+        let handle = session.handle();
+        let (_, mut events) = session.subscribe();
+        tokio::spawn(session.into_actor().run());
+        let ready = async {
+            loop {
+                match events.recv().await {
+                    Ok(Event::StateChanged(State::Ready)) => return true,
+                    Err(broadcast::error::RecvError::Closed) => return false,
+                    Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => {}
+                }
+            }
+        };
+        if !tokio::time::timeout(DEADLINE, ready).await.ok()? {
+            return None;
+        }
+        let stop = CancellationToken::new();
+        let relay = tokio::spawn(run(handle.lich_door(), launch, stop.clone()));
+        Some(Self {
+            handle,
+            transcript,
+            events,
+            stop,
+            relay,
+        })
     }
 
     /// The player types `line` at a frontend.
@@ -182,6 +214,18 @@ async fn what_lich_shows_is_the_characters_text() {
     assert_eq!(character.stop().await, Some(Ended::Stopped));
 }
 
+/// A Lich started once the character is logged in is handed the login: it
+/// sees the login's prompt, and its script looks.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_lich_started_late_is_handed_the_login() {
+    let ruby = find_ruby().expect("Ruby, which CI installs");
+    let mut character = Character::start_late(standin(ruby))
+        .await
+        .expect("logged in");
+    assert_eq!(character.sent("look").await, Some(Origin::Lich));
+    assert_eq!(character.stop().await, Some(Ended::Stopped));
+}
+
 /// One Lich per character: a second is refused while the first runs.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_second_lich_for_a_character_is_refused() {
@@ -223,18 +267,18 @@ async fn the_real_lich() {
         args.push(OsString::from(format!("--{name}={}", folder.display())));
     }
     let refuse = OsString::from("http://127.0.0.1:9");
-    let mut character = Character::start(
-        Launch {
-            ruby,
-            lich: lich.join("lich.rbw"),
-            args,
-            env: vec![
-                ("https_proxy".into(), refuse.clone()),
-                ("http_proxy".into(), refuse),
-            ],
-        },
-        &[],
-    );
+    // Started once the character is logged in, so it is handed the login.
+    let mut character = Character::start_late(Launch {
+        ruby,
+        lich: lich.join("lich.rbw"),
+        args,
+        env: vec![
+            ("https_proxy".into(), refuse.clone()),
+            ("http_proxy".into(), refuse),
+        ],
+    })
+    .await
+    .expect("logged in");
 
     // No Hydra commands run here, so `;` is Lich's.
     character.types(r#";e put "frontend #{$frontend}""#).await;

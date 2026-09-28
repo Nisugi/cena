@@ -66,22 +66,30 @@
 //! frontend. The session's own parse of the game is still everything else:
 //! the model, the log, a script runner's lines, what the triggers do.
 //! Carried as bytes, as the game's are, and read by a parser of their own
-//! (`LichText`).
+//! (`text.rs`).
+//!
+//! # Started late
+//!
+//! A Lich attached after the login is handed the login first, and the
+//! latest word since on each piece of state it keeps, as the game sent them
+//! (`kept.rs`); then the live stream.
 
-use std::collections::VecDeque;
+mod kept;
+mod text;
+
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
-use std::time::Duration;
 
-use cena_model::line::{Line, Unfinished};
-use cena_protocol::{Frame, Parser};
 use tokio::sync::mpsc;
-use tokio::time::Instant;
+
+pub(crate) use kept::Key;
+pub use text::Shown;
+pub(crate) use text::{LichText, Parked, Showing};
 
 use super::Sending;
 use crate::command::Claimed;
 use crate::command::claimant::DEFAULT_SYMBOL;
-use crate::{Gate, Notice, Origin, Sent, SessionHandle};
+use crate::{Gate, Notice, NoticeKind, Origin, Sent, SessionHandle};
 
 /// How many chunks of the game's bytes wait for a Lich that has not read
 /// them, as many records as Lich's own queue holds
@@ -96,15 +104,6 @@ pub const TYPED_LINES: usize = 64;
 /// What starts a line for the player's Lich: Lich's own `$lich_char`. A
 /// player who changed Lich's changes nothing here yet.
 pub const LICH_SYMBOL: char = ';';
-
-/// How long a line of a quiet command's report waits to be left out of
-/// Lich's text. Lich passes it on as it came, after whatever it was busy
-/// with: at a login, its own scripts starting. A line Lich hid or changed is
-/// not waited for past this, and the report's next lines are shown.
-pub const QUIET_LAG: Duration = Duration::from_secs(30);
-
-/// How many lines of quiet reports wait to be left out of Lich's text.
-const QUIET_LINES: usize = 1_024;
 
 /// The only way the player's Lich acts on a session.
 ///
@@ -136,150 +135,6 @@ pub struct Attached {
     pub typing: Typing,
     /// Where what Lich shows a frontend goes: the character's text.
     pub shown: Shown,
-}
-
-/// What a Lich shows a frontend, its standard output as it wrote it,
-/// carried to the session to be the character's text.
-#[derive(Debug)]
-pub struct Shown(mpsc::Sender<Vec<u8>>);
-
-impl Shown {
-    /// Carry `chunk`. False when it is not shown: the session has
-    /// [`WIRE_CHUNKS`] unread, as when no connection has read it for a
-    /// while, or it is gone.
-    #[must_use]
-    pub fn show(&self, chunk: Vec<u8>) -> bool {
-        self.0.try_send(chunk).is_ok()
-    }
-}
-
-/// What a Lich shows, read by the session: its bytes as they come, parsed
-/// by a parser of their own and put together into lines by the model's own
-/// [`Unfinished`], so a line of it ends where the game's would.
-///
-/// The session's, not a connection's: it waits between connections in the
-/// session's publisher ([`Parked`]), and each connection's actor takes it.
-#[derive(Debug)]
-pub(crate) struct LichText {
-    chunks: mpsc::Receiver<Vec<u8>>,
-    parser: Parser,
-    lines: Unfinished,
-    /// The main stream's lines of Hydra's quiet commands' reports, each with
-    /// when it came: left out of Lich's text as Lich passes them on.
-    quiet: VecDeque<(Instant, String)>,
-}
-
-/// What a Lich showed, in the order it showed it.
-#[derive(Debug)]
-pub(crate) enum Showing {
-    /// A finished line.
-    Line(Line),
-    /// The game's prompt, as Lich passed it on.
-    Prompt(String),
-}
-
-impl LichText {
-    fn new(chunks: mpsc::Receiver<Vec<u8>>) -> Self {
-        Self {
-            chunks,
-            parser: Parser::new(),
-            lines: Unfinished::default(),
-            quiet: VecDeque::new(),
-        }
-    }
-
-    /// The next chunk Lich wrote; `None` once it has stopped.
-    pub(crate) async fn next(&mut self) -> Option<Vec<u8>> {
-        self.chunks.recv().await
-    }
-
-    /// The lines `chunk` finishes, and its prompts, in order.
-    pub(crate) fn read(&mut self, chunk: &[u8]) -> Vec<Showing> {
-        let mut showing = Vec::new();
-        for frame in self.parser.push_bytes(chunk) {
-            match frame {
-                Frame::Text(text) => {
-                    if let Some(runs) = self.lines.push(&text) {
-                        showing.push(Showing::Line(Line::new(text.stream.clone(), runs)));
-                    }
-                }
-                Frame::ClearStream { id } => self.lines.clear_stream(&id),
-                Frame::Prompt { text, .. } => showing.push(Showing::Prompt(text)),
-                _ => {}
-            }
-        }
-        showing
-    }
-
-    /// A line of main in a quiet command's report, `text`: to be left out
-    /// when Lich passes it on.
-    pub(crate) fn expect_quiet(&mut self, text: String) {
-        if self.quiet.len() == QUIET_LINES {
-            self.quiet.pop_front();
-        }
-        self.quiet.push_back((Instant::now(), text));
-    }
-
-    /// Whether a line of main that Lich showed, `text`, is the next line of
-    /// a quiet report, and so left out. Only the next: the report's lines
-    /// come back in the order the game sent them, and a line of Lich's own
-    /// that says the same as one further on is still shown.
-    pub(crate) fn was_quiet(&mut self, text: &str) -> bool {
-        let now = Instant::now();
-        while self
-            .quiet
-            .front()
-            .is_some_and(|(came, _)| now.duration_since(*came) > QUIET_LAG)
-        {
-            self.quiet.pop_front();
-        }
-        let next = self.quiet.front().is_some_and(|(_, next)| next == text);
-        if next {
-            self.quiet.pop_front();
-        }
-        next
-    }
-}
-
-/// Where a Lich's text waits for the actor that shows it: a new Lich's
-/// until the actor's next turn, and the one a connection's actor showed
-/// until the next connection's.
-#[derive(Debug, Default)]
-pub(crate) struct Parked {
-    text: Mutex<Option<LichText>>,
-    /// Something is parked. Read on the actor's every turn, so the lock is
-    /// taken only when there is.
-    waiting: AtomicBool,
-}
-
-impl Parked {
-    /// A new Lich's text. What was parked was a Lich's that is gone.
-    pub(crate) fn park(&self, text: LichText) {
-        let mut parked = self.text.lock().unwrap_or_else(PoisonError::into_inner);
-        *parked = Some(text);
-        self.waiting.store(true, Ordering::Release);
-    }
-
-    /// What an ending connection's actor showed, for the next connection's:
-    /// unless a newer Lich's is waiting.
-    pub(crate) fn put_back(&self, text: LichText) {
-        let mut parked = self.text.lock().unwrap_or_else(PoisonError::into_inner);
-        if parked.is_none() {
-            *parked = Some(text);
-            self.waiting.store(true, Ordering::Release);
-        }
-    }
-
-    /// What waits, if anything.
-    pub(crate) fn take(&self) -> Option<LichText> {
-        if !self.waiting.swap(false, Ordering::Acquire) {
-            return None;
-        }
-        self.text
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take()
-    }
 }
 
 /// The game's bytes, copied for a Lich as they arrive.
@@ -327,6 +182,70 @@ impl Tap {
     }
 }
 
+/// The player's Lich as the session holds it, under one lock: the Lich
+/// attached, and what one started late is handed first. One lock, so a Lich
+/// attached between two chunks is handed each once.
+#[derive(Debug, Default)]
+pub(crate) struct Slot {
+    tap: Option<Tap>,
+    kept: kept::Kept,
+}
+
+impl Slot {
+    /// Attach a Lich, handing it the past first and telling `text` to leave
+    /// that out of what it shows: whether the login was in it. `None`, and
+    /// both unused, while another is attached: one per character.
+    pub(crate) fn attach(&mut self, tap: Tap, text: &mut LichText) -> Option<bool> {
+        if self.attached() {
+            return None;
+        }
+        let past = self.kept.replay();
+        if !past.is_empty() {
+            text.expect_replay([past.as_slice()]);
+            tap.copy(&past);
+        }
+        self.tap = Some(tap);
+        Some(self.kept.has_login())
+    }
+
+    /// Whether a Lich is attached.
+    pub(crate) fn attached(&self) -> bool {
+        self.tap.as_ref().is_some_and(Tap::is_open)
+    }
+
+    /// Copy a chunk of the game's bytes to the Lich attached: whether one
+    /// took it. One that stopped, or fell behind, is let go here.
+    pub(crate) fn wire(&mut self, chunk: &[u8]) -> bool {
+        let Some(tap) = &self.tap else {
+            return false;
+        };
+        let took = tap.copy(chunk);
+        if !took {
+            self.tap = None;
+        }
+        took
+    }
+
+    /// Hand a typed line to the Lich attached: `None` with none attached,
+    /// and `Some(false)` when it has too many waiting.
+    pub(crate) fn hand(&self, line: &str) -> Option<bool> {
+        self.tap
+            .as_ref()
+            .filter(|tap| tap.is_open())
+            .map(|tap| tap.hand(line))
+    }
+
+    /// A new connection: its login is kept anew.
+    pub(crate) fn connected(&mut self) {
+        self.kept.connected();
+    }
+
+    /// Keep `chunk`, which said `keys`, for a Lich started late (`kept.rs`).
+    pub(crate) fn keep(&mut self, chunk: &[u8], keys: Vec<Key>, ready: bool, whole: bool) {
+        self.kept.keep(chunk, keys, ready, whole);
+    }
+}
+
 impl Wire {
     /// The next chunk, as the game sent it. `None` once the copy has ended:
     /// the session is gone, or the Lich [fell behind](Self::fell_behind).
@@ -360,11 +279,14 @@ impl SessionHandle {
 }
 
 impl LichDoor {
-    /// Attach a Lich from here on: the next chunk of the game's bytes is its
-    /// first, the next line typed for it is its, and what it shows is the
-    /// character's text in place of the game's from that chunk on. `None`
-    /// while another is attached: one per character. It stays attached until
-    /// what this returns is dropped.
+    /// Attach a Lich from here on. It is handed first what it missed: this
+    /// connection's login, and the latest word since on each piece of state
+    /// it keeps, as the game sent them (`kept.rs`), which the character's
+    /// text does not show again. Then the next chunk of the game's bytes,
+    /// the next line typed for it, and what it shows is the character's text
+    /// in place of the game's from that chunk on. `None` while another is
+    /// attached: one per character. It stays attached until what this
+    /// returns is dropped.
     #[must_use]
     pub fn attach(&self) -> Option<Attached> {
         let (bytes, wire) = mpsc::channel(WIRE_CHUNKS);
@@ -376,16 +298,22 @@ impl LichDoor {
             typing,
             behind: Arc::clone(&behind),
         };
-        self.handle
-            .attach_lich(tap, LichText::new(text_read))
-            .then_some(Attached {
-                wire: Wire {
-                    bytes: wire,
-                    behind,
-                },
-                typing: Typing(typed),
-                shown: Shown(text),
-            })
+        let with_login = self.handle.attach_lich(tap, LichText::new(text_read))?;
+        if !with_login {
+            self.say(Notice::line(
+                NoticeKind::Warn,
+                "Lich starts without this connection's login, which was too long to keep: \
+                 it knows the character from what the game says next.",
+            ));
+        }
+        Some(Attached {
+            wire: Wire {
+                bytes: wire,
+                behind,
+            },
+            typing: Typing(typed),
+            shown: Shown(text),
+        })
     }
 
     /// What marks a line the player types as Hydra's: Lich's `;` unless

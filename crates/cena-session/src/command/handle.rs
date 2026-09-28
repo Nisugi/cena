@@ -290,12 +290,13 @@ impl SessionHandle {
         self.events.hear_lines(on);
     }
 
-    /// Attach the player's Lich (`crate::script::lich`).
+    /// Attach the player's Lich (`crate::script::lich`): whether it was
+    /// handed the login.
     pub(crate) fn attach_lich(
         &self,
         tap: crate::script::lich::Tap,
         text: crate::script::lich::LichText,
-    ) -> bool {
+    ) -> Option<bool> {
         self.events.attach_lich(tap, text)
     }
 
