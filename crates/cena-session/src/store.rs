@@ -18,10 +18,50 @@
 //! a trait with three implementors to say what each already says plainly.
 //! That is the abstraction Rule -1 refuses, and the duplication that remains
 //! is three similar shapes rather than three copies of one.
+//!
+//! # A change is a read, a change and a write, whole
+//!
+//! [`save_text`] keeps a file whole; it does not keep two changes. Two
+//! changes to one file made at once -- a login's roster entry and the
+//! launcher's star, two characters' `;trigger` edits -- each read it, each
+//! change their copy, and the second write loses the first change. So every
+//! read-change-write of a file a player or a character changes is made
+//! inside [`changing`], the whole of it (the crate review of 2026-09-28,
+//! R5).
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
+
+/// Each file a change has been made to, by path: the right to read it,
+/// change it and write it back ([`changing`]). It holds nothing else.
+static CHANGING: Mutex<BTreeMap<PathBuf, Arc<Mutex<()>>>> = Mutex::new(BTreeMap::new());
+
+/// Run `change` -- a read of the file at `path`, a change, and its write --
+/// with no other change to that file in this process made meanwhile. What
+/// `change` checks is what it writes: validation goes inside, not after.
+///
+/// A lock per file, so a change to one never waits on a change to another.
+/// The key is the path as given, and every caller builds its file's path
+/// from the one data directory the same way. **Not reentrant**: `change`
+/// must not change its own file again through here, which would wait on
+/// itself.
+///
+/// The lock is this process's. Two Hydras sharing one data directory can
+/// still lose a change between them; each write keeps the file whole either
+/// way (`travel_store`'s module docs weigh a lock file, and why not).
+pub fn changing<T>(path: &Path, change: impl FnOnce() -> T) -> T {
+    let file = {
+        let mut files = CHANGING.lock().unwrap_or_else(PoisonError::into_inner);
+        Arc::clone(files.entry(path.to_owned()).or_default())
+    };
+    // A panic while it was held left the file whole: the rename is the only
+    // write, and it is atomic.
+    let _held = file.lock().unwrap_or_else(PoisonError::into_inner);
+    change()
+}
 
 /// Strip everything that cannot appear in a filename, and **lowercase it**.
 ///
@@ -127,7 +167,10 @@ pub fn save_json<T: serde::Serialize>(dir: &Path, path: &Path, value: &T) -> io:
 
 /// Write `text` to `path` in `dir`, atomically: [`save_json`]'s write, for
 /// a file kept as text a player may also edit by hand (a behavior's TOML,
-/// the keybinds). The temp file is `path` with `.tmp` after its extension.
+/// the keybinds). The temp file is `path` with a name of this write's own
+/// and `.tmp` after its extension: two writes of one file at once, in this
+/// process or another, never rename each other's half-written temp into
+/// place. That keeps the file whole; keeping both changes is [`changing`]'s.
 ///
 /// # Errors
 ///
@@ -138,7 +181,15 @@ pub fn save_text(dir: &Path, path: &Path, text: &str) -> io::Result<()> {
     let extension = path
         .extension()
         .map_or_else(String::new, |ext| ext.to_string_lossy().into_owned());
-    let temp = path.with_extension(format!("{extension}.tmp"));
+    // One thread writes one file at a time, so the process and the thread
+    // name this write among any made at once.
+    let thread = {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        std::thread::current().id().hash(&mut hasher);
+        hasher.finish()
+    };
+    let temp = path.with_extension(format!("{extension}.{}-{thread:x}.tmp", std::process::id()));
     // **Synced before the rename, and the directory after it.** The rename
     // alone survives a process crash, not a power loss: the rename's
     // directory entry can reach disk before the file's data does, leaving a
@@ -167,4 +218,55 @@ pub fn unusable_name() -> io::Error {
         io::ErrorKind::InvalidInput,
         "character or instance has no usable filename",
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    use super::*;
+
+    /// A change to a file waits for one being made to it; a change to
+    /// another file does not wait.
+    #[test]
+    fn a_change_waits_for_one_to_the_same_file_only() {
+        let (same, other) = (
+            Path::new("store-test-waits/same.toml"),
+            Path::new("store-test-waits/other.toml"),
+        );
+        let (tell, told) = mpsc::channel();
+        let (waiting, elsewhere) = changing(same, || {
+            let waiting = {
+                let tell = tell.clone();
+                std::thread::spawn(move || changing(same, || tell.send("same")))
+            };
+            let elsewhere = std::thread::spawn(move || changing(other, || tell.send("other")));
+            assert_eq!(told.recv_timeout(Duration::from_secs(10)), Ok("other"));
+            assert!(
+                told.recv_timeout(Duration::from_millis(200)).is_err(),
+                "the same file's change waits"
+            );
+            (waiting, elsewhere)
+        });
+        assert_eq!(told.recv_timeout(Duration::from_secs(10)), Ok("same"));
+        assert!(waiting.join().is_ok_and(|sent| sent.is_ok()));
+        assert!(elsewhere.join().is_ok_and(|sent| sent.is_ok()));
+    }
+
+    /// The write leaves no temp file beside the one it wrote.
+    #[test]
+    fn a_write_leaves_only_its_file() -> io::Result<()> {
+        let dir = std::env::temp_dir().join(format!("cena-store-temp-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let path = dir.join("keys.toml");
+        save_text(&dir, &path, "a = 1\n")?;
+        save_text(&dir, &path, "a = 2\n")?;
+        let names: Vec<String> = fs::read_dir(&dir)?
+            .map(|entry| entry.map(|entry| entry.file_name().to_string_lossy().into_owned()))
+            .collect::<io::Result<_>>()?;
+        assert_eq!(names, ["keys.toml"]);
+        assert_eq!(fs::read_to_string(&path)?, "a = 2\n");
+        fs::remove_dir_all(&dir)
+    }
 }

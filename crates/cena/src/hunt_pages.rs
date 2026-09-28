@@ -7,8 +7,8 @@
 //!
 //! A change is written into the profile through `;hunt set`'s own writer
 //! ([`crate::hunt::settings::edited`]), which loads the profile as this
-//! character would after saving: a change it cannot read is put back, and
-//! what would stop the hunt running is said. So *check* is beside every
+//! character would before saving: a change it cannot read is never
+//! written, and what would stop the hunt running is said. So *check* is beside every
 //! *save*. A setting the character's own file sets is shown and not
 //! changed here: that file wins over the profile, and has no writer yet.
 //!
@@ -277,8 +277,8 @@ mod tests {
     }
 
     /// A change goes through `;hunt set`'s writer and is checked: saved and
-    /// said, put back to the level below, or refused and the file left as
-    /// it was when the profile would not read.
+    /// said, put back to the level below, or refused and the file never
+    /// written when the profile would not read.
     #[test]
     fn a_change_is_checked_as_it_is_saved() {
         let dir = scratch("change").expect("a folder");
@@ -308,7 +308,7 @@ mod tests {
         let before = file();
         let said = change(&dir, who, "hunt:p", "rooms.hunting", Some("\"ten\""));
         assert!(said.contains("it would not read"), "{said}");
-        assert_eq!(file(), before, "put back");
+        assert_eq!(file(), before, "never written");
         let said = change(&dir, who, "hunt:nope", "rooms.hunting", Some("1"));
         assert!(said.contains("there is no profile nope"), "{said}");
         let _ = std::fs::remove_dir_all(&dir);

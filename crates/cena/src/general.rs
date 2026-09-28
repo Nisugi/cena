@@ -220,6 +220,21 @@ pub(crate) fn change(
     key: &str,
     to: Option<&str>,
 ) -> Result<String, String> {
+    // Read, changed and written with no other change to the file between
+    // (`cena_session::store::changing`; the crate review of 2026-09-28, R5). A name no file can have locks
+    // nothing, and `load` refuses it.
+    let path = settings_store::settings_path(dir, instance, name).unwrap_or_default();
+    cena_session::store::changing(&path, || changed(dir, (instance, name), page, key, to))
+}
+
+/// [`change`], with the file's lock held.
+fn changed(
+    dir: &Path,
+    (instance, name): (&str, &str),
+    page: &str,
+    key: &str,
+    to: Option<&str>,
+) -> Result<String, String> {
     let mut file =
         load(dir, instance, name).map_err(|why| format!("Nothing was changed: {why}"))?;
     let done = match (page, key) {
@@ -495,6 +510,37 @@ mod tests {
             std::fs::read_to_string(&path).ok().as_deref(),
             Some("{ not json")
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A change made while another is being made waits for it, and both
+    /// are kept (the crate review of 2026-09-28, R5).
+    #[test]
+    fn a_change_made_meanwhile_waits_and_both_are_kept() {
+        let dir = scratch("meanwhile");
+        let kept = kept(&dir);
+        kept.change(GENERAL, "sorter", Some("on")).expect("a file");
+        let path = settings_store::settings_path(&dir, prime(), "Nisugi").expect("a path");
+        let other = cena_session::store::changing(&path, || {
+            let mut file = load(&dir, prime(), "Nisugi").expect("it reads");
+            let other = {
+                let kept = kept.clone();
+                std::thread::spawn(move || kept.change(RECORDING, "loot", Some("on")))
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            let mut commands: claimant::Settings =
+                section(&file, claimant::SECTION).expect("commands");
+            commands.symbol = Some("/".to_owned());
+            put(&mut file, claimant::SECTION, &commands).expect("put");
+            settings_store::save(&dir, &file).expect("saved");
+            other
+        });
+        other.join().expect("its thread").expect("changed");
+        let file = load(&dir, prime(), "Nisugi").expect("it reads");
+        let commands: claimant::Settings = section(&file, claimant::SECTION).expect("commands");
+        assert_eq!(commands.symbol(), '/', "the change made first");
+        let record: Record = section(&file, RECORD).expect("record");
+        assert_eq!(record.loot, Some(true), "the change made meanwhile");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

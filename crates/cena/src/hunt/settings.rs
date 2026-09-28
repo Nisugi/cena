@@ -102,10 +102,12 @@ fn tell(profile: &str, done: Result<(String, Vec<String>), String>, say: Say<'_>
     }
 }
 
-/// Change the profile's file with `change`, then load it as this character
-/// would: saved when it reads as a profile, with what would stop it running;
-/// put back when it does not. `;hunt set` and the settings menu's hunt
-/// pages (`crate::hunt_pages`) both change a profile here.
+/// Change the profile's file with `change`, and load the result as this
+/// character would before it is saved: saved when it reads as a profile,
+/// with what would stop it running; never written when it does not. Read,
+/// checked and written with no other change to the file between
+/// (`cena_session::store::changing`; the crate review of 2026-09-28, R5). `;hunt set` and the settings menu's hunt pages
+/// (`crate::hunt_pages`) both change a profile here.
 ///
 /// # Errors
 ///
@@ -118,30 +120,25 @@ pub(crate) fn edited(
 ) -> Result<(String, Vec<String>), String> {
     let path = hunt::chain::profile_path(dir, profile)
         .ok_or_else(|| format!("{profile:?} is not a name a profile can have."))?;
-    let old = match settings::read_text(&path) {
-        Stored::Found(text) => text,
-        Stored::Missing => {
-            return Err(format!(
-                "there is no profile {profile}. `hunt list` shows them; `hunt import <bigshot yaml>` brings one in."
-            ));
-        }
-        Stored::Broken(why) => return Err(format!("nothing was changed: {why}")),
-    };
-    let (text, done) = change(&old).map_err(|why| format!("{profile}: {why}"))?;
-    settings::save(&path, &text).map_err(|e| format!("{profile}: not saved: {e}"))?;
-    match hunt::load(dir, instance, character, profile) {
-        Ok(_) => Ok((done, Vec::new())),
-        Err(LoadError::Invalid(problems)) => Ok((done, problems)),
-        Err(e) => {
-            let back = settings::save(&path, &old).map_or_else(
-                |e| format!(" (and the old file could not be put back: {e})"),
-                |()| String::new(),
-            );
-            Err(format!(
-                "{profile}: not saved, it would not read: {e}{back}"
-            ))
-        }
-    }
+    cena_session::store::changing(&path, || {
+        let old = match settings::read_text(&path) {
+            Stored::Found(text) => text,
+            Stored::Missing => {
+                return Err(format!(
+                    "there is no profile {profile}. `hunt list` shows them; `hunt import <bigshot yaml>` brings one in."
+                ));
+            }
+            Stored::Broken(why) => return Err(format!("nothing was changed: {why}")),
+        };
+        let (text, done) = change(&old).map_err(|why| format!("{profile}: {why}"))?;
+        let problems = match hunt::chain::load_edited(dir, instance, character, profile, &text) {
+            Ok(_) => Vec::new(),
+            Err(LoadError::Invalid(problems)) => problems,
+            Err(e) => return Err(format!("{profile}: not saved, it would not read: {e}")),
+        };
+        settings::save(&path, &text).map_err(|e| format!("{profile}: not saved: {e}"))?;
+        Ok((done, problems))
+    })
 }
 
 /// `;hunt show <profile> [setting]`: every setting as this character runs
@@ -305,6 +302,18 @@ fn of_profile(of: Of) -> Profile {
 ///
 /// Why nothing was saved, in words for the player.
 pub(crate) fn change(
+    profile: &Profile,
+    path: &Path,
+    key: &str,
+    value: Option<&str>,
+) -> Result<String, String> {
+    // Read, checked and written with no other change to the file between
+    // (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
+    cena_session::store::changing(path, || changed(profile, path, key, value))
+}
+
+/// [`change`], with the file's lock held.
+fn changed(
     profile: &Profile,
     path: &Path,
     key: &str,
@@ -568,6 +577,88 @@ start_at = 90
             cena_behavior::waggle::WaggleProfile::parse(&std::fs::read_to_string(&path).unwrap())
                 .unwrap();
         assert_eq!(made.cast_list, [101, 107, 401]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A change that would not read is never written, so it cannot put
+    /// back what another change saved meanwhile; one made while another is
+    /// being made waits for it, and both are kept (the crate review of
+    /// 2026-09-28, R5).
+    #[test]
+    fn a_change_neither_puts_back_nor_loses_another() {
+        let dir = dir("a_change_neither_puts_back_nor_loses_another").unwrap();
+        let path = hunt::chain::profile_path(&dir, "ojandhaart").unwrap();
+        let who = (Some("prime"), Some("Nisugi"));
+
+        let refused = super::edited(&dir, who, "ojandhaart", |old| {
+            // Another change, saved while this one is made.
+            std::fs::write(&path, old.replace("resting = 20", "resting = 29877")).unwrap();
+            Ok((
+                old.replace("hunting = 10", "hunting = \"ten\""),
+                "hunting".to_owned(),
+            ))
+        });
+        assert!(
+            refused
+                .as_ref()
+                .is_err_and(|why| why.contains("would not read")),
+            "{refused:?}"
+        );
+        assert!(file(&dir).contains("resting = 29877"), "{}", file(&dir));
+        assert!(file(&dir).contains("hunting = 10"), "{}", file(&dir));
+
+        let other = cena_session::store::changing(&path, || {
+            let old = file(&dir);
+            let other = {
+                let dir = dir.clone();
+                std::thread::spawn(move || {
+                    super::edited(&dir, who, "ojandhaart", |old| {
+                        Ok((
+                            old.replace("hunting = 10", "hunting = 11"),
+                            "hunting".to_owned(),
+                        ))
+                    })
+                })
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::fs::write(&path, old.replace("resting = 29877", "resting = 21")).unwrap();
+            other
+        });
+        assert!(other.join().unwrap().is_ok());
+        assert!(file(&dir).contains("hunting = 11"), "{}", file(&dir));
+        assert!(file(&dir).contains("resting = 21"), "{}", file(&dir));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A heal or waggle profile's change made while another is being made
+    /// waits for it, and both are kept (R5).
+    #[test]
+    fn a_profile_change_made_meanwhile_waits() {
+        let dir = dir("a_profile_change_made_meanwhile_waits").unwrap();
+        let path = cena_behavior::waggle::path(&dir, "prime", "Nisugi").unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "start_at = 90\n").unwrap();
+        let other = cena_session::store::changing(&path, || {
+            let old = std::fs::read_to_string(&path).unwrap();
+            let other = {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    super::change(&super::of_profile(Of::Waggle), &path, "bail", Some("on"))
+                })
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::fs::write(&path, old.replace("start_at = 90", "start_at = 80")).unwrap();
+            other
+        });
+        assert!(other.join().unwrap().is_ok());
+        let made =
+            cena_behavior::waggle::WaggleProfile::parse(&std::fs::read_to_string(&path).unwrap())
+                .unwrap();
+        assert!(made.bail, "the change made meanwhile");
+        assert!(
+            (made.start_at - 80.0).abs() < f64::EPSILON,
+            "the change made first"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -686,13 +686,18 @@ impl Desk {
 fn unskinnable(handle: &SessionHandle, file: Option<&std::path::Path>, names: &[String]) {
     let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
     let Some(file) = file else { return };
-    let saved = std::fs::read_to_string(file)
-        .map_err(|e| e.to_string())
-        .and_then(|text| loot::remember_unskinnable(&text, names))
-        .and_then(|written| match written {
-            Some(text) => crate::settings::save(file, &text).map_err(|e| e.to_string()),
-            None => Ok(()),
-        });
+    // With no other change to the profile between its reading and its
+    // writing: a player may be changing it from the menu (the crate review
+    // of 2026-09-28, R5).
+    let saved = cena_session::store::changing(file, || {
+        std::fs::read_to_string(file)
+            .map_err(|e| e.to_string())
+            .and_then(|text| loot::remember_unskinnable(&text, names))
+            .and_then(|written| match written {
+                Some(text) => crate::settings::save(file, &text).map_err(|e| e.to_string()),
+                None => Ok(()),
+            })
+    });
     match saved {
         Ok(()) => say(
             NoticeKind::Info,

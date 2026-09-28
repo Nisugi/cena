@@ -618,9 +618,16 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
         );
         return;
     };
+    // Read, changed and written with no other change to the file between
+    // (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
+    cena_session::store::changing(&path, || keep_change(&path, words, say));
+}
+
+/// [`keep_edit`], on the file at `path`, its lock held.
+fn keep_change(path: &Path, words: &[String], say: Say<'_>) {
     // A file that is there and does not read is said, never written over
     // with the defaults (`plan/44` Q05).
-    let mut profile = match settings::stored(&path, cena_behavior::keep::KeepProfile::parse) {
+    let mut profile = match settings::stored(path, cena_behavior::keep::KeepProfile::parse) {
         Ok(profile) => profile,
         Err(why) => {
             return say(
@@ -647,7 +654,7 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
             let written = profile
                 .to_toml()
                 .map_err(io::Error::other)
-                .and_then(|text| cena_behavior::settings::save(&path, &text));
+                .and_then(|text| cena_behavior::settings::save(path, &text));
             match written {
                 Ok(()) => say(NoticeKind::Info, format!("Keep: {done}.")),
                 Err(e) => say(
@@ -670,11 +677,17 @@ fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Sa
         );
         return;
     };
-    let mut profile =
-        match settings::stored(&path, cena_behavior::spellcaster::CasterProfile::parse) {
-            Ok(profile) => profile,
-            Err(why) => return say(NoticeKind::Error, format!("Sc: nothing was changed: {why}")),
-        };
+    // As `keep_edit`'s.
+    cena_session::store::changing(&path, || sc_change(&path, words, say));
+}
+
+/// [`sc_edit`], on the file at `path`, its lock held.
+fn sc_change(path: &Path, words: &[String], say: Say<'_>) {
+    let mut profile = match settings::stored(path, cena_behavior::spellcaster::CasterProfile::parse)
+    {
+        Ok(profile) => profile,
+        Err(why) => return say(NoticeKind::Error, format!("Sc: nothing was changed: {why}")),
+    };
     let words: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     match cena_behavior::spellcaster::edit(&mut profile, &words) {
@@ -682,7 +695,7 @@ fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Sa
             let written = profile
                 .to_toml()
                 .map_err(io::Error::other)
-                .and_then(|text| cena_behavior::settings::save(&path, &text));
+                .and_then(|text| cena_behavior::settings::save(path, &text));
             match written {
                 Ok(()) => say(NoticeKind::Info, format!("Sc: {done}.")),
                 Err(e) => say(

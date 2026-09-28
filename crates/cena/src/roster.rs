@@ -95,7 +95,11 @@ fn load(dir: &Path) -> io::Result<File> {
 /// The file cannot be read, or the name is on more than one game and did
 /// not say which.
 pub(crate) fn find(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
-    let file = load(dir)?;
+    find_in(&load(dir)?, name)
+}
+
+/// [`find`], in `file` as it was read.
+fn find_in(file: &File, name: &str) -> io::Result<Option<Entry>> {
     if let Some((game, character)) = name.split_once(':') {
         return Ok(file.characters.get(&key(game, character)).cloned());
     }
@@ -137,14 +141,16 @@ pub(crate) fn all(dir: &Path) -> io::Result<Vec<Entry>> {
 ///
 /// The file cannot be read or written.
 pub(crate) fn record(dir: &Path, mut entry: Entry) -> io::Result<()> {
-    let mut file = load(dir)?;
-    let key = key(&entry.game_code, &entry.character);
-    entry.favourite |= file
-        .characters
-        .get(&key)
-        .is_some_and(|known| known.favourite);
-    file.characters.insert(key, entry);
-    save(dir, file)
+    changing(dir, || {
+        let mut file = load(dir)?;
+        let key = key(&entry.game_code, &entry.character);
+        entry.favourite |= file
+            .characters
+            .get(&key)
+            .is_some_and(|known| known.favourite);
+        file.characters.insert(key, entry);
+        save(dir, file)
+    })
 }
 
 /// Take the character `name` means off the roster (`find`'s names): the
@@ -154,14 +160,16 @@ pub(crate) fn record(dir: &Path, mut entry: Entry) -> io::Result<()> {
 ///
 /// The file cannot be read or written, or the name is ambiguous.
 pub(crate) fn forget(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
-    let Some(entry) = find(dir, name)? else {
-        return Ok(None);
-    };
-    let mut file = load(dir)?;
-    file.characters
-        .remove(&key(&entry.game_code, &entry.character));
-    save(dir, file)?;
-    Ok(Some(entry))
+    changing(dir, || {
+        let mut file = load(dir)?;
+        let Some(entry) = find_in(&file, name)? else {
+            return Ok(None);
+        };
+        file.characters
+            .remove(&key(&entry.game_code, &entry.character));
+        save(dir, file)?;
+        Ok(Some(entry))
+    })
 }
 
 /// Star the character `name` means, or unstar it: its entry as it is now,
@@ -171,15 +179,25 @@ pub(crate) fn forget(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
 ///
 /// The file cannot be read or written, or the name is ambiguous.
 pub(crate) fn favourite(dir: &Path, name: &str, star: bool) -> io::Result<Option<Entry>> {
-    let Some(mut entry) = find(dir, name)? else {
-        return Ok(None);
-    };
-    entry.favourite = star;
-    let mut file = load(dir)?;
-    file.characters
-        .insert(key(&entry.game_code, &entry.character), entry.clone());
-    save(dir, file)?;
-    Ok(Some(entry))
+    changing(dir, || {
+        let mut file = load(dir)?;
+        let Some(mut entry) = find_in(&file, name)? else {
+            return Ok(None);
+        };
+        entry.favourite = star;
+        file.characters
+            .insert(key(&entry.game_code, &entry.character), entry.clone());
+        save(dir, file)?;
+        Ok(Some(entry))
+    })
+}
+
+/// Run `change` -- a read of the roster, a change and its write -- with no
+/// other change to the file between: a login records its character while
+/// the launcher stars another, and each keeps its change
+/// (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
+fn changing<T>(dir: &Path, change: impl FnOnce() -> T) -> T {
+    cena_session::store::changing(&dir.join(FILENAME), change)
 }
 
 fn save(dir: &Path, mut file: File) -> io::Result<()> {
@@ -289,5 +307,54 @@ mod tests {
             }
         );
         assert!(!entry("GS3", "Nerten", "ACCT1").card(false).kept);
+    }
+
+    /// Run `meanwhile` on another thread while a change to the roster is
+    /// being made -- the file read, and written 200 ms later with Nisugi
+    /// starred -- and wait for both.
+    fn during_a_star(
+        dir: &Path,
+        meanwhile: impl FnOnce(std::path::PathBuf) -> io::Result<()> + Send + 'static,
+    ) -> io::Result<()> {
+        let other = cena_session::store::changing(&dir.join(FILENAME), || {
+            let mut file = load(dir)?;
+            let other = {
+                let dir = dir.to_owned();
+                std::thread::spawn(move || meanwhile(dir))
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            if let Some(nisugi) = file.characters.get_mut("gs3:nisugi") {
+                nisugi.favourite = true;
+            }
+            save(dir, file)?;
+            Ok::<_, io::Error>(other)
+        })?;
+        other
+            .join()
+            .map_err(|_| io::Error::other("its thread panicked"))?
+    }
+
+    /// A login's entry, a star and a forgetting, each made while another
+    /// change to the roster is being made, wait for it, and every change is
+    /// kept (the crate review of 2026-09-28, R5).
+    #[test]
+    fn a_change_made_meanwhile_waits_and_both_are_kept() -> io::Result<()> {
+        let dir = scratch("meanwhile");
+        record(&dir, entry("GS3", "Nisugi", "ACCT1"))?;
+        record(&dir, entry("GS3", "Nerten", "ACCT2"))?;
+        during_a_star(&dir, |dir| record(&dir, entry("GS3", "Dicate", "ACCT3")))?;
+        assert!(find(&dir, "Dicate")?.is_some(), "the login's entry");
+        during_a_star(&dir, |dir| favourite(&dir, "Nerten", true).map(drop))?;
+        assert!(
+            find(&dir, "Nerten")?.is_some_and(|e| e.favourite),
+            "the star"
+        );
+        during_a_star(&dir, |dir| forget(&dir, "Dicate").map(drop))?;
+        assert_eq!(find(&dir, "Dicate")?, None, "the forgetting");
+        assert!(
+            find(&dir, "Nisugi")?.is_some_and(|e| e.favourite),
+            "and the first"
+        );
+        std::fs::remove_dir_all(&dir)
     }
 }

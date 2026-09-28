@@ -48,7 +48,7 @@
 //! finish a trip at once. So **nothing here writes the file it read**. A save
 //! changes one thing -- one character's spot ([`save`]), or one target
 //! ([`save_target`]) -- by reading the file afresh, changing that, and
-//! writing it back, all under the private `WRITING` lock. A character that holds a stale
+//! writing it back, all under the file's lock ([`crate::store::changing`]). A character that holds a stale
 //! copy of someone else's spot cannot write it back, because it never writes
 //! any spot but its own; and a [`TravelFile`]'s `targets` are a copy to read
 //! -- everyone's and its own together -- which [`save`] does not write.
@@ -70,7 +70,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
 
@@ -79,9 +78,6 @@ use crate::character_store::safe_component;
 /// The version this build writes. Bump it **with a migration**: see the
 /// module docs for why this file is never simply refused.
 pub const TRAVEL_SCHEMA_VERSION: u32 = 3;
-
-/// Held across every read-change-write of the file. See the module docs.
-static WRITING: Mutex<()> = Mutex::new(());
 
 /// A character's targets by name: the room or rooms each means.
 pub type Targets = BTreeMap<String, Vec<u32>>;
@@ -348,13 +344,12 @@ impl From<Legacy> for Spot {
 /// Read the file afresh, change it, and write it back, with nobody else in
 /// this process doing the same in between.
 fn change(dir: &Path, with: impl FnOnce(&mut Shared) -> io::Result<()>) -> io::Result<PathBuf> {
-    // A panic elsewhere while holding it left the file whole: the rename is
-    // the only write, and it is atomic.
-    let _held = WRITING.lock().unwrap_or_else(PoisonError::into_inner);
-    let mut shared = read(dir)?;
-    shared.schema_version = TRAVEL_SCHEMA_VERSION;
-    with(&mut shared)?;
-    write(dir, &shared)
+    crate::store::changing(&travel_path(dir), || {
+        let mut shared = read(dir)?;
+        shared.schema_version = TRAVEL_SCHEMA_VERSION;
+        with(&mut shared)?;
+        write(dir, &shared)
+    })
 }
 
 /// This character's spot, to change. **One that does not exist yet is moved

@@ -465,9 +465,14 @@ Claude's order, each step shippable and committed on its own:
      commands for words.
    - *Check beside save:* a change is written into the profile through `;hunt set`'s own
      writer, refactored to return what it did (`hunt::settings::edited`). It loads the
-     profile as this character would after saving. A change that makes the profile
-     unreadable is put back. A change that saves but would stop the hunt running is saved,
-     and why it would not run is said with it.
+     profile as this character would before saving (`chain::load_edited`). A change that
+     makes the profile unreadable is never written. A change that saves but would stop the
+     hunt running is saved, and why it would not run is said with it.
+     > **CORRECTED 2026-09-28** (the crate review of that day, R5). This said the profile
+     > was loaded *after* saving and an unreadable change *put back*. Putting back wrote
+     > the old copy over whatever another change had saved meanwhile. The change is now
+     > checked before it is written, and the whole read, check and write holds the file's
+     > lock (`cena_session::store::changing`).
    - *What the character's own file sets* is shown, not changed. That file wins over the
      profile and has no writer yet.
    - *Claude's call, for the author to change:* one page per profile, with a heading over

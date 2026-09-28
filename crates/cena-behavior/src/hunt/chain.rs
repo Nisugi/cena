@@ -204,6 +204,44 @@ pub fn load(
     name: &str,
 ) -> Result<Loaded, LoadError> {
     let (levels, sources) = levels(dir, instance, character, name)?;
+    resolved(levels, sources)
+}
+
+/// [`load`], with the profile's own file read as `text` would make it: an
+/// edit, checked as the hunt will read it before it is saved, so a change
+/// that would not read is never written (the crate review of 2026-09-28,
+/// R5: one that was written and then put back put back over whatever
+/// another change saved meanwhile).
+///
+/// # Errors
+///
+/// As [`load`]; `text` that is not TOML is [`LoadError::Malformed`], naming
+/// the profile's file.
+pub fn load_edited(
+    dir: &Path,
+    instance: Option<&str>,
+    character: Option<&str>,
+    name: &str,
+    text: &str,
+) -> Result<Loaded, LoadError> {
+    let profile = profile_path(dir, name).ok_or_else(|| LoadError::BadName(name.to_owned()))?;
+    let edited = text
+        .parse::<toml::Table>()
+        .map_err(|e| LoadError::Malformed {
+            path: Some(profile.clone()),
+            why: e.to_string(),
+        })?;
+    let (mut levels, sources) = levels(dir, instance, character, name)?;
+    for (level, source) in levels.iter_mut().zip(&sources) {
+        if *source == profile {
+            level.clone_from(&edited);
+        }
+    }
+    resolved(levels, sources)
+}
+
+/// The profile `levels` make, lowest first, or why they make none.
+fn resolved(levels: Vec<toml::Table>, sources: Vec<PathBuf>) -> Result<Loaded, LoadError> {
     let profile = resolve(levels).map_err(|why| LoadError::Malformed { path: None, why })?;
     let problems = profile.problems();
     if !problems.is_empty() {

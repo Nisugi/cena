@@ -37,10 +37,11 @@ fn a_memory_survives_being_written_and_read() {
     set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
     file.settings.insert("ice_mode".into(), "wait".into());
     assert_eq!(load(&dir, "GSIV", "Ashryn").unwrap(), file);
-    assert!(
-        !path.with_extension("json.tmp").exists(),
-        "the temp file became the file"
-    );
+    let names: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["travel.json"], "the temp file became the file");
 }
 
 /// The settings are the player's: a trip that loaded them before the menu
@@ -329,4 +330,29 @@ fn an_old_file_that_cannot_be_trusted_stops_the_move() {
     ));
     assert!(save(&dir, &TravelFile::new("GSIV", "Ashryn")).is_err());
     assert!(!travel_path(&dir).exists());
+}
+
+/// A change made while another is being made waits for it, and both are
+/// kept: the file's lock is the store's (`store::changing`), on its path
+/// (the crate review of 2026-09-28, R5, which moved it there).
+#[test]
+fn a_change_made_meanwhile_waits_and_both_are_kept() {
+    let dir = temp_dir("meanwhile");
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
+    let path = travel_path(&dir);
+    let other = cena_session::store::changing(&path, || {
+        let old = std::fs::read_to_string(&path).unwrap();
+        let other = {
+            let dir = dir.clone();
+            std::thread::spawn(move || set_setting(&dir, "GSIV", "Ashryn", "fog", Some("on")))
+        };
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        std::fs::write(&path, old.replace("\"wait\"", "\"stop\"")).unwrap();
+        other
+    });
+    other.join().unwrap().unwrap();
+    let settings = load(&dir, "GSIV", "Ashryn").unwrap().settings;
+    assert_eq!(settings.get("ice_mode").map(String::as_str), Some("stop"));
+    assert_eq!(settings.get("fog").map(String::as_str), Some("on"));
+    let _ = std::fs::remove_dir_all(&dir);
 }
