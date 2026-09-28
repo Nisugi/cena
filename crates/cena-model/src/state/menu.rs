@@ -398,17 +398,37 @@ impl MenuCommands {
         Some(substitute(&entry.command, noun, exist, secondary))
     }
 
-    /// Resolve one wire item, consulting what the server has taught us first.
+    /// Resolve one wire item for the object clicked, `exist` and `noun`,
+    /// consulting what the server has taught us first.
     ///
     /// An unknown coordinate resolves to an item with no label and no
     /// command rather than to nothing: the game sent it, so the player has
     /// it, and a silently shortened menu is worse than a visibly unnamed
     /// entry (Rule 2.2).
+    ///
+    /// # Whose noun is which
+    ///
+    /// `@` is the **object clicked**, `#` its id: *"`@` substitutes the
+    /// object's noun and `#` substitutes its exist id"*
+    /// (`reference/wiki_clean/Wrayth protocol.txt:28`). An `<mi noun=>` is
+    /// the item's **own** word, and it fills `%`: the author's menu sends
+    /// `ask @ about %` (`2524,1906`) three times, as `noun="amplify"`,
+    /// `"codex"` and `"shatter"` (`crates/cena-protocol/tests/menu_responses.rs:30`),
+    /// so the command is `ask #<id> about amplify`. `VellumFE` reads it so
+    /// (`core/app_core/state/menus.rs`, `substitute_command`). A `secondary`
+    /// the caller supplies wins over the item's word.
+    ///
+    /// **CORRECTED 2026-09-28.** This filled `@` with the `<mi>` noun and
+    /// left `%` for the caller, which built `ask amplify about %` and, for
+    /// the 169 entries whose command has `@` and no `#` (`tell @`,
+    /// `sheathe @`), sent the verb alone on every item without a noun --
+    /// nearly all of them. A test asserted the labels differed, which both
+    /// readings pass.
     #[must_use]
     pub fn resolve_item(
         &self,
         item: &MenuItem,
-        exist: &str,
+        (exist, noun): (&str, &str),
         secondary: Option<&str>,
         learned: Option<&LearnedCommands>,
     ) -> ResolvedItem {
@@ -419,17 +439,14 @@ impl MenuCommands {
         let entry = learned
             .and_then(|l| l.entry(&coord))
             .or_else(|| self.entry(&coord));
-        // The wire's noun is the object's own; the dictionary's `@` is a
-        // slot for it.
-        let noun = item.noun.as_deref().unwrap_or_default();
-        let command = entry.map(|e| substitute(&e.command, noun, exist, secondary));
+        let topic = secondary.or(item.noun.as_deref());
+        let command = entry.map(|e| substitute(&e.command, noun, exist, topic));
         ResolvedItem {
             needs_secondary: command.as_deref().is_some_and(|c| c.contains('%')),
-            // `label.replace('@', "")` on an item with no noun leaves
-            // `"attack "` -- the template's separating space with nothing
-            // after it. MEASURED: most `<mi>` carry no `noun` at all, so
-            // trimming is the common path rather than an edge case.
-            label: entry.map(|e| e.label.replace('@', noun).trim().to_owned()),
+            // The menu is on the object, so its label names the act, not the
+            // object again: `attack`, `ask about amplify`, as `VellumFE`'s
+            // `format_menu_text` has it.
+            label: entry.map(|e| labelled(&e.label, topic)),
             command,
             // **The wire wins.** An `<mi menu_cat=>` is the game saying where
             // this item belongs in THIS menu, which is newer and more
@@ -452,13 +469,13 @@ impl MenuCommands {
     pub fn resolve(
         &self,
         menu: &Menu,
-        exist: &str,
+        clicked: (&str, &str),
         secondary: Option<&str>,
         learned: Option<&LearnedCommands>,
     ) -> Vec<ResolvedItem> {
         menu.items
             .iter()
-            .map(|item| self.resolve_item(item, exist, secondary, learned))
+            .map(|item| self.resolve_item(item, clicked, secondary, learned))
             .collect()
     }
 
@@ -477,13 +494,13 @@ impl MenuCommands {
     pub fn resolve_grouped(
         &self,
         menu: &Menu,
-        exist: &str,
+        clicked: (&str, &str),
         secondary: Option<&str>,
         learned: Option<&LearnedCommands>,
     ) -> Vec<(Option<String>, Vec<ResolvedItem>)> {
         let mut groups: BTreeMap<Option<String>, Vec<ResolvedItem>> = BTreeMap::new();
         let mut seen: Vec<Option<String>> = Vec::new();
-        for item in self.resolve(menu, exist, secondary, learned) {
+        for item in self.resolve(menu, clicked, secondary, learned) {
             let key = item.category.clone();
             if !groups.contains_key(&key) {
                 seen.push(key.clone());
@@ -509,6 +526,18 @@ impl MenuCommands {
 }
 
 /// Fill a template's placeholders. See [`MenuCommands::command_for`].
+/// A label as a menu shows it: `@` and `#` left out, the menu being on the
+/// object already, and `%` the `topic` when there is one; runs of space
+/// collapsed where a slot was.
+fn labelled(template: &str, topic: Option<&str>) -> String {
+    let named = template.replace(['@', '#'], "");
+    let named = match topic {
+        Some(topic) => named.replace('%', topic),
+        None => named,
+    };
+    named.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 fn substitute(template: &str, noun: &str, exist: &str, secondary: Option<&str>) -> String {
     let filled = template
         .replace('@', noun)

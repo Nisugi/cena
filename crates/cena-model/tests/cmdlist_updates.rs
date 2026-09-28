@@ -169,13 +169,14 @@ mod resolution {
         let state = state_after(&[super::merging::NOVEL]);
         let m = menu(r#"<menu id="1" cat_list="6"><mi coord="9999,1"/></menu>"#);
 
-        let without = MenuCommands::get().resolve(&m, "123", None, None);
+        let without = MenuCommands::get().resolve(&m, ("123", ""), None, None);
         assert_eq!(
             without[0].label, None,
             "guard: unknown to the shipped table"
         );
 
-        let with = MenuCommands::get().resolve(&m, "123", None, Some(&state.learned_commands));
+        let with =
+            MenuCommands::get().resolve(&m, ("123", ""), None, Some(&state.learned_commands));
         assert_eq!(with[0].label.as_deref(), Some("frobnicate"));
         assert_eq!(with[0].command.as_deref(), Some("frobnicate #123"));
         assert_eq!(with[0].category.as_deref(), Some("6"));
@@ -198,7 +199,8 @@ mod resolution {
             Some("attack @"),
             "guard: the shipped table says attack"
         );
-        let with = MenuCommands::get().resolve(&m, "123", None, Some(&state.learned_commands));
+        let with =
+            MenuCommands::get().resolve(&m, ("123", ""), None, Some(&state.learned_commands));
         assert_eq!(with[0].label.as_deref(), Some("assault"));
     }
 }
