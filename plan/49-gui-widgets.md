@@ -690,6 +690,7 @@ Launch tab name.
   a widget's parent unchanged and each card is its own parent. The id is kept so a card's
   widgets keep their state as others come and go.
 - *Not persisted yet.* The card width lasts the run; keeping it is a Stage D setting.
+  *(Kept since Stage D step 2, `window.toml`.)*
 
 **Steps 6 and 7 BUILT 2026-09-27.**
 
@@ -734,6 +735,20 @@ proposed shape, and ten questions for the author (§5). No editor is written bef
 answered. Two defects it found are fixed: a character named Presets would have written its
 layout over the preset library (`094b482`), and the loot profile's learned `unskinnable` list
 was not written atomically (`74a76e1`).
+
+**BUILT 2026-09-27**, in the eight steps the author's *"stage d!"* set going, each with its
+own record in `plan/50` §7:
+1. one settings menu, over pages the binary builds from each behavior's key table;
+2. Hydra's own *Window* and *Keys* pages;
+3. the character's *General*, *Player log* and *Recording* pages, with `--record` retired;
+4. *Travel*, typed, with the map's own settings;
+5. the loot profile as *Loot*, *Skinning* and *Selling*;
+6. a page per hunt profile, every setting shown with where it came from;
+7. layouts by game and name, and a fixed data folder;
+8. a widget's right-click opening the menu at its page.
+
+The pages are not a schema-rendered editor in the sense §7f meant. They are each behavior's
+own key table, drawn by one generic menu, and a hunt profile's own table read whole.
 
 ### Stage E — drawers
 

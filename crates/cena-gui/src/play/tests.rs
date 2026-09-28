@@ -152,6 +152,28 @@ fn stop_asks_to_stop() {
     assert_eq!(harness.state().asked, [Asked::Stop]);
 }
 
+/// A widget's right-click opens the settings menu at the page that governs
+/// it (`plan/50` §7 step 8): the hunt panel's is the first hunt page; the
+/// Keys menu opens Hydra's Keys page.
+#[test]
+fn a_widget_opens_the_settings_where_it_is_set() {
+    let mut harness = harness();
+    harness
+        .get_by_label("Waiting: mana 30%, wants 50%")
+        .click_secondary();
+    harness.run();
+    harness.get_by_label("Settings...").click();
+    harness.run();
+    harness.get_by_label("Keys").click();
+    harness.run();
+    harness.get_by_label("Change the keys...").click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [Asked::Settings(Some("hunt:")), Asked::Keys]
+    );
+}
+
 /// The author's complaint about Despana, and `VellumFE`'s answer: a click
 /// that nothing else took puts the keyboard back in the command input.
 #[test]

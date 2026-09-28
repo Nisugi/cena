@@ -44,6 +44,8 @@ pub(super) enum Top {
     AddWidget,
     /// The settings menu was asked for.
     Settings,
+    /// The settings menu's *Keys* page was asked for.
+    Keys,
 }
 
 /// The top bar: who, how connected, the keybinds, the layout's grid, Stop;
@@ -81,6 +83,10 @@ pub(super) fn top(
                 }
                 if ui.button("Read the keybinds again").clicked() {
                     asked = Some(Top::ReloadKeys);
+                    ui.close();
+                }
+                if ui.button("Change the keys...").clicked() {
+                    asked = Some(Top::Keys);
                     ui.close();
                 }
             });

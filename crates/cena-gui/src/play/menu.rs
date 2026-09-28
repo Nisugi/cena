@@ -54,6 +54,8 @@ enum Act {
     Rename(String),
     Follow(u32, Option<String>),
     Save(String),
+    /// The settings menu, at this page.
+    Settings(&'static str),
 }
 
 impl Play {
@@ -213,12 +215,16 @@ impl Play {
             }
             return false;
         }
+        if let Act::Settings(page) = act {
+            self.out = Some(Asked::Settings(Some(page)));
+            return false;
+        }
         match act {
             Act::Remove(placed) => layout.remove_widget(holder, placed),
             Act::RemoveWindow => layout.remove_window(holder),
             Act::Rename(title) => layout.rename(holder, &title),
             Act::Follow(placed, who) => layout.follow(placed, who),
-            Act::Save(_) => {}
+            Act::Save(_) | Act::Settings(_) => {}
         }
         true
     }
@@ -343,6 +349,14 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
         .and_then(|placed| widget_in(layout, menu.holder, placed));
     if let (Some(placed), Some(widget)) = (menu.placed, widget) {
         ui.weak(widget.name());
+        if let Some(page) = widget.settings_page()
+            && ui
+                .button("Settings...")
+                .on_hover_text("The settings menu, where this is set")
+                .clicked()
+        {
+            act = Some(Act::Settings(page));
+        }
         if ui.button("Remove").clicked() {
             act = Some(Act::Remove(placed));
         }

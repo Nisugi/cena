@@ -51,8 +51,11 @@ pub(crate) enum Asked {
     SavePreset(crate::layout::Preset),
     /// Forget the preset of this name.
     ForgetPreset(String),
-    /// Open the settings menu on this character (`plan/50` §7 step 1).
-    Settings,
+    /// Open the settings menu on this character (`plan/50` §7 step 1): at
+    /// the page a widget's right-click names, when one does (step 8).
+    Settings(Option<&'static str>),
+    /// Open the settings menu at Hydra's *Keys* page (step 8).
+    Keys,
 }
 
 /// What a play window shows this frame.
@@ -181,7 +184,8 @@ impl Play {
         let mut changed = false;
         match top {
             Some(draw::Top::Stop) => asked = Some(Asked::Stop),
-            Some(draw::Top::Settings) => asked = Some(Asked::Settings),
+            Some(draw::Top::Settings) => asked = Some(Asked::Settings(None)),
+            Some(draw::Top::Keys) => asked = Some(Asked::Keys),
             Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
             Some(draw::Top::Fit) => {
                 self.layout = None;

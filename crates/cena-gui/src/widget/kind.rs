@@ -288,6 +288,26 @@ impl Widget {
         }
     }
 
+    /// The settings menu's page that holds what this widget shows or acts
+    /// on, which its right-click opens (`plan/50` §7 step 8): the page's id,
+    /// or the start of it for a page there may be several of (`hunt:`, one
+    /// per profile). `None` for a widget no setting governs.
+    pub(crate) fn settings_page(&self) -> Option<&'static str> {
+        Some(match self {
+            Widget::Story => "general",
+            Widget::Health => "heal",
+            Widget::RightHand | Widget::LeftHand | Widget::Containers => "loot",
+            Widget::RoomTitle | Widget::RoomDescription | Widget::Exits | Widget::Compass => {
+                "travel"
+            }
+            Widget::Hunt | Widget::Stance => "hunt:",
+            Widget::Effects(_) => "keep",
+            Widget::Spellbook | Widget::Prepared => "sc",
+            Widget::Combat => "record",
+            _ => return None,
+        })
+    }
+
     /// Whether it is one character's story, which never follows another
     /// character (`plan/49` §1 row 7): no window mixes two characters'
     /// story (`plan/29` §5a R2). Hydra's messages count as its story, and

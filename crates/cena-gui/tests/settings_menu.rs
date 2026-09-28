@@ -688,3 +688,36 @@ fn one_table_has_no_heading() {
     assert!(harness.query_all_by_label("Kneel to skin").next().is_some());
     assert!(harness.query_by_label("skin").is_none(), "no heading");
 }
+
+/// Every other way in opens the one menu at its place (`plan/50` §7 step
+/// 8): a page by its id, or the first whose id begins so, a hunt page.
+#[test]
+fn a_way_in_opens_the_menu_at_its_page() {
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        pages: Some(("GS3:Nisugi".to_owned(), pages())),
+        ..Board::default()
+    };
+    board
+        .menu
+        .open_at(Some("GS3:Nisugi".to_owned()), Some("sc"));
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    assert!(
+        harness.query_by_label("boom = 910").is_some(),
+        "Spellcaster's"
+    );
+    assert_eq!(harness.state().menu.page(), Some("sc"));
+
+    let mut with_hunt = pages();
+    with_hunt.push(page("hunt:ojandhaart", "Hunt: ojandhaart", Vec::new()));
+    harness.state_mut().pages = Some(("GS3:Nisugi".to_owned(), with_hunt));
+    harness
+        .state_mut()
+        .menu
+        .open_at(Some("GS3:Nisugi".to_owned()), Some("hunt:"));
+    harness.run();
+    assert_eq!(harness.state().menu.page(), Some("hunt:ojandhaart"));
+}

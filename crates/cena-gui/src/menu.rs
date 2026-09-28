@@ -98,9 +98,19 @@ impl Menu {
     /// play window's button names its own. `None` opens Hydra's own, as the
     /// hub's button does. A character's pages are asked for afresh.
     pub fn open_for(&mut self, character: Option<String>) {
+        self.open_at(character, None);
+    }
+
+    /// Open the menu as [`Self::open_for`] does, at `page` (`plan/50` §7
+    /// step 8: every other way in opens the one menu at its place). A page
+    /// named by the start of its id, `hunt:`, is the first of its kind.
+    pub fn open_at(&mut self, character: Option<String>, page: Option<&str>) {
         self.open = true;
         self.asked = None;
         self.character = character;
+        if let Some(page) = page {
+            self.page = Some(page.to_owned());
+        }
     }
 
     /// The character whose settings are shown, as the roster names it;
@@ -108,6 +118,12 @@ impl Menu {
     #[must_use]
     pub fn character(&self) -> Option<&str> {
         self.character.as_deref()
+    }
+
+    /// The page showing, by its id; `None` until one is chosen.
+    #[must_use]
+    pub fn page(&self) -> Option<&str> {
+        self.page.as_deref()
     }
 
     /// Whether the *Keys* page waits for a key to be pressed: the window
@@ -216,7 +232,16 @@ impl Menu {
             .as_deref()
             .is_none_or(|id| titles.iter().all(|(page, _)| *page != id))
         {
-            self.page = titles.first().map(|(id, _)| (*id).to_owned());
+            // A page asked for by the start of its id, or the first.
+            let started = self.page.as_deref().and_then(|start| {
+                titles
+                    .iter()
+                    .find(|(page, _)| page.starts_with(start))
+                    .map(|(page, _)| *page)
+            });
+            self.page = started
+                .or_else(|| titles.first().map(|(id, _)| *id))
+                .map(str::to_owned);
         }
         ui.vertical(|ui| {
             ui.set_width(140.0);

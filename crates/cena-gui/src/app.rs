@@ -184,14 +184,18 @@ impl App {
             self.menu.tell(why);
         }
         for seat in &seats {
-            if self.play(ui.ctx(), seat, &seats) {
-                // The character's own settings, by its roster name.
-                let name = glance
-                    .roster
-                    .iter()
-                    .find(|card| card.character.eq_ignore_ascii_case(&seat.name))
-                    .map(crate::menu::roster_name);
-                self.menu.open_for(name);
+            match self.play(ui.ctx(), seat, &seats) {
+                Some(Asked::Settings(page)) => {
+                    // The character's own settings, by its roster name.
+                    let name = glance
+                        .roster
+                        .iter()
+                        .find(|card| card.character.eq_ignore_ascii_case(&seat.name))
+                        .map(crate::menu::roster_name);
+                    self.menu.open_at(name, page);
+                }
+                Some(Asked::Keys) => self.menu.open_at(None, Some("keys")),
+                _ => {}
             }
         }
         self.settings(ui.ctx(), &glance);
@@ -285,15 +289,18 @@ impl App {
     }
 
     /// Show `seat`'s play window, if open, and act on what it asked. The
-    /// other `seats` are the characters its widgets may follow. Whether it
-    /// asked for the settings menu, which the app opens on its character.
-    fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>, seats: &[Arc<Seat>]) -> bool {
+    /// other `seats` are the characters its widgets may follow. The settings
+    /// menu, when it asked for it, which the app opens.
+    fn play(
+        &mut self,
+        context: &egui::Context,
+        seat: &Arc<Seat>,
+        seats: &[Arc<Seat>],
+    ) -> Option<Asked> {
         let (keys, numpad, keys_said) = (&self.keys, &mut self.numpad, &self.keys_said);
         let numlock = self.numlock;
         let close_with_session = self.own.close_with_session();
-        let Some(window) = self.plays.get_mut(&seat.id.0) else {
-            return false;
-        };
+        let window = self.plays.get_mut(&seat.id.0)?;
         let lifecycle = lock(&seat.card).lifecycle.clone();
         // Closed with its session when the player asked for that (`plan/50`
         // §6 item 11), once: reopened from its card, it stays open.
@@ -303,7 +310,7 @@ impl App {
         }
         window.ended = ended;
         if !window.open {
-            return false;
+            return None;
         }
         let snapshot = lock(&seat.snapshot).clone();
         let hunt = lock(&seat.hunt).clone();
@@ -361,7 +368,7 @@ impl App {
             Some(Asked::SavePreset(preset)) => self.presets.keep(preset),
             Some(Asked::ForgetPreset(name)) => self.presets.forget(&name),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
-            Some(Asked::Settings) => return true,
+            Some(asked @ (Asked::Settings(_) | Asked::Keys)) => return Some(asked),
             Some(Asked::Stop) => {
                 let symbol = seat
                     .handle
@@ -371,7 +378,7 @@ impl App {
             }
             None => {}
         }
-        false
+        None
     }
 
     /// The window was asked to close. With a character still playing, it

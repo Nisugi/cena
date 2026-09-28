@@ -507,3 +507,28 @@ Claude's order, each step shippable and committed on its own:
      dropped. That test's first form looked for a widget's title, which is labelled only
      while arranging, and so passed either way.
 8. **The ways in:** a widget's right-click opens the one menu at its setting.
+
+   **BUILT 2026-09-27.** Every step of Stage D is built.
+   - *A widget's right-click* offers *Settings...* where a setting governs it. It opens the one
+     menu on the widget's character, at that page (`Widget::settings_page`,
+     `crates/cena-gui/src/widget/kind.rs`):
+
+     | Widget | Page |
+     |---|---|
+     | the story | *General* |
+     | health | *Heal* |
+     | the hands and the containers | *Loot* |
+     | the room and its exits and compass | *Travel* |
+     | the hunt panel and the stance | the first hunt page |
+     | the active effects | *Keep* |
+     | the spellbook and what is prepared | *Spellcaster* |
+     | combat | *Recording* |
+
+     Any other widget has no setting of its own and offers none.
+   - *The Keys menu* on a play window's top bar has *Change the keys...*, which opens
+     Hydra's *Keys* page.
+   - *At the page:* the menu opens at a page by its id, or by the start of one, `hunt:`
+     being the first hunt page (`Menu::open_at`).
+   - *Claude's call, for the author to change:* which widget opens which page.
+   - *Checked:* 9 mutants over the mapping, the menu item, the Keys menu, the page opening
+     and the app's wiring, all caught.
