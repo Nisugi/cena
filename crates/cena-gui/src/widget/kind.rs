@@ -288,6 +288,31 @@ impl Widget {
         }
     }
 
+    /// How it draws its bar unless the player picks otherwise, when it is
+    /// one bar: a vital says its label, numbers and percent; the pulse its
+    /// words. `None` for a widget that is not a bar.
+    pub(crate) fn bar_look(&self) -> Option<crate::bar::Look> {
+        use crate::bar::{Fills, Look, Place, Says};
+        let says = match self {
+            Widget::Health | Widget::Mana | Widget::Stamina | Widget::Spirit => Says {
+                label: true,
+                numbers: true,
+                percent: true,
+            },
+            Widget::Pulse => Says {
+                label: true,
+                numbers: false,
+                percent: false,
+            },
+            _ => return None,
+        };
+        Some(Look {
+            fills: Fills::Right,
+            place: Place::Inside,
+            says,
+        })
+    }
+
     /// The settings menu's page that holds what this widget shows or acts
     /// on, which its right-click opens (`plan/50` §7 step 8): the page's id,
     /// or the start of it for a page there may be several of (`hunt:`, one

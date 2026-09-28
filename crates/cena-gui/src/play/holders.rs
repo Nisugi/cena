@@ -130,6 +130,7 @@ impl Play {
             seen,
             others,
             follows: &layout.follows,
+            looks: &layout.looks,
             session,
             read: &mut self.read,
             sent: None,

@@ -63,6 +63,11 @@ pub(crate) struct Layout {
     /// 3). A widget not here follows its window's character.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) follows: BTreeMap<u32, String>,
+    /// How each bar widget draws its bar, by the widget's id, when the
+    /// player picked it from its right-click menu (`plan/49` §2, a widget's
+    /// options). A bar not here draws as its kind says.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) looks: BTreeMap<u32, crate::bar::Look>,
 }
 
 /// One window in a play window: a standalone window or a custom window.
@@ -145,6 +150,7 @@ impl Layout {
             next: 1,
             holders: Vec::new(),
             follows: BTreeMap::new(),
+            looks: BTreeMap::new(),
         };
         let story = layout.place(Widget::Story);
         layout.add(

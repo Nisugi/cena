@@ -24,7 +24,8 @@ pub const STAMINA: Color32 = Color32::from_rgb(0x55, 0xb8, 0x6c);
 pub const SPIRIT: Color32 = Color32::from_rgb(0xcb, 0xa9, 0x42);
 
 /// Which way a bar fills as its value grows.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Fills {
     /// Horizontal, from the left edge.
     #[default]
@@ -38,7 +39,8 @@ pub enum Fills {
 }
 
 /// Where a bar's text goes.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Place {
     /// Over the bar, centred.
     #[default]
@@ -57,7 +59,7 @@ pub enum Place {
 
 /// What a bar's text says, in this order: its label, its numbers
 /// (`current/max`), its percent. Any combination; none is no text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Says {
     /// The bar's label: "HP".
     pub label: bool,
@@ -77,6 +79,33 @@ impl Default for Says {
         }
     }
 }
+
+/// How a bar widget draws its bar: which way it fills, where its text goes
+/// and what the text says. The player picks it from the widget's right-click
+/// menu, and it is kept with the layout (`plan/49` §2, a widget's options).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Look {
+    /// Which way it fills.
+    pub fills: Fills,
+    /// Where its text goes.
+    pub place: Place,
+    /// What its text says.
+    pub says: Says,
+}
+
+impl Fills {
+    /// Whether it fills up or down, standing upright.
+    #[must_use]
+    pub const fn upright(self) -> bool {
+        matches!(self, Self::Up | Self::Down)
+    }
+}
+
+/// How thick an across bar is: one line.
+const THICK: f32 = 18.0;
+
+/// The least a bar is, either way, however little room it is given.
+const LEAST: f32 = 8.0;
 
 /// Art laid over a bar: a texture of `size` pixels, stretched whole, or
 /// framed -- a nine-slice, whose corners keep their size and whose edges
@@ -197,6 +226,45 @@ impl<'a> Bar<'a> {
     /// What its text says.
     pub fn says(mut self, says: Says) -> Self {
         self.says = says;
+        self
+    }
+
+    /// Drawn as `look` says: which way it fills, where its text goes, and
+    /// what the text says.
+    pub fn look(self, look: Look) -> Self {
+        self.fills(look.fills).text(look.place).says(look.says)
+    }
+
+    /// Sized to what `ui` has left, its text outside it counted. Across, it is
+    /// as wide as the room and one line thick; upright, as wide and as tall as
+    /// the room, so the space it is given is its shape.
+    pub fn fitted(mut self, ui: &egui::Ui) -> Self {
+        let room = ui.available_size();
+        let words = self.words();
+        let text = if self.place == Place::Inside || self.place == Place::Hidden || words.is_empty()
+        {
+            Vec2::ZERO
+        } else {
+            ui.painter()
+                .layout_no_wrap(
+                    words,
+                    egui::TextStyle::Body.resolve(ui.style()),
+                    Color32::PLACEHOLDER,
+                )
+                .size()
+                + Vec2::splat(GAP)
+        };
+        let left = match self.place {
+            Place::Above | Place::Below => Vec2::new(room.x, room.y - text.y),
+            Place::Left | Place::Right => Vec2::new(room.x - text.x, room.y),
+            Place::Inside | Place::Hidden => room,
+        };
+        let height = if self.fills.upright() {
+            left.y
+        } else {
+            left.y.min(THICK)
+        };
+        self.size = Some(Vec2::new(left.x.max(LEAST), height.max(LEAST)));
         self
     }
 

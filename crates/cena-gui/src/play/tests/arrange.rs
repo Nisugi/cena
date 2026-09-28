@@ -47,26 +47,36 @@ fn arranging<'a>() -> Harness<'a, Scene> {
     harness
 }
 
-/// Arrange is in the Layout menu; on, each cell of a custom window shows
-/// its widget's name, and off, none does.
+/// Arrange is a switch on the top bar, lit while it is on: on, each cell of
+/// a custom window shows its widget's name; off again, none does. A new
+/// custom window turns it on, and the same switch turns it off.
 #[test]
-fn arrange_from_the_menu_shows_each_cell_by_name() {
+fn arrange_from_the_top_bar_shows_each_cell_by_name() {
     let mut harness = harness();
     harness.run();
     assert!(
         harness.query_by_label("Right hand").is_none(),
         "off at first"
     );
-    harness.get_by_label("Layout").click();
-    harness.run();
     harness.get_by_label("Arrange").click();
-    harness.run();
-    harness.key_press(egui::Key::Escape);
     harness.run();
     assert!(harness.state().play.arranging);
     for name in ["Health", "Right hand", "Roundtime", "Exits"] {
         assert!(harness.query_by_label(name).is_some(), "{name}");
     }
+    harness.get_by_label("Arrange").click();
+    harness.run();
+    assert!(!harness.state().play.arranging);
+    assert!(harness.query_by_label("Right hand").is_none(), "off again");
+
+    harness.get_by_label("Layout").click();
+    harness.run();
+    harness.get_by_label("New custom window").click();
+    harness.run();
+    assert!(harness.state().play.arranging, "a new window turns it on");
+    harness.get_by_label("Arrange").click();
+    harness.run();
+    assert!(!harness.state().play.arranging, "and the switch off");
 }
 
 /// With Arrange off, dragging where a widget is takes no widget anywhere.
@@ -343,4 +353,57 @@ fn a_widget_dragged_out_shows_where_it_goes() {
     harness.snapshot("arrange");
     harness.drop_at(to);
     harness.step();
+}
+
+/// A bar widget's right-click has its own items: which way it fills, where
+/// its text goes, and what it says. Each is kept with the layout, by the
+/// widget's id, while the menu stays open for the next; the widget's own
+/// look goes with it when it is removed.
+#[test]
+fn a_bar_is_drawn_as_its_menu_says() {
+    use crate::bar::{Fills, Place};
+    let mut harness = harness();
+    harness.run();
+    let health = layout(&harness)
+        .holders
+        .iter()
+        .find_map(|holder| match &holder.holds {
+            Holds::Custom(custom) => custom
+                .cells
+                .iter()
+                .flat_map(|cell| cell.tabs.iter())
+                .find(|placed| placed.widget == Widget::Health)
+                .map(|placed| placed.id),
+            Holds::One(_) => None,
+        })
+        .expect("a health bar");
+    let bar = harness.get_by_label_contains("HP ");
+    let across = bar.rect().height();
+    bar.click_secondary();
+    harness.run();
+    // Drawn as it says: its words below it make it taller.
+    harness.get_by_label("Below").click();
+    harness.run();
+    let below = harness.get_by_label_contains("HP ").rect().height();
+    assert!(below > across + 4.0, "{below} against {across}");
+    harness.get_by_label("↑").click();
+    harness.run();
+    harness.get_by_label("None").click();
+    harness.run();
+    let look = layout(&harness).looks.get(&health).copied();
+    assert_eq!(
+        look.map(|look| (look.fills, look.place)),
+        Some((Fills::Up, Place::Hidden))
+    );
+    assert!(
+        harness.query_by_label("Percent").is_some(),
+        "the menu stays open"
+    );
+
+    harness.get_by_label("Remove").click();
+    harness.run();
+    assert!(
+        !layout(&harness).looks.contains_key(&health),
+        "its look goes with it"
+    );
 }

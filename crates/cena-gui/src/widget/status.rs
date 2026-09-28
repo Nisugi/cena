@@ -304,8 +304,14 @@ pub(super) fn clock(seconds: u32) -> String {
 /// The pulse's fill.
 const PULSE: Color32 = Color32::from_rgb(0x47, 0x84, 0xd9);
 
-/// When the next pulse comes, as a bar that fills toward it.
-pub(super) fn pulse(ui: &mut egui::Ui, state: Option<&GameState>, name: &str) {
+/// When the next pulse comes, as a bar that fills toward it, drawn as
+/// `look` says.
+pub(super) fn pulse(
+    ui: &mut egui::Ui,
+    state: Option<&GameState>,
+    name: &str,
+    look: Option<crate::bar::Look>,
+) {
     let now = state.and_then(GameState::game_time_now);
     let (label, percent) = pulse_said(
         state.and_then(|state| state.world.pulse.as_ref()),
@@ -317,16 +323,11 @@ pub(super) fn pulse(ui: &mut egui::Ui, state: Option<&GameState>, name: &str) {
         current: None,
         max: None,
     });
-    ui.add(
-        Bar::new(&label, amount)
-            .fill(PULSE)
-            .size([ui.available_width(), 18.0])
-            .says(Says {
-                label: true,
-                numbers: false,
-                percent: false,
-            }),
-    );
+    let mut drawn = Bar::new(&label, amount).fill(PULSE);
+    if let Some(look) = look {
+        drawn = drawn.look(look);
+    }
+    ui.add(drawn.fitted(ui));
 }
 
 /// What the pulse bar says at server second `now`, and how full it is:

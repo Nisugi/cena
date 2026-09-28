@@ -6,7 +6,7 @@ use cena_session::{Body, GameState, Notice, NoticeKind, RoomItem, Snapshot, Vita
 use egui::{Color32, Id, RichText};
 
 use super::{Seen, Widget, character, lists, room, status};
-use crate::bar::{self, Amount, Bar, Says};
+use crate::bar::{self, Amount, Bar};
 use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
 
@@ -17,8 +17,15 @@ use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
     clippy::too_many_lines,
     reason = "the catalog's table: one arm per kind, each a call; split, it would hide which kind draws how"
 )]
-pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
+pub(super) fn draw(
+    widget: &Widget,
+    ui: &mut egui::Ui,
+    seen: &Seen<'_>,
+    id: Id,
+    look: Option<bar::Look>,
+) -> Option<String> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
+    let look = look.or_else(|| widget.bar_look());
     let named = |label: &str| {
         seen.who
             .map_or_else(|| label.to_owned(), |who| format!("{who} {label}"))
@@ -39,7 +46,7 @@ pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) 
         Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
         Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),
-        Widget::Pulse => status::pulse(ui, state, &named("Pulse")),
+        Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
         Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
         Widget::Story => story(ui, &seen.story.lines, seen.open, id),
         Widget::Stream(stream_id) => stream(ui, seen, stream_id, id),
@@ -51,19 +58,28 @@ pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) 
             &named("HP"),
             state.and_then(GameState::health),
             bar::HEALTH,
+            look,
         ),
-        Widget::Mana => vital(ui, &named("MP"), state.and_then(GameState::mana), bar::MANA),
+        Widget::Mana => vital(
+            ui,
+            &named("MP"),
+            state.and_then(GameState::mana),
+            bar::MANA,
+            look,
+        ),
         Widget::Stamina => vital(
             ui,
             &named("SP"),
             state.and_then(GameState::stamina),
             bar::STAMINA,
+            look,
         ),
         Widget::Spirit => vital(
             ui,
             &named("Sp"),
             state.and_then(GameState::spirit),
             bar::SPIRIT,
+            look,
         ),
         Widget::RightHand => held(ui, &named("Right"), state.map(|state| &state.right_hand)),
         Widget::LeftHand => held(ui, &named("Left"), state.map(|state| &state.left_hand)),
@@ -169,23 +185,24 @@ fn scrolled(ui: &mut egui::Ui, id: Id, add: impl FnOnce(&mut egui::Ui)) {
         .show(ui, add);
 }
 
-/// A vital as a bar as wide as it is given: its label, numbers and percent.
-fn vital(ui: &mut egui::Ui, label: &str, vital: Option<Vital>, color: Color32) {
+/// A vital as a bar fitted to what it is given, drawn as `look` says.
+fn vital(
+    ui: &mut egui::Ui,
+    label: &str,
+    vital: Option<Vital>,
+    color: Color32,
+    look: Option<bar::Look>,
+) {
     let amount = vital.map(|vital| Amount {
         percent: vital.percent,
         current: vital.current,
         max: vital.max,
     });
-    ui.add(
-        Bar::new(label, amount)
-            .fill(color)
-            .size([ui.available_width(), 18.0])
-            .says(Says {
-                label: true,
-                numbers: true,
-                percent: true,
-            }),
-    );
+    let mut drawn = Bar::new(label, amount).fill(color);
+    if let Some(look) = look {
+        drawn = drawn.look(look);
+    }
+    ui.add(drawn.fitted(ui));
 }
 
 /// What a hand holds, after which hand: `?` until the game has said.

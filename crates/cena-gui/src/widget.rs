@@ -77,8 +77,21 @@ impl Widget {
     /// so two of one kind keep apart what they remember -- a scroll, say.
     /// A line the player asked it to send, as if typed -- a compass's
     /// direction -- if one was.
+    #[cfg(test)]
     pub(crate) fn draw(&self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
-        draw::draw(self, ui, seen, id)
+        draw::draw(self, ui, seen, id, None)
+    }
+
+    /// [`Self::draw`], a bar drawn as `look` says when the player picked one
+    /// ([`Self::bar_look`] otherwise).
+    pub(crate) fn draw_with(
+        &self,
+        ui: &mut egui::Ui,
+        seen: &Seen<'_>,
+        id: Id,
+        look: Option<crate::bar::Look>,
+    ) -> Option<String> {
+        draw::draw(self, ui, seen, id, look)
     }
 }
 

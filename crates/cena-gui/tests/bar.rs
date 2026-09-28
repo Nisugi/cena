@@ -173,3 +173,45 @@ fn the_bars_as_drawn() {
     harness.run();
     harness.snapshot("bars");
 }
+
+/// Fitted, a bar takes the room it is given: across, as wide as the room and
+/// one line thick; upright, the whole room, so the space is its shape; with
+/// its text outside, the text's room is left for it (`plan/49` §2, a bar
+/// widget's options).
+#[test]
+fn a_fitted_bar_takes_its_room() {
+    let room = Vec2::new(160.0, 100.0);
+    let fitted = |fills: Fills, place: Place| {
+        let mut harness = Harness::builder().with_size((300.0, 200.0)).build_ui_state(
+            move |ui, drawn: &mut Option<Rect>| {
+                ui.allocate_ui(room, |ui| {
+                    ui.set_min_size(room);
+                    let bar = Bar::new("HP", Some(amount(50)))
+                        .fills(fills)
+                        .text(place)
+                        .says(ALL);
+                    *drawn = Some(ui.add(bar.fitted(ui)).rect);
+                });
+            },
+            None,
+        );
+        harness.run();
+        harness.state().unwrap_or(Rect::NOTHING)
+    };
+    let across = fitted(Fills::Right, Place::Inside);
+    assert!((across.width() - room.x).abs() < 0.5, "{across:?}");
+    assert!((across.height() - 18.0).abs() < 0.5, "one line thick");
+    let upright = fitted(Fills::Up, Place::Inside);
+    assert!((upright.size() - room).length() < 0.5, "{upright:?}");
+    for place in [Place::Below, Place::Left] {
+        let with_text = fitted(Fills::Up, place);
+        assert!(
+            with_text.width() <= room.x + 0.5 && with_text.height() <= room.y + 0.5,
+            "{place:?}: {with_text:?} fits in {room:?}"
+        );
+        assert!(
+            with_text.width() > room.x - 1.0 || with_text.height() > room.y - 1.0,
+            "{place:?}: {with_text:?} fills the room"
+        );
+    }
+}

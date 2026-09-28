@@ -587,3 +587,26 @@ fn a_custom_window_is_renamed_and_a_widget_unfollowed() {
     layout.follow(exits, None);
     assert!(layout.follows.is_empty());
 }
+
+/// A bar's look is kept with the layout and read back as it was.
+#[test]
+fn a_bars_look_is_kept_with_the_layout() {
+    use crate::bar::{Fills, Look, Place, Says};
+    let dir = std::env::temp_dir().join(format!("cena-layout-look-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let look = Look {
+        fills: Fills::Up,
+        place: Place::Below,
+        says: Says {
+            label: true,
+            numbers: false,
+            percent: true,
+        },
+    };
+    layout.looks.insert(7, look);
+    layout.save(&dir, None, "Ashryn").expect("saved");
+    let read = Layout::load(&dir, None, "Ashryn").expect("read back");
+    assert_eq!(read.looks.get(&7), Some(&look));
+    let _ = std::fs::remove_dir_all(&dir);
+}

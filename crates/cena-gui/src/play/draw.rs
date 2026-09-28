@@ -19,6 +19,8 @@ pub(super) struct Drawing<'a> {
     pub(super) others: &'a [Character],
     /// Which widget follows which of them, by id (`Layout::follows`).
     pub(super) follows: &'a BTreeMap<u32, String>,
+    /// How each bar widget draws its bar, by id (`Layout::looks`).
+    pub(super) looks: &'a BTreeMap<u32, crate::bar::Look>,
     /// Which session: every id in the window is its own.
     pub(super) session: u32,
     /// How far each widget that counts what it says was read, by id.
@@ -101,8 +103,6 @@ pub(super) fn top(
                         asked = Some(Top::Grid);
                     }
                 });
-                ui.checkbox(arranging, "Arrange")
-                    .on_hover_text("Move, resize and drag widgets in and out of custom windows");
                 if ui.button("Add a widget...").clicked() {
                     asked = Some(Top::AddWidget);
                     ui.close();
@@ -116,6 +116,11 @@ pub(super) fn top(
                     ui.close();
                 }
             });
+            // On the bar, lit while it is on, so the mode is seen and left in
+            // one click: a new custom window turns it on (the author,
+            // 2026-09-28, stuck in it with the switch in the Layout menu).
+            ui.toggle_value(arranging, "Arrange")
+                .on_hover_text("Move, resize and drag widgets in and out of custom windows");
             if let Some(why) = unsaved {
                 ui.colored_label(WRONG, format!("Layout not saved: {why}"));
             }
@@ -212,7 +217,8 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
         if let Some(count) = placed.widget.count(&drawing.seen) {
             drawing.read.insert(placed.id, count);
         }
-        if let Some(line) = placed.widget.draw(ui, &drawing.seen, id) {
+        let look = drawing.looks.get(&placed.id).copied();
+        if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, look) {
             drawing.sent = Some(line);
         }
         return;
@@ -230,7 +236,8 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
                 ..drawing.seen
             };
             // Another character's widget sends nothing on this one's.
-            let _ = placed.widget.draw(ui, &seen, id);
+            let look = drawing.looks.get(&placed.id).copied();
+            let _ = placed.widget.draw_with(ui, &seen, id, look);
         }
         None => {
             ui.weak(format!("{who} is not running."));
