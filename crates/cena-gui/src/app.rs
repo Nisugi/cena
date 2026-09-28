@@ -267,13 +267,22 @@ impl App {
         let builder = egui::ViewportBuilder::default()
             .with_title(format!("{} — {TITLE}", seat.name))
             .with_inner_size([980.0, 680.0]);
-        let (asked, bound, closed) = context.show_viewport_immediate(
+        // What every pass asks, kept. egui may draw a window's frame more
+        // than once and keep only the last pass (`Context::run_ui`), as when
+        // a layout settles -- a new window's first frame -- and a click or a
+        // key is in the first pass alone. The settings menu's first opening
+        // asked for a character's pages in a pass thrown away, noted them as
+        // asked for, and waited for pages that never came (the author,
+        // 2026-09-28: "when clicking on settings for the first time it only
+        // shows widget settings").
+        let (mut asked, mut bound, mut closed) = (None, Vec::new(), false);
+        context.show_viewport_immediate(
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             builder,
             |ui, _class| {
-                let closed = ui.input(|input| input.viewport().close_requested());
+                closed |= ui.input(|input| input.viewport().close_requested());
                 // Taken before anything draws, so no widget sees a bound key.
-                let mut bound = ui.ctx().input_mut(|input| keys.take(input));
+                bound.extend(ui.ctx().input_mut(|input| keys.take(input)));
                 if ui.input(|input| input.focused) {
                     bound.append(numpad);
                 }
@@ -291,9 +300,8 @@ impl App {
                     presets: &self.presets,
                     lich: seat.handle.lich_running(),
                 };
-                let asked = window.play.show(ui, &view);
+                asked = asked.take().or(window.play.show(ui, &view));
                 drop(story);
-                (asked, bound, closed)
             },
         );
         if closed {

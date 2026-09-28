@@ -44,20 +44,22 @@ impl App {
             widgets: &widgets,
         };
         let menu = &mut self.menu;
-        let (asked, closed) = context.show_viewport_immediate(
+        // What every pass asks, kept: see `App::play`.
+        let (mut asked, mut closed) = (Vec::new(), false);
+        context.show_viewport_immediate(
             egui::ViewportId::from_hash_of("settings"),
             egui::ViewportBuilder::default()
                 .with_title(format!("Settings — {TITLE}"))
                 .with_inner_size([760.0, 560.0]),
             |ui, _class| {
-                let closed = ui.input(|input| input.viewport().close_requested());
-                (menu.show(ui, &view), closed)
+                closed |= ui.input(|input| input.viewport().close_requested());
+                asked.extend(menu.show(ui, &view));
             },
         );
         if closed {
             self.menu.open = false;
         }
-        if let Some(asked) = asked {
+        for asked in asked {
             self.menu_asked(asked);
         }
     }

@@ -105,6 +105,175 @@ fn the_settings_menu_opens_from_the_hub_and_from_a_play_window() {
     assert_eq!(harness.state().menu.character(), None);
 }
 
+/// The menu asks for a character's pages on its first opening even when
+/// egui draws that frame twice and keeps only the second, as it does to
+/// settle a new window's layout. The ask was lost with the first: the menu
+/// had noted it as sent, and waited for pages that were never asked for (the
+/// author, 2026-09-28: *"when clicking on settings for the first time it only
+/// shows widget settings"*).
+///
+/// The settings menu is its own window here, as eframe draws it; in the
+/// other tests it is drawn inside the hub, where every pass's asks are kept.
+#[test]
+fn the_menu_asks_even_when_its_first_frame_is_drawn_twice() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    sessions.roster(vec![cena_ui::RosterCard {
+        character: "Ashryn".to_owned(),
+        account: "acct".to_owned(),
+        game: cena_session::DEFAULT_GAME_CODE.to_owned(),
+        kept: true,
+        favourite: false,
+    }]);
+    let asked = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let heard = Arc::clone(&asked);
+    sessions.control(Arc::new(move |request| {
+        heard
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push(request);
+        Box::pin(async { String::new() })
+    }));
+    let mut app = App::new(sessions);
+    let ashryn = format!("{}:Ashryn", cena_session::DEFAULT_GAME_CODE);
+    app.menu.open_at(Some(ashryn.clone()), None);
+
+    let context = windows_drawn_twice(&Arc::default());
+    let _ = context.run_ui(egui::RawInput::default(), |ui| app.draw(ui));
+    runtime.block_on(async {
+        for _ in 0..8 {
+            tokio::task::yield_now().await;
+        }
+    });
+    let asked = asked
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
+    assert!(
+        asked.contains(&cena_ui::HubRequest::Settings(ashryn)),
+        "{asked:?}"
+    );
+}
+
+/// Events for one window's next frame, as a test hands them in.
+type Given = Arc<std::sync::Mutex<Option<(egui::ViewportId, Vec<egui::Event>)>>>;
+
+/// A context that draws each window as eframe does, in a pass of its own,
+/// and draws every frame twice, keeping the second, as egui does when a
+/// layout settles; what is put in `events` goes to the named window's next
+/// first pass, as a click or a key is in the first pass alone.
+fn windows_drawn_twice(events: &Given) -> egui::Context {
+    let context = egui::Context::default();
+    context.set_embed_viewports(false);
+    let events = Arc::clone(events);
+    egui::Context::set_immediate_viewport_renderer(move |context, viewport| {
+        let mut input = egui::RawInput {
+            viewport_id: viewport.ids.this,
+            ..egui::RawInput::default()
+        };
+        input.viewports.insert(
+            viewport.ids.this,
+            egui::ViewportInfo {
+                focused: Some(true),
+                ..egui::ViewportInfo::default()
+            },
+        );
+        let mut waiting = events
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((_, given)) = waiting.take_if(|(id, _)| *id == viewport.ids.this) {
+            input.events = given;
+        }
+        drop(waiting);
+        let mut draw = viewport.viewport_ui_cb;
+        let mut first = true;
+        let _ = context.run_ui(input, |ui| {
+            if std::mem::take(&mut first) {
+                ui.ctx().request_discard("a layout settling");
+            }
+            draw(ui);
+        });
+    });
+    context
+}
+
+/// A bound key pressed on a frame egui draws twice still sends its line:
+/// the key is in the first pass alone, and what that pass asked was lost
+/// with it.
+#[test]
+fn a_key_on_a_frame_drawn_twice_still_sends() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    let seat = sessions.seat_for_test(handle(), "Ashryn");
+    let mut app = App::new(sessions);
+    app.keys = Keybinds::read("[keys]\nF5 = \"look\"\n").0;
+    let press = egui::Event::Key {
+        key: egui::Key::F5,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    };
+    let play = egui::ViewportId::from_hash_of(("play", seat.id.0));
+    let context = windows_drawn_twice(&Arc::new(std::sync::Mutex::new(Some((play, vec![press])))));
+    let _ = context.run_ui(egui::RawInput::default(), |ui| app.draw(ui));
+    let typed: Vec<String> = lock(&seat.story)
+        .lines
+        .iter()
+        .filter_map(|(_, shown)| match shown {
+            crate::story::Shown::Typed { line, .. } => Some(line.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(typed, ["look"]);
+}
+
+/// A line typed and entered on a frame egui draws twice still goes: the
+/// Enter is in the first pass alone, and the window's ask to send was lost
+/// with it.
+#[test]
+fn a_line_entered_on_a_frame_drawn_twice_still_goes() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    let seat = sessions.seat_for_test(handle(), "Ashryn");
+    let mut app = App::new(sessions);
+    let play = egui::ViewportId::from_hash_of(("play", seat.id.0));
+    // Frames first, so the command input has the keyboard.
+    let given: Given = Arc::default();
+    let context = windows_drawn_twice(&given);
+    for _ in 0..3 {
+        let _ = context.run_ui(egui::RawInput::default(), |ui| app.draw(ui));
+    }
+    let enter = egui::Event::Key {
+        key: egui::Key::Enter,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    };
+    *given
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+        Some((play, vec![egui::Event::Text("look".to_owned()), enter]));
+    let _ = context.run_ui(egui::RawInput::default(), |ui| app.draw(ui));
+    let typed: Vec<String> = lock(&seat.story)
+        .lines
+        .iter()
+        .filter_map(|(_, shown)| match shown {
+            crate::story::Shown::Typed { line, .. } => Some(line.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(typed, ["look"]);
+}
+
 /// Hydra's own settings are read at start and kept: the card width a
 /// drag leaves, and one typed on the *Window* page, which the hub takes
 /// at once.
