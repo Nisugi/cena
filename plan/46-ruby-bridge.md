@@ -2,7 +2,8 @@
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
-run (§10, question 11); the rest is not built. It
+run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
+not yet built. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -667,3 +668,23 @@ thing to measure before changing if it ever matters.
    `Errands`), which stops a run whose script is gone as soon as its number comes. The test
    (`crates/cena-agent/tests/runner.rs`) kills a walk while it is still starting (`go2 slow`)
    and counts every walk started and stopped: red six times in six on the old code.
+
+**Steps 7 to 11, the runner's gaps** (the author, 2026-09-27: *"Yeah let's fill those gaps"*).
+`inventory/14`'s to-do list, grouped by the work each group is and ordered cheapest first: the
+first four give Lich's names to what Hydra already holds or does, the fifth is a design of its
+own. The counts are scripts running once the group and those above it are answered (MEASURED
+over the two lists in `inventory/14-what-runs/`, each script's gaps put in a group; today 82 of
+elanthia-online's 236 and 1,254 of the old repository's 2,130):
+
+7. **The character's sheet, under Lich's names**: `Stats`, `Skills`, `Spells` (the circles),
+   `Society`, `Experience`, `Resources`, the PSMs (`CMan`, `Feat`, `Shield`, `Weapon`, `Warcry`,
+   `Armor`), `Wounds`, `Scars`, `Effects`, and the `XMLData` fields scripts read. Lich's own files
+   read them from `Infomon`, its store the game's text fills; **Hydra's model already reads the
+   same text** (`crates/cena-model/src/state/character/`), so the runner answers `Infomon` from
+   the copy and loads Lich's files unchanged. 94 and 1,377.
+8. **The map's queries**: `Map.dijkstra`, `Room#find_nearest`, `Map.list`, `Room#path_to`, by
+   travel's own map and costs, as `Room.current` already is. 100 and 1,418.
+9. **`Spell#cast`**, through the casting step (`plan/37` Stage 3). 105 and 1,522.
+10. **`Lich::Util`**: `issue_command` and `quiet_command`, over step 4's hooks. 121 and 1,570.
+11. **The game's markup as labelled data** (§6.2): first measured, what markup the scripts read,
+    then answered. 148 and 1,734; with Lich's windows, 178 and 1,845.
