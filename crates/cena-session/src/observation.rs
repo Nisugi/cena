@@ -182,6 +182,10 @@ pub(crate) struct EventPublisher {
     /// last read. Here for `sorting`'s reasons, which is also why a reconnect
     /// keeps the conditions' memory. None until the binary reads the file.
     triggers: Arc<Mutex<Answering>>,
+    /// Where the game's bytes are copied while the player's Lich runs
+    /// (`crate::script::lich`). Here for `sorting`'s reasons: Lich stays up
+    /// through a reconnect, and sees the new login as more of the stream.
+    wire: Arc<Mutex<Option<crate::script::lich::Tap>>>,
 }
 
 /// A character's triggers and their memory, replaced together: new
@@ -220,6 +224,28 @@ impl EventPublisher {
             hearing: Arc::new(AtomicBool::new(false)),
             hooks: Arc::default(),
             triggers: Arc::default(),
+            wire: Arc::default(),
+        }
+    }
+
+    /// Copy the game's bytes to `tap` from now on. False, and `tap` unused,
+    /// while another still takes them: one Lich per character.
+    pub(crate) fn tap_wire(&self, tap: crate::script::lich::Tap) -> bool {
+        let mut wire = self.wire.lock().unwrap_or_else(PoisonError::into_inner);
+        if wire.as_ref().is_some_and(crate::script::lich::Tap::is_open) {
+            return false;
+        }
+        *wire = Some(tap);
+        true
+    }
+
+    /// Copy a chunk of the game's bytes, as it arrived, to the Lich that
+    /// takes them, if one does. A Lich that stopped, or fell behind, is let
+    /// go here.
+    pub(crate) fn wire(&self, chunk: &[u8]) {
+        let mut wire = self.wire.lock().unwrap_or_else(PoisonError::into_inner);
+        if wire.as_ref().is_some_and(|tap| !tap.copy(chunk)) {
+            *wire = None;
         }
     }
 

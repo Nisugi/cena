@@ -2,8 +2,10 @@
 
 **Status: SPIKED 2026-09-28; §6's five questions ANSWERED the same day.** The spike
 (`spike/lich-relay/`) ran real Lich against a recorded login, offline, and every hop worked.
-Pipe mode's frontend fix was tried locally and works (§4, item 1). Nothing here is built into
-Hydra yet; §7's steps are next.
+Pipe mode's frontend fix was tried locally and works (§4, item 1). **§7's step 1 BUILT
+2026-09-28**: the relay itself, with the session's side (`crates/cena-session/src/script/lich.rs`)
+and Lich's process (`crates/cena-agent/src/lich.rs`), tested against a stand-in and against
+the real Lich, offline. Steps 2-6 are next.
 
 ## 1. The author's position
 
@@ -103,7 +105,14 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
    | 236a9a2 + the patch | `stormfront` | `&lt;b&gt;not a tag&lt;/b&gt; 5 &lt; 6`: PASS |
 
    A PR to Lich is the author's to send. Players' own installs won't have the fix until Lich
-   releases it, so Hydra keeps the set-after-start fallback for an older Lich.
+   releases it, so Hydra keeps a fallback for an older Lich.
+
+   **The fallback, as built (step 1):** not a `;e` after start, which shows on the screen, but
+   Ruby's `trace_var` on `$frontend`, set before `lich.rbw` loads (`ruby -e <trace> -e '$0 =
+   ARGV.shift; load $0' lich.rbw ...`). Whenever Lich sets `unknown`, it is put back to
+   `stormfront`, and nothing is shown. On a patched Lich it never fires. VERIFIED on the real
+   Lich at 236a9a2, unpatched: a script's `put "frontend #{$frontend}"` reached the game as
+   `frontend stormfront` (`the_real_lich`, `crates/cena-agent/tests/lich_relay.rs`).
 2. **Which frontend Hydra says it is.** Hydra speaks the protocol Lich registers as
    `stormfront`, alias `wrayth`. Scripts test the name: in `reference/scripts` and
    `reference/lich_repo_mirror`, `$frontend == 'stormfront'` appears 331 times and
@@ -144,7 +153,7 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
 - **Lich's commands go through the gate** as a new `Origin::Lich`. `<c>` lines are Lich's;
   lines without it are the player's typing, and count as attendance.
 - **Lich is told it serves `stormfront`** (question 2): `--stormfront` with a Lich that has
-  §4 item 1's fix, and set after start on one that doesn't.
+  §4 item 1's fix, and `trace_var` on one that doesn't (§4 item 1, the fallback).
 - **The player's typing** (question 3): the command symbol decides, as it does today
   (`crates/cena-session/src/command/claimant.rs`, `commands.symbol` in the character's
   settings). A line starting with Hydra's symbol is Hydra's, and so is one a `Bare` behavior
@@ -192,6 +201,33 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
    after start), the game's bytes tee'd to it, its commands through the gate as
    `Origin::Lich`, held while disconnected, stopped with its stdin. Tested with a scripted
    game and the spike's Lich, offline.
+
+   **BUILT 2026-09-28.** Split where the crates already split scripts: the session gives a
+   door, and `cena-agent`, which holds doors and never a handle, runs the process.
+   - **The session's side**, `crates/cena-session/src/script/lich.rs`. `LichDoor` does
+     three things. `wire` copies the game's bytes as they arrived, taken in `ingest` beside
+     the recorder and read by nothing. It is kept in the session's publisher, so it lasts
+     through a reconnect, and only one is allowed per character. `send` works as the script
+     door's does, as `Origin::Lich` (new, `crates/cena-session/src/command/verdict.rs`) or as
+     `Manual` for the player's typing. `say` tells the player something. A Lich with 4,096
+     chunks unread is let go, not waited on, Lich's own rule for its own queue.
+   - **Lich's process**, `crates/cena-agent/src/lich.rs`. `run` takes the copy at once, then
+     starts Lich (`--pipe --stormfront -g 127.0.0.1:<port>`, and the `trace_var` for a Lich
+     without the fix). It gives Lich a new token as its key, and takes only a connection that
+     says it. It sends Lich's lines, `<c>` as Lich's and the rest as the player's. It writes
+     typing to Lich's stdin, and tells the player when a line isn't sent and why. It stops
+     Lich by closing its stdin, then kills it after 5 s. For now it reads Lich's stdout and
+     lets it go (step 3 shows it).
+   - **Tests.** In the session: one copy per character, and a Lich that falls behind is let
+     go. In the agent: only a connection that says the key is taken. Against a stand-in in
+     pipe mode (`crates/cena-agent/tests/fixtures/standin_lich.rb`, run in CI): the login
+     reaches it, its `<c>look` is sent as Lich's, the pipe-mode `unknown` becomes
+     `stormfront`, typing through it is sent as the player's, it stops when asked, and a
+     second Lich for the character is refused. Against the real Lich
+     (`the_real_lich`, ignored unless `HYDRA_TEST_LICH` names a checkout): 13.7 s, offline.
+   - **Not yet:** the window's typing reaching it (step 2), its stdout shown (step 3), and a
+     start after login (step 4). Until step 4, a Lich started mid-session sees only what
+     comes next.
 2. Typing routed: Hydra's symbol and `Bare` takers, then Lich's stdin.
 3. The display from Lich's stdout.
 4. Starting late: the login kept and replayed, then the latest room.

@@ -290,6 +290,11 @@ impl SessionHandle {
         self.events.hear_lines(on);
     }
 
+    /// Copy the game's bytes to the player's Lich (`crate::script::lich`).
+    pub(crate) fn tap_wire(&self, tap: crate::script::lich::Tap) -> bool {
+        self.events.tap_wire(tap)
+    }
+
     /// A script runner's hooks (`crate::script`).
     pub(crate) fn hooks(&self) -> &crate::script::Hooks {
         self.events.hooks()

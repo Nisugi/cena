@@ -45,20 +45,12 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
     loop {
         match events.recv().await {
             Ok(Event::Sent { line, origin }) => {
-                let tag = match origin {
-                    Origin::Manual => "manual",
-                    Origin::Behavior(_) => "behavior",
-                    // Distinguished HERE, which is the whole reason it is
-                    // a separate variant: it queues like manual input, but
-                    // a reader of this transcript has to be able to tell
-                    // "the player typed this" from "another character's
-                    // script sent this".
-                    Origin::Script => "script",
-                    // A trigger's send (`plan/45` Stage 5): never the
-                    // player's, so never shown as `manual`.
-                    Origin::Trigger => "trigger",
-                    Origin::Agent(_) => "agent",
-                };
+                // Who sent it, which is the whole reason a script's, a
+                // trigger's, an agent's and Lich's are variants of their own:
+                // each queues like manual input, but a reader of this
+                // transcript has to be able to tell "the player typed this"
+                // from the rest.
+                let tag = origin.word();
                 eprintln!("{who}  -> [{tag}] {line}");
             }
             Ok(Event::StateChanged(state)) => eprintln!("{who}  .. lifecycle: {state:?}"),

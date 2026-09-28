@@ -619,6 +619,9 @@ impl<S: ByteSource> SessionActor<S> {
 
     pub(super) fn ingest(&mut self, chunk: &[u8]) {
         self.recorder.inbound(chunk);
+        // The player's Lich (`plan/51`) takes the game's bytes as they came,
+        // as the recorder does: it forwards them, and reads none here.
+        self.events.wire(chunk);
         self.log_wire(true, chunk);
         self.readiness.bytes_arrived();
         for frame in self.parser.push_bytes(chunk) {

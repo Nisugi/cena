@@ -41,6 +41,11 @@
 //! - [`Door::hook_typing`]: each line the player types is asked of the
 //!   runner's input hooks before Hydra's command line or the game sees it
 //!   ([`SessionHandle::send_typed_at`]), and goes as typed past the deadline.
+//!
+//! The player's own Lich, run through the relay rather than a runner
+//! (`plan/51`), has a door of its own: [`lich`].
+
+pub mod lich;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};

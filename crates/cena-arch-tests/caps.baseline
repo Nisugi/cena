@@ -393,3 +393,8 @@ crates/cena-agent/src/scripts.rs 350
 # scripts/import.rs, its tests scripts/command_tests.rs. 472 lines, so 472 + 50, rounded
 # up to the next 50.
 crates/cena/src/scripts.rs 550
+# NEW SPLIT PARENT, 2026-09-28, capped at birth. crates/cena-session/src/script.rs
+# is a script runner's door (plan/46, M7b); the player's own Lich has a door of its
+# own, script/lich.rs (plan/51, the relay). 276 lines, so 276 + 50, rounded up to
+# the next 50.
+crates/cena-session/src/script.rs 350

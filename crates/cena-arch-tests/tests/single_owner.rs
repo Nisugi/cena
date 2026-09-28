@@ -241,6 +241,16 @@ const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
          it goes when the runner stops or the character leaves the table.",
     ),
     (
+        "crates/cena-session/src/script/lich.rs",
+        "LichDoor",
+        "The one way the player's own Lich acts on a session (plan/51, the \
+         relay): cena-agent's relay holds a LichDoor and never the handle, as \
+         its script runners hold a script Door. A clone of the session's own \
+         handle, on the type's own terms (every field shared: see Viewed \
+         below), so it cannot drift; one is built when a character's Lich \
+         starts, and it goes when the relay ends.",
+    ),
+    (
         "crates/cena-web/src/server.rs",
         "Viewed",
         "The embedded frontend's manual-input surface, one per served session \

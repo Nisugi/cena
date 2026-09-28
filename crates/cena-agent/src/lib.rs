@@ -22,11 +22,14 @@
 //! - [`scripts`]: a script runner's own listener and tools (`plan/46`, M7b):
 //!   the game's lines as it sent them, a line as if typed, and text for the
 //!   player, over the character's script door.
+//! - [`lich`]: the player's own Lich for a character, with Hydra keeping the
+//!   game's connection (`plan/51`), over the character's Lich door.
 
 pub mod characters;
 pub mod gemstone;
 pub mod happenings;
 pub mod http;
+pub mod lich;
 pub mod projection;
 pub mod records;
 pub mod scripts;

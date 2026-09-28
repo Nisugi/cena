@@ -105,6 +105,14 @@ pub enum Origin {
     /// agent's token and is the holder's: queued as a behavior's is, and
     /// refused, never sent, once the authority is taken back.
     Agent(Option<crate::queue::AuthorityToken>),
+    /// The player's own Lich sent it, through the relay (`plan/51`): a line
+    /// one of its scripts put, as Lich's `Game.puts` writes it.
+    ///
+    /// It queues as [`Self::Script`] does, and is its own variant for
+    /// `Script`'s reason: a log has to tell "the player typed this" from
+    /// "Lich sent this". It never counts as the player being there. What
+    /// the player typed and Lich passed on is [`Self::Manual`].
+    Lich,
 }
 
 impl Origin {
@@ -113,14 +121,14 @@ impl Origin {
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
             // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script | Self::Trigger => None,
+            Self::Manual | Self::Script | Self::Trigger | Self::Lich => None,
             Self::Behavior(token) => Some(token),
             Self::Agent(holding) => holding,
         }
     }
 
     /// Who sent it, in a word: `manual`, `behavior`, `script`, `trigger`,
-    /// `agent`.
+    /// `agent`, `lich`.
     #[must_use]
     pub const fn word(self) -> &'static str {
         match self {
@@ -129,6 +137,7 @@ impl Origin {
             Self::Script => "script",
             Self::Trigger => "trigger",
             Self::Agent(_) => "agent",
+            Self::Lich => "lich",
         }
     }
 

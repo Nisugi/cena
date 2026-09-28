@@ -454,8 +454,9 @@ pub(super) fn seat(parts: &Parts) -> Result<Arc<Seat>, ErrorData> {
         .ok_or_else(|| ErrorData::internal_error("no runner's seat on this request", None))
 }
 
-/// Why the session did not send a line, in words.
-fn why(refusal: Refusal) -> &'static str {
+/// Why the session did not send a line, in words: a script's, or Lich's
+/// (`crate::lich`).
+pub(crate) fn why(refusal: Refusal) -> &'static str {
     match refusal {
         Refusal::Transient => "busy: the session is not ready, or its queue is full",
         Refusal::Permanent => "refused",
