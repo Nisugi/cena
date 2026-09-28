@@ -662,6 +662,8 @@ sort, box in hand. Town errands follow in the same plan's order.
 > All four stages are BUILT: the classifier, the ledger, `;loot` and `;combat`
 > (`cena-model/src/state/ledger.rs`, `cena-session/src/ledger.rs`, `cena/src/loot.rs`,
 > `cena/src/combat.rs`); recording is `--record`/`--no-record`, on in debug builds.
+> *(Retired 2026-09-27: recording is each character's own setting, per kind, off until
+> turned on; `plan/50` §7 step 3.)*
 
 **M6d — eherbs.** ~~Its port plan first (`plan/32`), then healing at the rest room.~~
 **BUILT 2026-09-25 as `plan/36`** (the number `plan/32` was never used): the herb table

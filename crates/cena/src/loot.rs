@@ -168,6 +168,25 @@ fn singular(word: &str) -> String {
     }
 }
 
+/// Register `;loot` and `;combat` on `character`'s command line, over its
+/// database in `dir`: the reports need only its path, known before the
+/// character logs in.
+pub(crate) fn reports(
+    handle: &SessionHandle,
+    commands: &Commands,
+    dir: &Path,
+    game: &str,
+    character: &str,
+) {
+    match cena_session::combat_recorder::worker::database_path(dir, game, character) {
+        Ok(database) => {
+            open(handle, commands, database.clone());
+            crate::combat::open(handle, commands, database);
+        }
+        Err(e) => eprintln!("[{character}] no loot reports: {e}"),
+    }
+}
+
 /// Register `;loot` on the command line, reading `database`.
 pub(crate) fn open(handle: &SessionHandle, commands: &Commands, database: PathBuf) {
     let handler = handle.clone();
@@ -206,7 +225,7 @@ fn resolve(span: &Span, now: i64) -> (Period, String) {
 fn run(database: &Path, command: Command, now: i64) -> Result<Vec<String>, String> {
     if !database.is_file() {
         return Err(format!(
-            "nothing recorded yet ({}). Recording is on with --record.",
+            "nothing recorded yet ({}). Recording is turned on in Settings, Recording.",
             database.display()
         ));
     }

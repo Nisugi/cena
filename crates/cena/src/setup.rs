@@ -120,8 +120,9 @@ pub(crate) async fn flush_player_log(flush: tokio::task::JoinHandle<u64>) {
     }
 }
 
-/// Give the session its crit tables, and -- when [`recording`] -- its combat
-/// recorder and loot ledger, both writing one database per character.
+/// Give the session its crit tables, and its combat recorder and loot
+/// ledger as the character's settings file turns each on ([`recording`]),
+/// both writing one database per character.
 ///
 /// All are optional to a working session and none may stop one, which is
 /// `open_log`'s rule: say loudly what is missing, then carry on. Without the
@@ -142,30 +143,44 @@ fn attach_recorders(
             session
         }
     };
-    if !recording() {
-        eprintln!("[record] off (--record turns it on)");
+    let dir = cena_session::character_store::data_dir();
+    let record = recording(&dir, game, character);
+    let (combat, loot) = (record.combat.unwrap_or(false), record.loot.unwrap_or(false));
+    if !combat && !loot {
+        eprintln!("[record] off (Settings, Recording turns it on)");
         return (session, Vec::new());
     }
-    let dir = cena_session::character_store::data_dir();
+    // The ledger's tables go in the combat recorder's file, so one
+    // character's hunts and loot are one database (plan/34 section 4).
+    let path = match cena_session::combat_recorder::worker::database_path(&dir, game, character) {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("[record] DISABLED -- {e}");
+            return (session, Vec::new());
+        }
+    };
+    eprintln!("[record] {}", path.display());
     let mut flushes = Vec::new();
-    let (session, path) =
+    let session = if combat {
         match cena_session::combat_recorder::worker::open_live(&dir, game, character) {
-            Ok((recorder, flush, path)) => {
-                eprintln!("[record] {}", path.display());
+            Ok((recorder, flush, _)) => {
                 flushes.push(flush);
-                (session.with_combat_recorder(recorder), Some(path))
+                session.with_combat_recorder(recorder)
             }
             Err(e) => {
                 eprintln!("[record] combat recorder DISABLED -- {e}");
-                (session, None)
+                session
             }
-        };
-    // The ledger's tables go in the same file, so one character's hunts and
-    // loot are one database (plan/34 section 4).
-    let Some(path) = path else {
-        return (session, flushes);
+        }
+    } else {
+        session
     };
-    match cena_session::ledger::worker::open_live(&path, character) {
+    if !loot {
+        return (session, flushes);
+    }
+    let opened = std::fs::create_dir_all(&dir)
+        .and_then(|()| cena_session::ledger::worker::open_live(&path, character));
+    match opened {
         Ok((ledger, flush)) => {
             flushes.push(flush);
             (session.with_ledger(ledger), flushes)
@@ -177,30 +192,55 @@ fn attach_recorders(
     }
 }
 
-/// Whether this run records combat and loot to the character's database.
-///
-/// **On by default in a debug build, off in a release build**, and either
-/// way `--record` or `--no-record` on the command line decides (author,
-/// 2026-09-24: *"on by default during testing, off by default for release"*).
-/// Nothing at runtime reads what the recorders write -- the hunt, the loot
-/// planner and every behavior read the model -- so a run without them is the
-/// same run with no reports afterwards.
-pub(crate) fn recording() -> bool {
-    recording_in(std::env::args().skip(1))
+/// The `record` section of a character's settings file: what goes to its
+/// database, each kind its own switch. The author, 2026-09-27: *"recording
+/// should be a setting, it should be per thing, combat, loot, whatever else
+/// we decide to record"*, and *"off by default, turn on stay on until turned
+/// off"* (`plan/50` §6 item 5). It replaced `--record` and `--no-record`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct Record {
+    /// Each fight, for `;combat`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) combat: Option<bool>,
+    /// What was found and sold, for `;loot`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) loot: Option<bool>,
 }
 
-/// [`recording`], over any argument list, so it can be tested. The last
-/// flag given wins.
-fn recording_in(args: impl IntoIterator<Item = String>) -> bool {
-    let mut on = cfg!(debug_assertions);
-    for arg in args {
-        match arg.as_str() {
-            "--record" => on = true,
-            "--no-record" => on = false,
-            _ => {}
-        }
-    }
-    on
+/// The name of [`Record`]'s section.
+pub(crate) const RECORD: &str = "record";
+
+/// What to say when `args` still name `--record` or `--no-record`, which
+/// decide nothing now: there is no argument parser to refuse them
+/// (`plan/50` §1b), so without this they would be ignored without a word.
+pub(crate) fn retired(args: impl IntoIterator<Item = String>) -> Option<&'static str> {
+    args.into_iter()
+        .any(|arg| arg == "--record" || arg == "--no-record")
+        .then_some(
+            "[record] --record and --no-record are retired: recording is each character's \
+             own setting now, off until turned on (Settings, Recording).",
+        )
+}
+
+/// What `character` on `game` records, as its settings file says: nothing
+/// until a kind is turned on. Nothing at runtime reads what the recorders
+/// write -- the hunt, the loot planner and every behavior read the model --
+/// so a run without them is the same run with no reports afterwards. A file
+/// that cannot be trusted records nothing, and says why.
+fn recording(dir: &std::path::Path, game: &str, character: &str) -> Record {
+    let Some(instance) = cena_platform::instance(game) else {
+        return Record::default();
+    };
+    let read = cena_session::settings_store::load(dir, instance, character)
+        .map_err(|why| why.to_string())
+        .and_then(|file| {
+            file.section::<Record>(RECORD)
+                .map_err(|why| format!("its {RECORD} section does not read: {why}"))
+        });
+    read.unwrap_or_else(|why| {
+        eprintln!("[record] off: the settings file: {why}");
+        Record::default()
+    })
 }
 
 /// Wait, a bounded while ([`FLUSH_WAIT`]), for each recorder to write what
@@ -276,26 +316,46 @@ fn open_log(character: &str, account: &str) -> io::Result<SessionSink> {
 
 #[cfg(test)]
 mod tests {
-    use super::recording_in;
+    use super::{RECORD, Record, recording, retired};
+    use cena_platform::{DEFAULT_GAME_CODE, instance};
+    use cena_session::settings_store::{self, SettingsFile};
 
-    fn args(line: &str) -> Vec<String> {
-        line.split_whitespace().map(str::to_owned).collect()
+    /// Nothing is recorded until a kind is turned on in the character's
+    /// settings file, and each kind is turned on by itself; a file that
+    /// cannot be trusted records nothing.
+    #[test]
+    fn each_kind_records_once_turned_on() {
+        let dir = std::env::temp_dir().join(format!("cena-record-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let game = DEFAULT_GAME_CODE;
+        assert_eq!(recording(&dir, game, "Nisugi"), Record::default());
+
+        let prime = instance(game).expect("an instance");
+        let mut file = SettingsFile::new(prime, "Nisugi");
+        let loot = Record {
+            combat: None,
+            loot: Some(true),
+        };
+        file.set_section(RECORD, &loot).expect("a section");
+        settings_store::save(&dir, &file).expect("saved");
+        assert_eq!(recording(&dir, game, "nisugi"), loot, "by name, any case");
+
+        let path = settings_store::settings_path(&dir, prime, "Nisugi").expect("a path");
+        std::fs::write(&path, "{ not json").expect("written");
+        assert_eq!(recording(&dir, game, "Nisugi"), Record::default());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// The retired flags are said to be retired, and nothing else is.
     #[test]
-    fn the_flags_decide_and_the_last_one_wins() {
-        assert!(recording_in(args("--record")));
-        assert!(!recording_in(args("--no-record")));
-        assert!(recording_in(args("--no-record --character X --record")));
-        assert!(!recording_in(args("--record --no-record")));
-    }
-
-    #[test]
-    fn without_a_flag_the_build_decides() {
-        assert_eq!(
-            recording_in(args("--character X")),
-            cfg!(debug_assertions),
-            "debug builds record, release builds do not"
-        );
+    fn the_retired_flags_are_said() {
+        let args = |line: &str| {
+            line.split_whitespace()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        };
+        assert!(retired(args("--character X --record")).is_some());
+        assert!(retired(args("--no-record")).is_some());
+        assert_eq!(retired(args("--character X --headless")), None);
     }
 }

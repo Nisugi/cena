@@ -1,6 +1,7 @@
-//! The settings menu's pages for one character (`plan/50` §7 step 1). Each
-//! page is built from a behavior's table of keys and the character's file,
-//! and a change goes through the writer that behavior's `;` command uses
+//! The settings menu's pages for one character (`plan/50` §7 step 1). First
+//! its own settings file's ([`crate::general`], step 3); then a page per
+//! behavior, built from its table of keys and the character's file, a change
+//! going through the writer that behavior's `;` command uses
 //! ([`crate::hunt::settings::change`]). So the menu and the command cannot
 //! disagree about a value, and each file has one writer.
 //!
@@ -17,7 +18,11 @@ use crate::hunt::settings::{Profile, change, profiles};
 
 /// The character a roster name means: the instance its files are named by,
 /// and its name.
-fn who(character: &str) -> Result<(&'static str, &str), String> {
+///
+/// # Errors
+///
+/// The name is not a roster name, or names a game Hydra does not know.
+pub(crate) fn who(character: &str) -> Result<(&'static str, &str), String> {
     let (game, name) = character
         .split_once(':')
         .ok_or_else(|| format!("{character} is not a roster name (GAME:Name)."))?;
@@ -33,9 +38,12 @@ fn who(character: &str) -> Result<(&'static str, &str), String> {
 /// The name is not a roster name, or names a game Hydra does not know.
 pub(crate) fn pages(dir: &Path, character: &str) -> Result<Vec<Page>, String> {
     let (instance, name) = who(character)?;
-    Ok(profiles()
-        .iter()
-        .map(|profile| page(dir, profile, instance, name))
+    let behaviors = profiles()
+        .into_iter()
+        .map(|profile| page(dir, &profile, instance, name));
+    Ok(crate::general::pages(dir, instance, name)
+        .into_iter()
+        .chain(behaviors)
         .collect())
 }
 
@@ -115,6 +123,12 @@ pub(crate) fn apply(dir: &Path, wanted: &Change) -> String {
         Ok(who) => who,
         Err(why) => return why,
     };
+    if crate::general::owns(&wanted.page) {
+        let to = wanted.to.as_deref();
+        return match crate::general::change(dir, (instance, name), &wanted.page, &wanted.key, to) {
+            Ok(done) | Err(done) => done,
+        };
+    }
     let Some(profile) = profiles()
         .into_iter()
         .find(|profile| profile.id == wanted.page)
@@ -176,8 +190,12 @@ mod tests {
         let dir = scratch("defaults");
         let pages = pages(&dir, "GS3:Nisugi").expect("a roster name");
         let ids: Vec<&str> = pages.iter().map(|page| page.id.as_str()).collect();
-        assert_eq!(ids, ["heal", "waggle", "keep", "sc"]);
-        let heal = &pages[0];
+        assert_eq!(
+            ids,
+            ["general", "log", "record", "heal", "waggle", "keep", "sc"],
+            "the character's own file first"
+        );
+        let heal = &pages[3];
         assert_eq!(
             heal.file,
             std::path::Path::new("hunt")
@@ -250,6 +268,16 @@ mod tests {
             "back to its default"
         );
         assert!(apply(&dir, &wanted("hunt", "x", None)).contains("no hunt page"));
+        // The character's own file's pages are its own writer's.
+        assert_eq!(
+            apply(&dir, &wanted("general", "sorter", Some("on"))),
+            "Container-look sorting on."
+        );
+        let pages = super::pages(&dir, "GS3:Nisugi").expect("pages");
+        assert_eq!(
+            row(&pages, "general", "sorter").map(|row| (&row.value, row.here)),
+            Some((&Value::On(true), true))
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -263,7 +291,8 @@ mod tests {
         std::fs::create_dir_all(parent).expect("made");
         std::fs::write(&path, "container = [").expect("written");
         let pages = pages(&dir, "GS3:Nisugi").expect("pages");
-        assert!(pages[0].problem.is_some() && pages[0].rows.is_empty());
+        let heal = pages.iter().find(|page| page.id == "heal").expect("heal");
+        assert!(heal.problem.is_some() && heal.rows.is_empty());
         let said = apply(&dir, &wanted("heal", "container", Some("\"herbsack\"")));
         assert!(said.contains("nothing was changed"), "{said}");
         assert_eq!(

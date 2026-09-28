@@ -32,8 +32,8 @@ use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::{
-    batch, combat, connector, frontend, interrupt, launcher, learn, loot, pages, roster, secrets,
-    setup, sorter, travel, triggers, watch,
+    batch, connector, frontend, interrupt, launcher, learn, loot, pages, roster, secrets, setup,
+    sorter, travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -266,7 +266,8 @@ impl Table {
         };
         let commands = Commands::install(&hosted.handle);
         crate::relay::open(&hosted.handle, &commands, self.characters());
-        sorter::open(&hosted.handle, &commands);
+        let kept = crate::general::Kept::of(&self.dir, &login);
+        sorter::open(&hosted.handle, &commands, kept);
         // Following before the first read, so no change falls between.
         let following = self.changes.follow();
         triggers::open(&hosted.handle, &self.dir, &character);
@@ -278,14 +279,7 @@ impl Table {
             self.changes.clone(),
         );
         batch::open(&hosted.handle, &hosted.observer, &commands);
-        // The ledger's reports need only the database's path, known now.
-        match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
-            Ok(database) => {
-                loot::open(&hosted.handle, &commands, database.clone());
-                combat::open(&hosted.handle, &commands, database);
-            }
-            Err(e) => eprintln!("[{character}] no loot reports: {e}"),
-        }
+        loot::reports(&hosted.handle, &commands, &self.dir, &game, &character);
         if let Some(web) = &self.web {
             web.attach(
                 Some(&character),
@@ -369,6 +363,13 @@ impl Table {
             }
             HubRequest::Change(change) => {
                 let said = pages::apply(&self.dir, &change);
+                // The symbol and the sorter reach a running character at once.
+                if crate::general::owns(&change.page)
+                    && let Some(kept) = crate::general::Kept::of(&self.dir, &change.character)
+                    && let Some(handle) = self.handle_of(&change.character).await
+                {
+                    kept.take(&handle);
+                }
                 let problem = pages::send(&self.dir, &change.character, self.gui.as_ref());
                 if problem.is_empty() { said } else { problem }
             }
@@ -391,6 +392,20 @@ impl Table {
             Some((character, _)) => format!("{character} has quit."),
             None => "That character is no longer on the table.".to_owned(),
         }
+    }
+
+    /// The handle of the character the roster names `login`, while it is
+    /// on the table.
+    async fn handle_of(&self, login: &str) -> Option<cena_session::SessionHandle> {
+        let id = self
+            .started
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .find(|(_, one)| one.login.eq_ignore_ascii_case(login))
+            .map(|(id, _)| *id)?;
+        let host = self.host.lock().await;
+        host.get(id).map(|hosted| hosted.handle.clone())
     }
 
     /// Log a stopped character back in: off the table, then started again

@@ -177,7 +177,13 @@ loot cap, estimated against realised, with the town's racial and trading bonuses
    later. The ledger's tables live **in the combat recorder's file** (`<game>_<name>_combat.db`),
    opened a second time with WAL and a busy timeout. **Recording is toggleable** (author):
    `--record` / `--no-record`, on by default in a debug build, off in release
-   (`cena/src/setup.rs`, `recording`); nothing at runtime reads either database. Tested in
+   (`cena/src/setup.rs`, `recording`); nothing at runtime reads either database.
+   > **SUPERSEDED 2026-09-27** (`plan/50` §6 item 5, §7 step 3): recording is each
+   > character's own setting now, combat and loot each its own switch, off in every build
+   > until turned on (the `record` section of its settings file, `cena/src/general.rs`).
+   > The two flags are retired, and said to be when given.
+
+   Tested in
    `cena-session/tests/ledger.rs` (6, including the Red Forest case: a box returned under a
    new id in the same room links to the box dropped there and its opening's contents come
    from the inventory model) and `ledger_wiring.rs` (a real session over the hunt fixture

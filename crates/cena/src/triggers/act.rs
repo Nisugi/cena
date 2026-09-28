@@ -66,7 +66,7 @@ mod tests {
         let (_, mut waiting) = session.subscribe();
         let (_, mut events) = session.subscribe();
         let commands = Commands::install(&handle);
-        crate::sorter::open(&handle, &commands);
+        crate::sorter::open(&handle, &commands, None);
         tokio::spawn(session.into_actor().run());
         while !matches!(waiting.recv().await, Ok(Event::StateChanged(State::Ready))) {}
 

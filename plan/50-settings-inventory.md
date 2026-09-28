@@ -374,6 +374,33 @@ Claude's order, each step shippable and committed on its own:
 3. **The character's General page:** the command symbol, the player-log feeds, the sorter
    (saved), and recording per kind (off until turned on, then kept on). The settings file
    gets its writer, and `--record` and `--no-record` retire.
+
+   **BUILT 2026-09-27.**
+   - *Three pages over the file:* `<instance>_<character>.settings.json`, the store's own
+     file (`crates/cena/src/general.rs`), shown before the behaviors' pages. Each page says
+     when a change takes effect:
+     - *General*: the command symbol and container-look sorting. Both reach a running
+       character at once.
+     - *Player log*: a switch per feed, the text feeds on and the readouts off by default,
+       and any stream the file names. Read at the next login.
+     - *Recording*: combat and loot, each off until turned on. Read at the next login.
+   - *One writer:* each section is read and written whole through
+     `cena_session::settings_store`, so a section this build does not know rides along.
+     A file that cannot be trusted is shown with why and never written over. A symbol must
+     be one mark, not a letter, a digit or a space.
+   - *`;sorter` saved:* it writes the `sorter` section through the same writer, and a
+     character starts sorting as it was left (`crates/cena/src/sorter.rs`).
+   - *Recording:* `crates/cena/src/setup.rs` reads the `record` section when the character
+     starts, opening the combat recorder, the loot ledger, both or neither; the ledger no
+     longer needs the combat recorder to be on. `--record` and `--no-record` decide nothing
+     and are said to be retired when given. **This changes a debug build's default**:
+     recording was on in debug builds and is now off until turned on, the author's one
+     default for both builds.
+   - *Checked:* 15 mutants over the pages, the writer, `;sorter`, the recording switches and
+     the retired flags. All were caught once a test put a player log feed back to its default:
+     that had passed. Not tested: the hub handing a changed symbol or sorter to a running
+     character (`Table::handle_of` in `crates/cena/src/play.rs`). It is one lookup over what
+     `Kept::take` does, and `Kept::take` is tested.
 4. **Travel**, typed: the keys the code reads, and the map's own keys as a free list.
 5. **Loot**, the loot profile's page.
 6. **Hunt:** first the chain in effect, each value with where it came from; then its pages,

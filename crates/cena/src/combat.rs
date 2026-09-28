@@ -103,7 +103,7 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, database: PathBu
 fn run(database: &Path, command: &Command) -> Result<Vec<String>, String> {
     if !database.is_file() {
         return Err(format!(
-            "nothing recorded yet ({}). Recording is on with --record.",
+            "nothing recorded yet ({}). Recording is turned on in Settings, Recording.",
             database.display()
         ));
     }

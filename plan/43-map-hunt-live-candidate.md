@@ -86,6 +86,9 @@ files in this bundle, or chat. OS-keyring access remains the normal native path.
 The launcher pins the bundled map and creates `live-test-data`, `live-test-logs`,
 and `scratch` beside it. No existing character/Hunt/loot configuration is copied.
 `--no-record` disables combat/loot database recording, **not wire/player logs**.
+*(Retired 2026-09-27, `plan/50` §7 step 3: recording is each character's own setting,
+off until turned on, so a fresh data folder records nothing; the flag is only said to be
+retired.)*
 Treat the generated data/logs as private; do not zip them back to Nisugi.
 
 To explicitly read Atari's reviewed boundary files, prefix that launch with:
