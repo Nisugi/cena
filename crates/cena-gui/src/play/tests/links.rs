@@ -186,3 +186,41 @@ fn an_object_naming_its_own_command_sends_it() {
         [Asked::Send("attack #456".to_owned())]
     );
 }
+
+/// A reconnect closes an object's menu, open or asked for: the object's id
+/// and the game's answer were the old connection's (the crate review of
+/// 2026-09-28, R13).
+#[test]
+fn a_reconnect_closes_an_objects_menu() {
+    let mut harness = harness();
+    heard(harness.state_mut(), &[("a grey rat", Some(rat()))]);
+    harness.run();
+    harness.get_by_label("a grey rat").click();
+    harness.run();
+    answered(harness.state_mut(), "1", &["2524,1543"]);
+    harness.run();
+    assert!(harness.query_by_label("attack").is_some(), "open");
+    harness.state_mut().snapshot.generation = Generation::FIRST.next();
+    harness.run();
+    assert!(harness.query_by_label("attack").is_none(), "closed");
+}
+
+/// A window reopened begins its numbers again, and takes no answer the
+/// story kept from before it asked: only one that comes after.
+#[test]
+fn a_reopened_window_takes_no_answer_from_before() {
+    let mut harness = harness();
+    heard(harness.state_mut(), &[("a grey rat", Some(rat()))]);
+    answered(harness.state_mut(), "1", &["2524,1543"]);
+    harness.run();
+    harness.get_by_label("a grey rat").click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [Asked::Quietly("_menu #456 1".to_owned())]
+    );
+    assert!(harness.query_by_label("attack").is_none(), "the old answer");
+    answered(harness.state_mut(), "1", &["2524,1543"]);
+    harness.run();
+    assert!(harness.query_by_label("attack").is_some(), "its own");
+}

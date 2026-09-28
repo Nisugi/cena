@@ -8,13 +8,18 @@
 //! - any other object link asks the game for the object's menu,
 //!   `_menu #<id> <n>`, sent without an echo, and the menu the game answers
 //!   with `id=<n>` pops up where the click was, labelled by the model's
-//!   dictionary (`cena_ui::object_menu`); an entry chosen sends its command;
+//!   dictionary (`cena_ui::object_menu`); an entry chosen sends its command.
+//!   Only an answer that came after the request, on its connection: a
+//!   reconnect closes the request, and a window reopened, its numbers
+//!   begun again, takes no answer the story kept from before (the crate
+//!   review of 2026-09-28, R13);
 //! - a web address opens in the browser.
 
 use cena_ui::{MenuGroup, RunLink, link_command, object_menu};
 use egui::{Id, Order, Pos2};
 
 use super::{Asked, Play, PlayView};
+use crate::story::Story;
 
 /// An object's menu, asked of the game, until it is chosen from or closed.
 #[derive(Debug)]
@@ -27,16 +32,23 @@ pub(super) struct Asking {
     noun: String,
     /// Where the click was, where the menu opens.
     at: Pos2,
+    /// The connection it was asked on: another, and it is closed.
+    generation: Option<cena_session::Generation>,
+    /// The answers the story had heard when it was asked: only one after
+    /// them is its.
+    after: Option<u64>,
 }
 
 impl Play {
-    /// Act on `link`, clicked at `at`, the character as `state` has it.
+    /// Act on `link`, clicked at `at`, the character as `snapshot` has it,
+    /// its story `story`.
     pub(super) fn clicked(
         &mut self,
         context: &egui::Context,
         (link, at): (RunLink, Pos2),
-        state: Option<&cena_session::GameState>,
+        (snapshot, story): (Option<&cena_session::Snapshot>, &Story),
     ) {
+        let state = snapshot.map(|snapshot| &snapshot.state);
         match link {
             RunLink::Command { command } => self.out = Some(Asked::Send(command)),
             RunLink::Url { href } => context.open_url(egui::OpenUrl::new_tab(href)),
@@ -56,6 +68,8 @@ impl Play {
                     exist,
                     noun,
                     at,
+                    generation: snapshot.map(|snapshot| snapshot.generation),
+                    after: story.menu.as_ref().map(|(count, _)| *count),
                 });
             }
         }
@@ -72,8 +86,17 @@ impl Play {
             self.asking = None;
             return;
         }
+        if view.snapshot.map(|snapshot| snapshot.generation) != asking.generation {
+            self.asking = None;
+            return;
+        }
         let number = asking.number.to_string();
-        let Some(menu) = view.story.menu.as_ref().filter(|menu| menu.id == number) else {
+        let answer = view
+            .story
+            .menu
+            .as_ref()
+            .filter(|(count, menu)| Some(*count) > asking.after && menu.id == number);
+        let Some((_, menu)) = answer else {
             return;
         };
         let state = view.snapshot.map(|snapshot| &snapshot.state);

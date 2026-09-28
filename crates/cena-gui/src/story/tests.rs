@@ -341,3 +341,20 @@ fn a_stream_keeps_its_newest_lines() {
         .collect();
     assert_eq!(first, "thought 5");
 }
+
+/// The game's answer to a menu is its connection's: a new one forgets it.
+#[test]
+fn a_menus_answer_goes_with_its_connection() {
+    let mut story = Story::default();
+    let menu = cena_session::Menu {
+        id: "1".to_owned(),
+        ..cena_session::Menu::default()
+    };
+    story.hear(
+        &observed(0, Event::Frame(Box::new(Frame::MenuResponse(menu)))),
+        None,
+    );
+    assert!(story.menu.is_some());
+    story.hear(&observed(1, said("", "You see a rock.")), None);
+    assert!(story.menu.is_none());
+}

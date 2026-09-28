@@ -128,7 +128,7 @@ impl Play {
         others: &[crate::widget::Character],
     ) -> (Drawn, Option<arrange::Released>) {
         let (session, arranging, offset) = (self.session, self.arranging, area.min.to_vec2());
-        let state = seen.snapshot.map(|snapshot| &snapshot.state);
+        let (snapshot, story) = (seen.snapshot, seen.story);
         let mut drawn = Vec::new();
         let mut insides = Vec::new();
         let mut released = None;
@@ -175,7 +175,7 @@ impl Play {
         match drawing.sent {
             Some(Clicked::Send(line)) => self.out = Some(super::Asked::Send(line)),
             Some(Clicked::Quietly(line)) => self.out = Some(super::Asked::Quietly(line)),
-            Some(Clicked::Link(link, at)) => self.clicked(context, (link, at), state),
+            Some(Clicked::Link(link, at)) => self.clicked(context, (link, at), (snapshot, story)),
             None => {}
         }
         ((drawn, insides), released)

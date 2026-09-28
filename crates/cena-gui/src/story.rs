@@ -69,8 +69,9 @@ pub(crate) struct Story {
     pub(crate) told: u64,
     /// Each stream's own lines, for a widget of it (`streams.rs`).
     pub(crate) streams: streams::Streams,
-    /// The game's last answer to a menu asked for (`play/links.rs`).
-    pub(crate) menu: Option<cena_session::Menu>,
+    /// The game's last answer to a menu asked for on this connection, and
+    /// how many came before it, for a request to know one after it.
+    pub(crate) menu: Option<(u64, cena_session::Menu)>,
     /// Inside a quiet command's window.
     quiet: bool,
     /// The last prompt shown; `>` before any.
@@ -89,6 +90,7 @@ impl Story {
             // A window never outlives its connection.
             self.generation = Some(event.generation);
             self.quiet = false;
+            self.menu = None;
         }
         match &event.event {
             Event::Quiet(quiet) => self.quiet = *quiet,
@@ -127,7 +129,10 @@ impl Story {
             }
             Event::Frame(frame) => match frame.as_ref() {
                 Frame::Prompt { text, .. } => self.prompted(text),
-                Frame::MenuResponse(menu) => self.menu = Some(menu.clone()),
+                Frame::MenuResponse(menu) => {
+                    let count = self.menu.as_ref().map_or(0, |(count, _)| count + 1);
+                    self.menu = Some((count, menu.clone()));
+                }
                 _ => {}
             },
             Event::Notice(notice) => self.tell(notice.clone()),
