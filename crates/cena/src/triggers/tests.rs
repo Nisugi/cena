@@ -238,3 +238,34 @@ async fn import_brings_a_wrayth_file_in_and_again_replaces_it() {
     assert!(missing[0].contains("such.xml"), "{missing:?}");
     assert_eq!(typing.triggers().triggers().len(), 13, "nothing changed");
 }
+
+/// A file broken after a good one changes nothing: the triggers read before
+/// stay on, and the reload says so, not that none are (the crate review of
+/// 2026-09-28, R4).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_broken_reload_keeps_the_triggers_and_says_so() {
+    let mut typing = Typing::new("broken-reload").unwrap();
+    fs::write(
+        triggers::path(&typing.dir),
+        "[trigger.stunned]\ntext = 'You are stunned'\nlook = { bold = true }\n",
+    )
+    .unwrap();
+    let said = typing.typed("trigger reload");
+    assert!(
+        said.iter().any(|said| said.ends_with("1 trigger on.")),
+        "{said:?}"
+    );
+    fs::write(triggers::path(&typing.dir), "[trigger.x\n").unwrap();
+    let said = typing.typed("trigger reload");
+    assert_eq!(typing.triggers().triggers().len(), 1, "still on");
+    assert!(
+        said.iter()
+            .any(|said| said.contains("The 1 trigger read before stays on.")),
+        "{said:?}"
+    );
+    assert!(
+        !said.iter().any(|said| said.contains("None are on")),
+        "{said:?}"
+    );
+    let _ = fs::remove_dir_all(&typing.dir);
+}

@@ -46,7 +46,7 @@ type Edit<'a> = &'a dyn Fn(&str) -> Result<(String, String), String>;
 /// Give `character`'s session its triggers from the file under `dir`, and
 /// say what was left out. No file is no triggers, and nothing is said.
 pub(crate) fn open(handle: &SessionHandle, dir: &Path, character: &str) {
-    for (kind, text) in loaded(reload(handle, dir, character), false) {
+    for (kind, text) in loaded(handle, reload(handle, dir, character), false) {
         handle.say(Notice::line(kind, format!("Triggers: {text}")));
     }
 }
@@ -99,7 +99,7 @@ fn answer(
         Command::Test(words) => info(explain::explain(&handle.triggers(), &words)),
         Command::Reload => {
             others.tell(character, "reloaded");
-            loaded(reload(handle, dir, character), true)
+            loaded(handle, reload(handle, dir, character), true)
         }
         Command::Approve(name) => change(&|text| {
             let (text, line) = edit::approve(text, &name)?;
@@ -173,7 +173,10 @@ fn change(
         }
         Err(why) => vec![
             (NoticeKind::Info, format!("{done}.")),
-            (NoticeKind::Warn, format!("{why}. None are on.")),
+            (
+                NoticeKind::Warn,
+                format!("{why}. {}", load::still_on(handle)),
+            ),
         ],
     }
 }

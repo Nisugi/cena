@@ -107,7 +107,10 @@ fn read_again(
             NoticeKind::Info,
             format!("{why}. {} on.", counted(reloaded.count)),
         ),
-        Err(e) => (NoticeKind::Warn, format!("{why}; {e}. None are on.")),
+        Err(e) => (
+            NoticeKind::Warn,
+            format!("{why}; {e}. {}", super::load::still_on(handle)),
+        ),
     };
     handle.say(Notice::line(kind, format!("Triggers: {said}")));
 }
