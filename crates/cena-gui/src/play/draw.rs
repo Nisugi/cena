@@ -57,7 +57,7 @@ pub(super) fn top(
     ui: &mut egui::Ui,
     view: &PlayView<'_>,
     grid: &mut f32,
-    arranging: &mut bool,
+    (arranging, locked): (&mut bool, &mut bool),
     unsaved: Option<&str>,
 ) -> Option<Top> {
     let mut asked = None;
@@ -119,8 +119,12 @@ pub(super) fn top(
             // On the bar, lit while it is on, so the mode is seen and left in
             // one click: a new custom window turns it on (the author,
             // 2026-09-28, stuck in it with the switch in the Layout menu).
-            ui.toggle_value(arranging, "Arrange")
-                .on_hover_text("Move, resize and drag widgets in and out of custom windows");
+            ui.add_enabled_ui(!*locked, |ui| {
+                ui.toggle_value(arranging, "Arrange")
+                    .on_hover_text("Move, resize and drag widgets in and out of custom windows");
+            });
+            ui.toggle_value(locked, "Lock")
+                .on_hover_text("Keep every window where it is: none is dragged or resized");
             if let Some(why) = unsaved {
                 ui.colored_label(WRONG, format!("Layout not saved: {why}"));
             }

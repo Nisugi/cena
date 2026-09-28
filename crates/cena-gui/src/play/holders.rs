@@ -91,7 +91,7 @@ impl Play {
     /// unless, with Arrange on, it is on a cell, which is the cell's
     /// (`arrange.rs`): its window is not let go, nor the grid shown.
     fn press(&mut self, context: &egui::Context, area: Rect) {
-        let Some(layout) = &self.layout else {
+        let Some(layout) = self.layout.as_ref().filter(|layout| !layout.locked) else {
             return;
         };
         let (pressed, origin) =
@@ -125,7 +125,7 @@ impl Play {
         let Some(layout) = self.layout.as_mut() else {
             return ((drawn, insides), released);
         };
-        let grid = layout.grid;
+        let (grid, locked) = (layout.grid, layout.locked);
         let mut drawing = draw::Drawing {
             seen,
             others,
@@ -142,7 +142,9 @@ impl Play {
                 .iter()
                 .any(|engaged| engaged.holder == holder.id);
             let (id, title) = (holder.id, draw::title(&holder.holds, drawing.follows));
-            let window = holder_window(title, id, at, held, area, session);
+            let window = holder_window(title, id, at, held, area, session)
+                .movable(!locked)
+                .resizable(!locked);
             let shown = window.show(context, |ui| {
                 let inside = draw::holder(ui, &mut holder.holds, &mut drawing);
                 if let Holds::Custom(custom) = &mut holder.holds {
@@ -194,6 +196,10 @@ impl Play {
             let Some((_, now)) = drawn.iter().find(|(holder, _)| *holder == engaged.holder) else {
                 continue;
             };
+            // The grid shows once a window moves or changes its size, never
+            // for a click (the author, 2026-09-28).
+            self.guiding |= (now.min - engaged.start.min).length() > 0.5
+                || (now.size() - engaged.start.size()).length() > 0.5;
             let siblings: Vec<Rect> = layout
                 .holders
                 .iter()
@@ -216,9 +222,12 @@ impl Play {
             guides.extend(engaged_guides);
         }
         if down {
-            guide(context, area, layout.grid, &guides, self.session);
+            if self.guiding {
+                guide(context, area, layout.grid, &guides, self.session);
+            }
             return false;
         }
+        self.guiding = false;
         let mut changed = self
             .engaged
             .iter()

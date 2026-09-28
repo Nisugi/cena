@@ -757,6 +757,24 @@ own record in `plan/50` §7:
 The pages are not a schema-rendered editor in the sense §7f meant. They are each behavior's
 own key table, drawn by one generic menu, and a hunt profile's own table read whole.
 
+### The author's notes after running Stage D, 2026-09-28
+
+Each BUILT the same day, each with its tests:
+
+1. **Arrange is on the top bar.** *New custom window* turns it on and the switch was inside
+   the Layout menu, so the author was left in it with no sign why. It is a switch on the
+   play window's top bar now, lit while it is on (`74d4986`).
+2. **The grid shows only once a window moves.** *"clicking on a window brings up the grid.
+   Grid should only show once a drag of a window has started either to relocate or
+   resize."* A press alone shows nothing. The grid and guides come once a pressed window
+   has moved or changed its size, and go when it is let go
+   (`crates/cena-gui/src/play/holders.rs`, `guiding`).
+3. **A window lock.** *"There also probably needs to be a window lock you can toggle to
+   prevent dragging them windows."* *Lock* on the top bar keeps every window where it is:
+   none is let go by a press, none is movable or resizable, and Arrange cannot be turned
+   on. It is kept with the character's layout (`Layout::locked`). The layout's keeping
+   moved into `crates/cena-gui/src/layout/kept.rs` to make room.
+
 ### Stage E — drawers
 
 A main area and four drawers, each clipping or pushing, with translucency and click-through

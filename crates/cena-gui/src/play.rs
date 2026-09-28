@@ -103,6 +103,9 @@ pub(crate) struct Play {
     /// Arrange is on: a custom window's cells take the pointer
     /// (`arrange.rs`). Never saved: a play window opens with it off.
     arranging: bool,
+    /// The grid and the snapping guides are showing: a window pressed has
+    /// moved or changed its size, not merely been clicked.
+    guiding: bool,
     /// The cell being moved or resized, with Arrange on.
     cell: Option<arrange::CellGesture>,
     /// Each custom window's inside as last drawn, from the play area's top
@@ -151,6 +154,7 @@ impl Play {
             layout,
             engaged: Vec::new(),
             arranging: false,
+            guiding: false,
             cell: None,
             insides: Vec::new(),
             read: std::collections::HashMap::new(),
@@ -177,12 +181,25 @@ impl Play {
         let mut grid = self.layout.as_ref().map_or(GRID, |layout| layout.grid);
         let unsaved = self.unsaved.clone();
         let mut arranging = self.arranging;
+        let mut locked = self.layout.as_ref().is_some_and(|layout| layout.locked);
         let top = egui::Panel::top(Id::new(("play-top", session)))
             .show(ui, |ui| {
-                draw::top(ui, view, &mut grid, &mut arranging, unsaved.as_deref())
+                draw::top(
+                    ui,
+                    view,
+                    &mut grid,
+                    (&mut arranging, &mut locked),
+                    unsaved.as_deref(),
+                )
             })
             .inner;
-        self.arranging = arranging;
+        self.arranging = arranging && !locked;
+        if let Some(layout) = &mut self.layout
+            && layout.locked != locked
+        {
+            layout.locked = locked;
+            self.save();
+        }
         let mut changed = false;
         match top {
             Some(draw::Top::Stop) => asked = Some(Asked::Stop),
@@ -203,7 +220,7 @@ impl Play {
             Some(draw::Top::NewCustom) => {
                 if let Some(layout) = &mut self.layout {
                     layout.new_custom();
-                    self.arranging = true;
+                    self.arranging = !layout.locked;
                     changed = true;
                 }
             }

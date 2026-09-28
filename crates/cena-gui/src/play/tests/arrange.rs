@@ -500,3 +500,58 @@ fn a_bars_page_is_saved_with_the_layout() {
     assert_eq!(fills, Some(cena_ui::settings::Value::Text("up".to_owned())));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The grid shows once a window moves, never for a click on one (the
+/// author, 2026-09-28: *"Grid should only show once a drag of a window has
+/// started"*), and goes when it is let go.
+#[test]
+fn the_grid_shows_only_once_a_window_moves() {
+    let mut harness = harness();
+    harness.run();
+    let window = harness.get_by_label("Room").rect();
+    let grip = egui::pos2(window.center().x, window.min.y + 12.0);
+    harness.hover_at(grip);
+    harness.step();
+    harness.drag_at(grip);
+    harness.step();
+    harness.step();
+    assert!(!harness.state().play.guiding, "a press alone shows no grid");
+    harness.hover_at(grip + egui::vec2(-40.0, 30.0));
+    harness.step();
+    harness.step();
+    assert!(harness.state().play.guiding, "moving, it shows");
+    harness.drop_at(grip + egui::vec2(-40.0, 30.0));
+    harness.step();
+    harness.step();
+    assert!(!harness.state().play.guiding, "let go, it goes");
+}
+
+/// Locked, no window moves: a drag leaves each where it was, Arrange cannot
+/// be turned on, and the lock is kept with the layout.
+#[test]
+fn a_locked_window_stays_where_it_is() {
+    let mut harness = harness();
+    harness.run();
+    harness.get_by_label("Lock").click();
+    harness.run();
+    assert!(layout(&harness).locked);
+    let before = layout(&harness)
+        .titled("Room")
+        .map(crate::layout::Holder::rect);
+    let window = harness.get_by_label("Room").rect();
+    let grip = egui::pos2(window.center().x, window.min.y + 12.0);
+    drag(&mut harness, grip, grip + egui::vec2(-80.0, 60.0));
+    assert_eq!(
+        layout(&harness)
+            .titled("Room")
+            .map(crate::layout::Holder::rect),
+        before,
+        "it stayed"
+    );
+    harness.get_by_label("Arrange").click();
+    harness.run();
+    assert!(!harness.state().play.arranging, "no arranging while locked");
+    harness.get_by_label("Lock").click();
+    harness.run();
+    assert!(!layout(&harness).locked, "unlocked");
+}

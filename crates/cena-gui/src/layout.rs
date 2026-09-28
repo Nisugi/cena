@@ -15,17 +15,19 @@
 //! one kind can live side by side.
 
 mod custom;
+mod kept;
 mod moves;
 mod preset;
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 
 use egui::{Rect, Vec2, pos2};
 use serde::{Deserialize, Serialize};
 
 use crate::widget::Widget;
 pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL, stacks_at, tabs_and_body};
+#[cfg(test)]
+use kept::file;
 pub(crate) use moves::Taking;
 pub(crate) use preset::{Library, Preset};
 
@@ -68,6 +70,11 @@ pub(crate) struct Layout {
     /// options). A bar not here draws as its kind says.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) looks: BTreeMap<u32, crate::bar::Look>,
+    /// Its windows stay where they are: none is dragged or resized (the
+    /// author, 2026-09-28: *"a window lock you can toggle to prevent
+    /// dragging them windows"*).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) locked: bool,
 }
 
 /// One window in a play window: a standalone window or a custom window.
@@ -151,6 +158,7 @@ impl Layout {
             holders: Vec::new(),
             follows: BTreeMap::new(),
             looks: BTreeMap::new(),
+            locked: false,
         };
         let story = layout.place(Widget::Story);
         layout.add(
@@ -283,36 +291,6 @@ impl Layout {
     pub(crate) fn titled(&self, title: &str) -> Option<&Holder> {
         self.holders.iter().find(|holder| holder.title() == title)
     }
-
-    /// `character`'s saved layout on `instance` in `dir`: by game and name,
-    /// so a character on Prime and one of the same name on Shattered each
-    /// keep their own (`plan/50` §6 item 6). One saved under the name alone,
-    /// as layouts were kept before, is taken as the first. `None` when there
-    /// is none, or it cannot be read, when a fitted one does.
-    pub(crate) fn load(dir: &Path, instance: Option<&str>, character: &str) -> Option<Self> {
-        let read = |path: PathBuf| {
-            let text = std::fs::read_to_string(path).ok()?;
-            serde_json::from_str::<Self>(&text)
-                .ok()
-                .filter(|layout| layout.version == VERSION)
-        };
-        read(file(dir, instance, character))
-            .or_else(|| instance.and_then(|_| read(file(dir, None, character))))
-    }
-
-    /// Save this as `character`'s layout on `instance` in `dir`.
-    ///
-    /// # Errors
-    ///
-    /// The folder could not be made or the file written.
-    pub(crate) fn save(
-        &self,
-        dir: &Path,
-        instance: Option<&str>,
-        character: &str,
-    ) -> std::io::Result<()> {
-        cena_session::store::save_json(dir, &file(dir, instance, character), self)
-    }
 }
 
 /// A kept rect as a rect.
@@ -323,24 +301,6 @@ fn rect([x, y, width, height]: [f32; 4]) -> Rect {
 /// A rect as it is kept: x, y, width, height.
 fn kept(at: Rect) -> [f32; 4] {
     [at.min.x, at.min.y, at.width(), at.height()]
-}
-
-/// `character`'s layout file on `instance`, `prime_nisugi.json`, or under
-/// its name alone with no instance: each in lower case, letters and digits
-/// only, so the same character is one file on every filesystem (the
-/// character store's lesson: one file on NTFS was two on ext4).
-fn file(dir: &Path, instance: Option<&str>, character: &str) -> PathBuf {
-    let clean = |words: &str| -> String {
-        words
-            .chars()
-            .filter(char::is_ascii_alphanumeric)
-            .map(|c| c.to_ascii_lowercase())
-            .collect()
-    };
-    match instance {
-        Some(instance) => dir.join(format!("{}_{}.json", clean(instance), clean(character))),
-        None => dir.join(format!("{}.json", clean(character))),
-    }
 }
 
 #[cfg(test)]
