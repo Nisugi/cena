@@ -67,6 +67,14 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/hooks.rb"),
     ),
     (
+        "lich/lib/common/gtk.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/common/gtk.rb"),
+    ),
+    (
+        "lich/lib/util/gtk_compaction.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/util/gtk_compaction.rb"),
+    ),
+    (
         "lich/lib/common/hook_registry.rb",
         include_str!("../../../../bridges/ruby/lich/lib/common/hook_registry.rb"),
     ),
@@ -253,6 +261,9 @@ pub struct Start<'a> {
     pub data: &'a Path,
     /// The character's command symbol.
     pub symbol: char,
+    /// Whether it may open Lich's windows: load the gtk3 gem, when the
+    /// player has it, as Lich does (`HYDRA_WINDOWS`).
+    pub windows: bool,
 }
 
 /// Start a runner. It lives until killed or dropped; its standard error is
@@ -272,6 +283,7 @@ pub fn start(start: &Start<'_>) -> std::io::Result<tokio::process::Child> {
         .env("HYDRA_SCRIPTS", start.scripts)
         .env("HYDRA_DATA", start.data)
         .env("HYDRA_SYMBOL", start.symbol.to_string())
+        .env("HYDRA_WINDOWS", if start.windows { "1" } else { "0" })
         .current_dir(start.data)
         .stdin(Stdio::null())
         .stdout(Stdio::null())

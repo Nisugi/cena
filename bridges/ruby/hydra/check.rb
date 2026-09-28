@@ -23,9 +23,10 @@
 #            script stops there, if it gets there.
 #   markup   the line reads the game's markup, which Hydra does not give
 #            scripts: it finds none, and what waits for it waits in vain.
-#   windows  the line opens one of Lich's windows (Gtk), which Hydra's
-#            runner does not: the script stops there, which is often only
-#            its settings window.
+#   windows  the line opens one of Lich's windows (Gtk): a window of its
+#            own while Hydra lets the runner load the gtk3 gem and the
+#            player has it (for now it does); where it cannot, the script
+#            stops there, which is often only its settings window.
 #   differs  it runs, and does not do what it did under Lich: a hook whose
 #            pattern is markup, Lich's own state read as nil.
 #
@@ -83,7 +84,8 @@ module Hydra
 
     # Lich's windows: Lich loads the gtk3 gem for its scripts.
     WINDOWS = %w[Gtk Gdk GdkPixbuf GLib Pango Cairo].freeze
-    WINDOWS_WHY = 'Lich\'s windows (the gtk3 gem), which Hydra\'s runner does not load'
+    WINDOWS_WHY = 'one of Lich\'s windows: opened through the gtk3 gem, which the runner loads when Hydra ' \
+                  'lets it (for now) and the player has it; without it the script stops here'
 
     # Lich's classes a runner does not load yet (inventory/13 section 2.5).
     LICH_WHY = 'Lich\'s, not answered by Hydra yet (plan/46)'

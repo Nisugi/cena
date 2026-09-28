@@ -104,8 +104,8 @@ pub(super) fn said(checked: &Checked) -> Notice {
     }
     let kind = match checked.verdict {
         Verdict::Runs => NoticeKind::Info,
-        Verdict::Stops | Verdict::Windows => NoticeKind::Error,
-        Verdict::Markup | Verdict::Differs => NoticeKind::Warn,
+        Verdict::Stops => NoticeKind::Error,
+        Verdict::Markup | Verdict::Windows | Verdict::Differs => NoticeKind::Warn,
     };
     Notice::table(kind, lines)
 }
@@ -115,7 +115,9 @@ fn verdict(verdict: Verdict) -> &'static str {
         Verdict::Runs => "nothing found that Hydra does not answer, as far as the checker can see",
         Verdict::Stops => "stops where a line below raises under Hydra, if it gets there",
         Verdict::Markup => "runs, but reads the game's markup, which Hydra does not give scripts",
-        Verdict::Windows => "runs, but stops where it opens one of Lich's windows",
+        Verdict::Windows => {
+            "runs, and opens Lich's windows: through the gtk3 gem, which the runner loads for now"
+        }
         Verdict::Differs => "runs, and does not do all it did under Lich",
     }
 }

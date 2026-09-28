@@ -52,9 +52,27 @@ require 'sequel'
 end
 %w[socket time].each { |library| require library }
 
-# Lich started headless (`--no-gtk`, lib/init.rb): Hydra's runner opens no
-# windows, and a script that asks takes its way without them.
-HAVE_GTK = false
+# Lich's windows (plan/46 section 10, question 12; the author, 2026-09-27:
+# *"sure for now we will load gtk, but we will probably not use gtk on
+# release"*). A runner Hydra lets open windows (HYDRA_WINDOWS, runner.rb)
+# loads the gtk3 gem when the player has it, as Lich loads it (lich.rbw,
+# lib/init.rb): the
+# guard that keeps GC.compact from crashing it first, then the gem. The
+# runner then gives its main thread to Gtk's loop, as Lich does. Without the
+# gem, or for the checker, it is Lich started headless (`--no-gtk`), and a
+# script that asks HAVE_GTK takes its way without a window.
+HAVE_GTK = if defined?(HYDRA_WINDOWS) && HYDRA_WINDOWS
+             begin
+               require File.join(LIB_DIR, 'util', 'gtk_compaction.rb')
+               Lich::Util::GtkCompaction.install!
+               require 'gtk3'
+               true
+             rescue LoadError
+               false
+             end
+           else
+             false
+           end
 
 # Lich's engine, unchanged (../lich, BSD 3-Clause: ../lich/LICENSE.txt):
 # the script itself, the calls scripts make, the `;` command table, the
@@ -78,6 +96,9 @@ HAVE_GTK = false
   lich.rb
 ].each { |file| require File.join(LIB_DIR, file) }
 include Lich::Common
+# Lich's own Gtk support: `Gtk.queue`, which runs a script's block on the
+# window thread, and the guards that keep a script from stopping the loop.
+require File.join(LIB_DIR, 'common', 'gtk.rb') if HAVE_GTK
 
 # The stores (plan/46 section 5): Lich's own, writing `lich.db3` in
 # DATA_DIR as Lich writes it in its data folder. Its tables are made first,

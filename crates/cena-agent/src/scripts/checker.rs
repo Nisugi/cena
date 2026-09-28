@@ -46,7 +46,9 @@ pub enum Verdict {
     Stops,
     /// A line reads the game's markup, which Hydra does not give scripts.
     Markup,
-    /// A line opens one of Lich's windows, which the runner does not.
+    /// A line opens one of Lich's windows: through the gtk3 gem while the
+    /// runner loads it (`runner::Start::windows`), and the script stops
+    /// there where it cannot.
     Windows,
     /// It runs, and does not do what it did under Lich.
     Differs,

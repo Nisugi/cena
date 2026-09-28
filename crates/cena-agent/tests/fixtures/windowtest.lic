@@ -1,0 +1,16 @@
+# A script of Hydra's own for Lich's windows (crates/cena-agent/tests/runner.rs):
+# with the gtk3 gem, a window made and closed on Gtk's thread through Lich's
+# own Gtk.queue; without it, HAVE_GTK says so.
+
+if HAVE_GTK
+  done = false
+  Gtk.queue do
+    window = Gtk::Window.new('Hydra')
+    window.destroy
+    done = true
+  end
+  wait_until { done }
+  echo 'a window opened and closed'
+else
+  echo 'no windows'
+end

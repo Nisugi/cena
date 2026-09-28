@@ -23,6 +23,7 @@ Hydra starts the runner and hands it, in its environment:
 | `HYDRA_SCRIPTS` | the folder the player's scripts are in |
 | `HYDRA_DATA` | the folder a runner keeps its own data in (a Lich runner's `DATA_DIR`) |
 | `HYDRA_SYMBOL` | the character's command symbol, `;` unless changed |
+| `HYDRA_WINDOWS` | `1` when the runner may open windows for its scripts, as Lich's do (a Ruby runner: the gtk3 gem, when the player has it); `0` when it may not |
 
 MCP's streamable HTTP, **without a session**: each request is a `tools/call` on its own, answered
 as JSON; no `initialize` is needed, and a restart of either side needs no handshake again. Send

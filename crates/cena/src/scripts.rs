@@ -445,6 +445,9 @@ async fn start(shared: &Shared, seat: &Seat) -> Result<Running, String> {
         scripts: &scripts,
         data: &data,
         symbol: seat.door.symbol(),
+        // Scripts' windows, for now (the author, 2026-09-27: *"sure for now
+        // we will load gtk, but we will probably not use gtk on release"*).
+        windows: true,
     });
     let mut child = match started {
         Ok(child) => child,

@@ -33,7 +33,7 @@ finding has a kind, and a script's verdict is its worst:
 | Verdict | Means |
 |---|---|
 | `stops` | a line raises under Hydra: a name not defined, a method not answered, a library missing, or Ruby cannot read the file. The script stops there, if it gets there |
-| `windows` | a line opens one of Lich's windows (Gtk), which the runner does not: often only a settings window |
+| `windows` | a line opens one of Lich's windows (Gtk): a window of its own while Hydra lets the runner load the gtk3 gem and the player has it, as it does for now; without it the script stops there, often at only a settings window |
 | `markup` | a line reads the game's markup, which Hydra does not give scripts (`plan/46` §6.2): it finds none |
 | `differs` | it runs, and does not do what it did under Lich: a hook whose pattern is markup, Lich's own state read as nil |
 | `runs` | nothing found |
@@ -86,11 +86,11 @@ one most needed; the percentages count every script, those already running inclu
 | 20 | Map.ids_from_uid | 15 | 168 (71.2%) | 3 | 1782 (83.7%) |
 
 The first two are decisions. **The game's markup** is `plan/46` §6.2's, taken: labelled data
-first, a copy of the game's bytes if that is not enough, never faked tags. **Lich's windows are
-open**: `plan/46` §6 counted Gtk as running in ordinary Ruby given the gem, and the runner as
-built does not load it (`HAVE_GTK` is false, as a Lich started `--no-gtk`, so a script that asks
-goes its way without one); loading it means the runner opening windows of its own beside
-Hydra's. The rest are reads Hydra's model already holds
+first, a copy of the game's bytes if that is not enough, never faked tags. **Lich's windows are loaded
+for now** (the author, 2026-09-27: *"sure for now we will load gtk, but we will probably not use
+gtk on release"*): the runner loads the gtk3 gem when Hydra lets it and the player has it, and
+these scripts open their windows. They are still counted here, since a release may not load it,
+and it is not cheap (`plan/46` §9). The rest are reads Hydra's model already holds
 (`inventory/13` §2.5: `Stats`, `Skills`, `Spells`, `Wounds`, `Scars`, `Effects`, `Society`,
 `XMLData`'s fields) or acts it already performs (`Spell#cast` is the casting step,
 `plan/37` Stage 3; `Map.dijkstra` and `find_nearest` are travel's), not yet given Lich's names in

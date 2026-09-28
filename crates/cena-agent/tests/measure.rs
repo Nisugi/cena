@@ -111,7 +111,8 @@ fn scratch(test: &str) -> PathBuf {
 }
 
 /// A runner's start: from starting Ruby to its first `listen` reaching a
-/// socket, as §9 measured it before.
+/// socket, as §9 measured it before; without windows and with them (the
+/// gtk3 gem loaded), with the memory of the last of each.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "Tier 2: plan/46 §9's measurements; needs Ruby 4.0; prints"]
 async fn a_runners_start() {
@@ -121,31 +122,48 @@ async fn a_runners_start() {
     for folder in ["scripts", "data"] {
         std::fs::create_dir_all(dir.join(folder)).unwrap();
     }
-    let mut times = Vec::new();
-    for _ in 0..6 {
-        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
-            .await
+    for windows in [false, true] {
+        let mut times = Vec::new();
+        let mut kept = String::new();
+        for run in 0..6 {
+            let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+                .await
+                .unwrap();
+            let url = format!("http://{}/mcp", listener.local_addr().unwrap());
+            let started = Instant::now();
+            let mut child = start(&Start {
+                ruby: &ruby,
+                dir: &dir.join("runner"),
+                url: &url,
+                token: "measure",
+                character: "Nisugi",
+                game: "GS3",
+                scripts: &dir.join("scripts"),
+                data: &dir.join("data"),
+                symbol: ';',
+                windows,
+            })
             .unwrap();
-        let url = format!("http://{}/mcp", listener.local_addr().unwrap());
-        let started = Instant::now();
-        let mut child = start(&Start {
-            ruby: &ruby,
-            dir: &dir.join("runner"),
-            url: &url,
-            token: "measure",
-            character: "Nisugi",
-            game: "GS3",
-            scripts: &dir.join("scripts"),
-            data: &dir.join("data"),
-            symbol: ';',
-        })
-        .unwrap();
-        let accepted = tokio::time::timeout(Duration::from_mins(1), listener.accept()).await;
-        times.push(started.elapsed().as_secs_f64() * 1000.0);
-        assert!(accepted.is_ok(), "the runner never listened");
-        let _ = child.kill().await;
+            let accepted = tokio::time::timeout(Duration::from_mins(1), listener.accept()).await;
+            times.push(started.elapsed().as_secs_f64() * 1000.0);
+            assert!(accepted.is_ok(), "the runner never listened");
+            if run == 5 {
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                kept = memory(child.id().unwrap_or_default());
+            }
+            let _ = child.kill().await;
+        }
+        let with = if windows {
+            "with windows"
+        } else {
+            "no windows"
+        };
+        summary(
+            &format!("a runner's start, {with}, Ruby to its first listen"),
+            times,
+        );
+        println!("a runner, {with}, no script: {kept}");
     }
-    summary("a runner's start, Ruby to its first listen", times);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -500,6 +518,7 @@ async fn a_runner_in_combat() {
         scripts: &scripts,
         data: &dir.join("data"),
         symbol: ';',
+        windows: false,
     })
     .unwrap();
     let pid = child.id().unwrap_or_default();

@@ -19,6 +19,9 @@ end
 SCRIPT_DIR = hydra_setting('HYDRA_SCRIPTS')
 DATA_DIR = hydra_setting('HYDRA_DATA')
 $lich_char = hydra_setting('HYDRA_SYMBOL')
+# Whether scripts may open windows, as Hydra says: then the gtk3 gem, when
+# the player has it (engine.rb).
+HYDRA_WINDOWS = ENV['HYDRA_WINDOWS'] == '1'
 
 require_relative 'engine'
 
@@ -27,6 +30,19 @@ XMLData = Hydra::Data.new(hydra_setting('HYDRA_GAME'), hydra_setting('HYDRA_CHAR
 $stdout = Hydra::Screen.new
 Hydra.connection = Hydra::Connection.new(hydra_setting('HYDRA_URL'), hydra_setting('HYDRA_TOKEN'))
 
-Hydra::Listener.new(Hydra.connection, copy).run
-# Hydra dismissed the runner, or the session ended: its scripts end with it.
+# Listen until Hydra dismisses the runner or the session ends; its scripts
+# end with it. With Gtk, the main thread is the window loop's, as Lich's is
+# (lich.rbw), and the loop is closed as Lich closes it when listening ends.
+listening = Thread.new do
+  Hydra::Listener.new(Hydra.connection, copy).run
+ensure
+  Lich::Common.shutdown_gtk_before_exit if HAVE_GTK
+end
+if HAVE_GTK
+  Thread.current.priority = -10
+  Gtk.main
+  Lich::Common.shutdown_gtk_before_exit(direct: true)
+else
+  listening.join
+end
 exit 0
