@@ -390,3 +390,7 @@ crates/cena-gui/src/play/tests.rs 450
 # is the presets and their library, its tests moved to layout/preset/tests.rs as layout/tests.rs
 # neared its cap: 258 lines, so 350.
 crates/cena-gui/src/layout/preset.rs 350
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/49's Game state widget, the author's
+# addition). crates/cena-gui/src/widget/state.rs is the widget, its tests in
+# widget/state/tests.rs beside it, widget/tests.rs being near its cap: 215 lines, so 300.
+crates/cena-gui/src/widget/state.rs 300
