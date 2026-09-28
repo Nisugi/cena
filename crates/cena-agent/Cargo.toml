@@ -25,7 +25,8 @@ cena-platform.workspace = true
 # The end-to-end test drives the router as a tower service and reads its body.
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
-tokio = { version = "1", features = ["macros", "rt", "test-util", "time"] }
+# `rt-multi-thread` for tests/measure.rs, which measures on the binary's kind of runtime.
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "test-util", "time"] }
 
 [lints]
 workspace = true

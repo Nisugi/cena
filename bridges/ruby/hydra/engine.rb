@@ -29,16 +29,28 @@ require 'sequel'
 
 # What Lich loads before any script (lich.rbw), which scripts use without
 # loading it themselves: `OpenStruct`, `Time.parse`, `YAML`,
-# `Terminal::Table`... Each as it is found: one missing fails the script
+# `Terminal::Table`... Each is loaded the first time a script names it
+# (Ruby's autoload): loading them all at start took a runner's start from
+# 0.9 s to 1.6 s (plan/46 section 9). `time`, which gives Time methods
+# rather than a name, is loaded now. One not installed fails the script
 # that uses it, naming it, as under a Lich without it.
-%w[
-  base64 digest/md5 digest/sha1 drb/drb json monitor net/http openssl ostruct resolv
-  rexml/document rexml/streamlistener socket stringio terminal-table time yaml
-].each do |library|
-  require library
-rescue LoadError
-  nil
+{
+  'Base64' => 'base64', 'Digest' => 'digest', 'DRb' => 'drb/drb', 'Monitor' => 'monitor',
+  'Net::HTTP' => 'net/http', 'OpenSSL' => 'openssl', 'OpenStruct' => 'ostruct', 'Resolv' => 'resolv',
+  'REXML' => File.expand_path('rexml.rb', __dir__), 'StringIO' => 'stringio',
+  'Terminal' => 'terminal-table', 'YAML' => 'yaml'
+}.each do |name, library|
+  *outer, last = name.split('::')
+  scope = outer.inject(Object) do |within, part|
+    within&.const_defined?(part, false) ? within.const_get(part) : nil
+  end
+  if scope
+    scope.autoload(last, library) unless scope.const_defined?(last, false)
+  else
+    Object.autoload(outer.first, library)
+  end
 end
+%w[socket time].each { |library| require library }
 
 # Lich started headless (`--no-gtk`, lib/init.rb): Hydra's runner opens no
 # windows, and a script that asks takes its way without them.

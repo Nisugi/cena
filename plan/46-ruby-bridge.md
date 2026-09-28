@@ -1,7 +1,7 @@
 # 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
-(§10).** **Steps 1 to 5 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
+(§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11); the rest is not built. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
@@ -296,35 +296,73 @@ is an input hook, §6.1), sloot, step2, tpick, poolparty, stand and the rest of 
   level for scripts, per character, apart from the agent's.
 - **Stopping a character stops its scripts.** The page lists them, beside the running behavior.
 
-## 9. Measurements owed
+## 9. Measurements: MEASURED 2026-09-27 (§11 step 6)
 
-None of these is measured; each is a guess until it is.
+**How.** `crates/cena-agent/tests/measure.rs`, three ignored tests that print rather than assert:
+`cargo test -p cena-agent --test measure -- --ignored --nocapture --test-threads 1`. The combat
+is a real hunt's, `crates/cena-behavior/tests/fixtures/smithy_kill.xml` (a pegasus fought and
+killed: 28 chunks, 278 lines, 70 KB in 11 game seconds), each chunk the scripted game's answer to
+a script's `next`, so it arrives as the game sends it: a chunk at a time, closed by its prompt. A
+Ruby script (`tests/fixtures/measure.lic`) keeps when it sent and when each line reached it; the
+test keeps when the session published each line, each line shown and each prompt, on the same
+clock. Ruby 4.0.3, Windows 11, the author's machine; **a debug build**, as every build here is
+(`CLAUDE.md`), so Hydra's own side is slower than a release's, and the runner's Ruby is the same
+either way. The ranges are over five runs; one machine, not quiet, and the spread is its own
+finding.
 
-- A runner's memory per character: Ruby, the bridge, and N scripts. **MEASURED 2026-09-27, with
-  no script running: 27.0 MiB working set, 58.8 MiB private** (`Get-Process` on the runner three
-  seconds after it started), against Lich's 466 MB committed (`plan/38` §2a). With scripts:
-  unmeasured. **With step 2's classes and stores loaded: 38.8 MiB working set, 72.8 MiB
-  private**, the same way.
-- **A runner's start time.** The author, 2026-09-27: *"I'm not sure waiting until you try to run
-  a script and taking 30-90 seconds for ruby to boot up is a good idea, but let's at least try
-  it."* Most of Lich's start is loading its 100 MB map (`plan/38` §2a), which a runner never
-  does. **MEASURED 2026-09-27: 338 ms** median from starting Ruby to the runner's first `listen`
-  reaching a socket, 313-370 ms over six runs (Ruby 4.0.3, Windows 11, the author's machine;
-  Lich's engine loaded, no script). How: `bridges/ruby/hydra/runner.rb` started with the
-  contract's environment, `HYDRA_URL` naming a socket that accepts, timed to the first
-  connection. So the runner starts on the first script, as the author asked. **With step 2:
-  885 ms** median, 866-913 ms over six runs: `GameObj` (and `ox`), `lich.rb`, the stores and
-  `sequel` loaded too.
-- The local copy's update size and rate in combat.
-- A send to its first reply line, against Lich's in-process path.
-- A hooked line's display delay (§6.1), and the deadline to set. **The deadline is set, not
-  measured: 500 ms** (`cena_session::script::HOOK_DEADLINE`, step 4), past the 250 ms a runner's
-  watcher holds a chunk with no prompt. Found in building it, MEASURED once in a debug build
-  (a test's timestamps, 2026-09-27): the first chunk of text a session reads builds its
-  classifiers, **1.6 s** inside the actor, so on a hooked character that chunk goes as it came.
-- MCP notification delivery under load (`plan/38` §5 keeps a plain-JSON layer in reserve). **Not
-  built that way**: a runner long-polls `listen` (§11, step 1), so what is owed is a line's time
-  from the session to a script's buffer, in combat.
+- **A runner's start**: **0.94-0.95 s** median from starting Ruby to its first `listen`
+  reaching a socket (two sets of six starts, run alone), the method of the first measurement
+  below; 0.96-1.46 s in three sets run straight after the combat measurement, on a machine still
+  busy with it. Step 5 had taken it to 1.6 s by loading what Lich loads before any script; those
+  libraries now load when a script first names one (Ruby's autoload,
+  `bridges/ruby/hydra/engine.rb`), and step 2's runner and today's, timed alike from a Ruby
+  script in two rounds, start alike (step 2's 0.93 and 1.01 s, today's 0.93 and 1.06 s). So
+  **the runner stays started on the first script** (§10, question 9). Of the second, Ruby itself
+  is 0.25 s, then Sequel 0.21-0.23 s, Lich's `gameobj.rb` 0.18 s, `sqlite3` 0.13 s and `net/http`
+  0.10 s.
+  - *Before, kept*: 338 ms at step 1 (Lich's engine, no script: 313-370 ms over six runs), 885 ms
+    at step 2 (`GameObj`, `ox`, `lich.rb`, the stores and `sequel` too), timed from a separate
+    script the same way.
+- **A runner's memory** (`Get-Process`): **39.3-39.7 MiB working set, 73.1-73.4 MiB private**
+  with no script; 42.2-42.5 and 78.9-79.3 after the combat; 42.5-42.6 and 80.2-82.5 with a
+  display-hook script running; **42.8-43.0 and 90.7-91.0 with twelve scripts running**, about 1
+  MiB private a script. Against Lich's 466 MB committed a character (`plan/38` §2a): 25
+  characters' runners are some 2 GB private, 25 Lichs some 11.6 GB committed (not the same
+  measure, so an order, not a ratio).
+  - *Before, kept*: 27.0 and 58.8 MiB at step 1; 38.8 and 72.8 at step 2; 47.6 and 79.6 when
+    step 5 loaded Lich's libraries at start, which autoload undid.
+- **The local copy's update size and rate in combat**: **12-13 `state` events over the 28
+  chunks, 19.3 KB, about 690 bytes a chunk and 1.75 KB a game second**; the median event 0.6-1.7
+  KB, the largest 3.3 KB. What changes most is the room (7 events: its creatures and objects go
+  whole) and the effects (6). The lines themselves are 188 events and 21 KB. Negligible.
+- **A send to its first reply line, against Lich's in-process path**: a script's `look`, answered
+  with one line, **12.9-17.1 ms median under Hydra, 0.23-0.54 ms under Lich's own path**
+  (`tests/fixtures/lichpath.rb`: Lich's engine in one process, a socket for the game, a reader
+  thread handing each line to the scripts, without Lich's XML parse, so a little quicker than
+  Lich). The difference is the bridge: an HTTP call for the send, then the line waiting for its
+  prompt, the copy, `listen`'s answer and Ruby's reading of it. A script's command costs some
+  15 ms more than under Lich, in a debug build.
+- **A line's time from the session to a script, in combat** (what "MCP notification delivery
+  under load" came to, since a runner long-polls): **median 18-202 ms, 95th percentile 180-623
+  ms**, of which:
+  - **the session reading the rest of the line's chunk** (a chunk's lines wait for its prompt,
+    so its state goes first, §3): median 0.1-133 ms, 95th percentile 177-543 ms; the slowest
+    chunk 177-787 ms from its first line to its prompt.
+    This is Hydra's model reading 2.5 KB of combat in a debug build, and every viewer waits on
+    it as a script does. **It is most of the time, and not the bridge's**;
+  - **the bridge, from the prompt to the script: median 8.0-23.5 ms, 95th percentile 15.7-35.5
+    ms** (one run 359 ms).
+  So a `next` to its reply's first line is 42-120 ms median.
+- **A hooked line's display delay, and the deadline to set**: with a display hook that changes
+  nothing, **median 12.3-18.5 ms, 95th percentile 51-529 ms, the longest 330-564 ms**; with none,
+  a line is shown 0.00 ms after the session publishes it (the longest 0.05 ms). A hooked line
+  waits for its chunk's prompt as a script's does, then for the runner's answer (8-40 ms of it);
+  what is long is the session reading the chunk. **The deadline stays 500 ms**: the runner's own
+  answer is well inside it, and it was passed by 64 ms at most, while the session was still
+  reading the chunk that held the line, since the deadline is kept by the session between frames.
+- **Not measured, and why**: a release build (the author's rule is one target, debug; whether to
+  measure one is the author's call); the game's own round trip over the network, which a script
+  pays under Lich too.
 
 ## 10. Questions for the author: ANSWERED 2026-09-27
 
@@ -348,7 +386,8 @@ None of these is measured; each is a guess until it is.
 8. **A script level apart from the agent's**, allowing what a Lich script may do (§8). AUTHOR:
    *"yep."*
 9. **Hydra starts the runner on a character's first script**, with the player's Ruby found as
-   Saga finds it. AUTHOR: try it, measure it (§9); at login if it is slow.
+   Saga finds it. AUTHOR: try it, measure it (§9); at login if it is slow. **MEASURED**: under a
+   second (§9), so on the first script.
 10. **Ship the checker** (§1). AUTHOR: *"yes."* **BUILT otherwise in one respect** (step 5):
     not from the census's lexer but from Ruby's own parser, against the runner itself, since a
     player has Ruby and not Python, and a checker that reads the runner cannot drift from it.
@@ -591,3 +630,18 @@ None of these is measured; each is a guess until it is.
      given the gem; the runner as built does not load it, and 16 of elanthia-online's scripts
      and 55 of the old repository's stop only there (often at a settings window).
 6. §9's measurements, written here.
+   **BUILT 2026-09-27** (the author: *"step 6"*): §9 has each, measured over a real hunt's combat
+   replayed through the scripted game, by `crates/cena-agent/tests/measure.rs` (ignored; it
+   prints). What it found beyond the numbers: loading Lich's libraries at start (step 5) had
+   taken a runner's start from 0.9 to 1.6 s and its memory up 9 MiB, so they now load when a
+   script first names one (`bridges/ruby/hydra/engine.rb`; `REXML` with its stream listener,
+   `bridges/ruby/hydra/rexml.rb`); and most of a line's time to a script, in combat, is the
+   session reading the rest of its chunk in a debug build, not the bridge.
+   **And a bug, found by a test that failed now and then while measuring**: a script killed
+   while it was starting one of Hydra's built-ins -- before the run's number came back -- left
+   Hydra's walk going, and a stop sent from the killed script's own thread took seconds, and
+   twice in some forty runs never came. Lich stops a script by killing its threads, so both
+   calls are now made by a thread of the runner's own (`bridges/ruby/hydra/builtins.rb`,
+   `Errands`), which stops a run whose script is gone as soon as its number comes. The test
+   (`crates/cena-agent/tests/runner.rs`) kills a walk while it is still starting (`go2 slow`)
+   and counts every walk started and stopped: red six times in six on the old code.

@@ -1,0 +1,6 @@
+# A display hook that changes nothing (crates/cena-agent/tests/measure.rs):
+# every line the player is shown waits for it, which is what is measured.
+
+DownstreamHook.add('measurehook', proc { |line| line }, persist: false)
+echo 'hooked'
+loop { sleep 1 }

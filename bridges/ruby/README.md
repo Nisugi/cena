@@ -13,7 +13,8 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | File | Is |
 |---|---|
 | `runner.rb` | the entry: the environment Hydra starts it with, then the engine, then `listen` |
-| `engine.rb` | Lich's engine and Hydra's edges, loaded as a runner runs them, with what Lich loads before any script (`OpenStruct`, `YAML`, `Terminal::Table`...) and `HAVE_GTK` false, as a Lich started `--no-gtk` |
+| `engine.rb` | Lich's engine and Hydra's edges, loaded as a runner runs them, with what Lich loads before any script (`OpenStruct`, `YAML`, `Terminal::Table`...), each loaded when a script first names it, and `HAVE_GTK` false, as a Lich started `--no-gtk` |
+| `rexml.rb` | `REXML` as Lich loads it, the stream listener with it, for `engine.rb` to load when a script first names `REXML` |
 | `check.rb` | the checker (`plan/46` §1): which lines of a script will not work under Hydra and why, read by Ruby's own parser against the engine as `engine.rb` loads it; `ruby check.rb [--tsv] FILE...` |
 | `connection.rb` | `hydra-script/1`'s tools over MCP, one HTTP request per call |
 | `edge.rb` | where Lich's engine meets the world, answered by Hydra: `Game.puts`, `respond`, `_respond`, a script's `$stdout`, `Lich.log`, `Lich::Messaging`, and a `Frontend` saying Hydra is Wrayth's family |
