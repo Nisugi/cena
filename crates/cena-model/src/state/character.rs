@@ -53,6 +53,7 @@ pub mod body;
 pub mod currency;
 pub mod enhancive;
 pub mod experience_report;
+mod identity;
 pub mod injured;
 pub mod mind_bar;
 pub mod profile;
@@ -274,6 +275,10 @@ pub struct Character {
     /// on different instances are different characters, and `frame.rs` records
     /// the same fact about `<settingsInfo>`.
     pub instance: Option<String>,
+    /// `<settingsInfo instance=>`, verbatim: the game's own code for the
+    /// instance (Prime's is `GS4`), which is how Lich knows which game it is
+    /// in. Kept to tell a Lich started late (`plan/51` §7, step 4).
+    pub game_code: Option<String>,
     /// The 46 skills and the spell circles, from `skills`.
     pub skills: skills::SkillSet,
     /// The five PSM tables, each from its own `<category> list all all`.
@@ -404,6 +409,7 @@ impl Character {
             name,
             player_id,
             instance,
+            game_code,
             taught,
             currency,
             skills,
@@ -451,6 +457,7 @@ impl Character {
             name,
             player_id,
             instance,
+            game_code,
             // KEPT, all three, for the reason `stats` is kept: a command
             // taught them and no reconnect re-sends them. Enhancives are the
             // one worth a second thought -- they depend on what is WORN, and
@@ -570,48 +577,6 @@ impl Character {
 }
 
 impl Character {
-    /// Record who this character is, from the login burst.
-    ///
-    /// Empty strings are refused rather than stored: they would name a file
-    /// after nobody, and `character_store::store_path` would reject them
-    /// anyway -- better to hold `None` and say "not yet known".
-    pub(crate) fn identify(&mut self, frame: &cena_protocol::Frame) {
-        match frame {
-            cena_protocol::Frame::AppInfo {
-                character, game, ..
-            } => {
-                if !character.is_empty() {
-                    self.name = Some(character.clone());
-                }
-                if !game.is_empty() {
-                    self.instance = Some(game.clone());
-                }
-            }
-            cena_protocol::Frame::PlayerId { id } if !id.is_empty() => {
-                self.player_id = Some(id.clone());
-            }
-            _ => {}
-        }
-    }
-
-    /// The character's own `exist` id, as the game's links name it: what
-    /// tells a consumer "that link is me". `None` until `<playerID>` arrives.
-    ///
-    /// `-(10,000,000 + playerID)`. VERIFIED for one character, in two
-    /// fixtures cut from one log (`cena-protocol/tests/FIXTURES.md`):
-    /// `<playerID id='966483'/>` (`login_burst.xml:3`), and the same session's
-    /// `info` naming the character `<a exist="-10966483">`
-    /// (`character_info.xml:3`) -- the id Lich's own example gives him too
-    /// (`gemstone/group.rb:482`). INFERRED for everyone else: every player
-    /// link in Lich's examples is `-10` and six digits (`group.rb:417-509`).
-    /// Lich stores the number (`common/xmlparser.rb:910-911`) and never
-    /// compares it with a link, so no source states the rule.
-    #[must_use]
-    pub fn exist_id(&self) -> Option<String> {
-        let number: u64 = self.player_id.as_deref()?.parse().ok()?;
-        Some(format!("-{}", number.checked_add(10_000_000)?))
-    }
-
     /// Read whatever command reports a completed chunk carries.
     ///
     /// Called once per prompt from `GameState::close_chunk`. Each report type

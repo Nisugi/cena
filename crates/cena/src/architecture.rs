@@ -369,7 +369,7 @@
 //! |---|---|---|
 //! | workspace members | 11 | `sed -n '/^members/,/^\]/p' Cargo.toml \| grep -c '"crates/'` |
 //! | known wire tags | 126 | `grep -cE '^    "[^"]+",$' crates/cena-protocol/src/tags.rs` |
-//! | `Frame` variants | 55 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
+//! | `Frame` variants | 56 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
 //! | files under `cena-model`'s `state/` | 110 | `find crates/cena-model/src/state -name '*.rs' \| wc -l` |
 //! | architecture test files | 10 | `ls crates/cena-arch-tests/tests/*.rs \| wc -l` |
 //!

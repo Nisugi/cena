@@ -631,15 +631,12 @@ impl<S: ByteSource> SessionActor<S> {
         self.recorder.inbound(chunk);
         // The player's Lich (`plan/51`) takes the game's bytes as they came,
         // as the recorder does: it forwards them, and reads none here. What
-        // it shows of them is the character's text (`lich_text.rs`), and
-        // what one started late is handed is kept by what they said.
+        // it shows of them is the character's text (`lich_text.rs`).
         self.take_lich_text();
         let lich = self.events.wire(chunk);
-        let mut said = Vec::new();
         self.log_wire(true, chunk);
         self.readiness.bytes_arrived();
         for frame in self.parser.push_bytes(chunk) {
-            said.extend(crate::script::lich::Key::of(&frame));
             // Offered to the waiter AND published. `plan/12` §4.4:
             // "observation never competes with attribution."
             //
@@ -754,7 +751,6 @@ impl<S: ByteSource> SessionActor<S> {
                 self.become_ready(verdict);
             }
         }
-        self.keep_for_lich(chunk, said);
     }
 
     /// Whether `frame` completes this connection's login burst

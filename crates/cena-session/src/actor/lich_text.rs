@@ -31,8 +31,8 @@
 //! (`reference/lich-5/lib/util/util.rb:177-178`), so the prompts cannot be
 //! counted to find where the report falls in what Lich wrote.
 //!
-//! What a Lich started late is handed of the past is left out the same way
-//! (`script/lich/kept.rs`).
+//! The login a Lich started late is handed is left out the same way: the
+//! character's text showed what it tells once already.
 
 use std::sync::Arc;
 
@@ -40,8 +40,7 @@ use cena_model::line::Line;
 use cena_platform::ByteSource;
 
 use super::{Event, SessionActor};
-use crate::State;
-use crate::script::lich::{Key, LichText, Showing};
+use crate::script::lich::{LichText, Showing};
 
 /// A quiet command's window, while one is open.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -70,9 +69,25 @@ impl<S: ByteSource> SessionActor<S> {
     /// Take what a Lich shows, if some waits: a new Lich's, or what the last
     /// connection's actor showed. What this actor held belonged to a Lich
     /// that is gone.
+    ///
+    /// And a Lich attached since the last turn is handed a login built from
+    /// the model as it stands (`GameState::login`), before the next chunk is
+    /// read, so it misses nothing and is told nothing twice; what it shows of
+    /// that login is left out of the character's text, which showed it once.
     pub(super) fn take_lich_text(&mut self) {
         if let Some(text) = self.events.lich_text().take() {
             self.lich_text = Some(text);
+        }
+        if self.events.lich_waits() {
+            // Parked with the Lich, under its lock: here now if not before.
+            if let Some(text) = self.events.lich_text().take() {
+                self.lich_text = Some(text);
+            }
+            let login = self.state.login();
+            if let Some(text) = self.lich_text.as_mut() {
+                text.expect_login(login.as_bytes());
+            }
+            self.events.begin_lich(login.as_bytes());
         }
     }
 
@@ -109,18 +124,5 @@ impl<S: ByteSource> SessionActor<S> {
         {
             text.expect_quiet(line);
         }
-    }
-
-    /// Keep `chunk`, which said `keys`, for a Lich started late
-    /// (`crate::script::lich`, started late): whether the connection was
-    /// ready once it was read, and whether the parser then held a part of a
-    /// line.
-    pub(super) fn keep_for_lich(&self, chunk: &[u8], keys: Vec<Key>) {
-        self.events.keep_for_lich(
-            chunk,
-            keys,
-            self.lifecycle != State::Syncing,
-            self.parser.pending_len() == 0,
-        );
     }
 }

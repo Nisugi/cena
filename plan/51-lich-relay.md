@@ -9,8 +9,9 @@ and the player's typing reaching Lich after Hydra's commands; tested against a s
 against the real Lich, offline. Steps 3, 4 and 5 APPROVED by the author the same day
 (*"Great I approve steps 3, 4, and 5."*); **step 3 BUILT**: what Lich shows is the
 character's text (`crates/cena-session/src/actor/lich_text.rs`); **step 4 BUILT**: a Lich
-started late is handed the login and the latest word on each piece of state it keeps
-(`crates/cena-session/src/script/lich/kept.rs`); **step 5 BUILT**: `;lich on|off`, kept per
+started late is handed a login built from what the session knows as it attaches
+(`crates/cena-model/src/state/login.rs`, rebuilt on the author's word to build the login from
+the model rather than replay it); **step 5 BUILT**: `;lich on|off`, kept per
 character, `;lich folder`, and a *Lich* switch on the hub's card and the play window
 (`crates/cena/src/lich.rs`). Step 6, the live run, is the author's.
 
@@ -144,7 +145,12 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
 6. **A Lich started late needs the login replayed.** Lich's model came entirely from the
    replayed bytes (VERIFIED, check 4). A Lich started mid-session gets the login Hydra kept,
    then the latest room, then the live stream. These are recorded bytes resent, never made-up
-   tags (`plan/46` §10). Replaying the login also runs the player's autostart
+   tags (`plan/46` §10).
+
+   **CORRECTED 2026-09-28**, the author: *"I didn't mean to rule out building the tags
+   ourselves... We know what the login blob consists of, so we can just build it in the
+   moment and send accurate info."* A late Lich is handed a login built from the model as it
+   attaches (§7, step 4). Replaying the login also runs the player's autostart
    (`reference/lich-5/lib/games.rb:986`), which is what they'd expect.
 
 ## 5. The design proposed
@@ -311,48 +317,79 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
      offline): a script's `respond` reaches the window.
 4. Starting late: the login kept and replayed, then the latest room.
 
-   **BUILT 2026-09-28**, with "the latest room" read wider, for the author to overrule: the
-   latest word on each piece of state Lich keeps, the room among them.
-   - **Why wider.** The room alone leaves a late Lich with the login's hands, vitals,
-     indicators, spell and effects until the game says each again, and scripts decide on
-     those (`checkhealth`, `GameObj.right_hand`, `standing?`). Lich's own answer to a
-     frontend attached late pushes exactly that list: vitals, spell, hands, indicators,
-     stance, mind, encumbrance, injuries, compass
-     (`reference/lich-5/lib/gemstone/detachable_client_init.rb`). It builds those tags from
-     its model, which the author ruled out here (`plan/46` §10: never made-up tags), so
-     Hydra resends the chunks the game sent them in instead.
-   - **What is kept** (`crates/cena-session/src/script/lich/kept.rs`), for every character,
-     since Lich can be switched on mid-session: the connection's login as it came, from its
-     first chunk to the one that made it `Ready` (up to 4 MiB; past that a late Lich starts
-     without it, and the player is told); then, for each piece of state, the latest run of
-     chunks to say it. The pieces are frames: `<nav>`, `<compass>`, `<left>`, `<right>`,
-     `<spell>`, `<roundTime>`, `<castTime>`, each `<streamWindow>`, `<component>` and
-     `<indicator>` by id, each progress bar, label, image and widget by dialog and id, each
-     effect by category and id, a dialog emptied (which lets go of what was said in it
-     before), and a stream begun again. A run goes to a line's end, the chunks since the
-     parser last held nothing, so resent chunks never splice half a line onto another.
-   - **Handed first.** On attach, under the lock the game's copy takes, a Lich is handed the
-     login, then each run still the latest, in the order they came, then the run still open,
-     which the live stream finishes. A Lich attached before the login is handed nothing
-     extra, as before.
-   - **Not shown again.** The past is resent with its text: Lich's scripts read those lines
-     again, as they would any. The character's text already showed them, so every line and
-     prompt of it is expected back from Lich and left out, as a quiet report is. The matching
-     changed for both: Lich's line is looked for among the next 16 expected (a blank line
-     only the next), those before it taken as hidden by Lich; and what is still expected is
-     let go once Lich has shown 64 lines and prompts with none of it, in place of step 3's
-     30 s. A clock would have let a Lich slow to start show the login again.
-   - **Tests.** In `kept.rs`: the login, then the latest word on each, in order; runs kept to
-     a line's end; an emptied dialog; the login's extent, and a new connection starting it
-     again. In `text.rs`: Lich's own lines among the expected are shown and one it hid is
-     passed over; a blank line only matches the next; what Lich hid wholly is let go. In the
-     session (`crates/cena-session/tests/lich_late.rs`), a Lich attached after `look`,
-     `drop gem` and `smile` is handed the login, the look's chunk (the latest to say the
-     room) and the drop's (the latest to say the left hand), not the smile's; and only the
-     live `look` after it is shown. Both mutations fail it: the past not expected back, and
-     the login alone handed. With the stand-in started after `Ready`, it sees the login's
-     prompt and its script looks; with nothing handed, it never does. The real Lich started
-     after `Ready` (10.1 s, offline).
+   **BUILT 2026-09-28, and REBUILT the same day** on the author's word.
+
+   - **As first built** (`e46590b`), "the latest room" was read wider: the recorded login,
+     then the latest chunk since to say each piece of state Lich keeps, resent as the game
+     sent them. The room alone would leave a late Lich with the login's hands, vitals,
+     indicators, spell and effects until the game said each again, and scripts decide on
+     those (`checkhealth`, `GameObj.right_hand`, `standing?`). Lich's own answer to a frontend
+     attached late pushes that list, built from its model
+     (`reference/lich-5/lib/gemstone/detachable_client_init.rb`: vitals, spell, hands,
+     indicators, stance, mind, encumbrance, injuries, compass). I took building tags as ruled
+     out, reading `plan/46` §10 question 3 (*"Before faking tags I would rather dupe the
+     byte source and send it"*, said of the bridge's scripts) as a rule for the relay.
+
+     **CORRECTED 2026-09-28**, the author: *"I didn't mean to rule out building the tags
+     ourselves... I was actually just thinking that. We know what the login blob consists
+     of, so we can just build it in the moment and send accurate info."*
+   - **As rebuilt**: a late Lich is handed a login built from Hydra's model as it attaches,
+     accurate as of then (`GameState::login`, `crates/cena-model/src/state/login.rs`). Nothing
+     is recorded to replay, and no old line is resent: the recorded login and the chunks
+     (`script/lich/kept.rs`) are gone, and with them the memory each character spent on
+     them and the old lines Lich's scripts would have read again.
+   - **What it tells**, in the order Lich needs (its game before its name; the room's number
+     before its parts; the prompt last): `<playerID>`; `<settingsInfo instance=>`, the game's
+     own code, which the model now keeps (a typed `Frame::SettingsInfo`, as `PlayerId` was
+     typed: Lich knows its game only from it, `reference/lich-5/lib/common/xmlparser.rb:918-928`);
+     `<app>`; the vitals as `health 348/400`; stance, mind, experience and encumbrance with
+     their labels; the 13 indicators Lich keeps, each lit or not; the prepared spell; both
+     hands with their objects; every body part, whole or scarred and wounded; the room's
+     number, title, components, compass and codes; each effects dialog the game has sent,
+     emptied and told again with each effect's time left; what the character wears; a
+     roundtime or cast time still running; and the prompt, with the game's time now.
+   - **What it cannot tell**, since the model does not keep it: the room's styled name (the
+     title says the same), a creature's status flags, the nervous system's rank, containers,
+     and the target list, which the game sends again with every round.
+   - **The markup** is written by `cena_protocol::write`, beside the one parser, so nothing
+     above it spells a tag: escaping (all five entities, as Lich decodes all five), tags, and
+     parsed text written back with its bold, presets, mono and links, an object's inside a
+     command's where the wire nests them.
+   - **Handed when.** An attach waits for the session's actor, which owns the model: at its
+     next turn, before the next chunk is read (within half a second on a quiet game, the
+     actor turning at least that often), it builds the login, hands it to the Lich, and
+     starts the copy. So the Lich misses nothing and is told nothing twice. Before the game
+     has named the character there is nothing to tell, and the login itself is still to
+     come.
+   - **Not shown again.** What the login tells, the character's text showed once, so its
+     lines and prompt are expected back from Lich and left out, as a quiet report is. The
+     matching changed for both with the first build: Lich's line is looked for among the
+     next 16 expected (a blank line only the next), those before it taken as hidden by
+     Lich, and what is still expected is let go once Lich has shown 64 lines and prompts
+     with none of it, in place of step 3's 30 s.
+   - **Tests.**
+     - `crates/cena-protocol/src/write.rs`: every component body in the room fixtures, and
+       one with a creature, a command link with an object inside it, a preset and entities,
+       is written back to markup the parser reads to the same runs.
+     - `crates/cena-model/tests/login_told.rs`: a model fed the real login, vitals, effects
+       and room fixtures builds its login; a fresh model told it knows the same identity,
+       gauges, indicators, spell, hands, injuries, room, effects (each within a second),
+       worn items and prompt, each first checked as known. Two mutations each fail one:
+       no `<settingsInfo>`, no scars.
+     - `crates/cena-session/tests/lich_late.rs`: a Lich attached to a quiet character after
+       the game named it, a room and a dropped gem is handed at the actor's next turn a
+       login with who, where and the empty hand, not the gem, and none of the game's text;
+       then only the live `look` is shown. Leaving the login out of what is expected back
+       fails it.
+     - With the stand-in started after `Ready`, it sees the built login's prompt and its
+       script looks. The real Lich started after `Ready` (17.1 s, offline) answers
+       `is Tester GSIV 7 gem` from its `XMLData` and `GameObj`: its name, game, room and left
+       hand from the built login.
+   - **Found on the way:** the real-Lich test typed its questions before Lich's parser had
+     read anything, so an earlier `XMLData` question said nothing at all. Lich starts its
+     scripts before its parser catches up. The test now waits for Lich's own answer to
+     `<app>` (`_flag Display Inventory Boxes 1`, `xmlparser.rb:966`), and asks what it knows
+     until the game modules it loads after that first line have read the rest.
 5. The switch: settings for Lich's path, and a *Lich* switch on the card and the play window.
 
    **BUILT 2026-09-28**, on this branch's GUI, kept small for the merge with `gui-widgets`.

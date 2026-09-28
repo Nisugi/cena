@@ -126,11 +126,12 @@ fn the_documented_variant_count_is_the_actual_variant_count() {
     // whether the test passes. A test that hardcodes the thing it verifies is
     // a copy like any other and drifts like any other.
     //
-    // 55 since 2026-09-26, `Frame::PlayerId`. The live copies are
+    // 56 since 2026-09-28, `Frame::SettingsInfo`; 55 from 2026-09-26,
+    // `Frame::PlayerId`. The live copies are
     // `frame.rs`'s header (count and arithmetic) and the measured table in
     // `crates/cena/src/architecture.rs`; `layering.rs`'s "53" is the count
     // when that edge was decided, not a claim about now.
-    let claimed = 55;
+    let claimed = 56;
     assert_eq!(
         names.len(),
         claimed,

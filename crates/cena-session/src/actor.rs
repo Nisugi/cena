@@ -418,8 +418,6 @@ impl<S: ByteSource> SessionActor<S> {
         // "the loop started" rather than "the burst arrived" (`plan/12` §5.2).
         self.transition(State::Authenticating);
         self.transition(State::Syncing);
-        // What a Lich started late is handed begins with this login.
-        self.events.lich_connected();
 
         let mut buf = vec![0u8; READ_BUF];
         // See the command arm below for why this exists.

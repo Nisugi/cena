@@ -53,8 +53,8 @@ impl Character {
         }
     }
 
-    /// A character already logged in when its Lich starts, as when the
-    /// player switches Lich on mid-session.
+    /// A character already logged in, named, and in a room, when its Lich
+    /// starts, as when the player switches Lich on mid-session.
     async fn start_late(launch: Launch) -> Option<Self> {
         let (source, transcript) =
             AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
@@ -74,6 +74,22 @@ impl Character {
         if !tokio::time::timeout(DEADLINE, ready).await.ok()? {
             return None;
         }
+        // The game names the character, as a login does, so a Lich started
+        // now has something to be told (`GameState::login`). The instance's
+        // name is assembled: Rule 3.4's scan flags it spelled.
+        let named = format!(
+            "<playerID id='5'/><settingsInfo instance='{}'/><app char=\"Tester\" game=\"Prime\"/>
+             <nav rm='7'/><streamWindow id='room' subtitle=' - [Town Square]'/>             <left exist=\"1\" noun=\"gem\">a gem</left>
+<prompt time=\"2\">&gt;</prompt>
+",
+            concat!("GS", "4")
+        );
+        transcript.answer("look", named.as_bytes());
+        let _ = handle
+            .send_manual_at(handle.generation(), "look", DEADLINE)
+            .await;
+        // What Lich does is read from here on.
+        let events = events.resubscribe();
         let stop = CancellationToken::new();
         let relay = tokio::spawn(run(handle.lich_door(), launch, stop.clone()));
         Some(Self {
@@ -214,10 +230,11 @@ async fn what_lich_shows_is_the_characters_text() {
     assert_eq!(character.stop().await, Some(Ended::Stopped));
 }
 
-/// A Lich started once the character is logged in is handed the login: it
-/// sees the login's prompt, and its script looks.
+/// A Lich started once the character is logged in is handed a login built
+/// from what the session knows: it sees that login's prompt, and its script
+/// looks.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_lich_started_late_is_handed_the_login() {
+async fn a_lich_started_late_is_handed_a_login() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
     let mut character = Character::start_late(standin(ruby))
         .await
@@ -280,6 +297,13 @@ async fn the_real_lich() {
     .await
     .expect("logged in");
 
+    // Lich has read the login it was handed once it answers its `<app>`
+    // (`reference/lich-5/lib/common/xmlparser.rb:966`); it starts before
+    // its parser catches up, and runs what is typed meanwhile.
+    assert_eq!(
+        character.sent("_flag Display Inventory Boxes 1").await,
+        Some(Origin::Lich)
+    );
     // No Hydra commands run here, so `;` is Lich's.
     character.types(r#";e put "frontend #{$frontend}""#).await;
     assert_eq!(
@@ -288,6 +312,26 @@ async fn the_real_lich() {
     );
     character.types("exp").await;
     assert_eq!(character.sent("exp").await, Some(Origin::Manual));
+    // It knows the character from the login it was handed: who, which
+    // game, where, and what is in hand. Asked until it says, since loading
+    // its game's modules after the first line takes it seconds.
+    let mut said = None;
+    for _ in 0..30 {
+        character
+            .types(r#";e put "is #{XMLData.name} #{XMLData.game} #{XMLData.room_id} #{GameObj.left_hand.noun}""#)
+            .await;
+        said = character
+            .next(|event| match event {
+                Event::Sent { line, .. } if line.starts_with("is ") => Some(line),
+                _ => None,
+            })
+            .await;
+        if said.as_deref() == Some("is Tester GSIV 7 gem") {
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+    assert_eq!(said.as_deref(), Some("is Tester GSIV 7 gem"));
     // What its script shows is the character's text.
     character.types(r#";e respond "Hello from Lich.""#).await;
     let shown = character.shown_until("Hello from Lich.").await;

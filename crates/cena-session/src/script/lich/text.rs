@@ -1,6 +1,6 @@
 //! What the player's Lich shows, read by the session (`plan/51` §7, step 3),
 //! and what it is expected to pass on and not to show: a quiet command's
-//! report, and the past a Lich started late was handed (step 4).
+//! report, and the login a Lich started late was handed (step 4).
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -111,15 +111,12 @@ impl LichText {
             .expect(Echo::Line(line.stream.clone(), line.text()));
     }
 
-    /// The past a Lich started late is handed, as the game sent it: every
-    /// line and prompt of it to be left out when Lich passes it on, since
-    /// the character's text already showed it.
-    pub(super) fn expect_replay<'a>(&mut self, chunks: impl IntoIterator<Item = &'a [u8]>) {
-        let mut reading = Reading::default();
-        for chunk in chunks {
-            for showing in reading.read(chunk) {
-                self.echoes.expect(Echo::of(&showing));
-            }
+    /// The login a Lich started late is handed, built from what the session
+    /// knows: every line and prompt of it to be left out when Lich passes it
+    /// on, since the character's text already showed what it tells.
+    pub(crate) fn expect_login(&mut self, login: &[u8]) {
+        for showing in Reading::default().read(login) {
+            self.echoes.expect(Echo::of(&showing));
         }
     }
 

@@ -191,6 +191,9 @@ pub(crate) struct EventPublisher {
     /// What that Lich shows, waiting for the actor that shows it: a new
     /// Lich's until the actor's next turn, and between connections.
     lich_text: Arc<crate::script::lich::Parked>,
+    /// A Lich attached since the actor's last turn waits to be handed its
+    /// login (`Self::lich_waits`).
+    lich_waits: Arc<AtomicBool>,
 }
 
 /// A character's triggers and their memory, replaced together: new
@@ -231,6 +234,7 @@ impl EventPublisher {
             triggers: Arc::default(),
             lich: Arc::default(),
             lich_text: Arc::default(),
+            lich_waits: Arc::default(),
         }
     }
 
@@ -239,17 +243,39 @@ impl EventPublisher {
         self.lich.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Attach the player's Lich from now on, and what it shows: whether it
-    /// was handed the login. `None`, and both unused, while another is still
-    /// attached: one Lich per character.
+    /// Attach the player's Lich, and what it shows, to be handed its login
+    /// at the actor's next turn: within `READ_DEADLINE` (half a second) on a
+    /// quiet game, since the actor turns at least that often. False, and both unused, while another is
+    /// still attached: one Lich per character.
+    ///
+    /// The text is parked while the Lich is held, so an actor that finds the
+    /// Lich waiting finds its text too.
     pub(crate) fn attach_lich(
         &self,
         tap: crate::script::lich::Tap,
-        mut text: crate::script::lich::LichText,
-    ) -> Option<bool> {
-        let with_login = self.lich().attach(tap, &mut text)?;
+        text: crate::script::lich::LichText,
+    ) -> bool {
+        let mut lich = self.lich();
+        if !lich.attach(tap) {
+            return false;
+        }
         self.lich_text.park(text);
-        Some(with_login)
+        self.lich_waits.store(true, Ordering::Release);
+        true
+    }
+
+    /// Whether a Lich attached since the actor's last turn waits to be
+    /// handed its login. Read on the actor's every turn, so it takes no lock.
+    pub(crate) fn lich_waits(&self) -> bool {
+        self.lich_waits.load(Ordering::Acquire)
+    }
+
+    /// Hand the Lich waiting `login`, and copy the game's bytes to it from
+    /// now on.
+    pub(crate) fn begin_lich(&self, login: &[u8]) {
+        let mut lich = self.lich();
+        self.lich_waits.store(false, Ordering::Release);
+        lich.begin(login);
     }
 
     /// Where what the attached Lich shows waits for an actor.
@@ -267,24 +293,6 @@ impl EventPublisher {
     /// stopped, or fell behind, is let go here.
     pub(crate) fn wire(&self, chunk: &[u8]) -> bool {
         self.lich().wire(chunk)
-    }
-
-    /// Keep a chunk of the game's bytes for a Lich started late
-    /// (`crate::script::lich`, started late).
-    pub(crate) fn keep_for_lich(
-        &self,
-        chunk: &[u8],
-        keys: Vec<crate::script::lich::Key>,
-        ready: bool,
-        whole: bool,
-    ) {
-        self.lich().keep(chunk, keys, ready, whole);
-    }
-
-    /// A new connection: what a Lich started late is handed begins with its
-    /// login.
-    pub(crate) fn lich_connected(&self) {
-        self.lich().connected();
     }
 
     /// Hand a line the player typed to the Lich attached: `None` with none

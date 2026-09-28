@@ -70,11 +70,13 @@
 //!
 //! # Started late
 //!
-//! A Lich attached after the login is handed the login first, and the
-//! latest word since on each piece of state it keeps, as the game sent them
-//! (`kept.rs`); then the live stream.
+//! A Lich attached after the login is handed a login first, built from what
+//! the session knows as it attaches (`GameState::login`); then the live
+//! stream. The author, 2026-09-28: *"We know what the login blob consists
+//! of, so we can just build it in the moment and send accurate info."* The
+//! session's actor builds it, from its model, between one chunk and the
+//! next, so the Lich misses nothing and is told nothing twice.
 
-mod kept;
 mod text;
 
 use std::sync::Arc;
@@ -82,14 +84,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use tokio::sync::mpsc;
 
-pub(crate) use kept::Key;
 pub use text::Shown;
 pub(crate) use text::{LichText, Parked, Showing};
 
 use super::Sending;
 use crate::command::Claimed;
 use crate::command::claimant::DEFAULT_SYMBOL;
-use crate::{Gate, Notice, NoticeKind, Origin, Sent, SessionHandle};
+use crate::{Gate, Notice, Origin, Sent, SessionHandle};
 
 /// How many chunks of the game's bytes wait for a Lich that has not read
 /// them, as many records as Lich's own queue holds
@@ -182,35 +183,41 @@ impl Tap {
     }
 }
 
-/// The player's Lich as the session holds it, under one lock: the Lich
-/// attached, and what one started late is handed first. One lock, so a Lich
-/// attached between two chunks is handed each once.
+/// The player's Lich as the session holds it: the one attached, and one
+/// attached since the actor's last turn, waiting to be handed its login.
 #[derive(Debug, Default)]
 pub(crate) struct Slot {
     tap: Option<Tap>,
-    kept: kept::Kept,
+    pending: Option<Tap>,
 }
 
 impl Slot {
-    /// Attach a Lich, handing it the past first and telling `text` to leave
-    /// that out of what it shows: whether the login was in it. `None`, and
-    /// both unused, while another is attached: one per character.
-    pub(crate) fn attach(&mut self, tap: Tap, text: &mut LichText) -> Option<bool> {
+    /// Attach a Lich, to be handed its login at the actor's next turn. False,
+    /// and `tap` unused, while another is attached: one per character.
+    pub(crate) fn attach(&mut self, tap: Tap) -> bool {
         if self.attached() {
-            return None;
+            return false;
         }
-        let past = self.kept.replay();
-        if !past.is_empty() {
-            text.expect_replay([past.as_slice()]);
-            tap.copy(&past);
-        }
-        self.tap = Some(tap);
-        Some(self.kept.has_login())
+        self.pending = Some(tap);
+        true
     }
 
-    /// Whether a Lich is attached.
+    /// Hand the Lich attached since the actor's last turn `login`, and copy
+    /// the game's bytes to it from now on. False with none waiting.
+    pub(crate) fn begin(&mut self, login: &[u8]) -> bool {
+        let Some(tap) = self.pending.take() else {
+            return false;
+        };
+        if !login.is_empty() {
+            tap.copy(login);
+        }
+        self.tap = Some(tap);
+        true
+    }
+
+    /// Whether a Lich is attached, or waits to be handed its login.
     pub(crate) fn attached(&self) -> bool {
-        self.tap.as_ref().is_some_and(Tap::is_open)
+        self.tap.iter().chain(&self.pending).any(Tap::is_open)
     }
 
     /// Copy a chunk of the game's bytes to the Lich attached: whether one
@@ -230,19 +237,10 @@ impl Slot {
     /// and `Some(false)` when it has too many waiting.
     pub(crate) fn hand(&self, line: &str) -> Option<bool> {
         self.tap
-            .as_ref()
-            .filter(|tap| tap.is_open())
+            .iter()
+            .chain(&self.pending)
+            .find(|tap| tap.is_open())
             .map(|tap| tap.hand(line))
-    }
-
-    /// A new connection: its login is kept anew.
-    pub(crate) fn connected(&mut self) {
-        self.kept.connected();
-    }
-
-    /// Keep `chunk`, which said `keys`, for a Lich started late (`kept.rs`).
-    pub(crate) fn keep(&mut self, chunk: &[u8], keys: Vec<Key>, ready: bool, whole: bool) {
-        self.kept.keep(chunk, keys, ready, whole);
     }
 }
 
@@ -279,14 +277,14 @@ impl SessionHandle {
 }
 
 impl LichDoor {
-    /// Attach a Lich from here on. It is handed first what it missed: this
-    /// connection's login, and the latest word since on each piece of state
-    /// it keeps, as the game sent them (`kept.rs`), which the character's
-    /// text does not show again. Then the next chunk of the game's bytes,
-    /// the next line typed for it, and what it shows is the character's text
-    /// in place of the game's from that chunk on. `None` while another is
-    /// attached: one per character. It stays attached until what this
-    /// returns is dropped.
+    /// Attach a Lich from here on. Before the next chunk of the game's bytes
+    /// it is handed a login built from what the session knows then, which
+    /// the character's text does not show again: nothing, before the game
+    /// has named the character, when the login itself is still to come. Then
+    /// that chunk and those after it, the next line typed for it, and what
+    /// it shows is the character's text in place of the game's. `None` while
+    /// another is attached: one per character. It stays attached until what
+    /// this returns is dropped.
     #[must_use]
     pub fn attach(&self) -> Option<Attached> {
         let (bytes, wire) = mpsc::channel(WIRE_CHUNKS);
@@ -298,22 +296,16 @@ impl LichDoor {
             typing,
             behind: Arc::clone(&behind),
         };
-        let with_login = self.handle.attach_lich(tap, LichText::new(text_read))?;
-        if !with_login {
-            self.say(Notice::line(
-                NoticeKind::Warn,
-                "Lich starts without this connection's login, which was too long to keep: \
-                 it knows the character from what the game says next.",
-            ));
-        }
-        Some(Attached {
-            wire: Wire {
-                bytes: wire,
-                behind,
-            },
-            typing: Typing(typed),
-            shown: Shown(text),
-        })
+        self.handle
+            .attach_lich(tap, LichText::new(text_read))
+            .then_some(Attached {
+                wire: Wire {
+                    bytes: wire,
+                    behind,
+                },
+                typing: Typing(typed),
+                shown: Shown(text),
+            })
     }
 
     /// What marks a line the player types as Hydra's: Lich's `;` unless
@@ -419,7 +411,15 @@ mod tests {
             door.attach().is_none(),
             "a second, while the first is attached"
         );
+        around.publisher.wire(b"missed");
+        // The actor's next turn: it is handed its login, then the game.
+        around.publisher.begin_lich(b"<app char=\"Tester\"/>\n");
         around.publisher.wire(b"<prompt time=\"1\">&gt;</prompt>\n");
+        assert_eq!(
+            lich.wire.next().await.as_deref(),
+            Some(&b"<app char=\"Tester\"/>\n"[..]),
+            "its login first, and nothing from before it was handed one"
+        );
         assert_eq!(
             lich.wire.next().await.as_deref(),
             Some(&b"<prompt time=\"1\">&gt;</prompt>\n"[..]),
@@ -433,6 +433,7 @@ mod tests {
     async fn a_lich_that_falls_behind_is_let_go_not_waited_on() {
         let (handle, around) = character();
         let Attached { mut wire, .. } = handle.lich_door().attach().expect("the first Lich");
+        around.publisher.begin_lich(b"");
         for _ in 0..=WIRE_CHUNKS {
             around.publisher.wire(b"x");
         }

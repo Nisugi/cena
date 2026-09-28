@@ -465,8 +465,8 @@ fn the_login_burst_identifies_the_character_and_the_instance() {
     assert!(
         frames.iter().any(|f| matches!(
             f,
-            Frame::WindowHints { id, attrs }
-                if id == "settingsInfo"
+            Frame::SettingsInfo { instance: Some(said), attrs }
+                if said == instance
                     && attrs.iter().any(|(k, v)| k == "instance" && v == instance)
         )),
         "and the instance, which distinguishes Prime from Platinum: {frames:#?}"

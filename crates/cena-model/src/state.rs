@@ -71,6 +71,7 @@ pub mod inventory_snapshot;
 pub mod kit;
 pub mod known_spells;
 pub mod ledger;
+mod login;
 pub mod maneuvers;
 pub mod menu;
 pub mod message;
@@ -412,7 +413,9 @@ impl GameState {
                     self.effects.clear_category(id);
                 }
             }
-            Frame::AppInfo { .. } | Frame::PlayerId { .. } => self.character.identify(frame),
+            Frame::AppInfo { .. } | Frame::PlayerId { .. } | Frame::SettingsInfo { .. } => {
+                self.character.identify(frame);
+            }
             Frame::LeftHand { item, link } => {
                 self.left_hand = hands::Hand::read(item, link.as_ref());
             }
