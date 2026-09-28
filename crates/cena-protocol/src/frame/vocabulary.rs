@@ -516,14 +516,18 @@ pub enum Frame {
         /// The tag as received; a close tag is rebuilt as `</name>`.
         raw: String,
     },
-    /// A tag that never closed before the line ended.
+    /// A tag that cannot be read: one that never closed before the line
+    /// ended, or a timer whose value is not a number.
     ///
-    /// Vellum appends the fragment to the text buffer and silently desyncs
-    /// (`src/parser.rs:733-736`, "No closing >, treat rest as text"), with no
-    /// log and no test asserting the behaviour. Typed here so the case is
-    /// visible, testable, and cannot be mistaken for prose.
+    /// Vellum appends the unclosed fragment to the text buffer and silently
+    /// desyncs (`src/parser.rs:733-736`, "No closing >, treat rest as text"),
+    /// with no log and no test asserting the behaviour. Typed here so the case
+    /// is visible, testable, and cannot be mistaken for prose. A timer read as
+    /// zero instead ended a roundtime the game never ended (the crate review
+    /// of 2026-09-28, R9).
     MalformedTag {
-        /// The unterminated text as received, through the end of the line.
+        /// The tag as received: the unterminated text through the end of the
+        /// line, or the whole timer tag.
         raw: String,
     },
 }

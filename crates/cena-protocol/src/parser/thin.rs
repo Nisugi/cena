@@ -57,15 +57,22 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
             item: inner_display_text(tag),
             link: text::link_from_tag(tag),
         },
-        "roundTime" => Frame::RoundTime {
-            value: text::attribute_u32(tag, "value").unwrap_or_default(),
-        },
-        "castTime" => Frame::CastTime {
-            value: text::attribute_u32(tag, "value").unwrap_or_default(),
-        },
-        "timer" => Frame::AimTime {
-            value: text::attribute_u32(tag, "value").unwrap_or_default(),
-        },
+        // A timer whose value is not a number -- absent, negative, too large,
+        // or words -- is a tag that cannot be read, not a timer of zero: a
+        // zero ends a roundtime the game never ended (the crate review of 2026-09-28, R9).
+        // The frame keeps its bytes, and the model leaves the timer as it was.
+        "roundTime" | "castTime" | "timer" => {
+            let Some(value) = text::attribute_u32(tag, "value") else {
+                return Frame::MalformedTag {
+                    raw: tag.to_owned(),
+                };
+            };
+            match name {
+                "roundTime" => Frame::RoundTime { value },
+                "castTime" => Frame::CastTime { value },
+                _ => Frame::AimTime { value },
+            }
+        }
         // KNOWN LIMIT, measured and deliberately not closed: a `<label>` with
         // a BODY (`<label id='x'>text</label>`) reports an empty `value` and
         // its text arrives as a separate `Text` frame.
