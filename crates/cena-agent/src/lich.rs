@@ -17,12 +17,13 @@
 //!
 //! From then on Lich takes the port as its game:
 //!
-//! - the game's bytes, as they came, go to it ([`LichDoor::wire`]);
+//! - the game's bytes, as they came, go to it ([`LichDoor::attach`]);
 //! - what it writes back goes to the game ([`LichDoor::send`]). A line with
 //!   Lich's `<c>` is one of its scripts' (`$cmd_prefix`,
 //!   `reference/lich-5/lib/main/main.rb:57`); one without is what the player
 //!   typed, passed on after Lich's own hooks (`plan/51` §4, item 3);
-//! - the player's typing goes to its standard input;
+//! - what the player types that Hydra does not take goes to its standard
+//!   input, as a frontend's typing does (`SessionHandle::send_typed_at`);
 //! - what it would show a frontend comes out of its standard output, which
 //!   is to be the character's text (`plan/51` §7, step 3). Until then it is
 //!   read and let go, so Lich never waits to write it.
@@ -38,7 +39,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use cena_session::script::Sending;
-use cena_session::script::lich::{LichDoor, LineFrom, WIRE_CHUNKS, Wire};
+use cena_session::script::lich::{Attached, LichDoor, LineFrom, WIRE_CHUNKS};
 use cena_session::{Notice, NoticeKind};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
@@ -77,6 +78,9 @@ const VERSION: &str = "/FE:WRAYTH /VERSION:1.0.1.28 /P:WIN_UNKNOWN /XML";
 /// does nothing.
 const STORMFRONT: &str =
     r#"trace_var(:$frontend) { |name| $frontend = "stormfront" if name == "unknown" }"#;
+
+/// Lich's own command symbol, `$lich_char`, unless its player chose another.
+const LICH_SYMBOL: char = ';';
 
 /// Runs `lich.rbw` as Ruby would run it, after [`STORMFRONT`]: `$0` names
 /// it, as Lich finds its folders by it (`reference/lich-5/lib/constants.rb:1`).
@@ -172,19 +176,23 @@ impl Ended {
 /// until Lich or the session ends; then tell the player how it ended, and
 /// say so.
 ///
-/// The game's bytes are copied for Lich from the moment this is called, not
-/// when the future is first polled, so a Lich started before the game speaks
-/// misses nothing of the login. `typing` is what the player types for Lich.
+/// Lich is attached from the moment this is called, not when the future is
+/// first polled: a Lich started before the game speaks misses nothing of the
+/// login, and what the player types from now on is its.
 pub fn run(
     door: LichDoor,
     launch: Launch,
-    mut typing: mpsc::Receiver<String>,
     stop: CancellationToken,
 ) -> impl Future<Output = Ended> + Send {
-    let wire = door.wire();
+    let attached = door.attach();
     async move {
-        let ended = match wire {
-            Some(wire) => relay(&door, &launch, wire, &mut typing, &stop).await,
+        let ended = match attached {
+            Some(attached) => {
+                if let Some(notice) = shared_symbol(door.symbol()) {
+                    door.say(notice);
+                }
+                relay(&door, &launch, attached, &stop).await
+            }
             None => Ended::Busy,
         };
         if let Some(notice) = ended.notice() {
@@ -194,11 +202,30 @@ pub fn run(
     }
 }
 
+/// What the player is told when Hydra's command symbol is Lich's: what they
+/// type with it is Hydra's, so Lich's commands cannot be reached
+/// (`plan/51` §6, question 3).
+fn shared_symbol(symbol: char) -> Option<Notice> {
+    (symbol == LICH_SYMBOL).then(|| {
+        Notice::line(
+            NoticeKind::Warn,
+            format!(
+                "Hydra's commands start with {symbol}, as Lich's do, so a line typed with \
+                 {symbol} is Hydra's and Lich's commands can't be reached. Give Hydra \
+                 another symbol, such as . (\"commands\": {{\"symbol\": \".\"}} in the \
+                 character's settings)."
+            ),
+        )
+    })
+}
+
 async fn relay(
     door: &LichDoor,
     launch: &Launch,
-    mut wire: Wire,
-    typing: &mut mpsc::Receiver<String>,
+    Attached {
+        mut wire,
+        mut typing,
+    }: Attached,
     stop: &CancellationToken,
 ) -> Ended {
     let key = match crate::new_token() {
@@ -269,7 +296,7 @@ async fn relay(
                 Some(line) => pass_on(door, &line).await,
                 None => lines_open = false,
             },
-            typed = typing.recv(), if typing_open => match typed {
+            typed = typing.next(), if typing_open => match typed {
                 Some(line) => {
                     let _ = stdin.write_all(format!("{line}\n").as_bytes()).await;
                 }

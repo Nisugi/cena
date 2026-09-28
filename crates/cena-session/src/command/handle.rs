@@ -290,9 +290,14 @@ impl SessionHandle {
         self.events.hear_lines(on);
     }
 
-    /// Copy the game's bytes to the player's Lich (`crate::script::lich`).
-    pub(crate) fn tap_wire(&self, tap: crate::script::lich::Tap) -> bool {
-        self.events.tap_wire(tap)
+    /// Attach the player's Lich (`crate::script::lich`).
+    pub(crate) fn attach_lich(&self, tap: crate::script::lich::Tap) -> bool {
+        self.events.attach_lich(tap)
+    }
+
+    /// Hand a typed line to the player's Lich, if one is attached.
+    pub(crate) fn hand_to_lich(&self, line: &str) -> Option<bool> {
+        self.events.hand_to_lich(line)
     }
 
     /// A script runner's hooks (`crate::script`).

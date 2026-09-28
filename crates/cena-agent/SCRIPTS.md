@@ -43,7 +43,7 @@ Each event has `at`, its position, and a `kind`:
 |---|---|
 | `state` | `cursor`, `fields`: the **local copy** changed (below); each field that did, with its new value. The first event a runner hears is one, with every field |
 | `line` | `cursor`, `stream` (`""` is the main window; `thoughts`, `speech`...), `text`: a line of game text **as the game sent it**, before the player's triggers and `;sorter`. A line the player squelched is still here |
-| `sent` | `cursor`, `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`): a line went out to the game. Yours are `script`, at the cursor `send` answered |
+| `sent` | `cursor`, `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`, `lich`): a line went out to the game. Yours are `script`, at the cursor `send` answered |
 | `prompt` | `cursor`, `time` (the game's clock, epoch seconds, or `null`), `text` (`>`, `R>`...): the end of a chunk |
 | `typed` | `line`: the player typed a command for the runner, without the symbol (`trollspeak say hi`, `k trollspeak`) |
 | `input` | `asked`, `line`: while the runner has input hooks, a line the player typed, **as typed**, the symbol and all, before anything else sees it: answer it with `input` (below) |

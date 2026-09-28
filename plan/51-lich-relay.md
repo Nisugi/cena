@@ -2,10 +2,11 @@
 
 **Status: SPIKED 2026-09-28; §6's five questions ANSWERED the same day.** The spike
 (`spike/lich-relay/`) ran real Lich against a recorded login, offline, and every hop worked.
-Pipe mode's frontend fix was tried locally and works (§4, item 1). **§7's step 1 BUILT
-2026-09-28**: the relay itself, with the session's side (`crates/cena-session/src/script/lich.rs`)
-and Lich's process (`crates/cena-agent/src/lich.rs`), tested against a stand-in and against
-the real Lich, offline. Steps 2-6 are next.
+Pipe mode's frontend fix was tried locally and works (§4, item 1). **§7's steps 1 and 2
+BUILT 2026-09-28**: the relay itself, with the session's side
+(`crates/cena-session/src/script/lich.rs`) and Lich's process (`crates/cena-agent/src/lich.rs`),
+and the player's typing reaching Lich after Hydra's commands; tested against a stand-in and
+against the real Lich, offline. Steps 3-6 are next.
 
 ## 1. The author's position
 
@@ -229,6 +230,22 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
      start after login (step 4). Until step 4, a Lich started mid-session sees only what
      comes next.
 2. Typing routed: Hydra's symbol and `Bare` takers, then Lich's stdin.
+
+   **BUILT 2026-09-28.** In `SessionHandle::send_typed_at`, the path the window and Despana
+   type through (`crates/cena-session/src/command/round_trip.rs`), a line goes through the
+   bridge's input hooks and then Hydra's desk. What the desk doesn't take goes to the attached
+   Lich's stdin instead of the game, answered `Outcome::Handled`, whose meaning widens to
+   "Hydra took it". A new outcome would break five matches, one of them in the GUI file
+   `gui-widgets` is changing. Past 64 lines waiting (typed while Lich starts), a line is refused
+   `Transient`. Hydra's own lines on the manual path (`send_manual_at`: `;multi`, a relayed
+   `;to`) still go to the game. The door is now `LichDoor::attach`, giving the relay the byte
+   copy and the typing together. Starting a Lich while Hydra's symbol is Lich's `;` tells the
+   player once that Lich's commands can't be reached, and how to change it. The agent's
+   contracts list `lich` among the `sent` origins.
+   - **Tests.** In the session: the desk runs `.go2 bank`, Lich gets `;e echo 1`,
+     `send_manual_at`'s `look` goes to the game, and once Lich is gone typing goes to the
+     game. A mutation that hands lines over before the desk fails it. The stand-in and the
+     real Lich (11.3 s) now type through `send_typed_at`.
 3. The display from Lich's stdout.
 4. Starting late: the login kept and replayed, then the latest room.
 5. The switch: settings for Lich's path, and a *Lich* switch on the card and the play window.

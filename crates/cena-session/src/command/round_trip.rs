@@ -152,6 +152,11 @@ impl SessionHandle {
     /// the sorter's look -- go by `send_manual_at`, past the hooks, as a
     /// Lich script's `put` never meets them: a hook turning a line into a
     /// `;multi` of itself would otherwise never end.
+    ///
+    /// **With the player's Lich attached** (`crate::script::lich`), a typed
+    /// line Hydra does not take goes to Lich instead of the game, and is
+    /// [`Outcome::Handled`]: Lich sends what it makes of it. Hydra's own lines
+    /// on the manual path do not, for the hooks' reason.
     pub async fn send_typed_at(
         &self,
         generation: Generation,
@@ -159,7 +164,7 @@ impl SessionHandle {
         deadline: std::time::Duration,
     ) -> Outcome {
         let Some(ask) = self.hooks().typing() else {
-            return self.send_manual_at(generation, line, deadline).await;
+            return self.manual_at(generation, line, deadline, true).await;
         };
         match tokio::time::timeout(crate::script::HOOK_DEADLINE, ask(line)).await {
             Ok(Ok(None)) => {
@@ -167,8 +172,8 @@ impl SessionHandle {
                 self.attendance.mark();
                 Outcome::Handled
             }
-            Ok(Ok(Some(changed))) => self.send_manual_at(generation, &changed, deadline).await,
-            Ok(Err(_)) | Err(_) => self.send_manual_at(generation, line, deadline).await,
+            Ok(Ok(Some(changed))) => self.manual_at(generation, &changed, deadline, true).await,
+            Ok(Err(_)) | Err(_) => self.manual_at(generation, line, deadline, true).await,
         }
     }
 
@@ -181,6 +186,18 @@ impl SessionHandle {
         generation: Generation,
         line: &str,
         deadline: std::time::Duration,
+    ) -> Outcome {
+        self.manual_at(generation, line, deadline, false).await
+    }
+
+    /// [`Self::send_manual_at`]; `typed` when the player typed it at a
+    /// frontend, which the player's Lich has before the game.
+    async fn manual_at(
+        &self,
+        generation: Generation,
+        line: &str,
+        deadline: std::time::Duration,
+        typed: bool,
     ) -> Outcome {
         // A person typed this, whatever becomes of it -- stale, claimed by
         // Hydra's command line, or sent (`attendance.rs`).
@@ -215,6 +232,13 @@ impl SessionHandle {
                 ));
             }
             return Outcome::Handled;
+        }
+        // Past Hydra, the player's Lich has it, if one runs here: it sends
+        // what its commands, aliases and hooks make of it (`plan/51` §5).
+        match typed.then(|| self.hand_to_lich(line)).flatten() {
+            Some(true) => return Outcome::Handled,
+            Some(false) => return Outcome::Refused(Refusal::Transient),
+            None => {}
         }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {

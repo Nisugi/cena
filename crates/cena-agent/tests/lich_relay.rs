@@ -12,8 +12,8 @@ use std::time::Duration;
 use cena_agent::lich::{Ended, Launch, run};
 use cena_agent::scripts::runner::find_ruby;
 use cena_platform::{AnsweringSource, TranscriptHandle};
-use cena_session::{Event, Origin, Session, SessionHandle};
-use tokio::sync::{broadcast, mpsc};
+use cena_session::{Event, Origin, Outcome, Session, SessionHandle};
+use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 /// Long enough for Ruby to start, and for the real Lich to start offline.
@@ -24,7 +24,6 @@ struct Character {
     handle: SessionHandle,
     transcript: TranscriptHandle,
     events: broadcast::Receiver<Event>,
-    typing: mpsc::Sender<String>,
     stop: CancellationToken,
     relay: tokio::task::JoinHandle<Ended>,
 }
@@ -36,28 +35,36 @@ impl Character {
         let session = Session::new(source);
         let handle = session.handle();
         let (_, events) = session.subscribe();
-        let (typing, typed) = mpsc::channel(8);
         let stop = CancellationToken::new();
-        // The copy is taken here, before the actor runs and the login comes.
-        let relay = tokio::spawn(run(handle.lich_door(), launch, typed, stop.clone()));
+        // Attached here, before the actor runs and the login comes.
+        let relay = tokio::spawn(run(handle.lich_door(), launch, stop.clone()));
         tokio::spawn(session.into_actor().run());
         Self {
             handle,
             transcript,
             events,
-            typing,
             stop,
             relay,
         }
     }
 
-    /// Who sent `line` to the game, once it has been sent.
-    async fn sent(&mut self, line: &str) -> Option<Origin> {
+    /// The player types `line` at a frontend.
+    async fn types(&self, line: &str) -> Outcome {
+        let generation = self.handle.generation();
+        self.handle.send_typed_at(generation, line, DEADLINE).await
+    }
+
+    /// The first event `wanted` finds something in, from here on.
+    async fn next<T>(&mut self, mut wanted: impl FnMut(Event) -> Option<T>) -> Option<T> {
         tokio::time::timeout(DEADLINE, async {
             loop {
                 match self.events.recv().await {
-                    Ok(Event::Sent { line: sent, origin }) if sent == line => return Some(origin),
-                    Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => {}
+                    Ok(event) => {
+                        if let Some(found) = wanted(event) {
+                            return Some(found);
+                        }
+                    }
+                    Err(broadcast::error::RecvError::Lagged(_)) => {}
                     Err(broadcast::error::RecvError::Closed) => return None,
                 }
             }
@@ -65,6 +72,28 @@ impl Character {
         .await
         .ok()
         .flatten()
+    }
+
+    /// Who sent `line` to the game, once it has been sent.
+    async fn sent(&mut self, line: &str) -> Option<Origin> {
+        self.next(|event| match event {
+            Event::Sent { line: sent, origin } if sent == line => Some(origin),
+            _ => None,
+        })
+        .await
+    }
+
+    /// What the player was told, the first time it has `words` in it.
+    async fn told(&mut self, words: &str) -> Option<String> {
+        self.next(|event| match event {
+            Event::Notice(notice) => notice
+                .lines()
+                .iter()
+                .find(|line| line.contains(words))
+                .cloned(),
+            _ => None,
+        })
+        .await
     }
 
     async fn stop(self) -> Option<Ended> {
@@ -83,12 +112,16 @@ fn standin(ruby: PathBuf) -> Launch {
 }
 
 /// Lich takes the relay as its game: it is handed the login, its script's
-/// line goes to the game as Lich's, the player's typing through it as the
-/// player's, and it stops when asked.
+/// line goes to the game as Lich's, what the player types goes to it and
+/// then to the game as the player's, and it stops when asked. Hydra's symbol
+/// here is Lich's, and the player is told what that means.
 #[tokio::test(flavor = "multi_thread")]
 async fn lich_takes_hydra_as_its_game() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
     let mut character = Character::start(standin(ruby));
+
+    let told = character.told("Lich's commands can't be reached").await;
+    assert!(told.is_some_and(|line| line.contains("such as .")));
 
     // Put once the login's prompt reached Lich: the copy missed nothing.
     assert_eq!(character.sent("look").await, Some(Origin::Lich));
@@ -98,7 +131,11 @@ async fn lich_takes_hydra_as_its_game() {
         Some(Origin::Lich)
     );
 
-    character.typing.send("say hi".to_owned()).await.unwrap();
+    assert_eq!(
+        character.types("say hi").await,
+        Outcome::Handled,
+        "Lich's to send"
+    );
     assert_eq!(character.sent("say hi").await, Some(Origin::Manual));
 
     assert_eq!(
@@ -113,9 +150,8 @@ async fn lich_takes_hydra_as_its_game() {
 async fn a_second_lich_for_a_character_is_refused() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
     let character = Character::start(standin(ruby.clone()));
-    let (_typing, typed) = mpsc::channel(1);
     let door = character.handle.lich_door();
-    let second = run(door, standin(ruby), typed, CancellationToken::new()).await;
+    let second = run(door, standin(ruby), CancellationToken::new()).await;
     assert_eq!(second, Ended::Busy);
     assert_eq!(character.stop().await, Some(Ended::Stopped));
 }
@@ -160,16 +196,13 @@ async fn the_real_lich() {
         ],
     });
 
-    character
-        .typing
-        .send(r#";e put "frontend #{$frontend}""#.to_owned())
-        .await
-        .unwrap();
+    // No Hydra commands run here, so `;` is Lich's.
+    character.types(r#";e put "frontend #{$frontend}""#).await;
     assert_eq!(
         character.sent("frontend stormfront").await,
         Some(Origin::Lich)
     );
-    character.typing.send("exp".to_owned()).await.unwrap();
+    character.types("exp").await;
     assert_eq!(character.sent("exp").await, Some(Origin::Manual));
 
     assert_eq!(character.stop().await, Some(Ended::Stopped));

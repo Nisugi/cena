@@ -123,7 +123,7 @@ the first. Answers `{happenings, cursor, lagged, closed}`. Wait next from the re
 | `status` | `id`, `now` (`true`, `false`, or `null`: now unknown) |
 | `moved` | `from`, `to` (the game's room numbers), `title` |
 | `arrived`, `left`, `creature_died` | `id`, `name` — only between two stated lists |
-| `sent` | `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`: yours are `agent`, a takeover's too) |
+| `sent` | `line`, `origin` (`manual`, `behavior`, `script`, `trigger`, `agent`, `lich`: yours are `agent`, a takeover's too; `lich` is the player's own Lich, `plan/51`) |
 | `notice` | `text`: Hydra said something to the player |
 | `lifecycle` | `state` |
 | `gap` | some `sent`/`notice` were missed; the rest come from the next snapshot |

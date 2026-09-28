@@ -84,7 +84,8 @@ pub enum Happening {
     Sent {
         /// The command.
         line: String,
-        /// Who sent it: `manual`, `behavior`, `script`.
+        /// Who sent it: `manual`, `behavior`, `script`, `trigger`, `agent`,
+        /// `lich` (`cena_session::Origin::word`).
         origin: String,
     },
     /// Hydra said something to the player.

@@ -230,10 +230,12 @@ pub enum Outcome {
     Disconnected,
     /// Not run, with a reason.
     Refused(Refusal),
-    /// Hydra ran the line itself; nothing went to the game.
+    /// Hydra took the line; nothing went to the game from here.
     ///
     /// A player's own command (`;go2 bank`, `super::claimant`) is taken by
-    /// the desk before the queue, so there is no window and no frame. It was
+    /// the desk before the queue, so there is no window and no frame. A typed
+    /// line with the player's Lich attached (`crate::script::lich`) is taken
+    /// too, and handed to Lich, which sends what it makes of it. It was
     /// answered `Confirmed` with a fabricated `Frame::Prompt`, which put a
     /// frame that never crossed the wire into a value whose meaning is "the
     /// frame that matched" -- the lie [`Sent`] exists to avoid -- and
@@ -241,8 +243,10 @@ pub enum Outcome {
     /// avoid rendering "server output observed" (review finding 8; author,
     /// 2026-09-23: "handled by hydra works").
     ///
-    /// Only [`SessionHandle::send_manual_at`](super::SessionHandle::send_manual_at)
-    /// returns it. A behavior's round trip never can: behaviors send through
+    /// Only the manual path returns it:
+    /// [`SessionHandle::send_manual_at`](super::SessionHandle::send_manual_at)
+    /// and [`SessionHandle::send_typed_at`](super::SessionHandle::send_typed_at).
+    /// A behavior's round trip never can: behaviors send through
     /// `send_and_await`, which does not consult the desk.
     Handled,
 }
