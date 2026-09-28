@@ -305,10 +305,18 @@ killed: 28 chunks, 278 lines, 70 KB in 11 game seconds), each chunk the scripted
 a script's `next`, so it arrives as the game sends it: a chunk at a time, closed by its prompt. A
 Ruby script (`tests/fixtures/measure.lic`) keeps when it sent and when each line reached it; the
 test keeps when the session published each line, each line shown and each prompt, on the same
-clock. Ruby 4.0.3, Windows 11, the author's machine; **a debug build**, as every build here is
-(`CLAUDE.md`), so Hydra's own side is slower than a release's, and the runner's Ruby is the same
-either way. The ranges are over five runs; one machine, not quiet, and the spread is its own
-finding.
+clock. Ruby 4.0.3, Windows 11, the author's machine. The ranges are over five runs of **a debug
+build**, as every build here is (`CLAUDE.md`); one machine, not quiet, and the spread is its own
+finding. **Then once in a release build**, the author asking for it (2026-09-27: *"yea do a
+release build"*): `cargo test ... --release`, the same tests. Where the two differ, both are
+given; the runner's Ruby is the same either way.
+
+**What the release build settles**: the debug build's long tails were Hydra's model reading a
+chunk. In release the session reads the heaviest combat chunk in **16 ms** (debug: 177-787 ms),
+and a line reaches a script in combat in **15 ms median, 32 ms at the 95th percentile**, most of
+it the bridge. The bridge's own cost, **13-16 ms for a command and its reply**, is the same in
+both, so it is Ruby's and HTTP's, not Rust's: each call a fresh connection (`connection.rb`), a
+thing to measure before changing if it ever matters.
 
 - **A runner's start**: **0.94-0.95 s** median from starting Ruby to its first `listen`
   reaching a socket (two sets of six starts, run alone), the method of the first measurement
@@ -323,12 +331,16 @@ finding.
   - *Before, kept*: 338 ms at step 1 (Lich's engine, no script: 313-370 ms over six runs), 885 ms
     at step 2 (`GameObj`, `ox`, `lich.rb`, the stores and `sequel` too), timed from a separate
     script the same way.
-- **A runner's memory** (`Get-Process`): **39.3-39.7 MiB working set, 73.1-73.4 MiB private**
-  with no script; 42.2-42.5 and 78.9-79.3 after the combat; 42.5-42.6 and 80.2-82.5 with a
+  - **With windows** (the gtk3 gem loaded, §10 question 12): **5.0-5.5 s** median (the release
+    run's six, 4.3-6.3 s; the debug run's, up to 14 s on a busy machine). Gtk alone is 1.6 s
+    warm in a bare Ruby and 8 s the first time after the machine starts, reading its libraries
+    from disk. Release: 0.97 s without windows.
+- **A runner's memory** (`Get-Process`): **39.3-39.7 MiB working set, 73.1-75.5 MiB private**
+  with no script; **with windows, 159-192 MiB working set and 201-230 MiB private**, Gtk's own; 42.2-42.5 and 78.9-79.3 after the combat; 42.5-42.6 and 80.2-82.5 with a
   display-hook script running; **42.8-43.0 and 90.7-91.0 with twelve scripts running**, about 1
   MiB private a script. Against Lich's 466 MB committed a character (`plan/38` §2a): 25
   characters' runners are some 2 GB private, 25 Lichs some 11.6 GB committed (not the same
-  measure, so an order, not a ratio).
+  measure, so an order, not a ratio). With windows, 25 runners are some 5-6 GB private.
   - *Before, kept*: 27.0 and 58.8 MiB at step 1; 38.8 and 72.8 at step 2; 47.6 and 79.6 when
     step 5 loaded Lich's libraries at start, which autoload undid.
 - **The local copy's update size and rate in combat**: **12-13 `state` events over the 28
@@ -353,6 +365,9 @@ finding.
   - **the bridge, from the prompt to the script: median 8.0-23.5 ms, 95th percentile 15.7-35.5
     ms** (one run 359 ms).
   So a `next` to its reply's first line is 42-120 ms median.
+  - **Release**: a line **15.1 ms median, 31.7 ms at the 95th percentile**; its chunk's prompt
+    1.0 ms median (16.5 ms at the 95th), the bridge 13.4 ms median (19.8 ms); a `next` to its
+    reply's first line 17.1 ms median.
 - **A hooked line's display delay, and the deadline to set**: with a display hook that changes
   nothing, **median 12.3-18.5 ms, 95th percentile 51-529 ms, the longest 330-564 ms**; with none,
   a line is shown 0.00 ms after the session publishes it (the longest 0.05 ms). A hooked line
@@ -360,9 +375,9 @@ finding.
   what is long is the session reading the chunk. **The deadline stays 500 ms**: the runner's own
   answer is well inside it, and it was passed by 64 ms at most, while the session was still
   reading the chunk that held the line, since the deadline is kept by the session between frames.
-- **Not measured, and why**: a release build (the author's rule is one target, debug; whether to
-  measure one is the author's call); the game's own round trip over the network, which a script
-  pays under Lich too.
+  **Release**: median 14.6 ms, 95th percentile 16.3 ms, one line of 183 at 333 ms.
+- **Not measured, and why**: the game's own round trip over the network, which a script pays
+  under Lich too.
 
 ## 10. Questions for the author: ANSWERED 2026-09-27
 
@@ -396,6 +411,15 @@ finding.
     scripting bridge in a worktree no?"*, was told this answer put it after M6's live run and
     that M7's is not run either, and answered *"go"*. Branch `m7b-ruby`, worktree
     `G:\dev\Cena-m7b`, from `m7-agent`.
+12. **Load Gtk in the runner?** (§6: Gtk runs in ordinary Ruby given the gem; step 5 found 16
+    scripts of elanthia-online's and 55 of the old repository's stop only at a window.) AUTHOR,
+    2026-09-27: *"sure for now we will load gtk, but we will probably not use gtk on release."*
+    **BUILT**: Hydra says whether a runner may open windows (`HYDRA_WINDOWS`,
+    `runner::Start::windows`; the binary says yes, `crates/cena/src/scripts.rs`), and a runner
+    that may loads the gtk3 gem when the player has it, as Lich does, giving its main thread to
+    Gtk's loop (`bridges/ruby/hydra/engine.rb`, `runner.rb`; Lich's `gtk.rb` and
+    `gtk_compaction.rb` vendored). It costs a runner some 4 s more to start and 120-150 MiB more (§9), so
+    a release that says no is a one-line change.
 
 ## 11. Steps, when scheduled
 
@@ -625,10 +649,8 @@ finding.
      registry unread, Lich's classes taken as the script's, a sibling script's names judged, a
      prefix before a whole name. Hand check: 30 random stop findings in the old repository all
      real; of the 1,254 that run, 18 mention a blocking name, each explained.
-   - **Not yet**: a spell held in a variable (`sign.cast`), which the checker misses. And a
-     question for the author: **Lich's windows**. §6 counted Gtk as running in ordinary Ruby
-     given the gem; the runner as built does not load it, and 16 of elanthia-online's scripts
-     and 55 of the old repository's stop only there (often at a settings window).
+   - **Not yet**: a spell held in a variable (`sign.cast`), which the checker misses. Lich's
+     windows, raised here as a question, were answered: loaded for now (§10, question 12).
 6. §9's measurements, written here.
    **BUILT 2026-09-27** (the author: *"step 6"*): §9 has each, measured over a real hunt's combat
    replayed through the scripted game, by `crates/cena-agent/tests/measure.rs` (ignored; it
