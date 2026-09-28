@@ -127,3 +127,26 @@ fn a_caught_numpad_press_sends_its_line() {
     );
     assert_eq!(numpad_line(&keybinds, &event(false)), None, "typed instead");
 }
+
+/// A binding that is not one command -- a newline, a carriage return, a
+/// NUL -- is said, not bound: it would send more than one (the crate review
+/// of 2026-09-28, R10); the rest still bind.
+#[test]
+fn a_binding_of_more_than_one_command_is_said() {
+    let (keybinds, problems) = Keybinds::read(
+        r#"
+[keys]
+F5 = "look"
+F6 = "look\nkill"
+F7 = "stand\r"
+F8 = "x\u0000"
+"#,
+    );
+    assert_eq!(keybinds.len(), 1, "{problems:?}");
+    assert_eq!(problems.len(), 3, "{problems:?}");
+    assert!(
+        problems
+            .iter()
+            .all(|problem| problem.contains("CR, LF or NUL"))
+    );
+}

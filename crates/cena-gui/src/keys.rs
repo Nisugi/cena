@@ -299,9 +299,14 @@ impl Keybinds {
                 Ok(chord) if chord.types() => problems.push(format!(
                     "`{written}` types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
                 )),
-                Ok(chord) => {
-                    keybinds.binds.insert(chord, line);
-                }
+                // One command, or it is said, not bound: a line with a newline
+                // would send two (the crate review of 2026-09-28, R10).
+                Ok(chord) => match cena_ui::validate_line(&line) {
+                    Ok(()) => {
+                        keybinds.binds.insert(chord, line);
+                    }
+                    Err(why) => problems.push(format!("`{written}`: {why}.")),
+                },
                 Err(why) => problems.push(why),
             }
         }

@@ -570,3 +570,30 @@ fn the_drag_key_chosen_is_the_windows() {
     harness.run();
     assert_eq!(crate::carry::key(&harness.ctx), egui::Modifiers::SHIFT);
 }
+
+/// A line that is not one command -- a key bound to two lines, say -- is
+/// neither echoed nor sent, echoed or not, and is said in Hydra's pane (the
+/// crate review of 2026-09-28, R10).
+#[test]
+fn a_line_of_two_commands_is_refused() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    let seat = sessions.seat_for_test(handle(), "Ashryn");
+    sessions.send(&seat, "look\nkill".to_owned());
+    sessions.send_quietly(&seat, "_drag #1 drop\r".to_owned());
+    let story = lock(&seat.story);
+    assert!(story.lines.is_empty(), "nothing echoed");
+    let said: Vec<&str> = story
+        .said
+        .iter()
+        .flat_map(cena_session::Notice::lines)
+        .map(String::as_str)
+        .collect();
+    assert_eq!(said.len(), 2, "{said:?}");
+    assert!(
+        said.iter().all(|said| said.starts_with("Not sent:")),
+        "{said:?}"
+    );
+}

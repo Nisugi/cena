@@ -340,13 +340,24 @@ impl Sessions {
     /// game (`SessionHandle::send_manual_at`). It is echoed in the story at
     /// once; a line that may not have gone is said in Hydra's pane.
     pub(crate) fn send(&self, seat: &Arc<Seat>, line: String) {
+        if refused(seat, &line) {
+            return;
+        }
         lock(&seat.story).typed(&line);
-        self.send_quietly(seat, line);
+        self.deliver(seat, line);
     }
 
     /// Send `line` as [`Self::send`] does, but not echoed in the story: a
     /// menu asked for on a click, which the player did not type.
     pub(crate) fn send_quietly(&self, seat: &Arc<Seat>, line: String) {
+        if refused(seat, &line) {
+            return;
+        }
+        self.deliver(seat, line);
+    }
+
+    /// `line`, one command, sent on the connection `seat`'s window last saw.
+    fn deliver(&self, seat: &Arc<Seat>, line: String) {
         let Some(generation) = lock(&seat.snapshot).as_ref().map(|shot| shot.generation) else {
             lock(&seat.story).tell(Notice::line(
                 NoticeKind::Warn,
@@ -406,6 +417,17 @@ fn unsent(outcome: &Outcome) -> Option<String> {
 /// A lock that a panic elsewhere does not poison for the window.
 pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Whether `line` is refused, not one command -- a key bound to two lines,
+/// say -- and said so in Hydra's pane: everything the window sends passes
+/// here (`cena_ui::validate_line`; the crate review of 2026-09-28, R10).
+fn refused(seat: &Seat, line: &str) -> bool {
+    let Err(why) = cena_ui::validate_line(line) else {
+        return false;
+    };
+    lock(&seat.story).tell(Notice::line(NoticeKind::Warn, format!("Not sent: {why}.")));
+    true
 }
 
 #[cfg(test)]
