@@ -220,7 +220,7 @@ fn sent(events: &[Event]) -> Vec<String> {
     events
         .iter()
         .filter_map(|event| match event {
-            Event::Act(act) => Some(act.line.clone()),
+            Event::Act { act, .. } => Some(act.line.clone()),
             _ => None,
         })
         .collect()
@@ -236,26 +236,57 @@ fn warned(events: &[Event]) -> Vec<String> {
         .collect()
 }
 
-/// A trigger's send is published with its groups filled in; the session
-/// does not send it itself, the binary does.
+/// The end of a login burst: the session is `Ready` from its prompt, and a
+/// trigger may send.
+const READY: &str = "<endSetup/>\n<prompt time=\"999\">&gt;</prompt>\n";
+
+fn tackle() -> Trigger {
+    Trigger {
+        name: "react".into(),
+        rule: Rule {
+            pattern: Some(Pattern::Regex(
+                r"You could use this opportunity to (\w+)".into(),
+            )),
+            send: Some("weapon $1".into()),
+            ..Rule::default()
+        },
+    }
+}
+
+/// A trigger's send is published with its groups filled in, naming the
+/// connection that set it off; the session does not send it itself, the
+/// binary does.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_send_is_published_for_the_binary_to_send() {
-    let wire = "<prompt time=\"999\">&gt;</prompt>\nYou could use this opportunity to tackle!\n";
-    let (events, _) = run(
-        wire,
-        vec![Trigger {
-            name: "react".into(),
-            rule: Rule {
-                pattern: Some(Pattern::Regex(
-                    r"You could use this opportunity to (\w+)".into(),
-                )),
-                send: Some("weapon $1".into()),
-                ..Rule::default()
-            },
-        }],
-    )
-    .await;
+    let wire = format!("{READY}You could use this opportunity to tackle!\n");
+    let (events, _) = run(&wire, vec![tackle()]).await;
     assert_eq!(sent(&events), ["weapon tackle"]);
+    assert!(
+        events.iter().all(|event| !matches!(
+            event,
+            Event::Act { generation, .. } if *generation != cena_session::Generation::FIRST
+        )),
+        "the connection it answered"
+    );
+}
+
+/// The same line during the login burst sets nothing off: a send is made on
+/// what the character is doing now, and a burst replays what it was doing.
+/// Nor is it made later, when the session is `Ready` (the crate review of
+/// 2026-09-28, R3).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_send_set_off_before_ready_is_not_made() {
+    let line = "You could use this opportunity to tackle!\n";
+    let wire = format!("<prompt time=\"998\">&gt;</prompt>\n{line}{READY}");
+    let (events, _) = run(&wire, vec![tackle()]).await;
+    assert_eq!(
+        sent(&events),
+        [] as [&str; 0],
+        "not during setup, not after"
+    );
+    let wire = format!("<prompt time=\"998\">&gt;</prompt>\n{line}{READY}{line}");
+    let (events, _) = run(&wire, vec![tackle()]).await;
+    assert_eq!(sent(&events), ["weapon tackle"], "once Ready, only its own");
 }
 
 /// Triggers that answer each other are held back past the pace, and said
@@ -263,7 +294,7 @@ async fn a_send_is_published_for_the_binary_to_send() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn sends_past_the_pace_are_held_back_and_said_once() {
     let lines: Vec<String> = (0..8).map(|i| format!("ping {i}")).collect();
-    let wire = format!("<prompt time=\"999\">&gt;</prompt>\n{}\n", lines.join("\n"));
+    let wire = format!("{READY}{}\n", lines.join("\n"));
     let triggers = (0..8)
         .map(|i| {
             on_words(
@@ -293,7 +324,7 @@ async fn sends_past_the_pace_are_held_back_and_said_once() {
 /// both: its sound does not start a cooldown that eats its send.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_trigger_that_sounds_and_sends_does_both() {
-    let wire = format!("<prompt time=\"999\">&gt;</prompt>\n{SWING}");
+    let wire = format!("{READY}{SWING}");
     let (events, _) = run(
         &wire,
         vec![on_words(

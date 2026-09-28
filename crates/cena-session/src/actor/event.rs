@@ -59,7 +59,18 @@ pub enum Event {
     /// otherwise to the game as [`Origin::Trigger`](crate::Origin::Trigger).
     /// The session decides and paces it; the binary sends it, holding the
     /// handle a command table is on.
-    Act(std::sync::Arc<cena_model::trigger::Act>),
+    ///
+    /// Only while `Ready`: a send the login burst set off is not made, then
+    /// or later (the crate review of 2026-09-28, R3). And it names the
+    /// connection it answered, since the binary sends it a moment later: one
+    /// decided on a connection since replaced is not sent on the new one,
+    /// neither to the game nor as a `;` command (R2).
+    Act {
+        /// The send.
+        act: std::sync::Arc<cena_model::trigger::Act>,
+        /// The connection whose line or prompt set it off.
+        generation: crate::lifecycle::Generation,
+    },
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///

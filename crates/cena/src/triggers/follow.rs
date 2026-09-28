@@ -76,7 +76,9 @@ pub(crate) async fn run(
     loop {
         tokio::select! {
             event = events.recv() => match event {
-                Ok(Event::Act(act)) => send(&handle, &act.trigger, &act.line).await,
+                Ok(Event::Act { act, generation }) => {
+                    send(&handle, generation, &act.trigger, &act.line).await;
+                }
                 Ok(_) | Err(RecvError::Lagged(_)) => {}
                 Err(RecvError::Closed) => return,
             },

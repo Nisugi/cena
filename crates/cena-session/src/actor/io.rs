@@ -390,7 +390,7 @@ impl<S: ByteSource> SessionActor<S> {
         if self.quitting.is_some() {
             return Sent::Dead;
         }
-        if origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
+        if origin.waits_for_ready() && !self.lifecycle.behaviors_may_run() {
             return Sent::Refused(Refusal::Transient);
         }
         // The gate (`gate.rs`).
@@ -448,7 +448,7 @@ impl<S: ByteSource> SessionActor<S> {
             let _ = envelope.reply.send(Outcome::Disconnected);
             return;
         }
-        if envelope.origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
+        if envelope.origin.waits_for_ready() && !self.lifecycle.behaviors_may_run() {
             let _ = envelope
                 .reply
                 .send(Outcome::Refused(crate::command::Refusal::Transient));

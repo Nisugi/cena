@@ -120,12 +120,24 @@ impl<S: ByteSource> SessionActor<S> {
                 self.set_flag(&flag.change(now));
             }
         }
+        // Not while the session is learning the character: a send is made
+        // on what the character is doing now, and a login burst replays
+        // what it was doing (the crate review of 2026-09-28, R3). Dropped,
+        // not held for `Ready`, and before the pace, which it never used.
+        let acts = if self.lifecycle.behaviors_may_run() {
+            acts
+        } else {
+            Vec::new()
+        };
         let admitted = self.events.admit(attention, acts, now);
         for called in admitted.attention {
             let _ = self.events.send(Event::Attention(Arc::new(called)));
         }
         for act in admitted.acts {
-            let _ = self.events.send(Event::Act(Arc::new(act)));
+            let _ = self.events.send(Event::Act {
+                act: Arc::new(act),
+                generation: self.generation,
+            });
         }
         if admitted.say_held {
             let held: Vec<String> = admitted

@@ -111,7 +111,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
                 | Event::Quiet(_)
                 | Event::Flag(_)
                 | Event::Attention(_)
-                | Event::Act(_),
+                | Event::Act { .. },
             ) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and

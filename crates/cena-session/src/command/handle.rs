@@ -492,6 +492,25 @@ impl SessionHandle {
     ///
     /// Never. Like `send_and_await`, the failure modes are values.
     pub async fn send_now(&self, line: &str, origin: Origin, gate: Gate) -> Sent {
+        self.send_at(self.generation.get(), line, origin, gate)
+            .await
+    }
+
+    /// [`Self::send_now`], for a line decided on connection `generation`:
+    /// one decided on a connection since replaced is
+    /// [`Sent::Interrupted`], never written to the new one (the crate review
+    /// of 2026-09-28, R2: a trigger's send, sent a moment after its line).
+    ///
+    /// # Errors
+    ///
+    /// Never, as [`Self::send_now`].
+    pub async fn send_at(
+        &self,
+        generation: Generation,
+        line: &str,
+        origin: Origin,
+        gate: Gate,
+    ) -> Sent {
         if origin == Origin::Manual {
             self.attendance.mark();
         }
@@ -499,7 +518,7 @@ impl SessionHandle {
         let message = Inbox::SendNow {
             line: line.to_owned(),
             origin,
-            generation: self.generation.get(),
+            generation,
             gate,
             reply,
         };

@@ -106,10 +106,17 @@ impl Origin {
         }
     }
 
-    /// Whether a behavior sent this, whoever holds the authority.
+    /// Whether it waits for `Ready` ([`State::behaviors_may_run`]): what
+    /// automation sends, a behavior's or a trigger's. The player and a
+    /// script sending as the player do not wait; a trigger answering the
+    /// login burst would otherwise send while the session is still learning
+    /// the character (the crate review of 2026-09-28, R3), and what the
+    /// player types is no policy for what a trigger may.
+    ///
+    /// [`State::behaviors_may_run`]: crate::State::behaviors_may_run
     #[must_use]
-    pub const fn is_behavior(self) -> bool {
-        matches!(self, Self::Behavior(_))
+    pub const fn waits_for_ready(self) -> bool {
+        matches!(self, Self::Behavior(_) | Self::Trigger)
     }
 }
 
