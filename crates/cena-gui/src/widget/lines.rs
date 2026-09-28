@@ -134,6 +134,13 @@ impl Lines {
 
 /// The story, a stream's lines left out while a widget of it is `open`;
 /// the link clicked in it, if one was.
+///
+/// A prompt is drawn only when a line was drawn since the last one drawn, or
+/// when it changed (`R>` to `>`): `VellumFE`'s rule (`core/messages/element.rs`,
+/// the `Prompt` arm, and `popStream`'s "will skip next prompt"). It is kept
+/// here, where what is left out is known, because a thought whose Thoughts
+/// widget is open is not drawn, and the prompt after it was: a lone `>` in
+/// the story for every line another widget showed.
 pub(super) fn story(
     ui: &mut egui::Ui,
     lines: &VecDeque<(Stamp, Shown)>,
@@ -142,11 +149,16 @@ pub(super) fn story(
 ) -> Option<Clicked> {
     let mut clicked = None;
     options.scrolled(ui, id.with("story"), |ui| {
+        let mut prompts = Prompts::default();
         for (at, shown) in lines {
             match shown {
-                Shown::Game(runs) => clicked = clicked.take().or(options.label(ui, *at, runs)),
+                Shown::Game(runs) => {
+                    prompts.line();
+                    clicked = clicked.take().or(options.label(ui, *at, runs));
+                }
                 Shown::From(stream, runs) => {
                     if !open.contains(stream) {
+                        prompts.line();
                         clicked = clicked.take().or(options.label(ui, *at, runs));
                     }
                 }
@@ -156,7 +168,7 @@ pub(super) fn story(
                     }
                 }
                 Shown::Prompt(prompt) => {
-                    if options.prompts {
+                    if prompts.draws(prompt) && options.prompts {
                         ui.weak(options.stamped(*at, prompt));
                     }
                 }
@@ -170,6 +182,33 @@ pub(super) fn story(
     // no other object, is dropped (the author, 2026-09-28).
     clicked
         .or_else(|| crate::carry::target(ui, id.with("story"), "drop", None).map(Clicked::Quietly))
+}
+
+/// Which of the story's prompts are drawn, walking it in order.
+#[derive(Default)]
+struct Prompts<'a> {
+    /// A line was drawn since the last prompt drawn.
+    since: bool,
+    /// The last prompt drawn; none yet.
+    last: Option<&'a str>,
+}
+
+impl<'a> Prompts<'a> {
+    /// A line was drawn.
+    fn line(&mut self) {
+        self.since = true;
+    }
+
+    /// Whether `prompt`, next, is drawn: after a line drawn, or changed.
+    fn draws(&mut self, prompt: &'a str) -> bool {
+        let changed = self.last.is_none_or(|last| last.trim() != prompt.trim());
+        let draws = self.since || changed;
+        if draws {
+            self.last = Some(prompt);
+        }
+        self.since = false;
+        draws
+    }
 }
 
 /// One of the game's streams; the link clicked in it, if one was.
@@ -361,5 +400,54 @@ mod tests {
         );
         assert!(prompts.query_by_label(">").is_some());
         assert!(prompts.query_by_label(">look").is_none());
+    }
+
+    /// A prompt after a line another widget shows is not drawn: with the
+    /// Thoughts widget open, a thought leaves no lone `>` in the story; a
+    /// prompt that changed still is, and with no Thoughts widget every
+    /// prompt after a thought is (`VellumFE`'s rule, the author, 2026-09-28:
+    /// *"vellum has some code to suppress prompts at times"*).
+    #[test]
+    fn a_prompt_after_a_line_shown_elsewhere_is_not_drawn() {
+        let prompt = |text: &str| {
+            heard(Event::Frame(Box::new(Frame::Prompt {
+                time: "1000".to_owned(),
+                text: text.to_owned(),
+            })))
+        };
+        let heard_all = move || {
+            let mut story = Story::default();
+            story.hear(&heard(said("", "You swing.")), None);
+            story.hear(&prompt(">"), None);
+            for _ in 0..2 {
+                story.hear(&heard(said("thoughts", "[General] hello")), None);
+                story.hear(&prompt(">"), None);
+            }
+            story.hear(&heard(said("thoughts", "[General] again")), None);
+            story.hear(&prompt("R>"), None);
+            story
+        };
+        let prompts = |open: Vec<String>| {
+            let story = heard_all();
+            let mut harness = Harness::builder()
+                .with_size((420.0, 400.0))
+                .build_ui(move |ui| {
+                    let seen = Seen {
+                        snapshot: None,
+                        story: &story,
+                        hunt: None,
+                        who: None,
+                        open: &open,
+                    };
+                    let _ = Widget::Story.draw_with(ui, &seen, Id::new("p"), &Chosen::default());
+                });
+            harness.run();
+            (
+                harness.query_all_by_label(">").count(),
+                harness.query_all_by_label("R>").count(),
+            )
+        };
+        assert_eq!(prompts(vec!["thoughts".to_owned()]), (1, 1), "open");
+        assert_eq!(prompts(Vec::new()), (3, 1), "no Thoughts widget");
     }
 }
