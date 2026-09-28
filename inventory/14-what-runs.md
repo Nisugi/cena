@@ -4,9 +4,9 @@ The answer to *"does my script run under Hydra?"*, script by script, for both co
 `inventory/13` measured, made by Hydra's own checker (`plan/46` §1, §11 step 5; the author, §10
 question 10: *"yes"*, ship it). The lists are the two TSVs beside this file; the tables below come
 from them. Made 2026-09-27 after step 5, and again the same day after step 7 (the character's
-sheet) and step 8 (the map's questions).
+sheet), step 8 (the map's questions) and step 9 (casting).
 
-**What it measures is the runner as built**, through step 8: Lich's engine and Hydra's edges,
+**What it measures is the runner as built**, through step 9: Lich's engine and Hydra's edges,
 exactly as a runner loads them. `inventory/13` §3.3 asked a different question, which scripts
 *could* run once Hydra answers what they need, and counted the model half of Lich's API as
 answered because Hydra's model holds it. This counts it as answered only when a script can
@@ -47,31 +47,45 @@ cannot read. Those stop the script under Lich 5.21 as well, which also runs on R
 
 | Verdict | A files | A lines | B files | B lines |
 |---|---:|---:|---:|---:|
-| runs | 98 (41.5%) | 42292 (23.1%) | 1391 (65.3%) | 236873 (27.8%) |
+| runs | 112 (47.5%) | 46946 (25.6%) | 1506 (70.7%) | 269875 (31.7%) |
 | differs | 1 (0.4%) | 66 (0.0%) | 12 (0.6%) | 8434 (1.0%) |
-| markup | 15 (6.4%) | 8953 (4.9%) | 148 (6.9%) | 84522 (9.9%) |
-| windows | 20 (8.5%) | 21492 (11.7%) | 70 (3.3%) | 74138 (8.7%) |
-| stops | 102 (43.2%) | 110384 (60.3%) | 509 (23.9%) | 446581 (52.5%) |
+| markup | 21 (8.9%) | 38915 (21.2%) | 167 (7.8%) | 120005 (14.1%) |
+| windows | 25 (10.6%) | 23350 (12.7%) | 84 (3.9%) | 107798 (12.7%) |
+| stops | 77 (32.6%) | 73910 (40.3%) | 361 (16.9%) | 344436 (40.5%) |
 
-So **42% of A and 65% of B run today** (35% and 59% before step 7, 40% and 64% before step 8), 1
-and 12 more with a difference. `inventory/13`
+So **47% of A and 71% of B run today** (35% and 59% before step 7), 1 and 12 more with a
+difference. `inventory/13`
 §3.3's 76% and 87% were the ceiling once Hydra answers everything it plans to; this is the floor
-as built. As there, the big scripts are the blocked ones: by lines, 23% of A runs.
+as built. As there, the big scripts are the blocked ones: by lines, 26% of A runs.
 
 ## What Hydra has to answer, in the order that runs the most scripts
 
-Of the scripts that do not run (A 138, B 739), those whose every finding is Hydra's to answer
-(A 121, B 541), by what each needs. Greedy: at each step the gap whose answer lets the most scripts run, then the
+Of the scripts that do not run (A 124, B 624), those whose every finding is Hydra's to answer
+(A 107, B 426), by what each needs. Greedy: at each step the gap whose answer lets the most scripts run, then the
 one most needed; the percentages count every script, those already running included.
 
 | # | Gap | A: needing it | A: running after | B: needing it | B: running after |
 |---:|---|---:|---:|---:|---:|
-| 1 | the game's markup | 38 | 114 (48.3%) | 192 | 1539 (72.3%) |
-| 2 | Spell#cast | 26 | 124 (52.5%) | 158 | 1643 (77.1%) |
-| 3 | Lich's windows (Gtk) | 37 | 149 (63.1%) | 124 | 1743 (81.8%) |
-| 4 | Lich::Util | 35 | 175 (74.2%) | 76 | 1810 (85.0%) |
-| 5 | StringProc | 7 | 179 (75.8%) | 29 | 1824 (85.6%) |
-| 6 | Spell#active | 0 | 179 (75.8%) | 20 | 1841 (86.4%) |
+| 1 | the game's markup | 38 | 134 (56.8%) | 192 | 1667 (78.3%) |
+| 2 | Lich's windows (Gtk) | 37 | 159 (67.4%) | 124 | 1769 (83.1%) |
+| 3 | Lich::Util | 35 | 187 (79.2%) | 76 | 1837 (86.2%) |
+| 4 | Spell#active | 0 | 187 (79.2%) | 20 | 1856 (87.1%) |
+| 5 | XMLData.bounty_task | 1 | 188 (79.7%) | 11 | 1866 (87.6%) |
+| 6 | Group | 5 | 189 (80.1%) | 5 | 1871 (87.8%) |
+| 7 | Log | 5 | 194 (82.2%) | 1 | 1872 (87.9%) |
+| 8 | StowList | 5 | 197 (83.5%) | 2 | 1874 (88.0%) |
+| 9 | Claim | 2 | 198 (83.9%) | 3 | 1877 (88.1%) |
+| 10 | Bounty | 3 | 200 (84.7%) | 2 | 1879 (88.2%) |
+| 11 | XMLData.stow_container_id | 0 | 200 (84.7%) | 5 | 1883 (88.4%) |
+| 12 | Watchfor | 1 | 201 (85.2%) | 3 | 1886 (88.5%) |
+| 13 | XMLData.reset | 1 | 202 (85.6%) | 3 | 1889 (88.7%) |
+| 14 | Spellsong | 1 | 202 (85.6%) | 3 | 1892 (88.8%) |
+| 15 | Map.reload | 1 | 203 (86.0%) | 3 | 1894 (88.9%) |
+| 16 | DB_Store | 3 | 206 (87.3%) | 0 | 1894 (88.9%) |
+| 17 | Map.get_location | 2 | 208 (88.1%) | 1 | 1895 (89.0%) |
+| 18 | Spell#timeleft= | 2 | 209 (88.6%) | 7 | 1896 (89.0%) |
+| 19 | Spell#putup | 1 | 210 (89.0%) | 6 | 1902 (89.3%) |
+| 20 | Map.save | 0 | 210 (89.0%) | 4 | 1904 (89.4%) |
 | 7 | XMLData.bounty_task | 1 | 180 (76.3%) | 11 | 1851 (86.9%) |
 | 8 | Group | 5 | 180 (76.3%) | 5 | 1856 (87.1%) |
 | 9 | StowList | 5 | 183 (77.5%) | 2 | 1858 (87.2%) |
@@ -128,9 +142,11 @@ forecast, and B from 1,254 to 1,358, against a forecast of 1,377. **Step 8 answe
 questions** (`Map.dijkstra`, `path_to`, the `find_nearest` family, `Map.list`, `estimate_time`,
 `ids_from_uid`, `tags`), from Hydra's map and priced as the character's walk: A to 98 and B to
 1,391, against the forecast 100 and 1,418; the difference is scripts that got past the map and
-now wait on the markup or a window, whose verdicts grew (A's from 13 to 15 and 17 to 20). The
-rest: `Spell#cast` (the casting step, `plan/37` Stage 3) and `Lich::Util`'s commands, which wait
-on the game's markup, are steps 9 and 10, then the markup, step 11.
+now wait on the markup or a window, whose verdicts grew (A's from 13 to 15 and 17 to 20). **Step
+9 answered casting** (Lich's own `Spell#cast` and its family) and, with it, Lich's extensions of
+Ruby's classes (`StringProc`, `5.minutes`): A to 112 and B to 1,506, against the forecast 105 and
+1,522. What is left is `Lich::Util`'s commands, which wait on the game's markup (step 10), then
+the markup itself (step 11).
 
 ## What stops scripts that is their own
 

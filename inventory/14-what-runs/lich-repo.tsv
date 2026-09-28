@@ -8,7 +8,7 @@ script	lines	verdict	builtin	hydra_answers	its_own
 15lnet	15	runs			
 1601room	15	runs			
 1604	115	markup		the game's markup	
-1608	17	stops		Spell#cast	
+1608	17	runs			
 1615isdope	6	runs			
 1625	22	runs			
 1640rant	33	runs			
@@ -23,16 +23,16 @@ script	lines	verdict	builtin	hydra_answers	its_own
 225ClericFogger	38	runs			
 2lumnis1cup	173	runs			
 318rant	49	runs			
-320	7	stops		Spell#cast	
+320	7	runs			
 3rested	2	runs			
-410noprone	2	stops		Spell#cast	
-502	42	stops		Spell#cast; Spell#active	
+410noprone	2	runs			
+502	42	stops		Spell#active	
 502slow	24	runs			
 506	22	runs			
 506celerity	73	runs			
 515	5	runs			
 5hours	8	runs			
-650boost	61	stops		Spell#cast	
+650boost	61	runs			
 702deolinda	12	runs			
 703	75	markup		the game's markup	
 704monitor	296	runs			
@@ -40,15 +40,15 @@ script	lines	verdict	builtin	hydra_answers	its_own
 735_w_energy	416	markup		the game's markup	
 9009	5	stops		Spell#active	
 902	26	runs			
-918wands	545	stops		StowList; Spell#cast; Lich::Util	
+918wands	545	stops		StowList; Lich::Util	
 925	97	runs			
 aa	31	runs			
-abyss	279	stops		Spell#cast	
+abyss	279	runs			
 ac-wizard	104	runs			
 accept	12	runs			
 activespells	22	runs			
 add	11	runs			
-adrenalin	17	stops		Spell#cast	
+adrenalin	17	runs			
 adrop	105	runs			
 adventurer	28	runs			
 advexp	93	stops		Lich::Util; the game's markup	
@@ -56,9 +56,9 @@ aethorvars	4720	stops			does not parse
 afkchecker	55	runs			
 agidex	93	runs			
 ai	33	runs			
-ai-unstun	44	stops		Spell#cast	
+ai-unstun	44	runs			
 aim	104	markup		the game's markup	
-alastirlib	489	stops		Spell#cast	
+alastirlib	489	runs			
 alch_buy	148	runs			
 alchemy-recipes	3821	runs			
 alchemy_NewMeasure	3077	markup		the game's markup	
@@ -67,7 +67,7 @@ alchemydistill	67	runs
 alfred-chrism	32	runs			
 alfred-deserves-gems	57	runs			
 allmine	447	runs			
-allnpcs	13	stops		Spell#cast	
+allnpcs	13	runs			
 alltimemugging	28	runs			
 amunet	91	runs			
 Anchor_1020	55	markup		the game's markup	
@@ -81,7 +81,7 @@ answers	70	stops			a name defined nowhere
 anti-gemstone	29	stops			a name defined nowhere
 anti-trollsblood	23	runs			
 antivore	19	runs			
-ao-combat	230	stops		Spell#cast	
+ao-combat	230	runs			
 app	107	runs			
 appgem	41	runs			
 appraise	35	runs			
@@ -89,7 +89,7 @@ appraiser	96	runs
 appskin	226	runs			
 archa	24	runs			
 archaeologist	27	runs			
-archery	385	stops		Spell#cast	
+archery	385	runs			
 arena-cleavet	418	stops		Spell#active	
 arena-daiyon	211	runs			
 arena-nylis	207	stops		Spell#active	
@@ -111,7 +111,7 @@ as_audit	2343	windows		Lich's windows (Gtk)
 AscCalc	203	stops		Lich::Util	
 ascinfo	169	stops		Lich::Util	
 asclearn	106	stops		Lich::Util	
-Ashborne	32527	stops		Spell#cast; Spell.list; Map.reload; Map.previous; Lich::Util	
+Ashborne	32527	stops		Map.reload; Map.previous; Lich::Util	
 ashlam	54	runs			
 askgenie	14	runs			
 askhunt	15	runs			
@@ -121,11 +121,11 @@ aspect	31	runs
 astrolabe	103	runs			
 atlas	1668	windows		Lich's windows (Gtk)	
 atoll	45	runs			
-attack	71	stops		Spell#cast	
+attack	71	runs			
 attendance	332	stops			a name defined nowhere
 auction	10	runs			
 aura	38	runs			
-auto-level	1801	stops		Lich's windows (Gtk); Spell#cast	
+auto-level	1801	windows		Lich's windows (Gtk)	
 auto_containers	62	runs			
 auto_follow	52	stops			a name defined nowhere
 auto_look	44	runs			
@@ -135,7 +135,7 @@ autoaccept	126	stops			a library not installed here
 autoacceptfromfriends	28	stops			a name defined nowhere
 autobot	31	runs			
 Autobundle	573	markup		the game's markup	
-autoforage	190	stops		Spell#cast	
+autoforage	190	runs			
 autoinvite	16	runs			
 autoinvitefriends	33	stops			a name defined nowhere
 autolockranges	55	runs			
@@ -143,7 +143,7 @@ autolook	42	runs
 autolore	128	stops			File.exists? (Ruby 4.0)
 automassies	494	stops			a name defined nowhere
 autonet	121	runs			
-autonode	44	stops		Spell#cast	
+autonode	44	runs			
 autosetup	367	runs			
 autosing	115	runs			
 autosort	219	runs			
@@ -154,7 +154,7 @@ autovote	145	runs
 avalanche	40	runs			
 avalon-speak	70	markup		the game's markup	
 avalon_monsterbold_links	16	runs			
-azbandit	454	stops		Spell#cast	
+azbandit	454	runs			
 azburst	182	runs			
 babytime	8	runs			
 back-in-black	359	windows		Lich's windows (Gtk)	
@@ -165,18 +165,18 @@ badge	180	runs
 badge2	199	runs			
 badgex	388	runs			
 badgezero	7	runs			
-badjuju	153	stops		Spell#cast	
+badjuju	153	runs			
 bagofholding	46	runs			
 ball	10	runs			
 bandit	63	runs			
 bandit_grouping_support	145	stops			a name defined nowhere
-bandit_hunter_attack	407	stops		Spell#cast	
+bandit_hunter_attack	407	runs			
 bandit_hunter_follower	145	runs			
 bandit_hunter_follower_support	246	runs			
 bandit_hunter_grouping_support	179	stops			a name defined nowhere
 bandit_hunter_support	139	runs			
 banditcounter	64	stops		XMLData.bounty_task	
-banditdispel	34	stops		Spell#active; Spell#cast	
+banditdispel	34	stops		Spell#active	
 bane	25	runs			
 bank	66	runs			
 bankaccount	122	runs			
@@ -184,27 +184,27 @@ bankdrop	11	runs
 bard_squelch	28	runs			
 bardcombo	299	markup		the game's markup	
 bardmana	63	runs			
-barkskin	31	stops		Spell#cast	
+barkskin	31	runs			
 barkskin2	36	stops		Spell#lockout?	
-barkstun	26	stops		Spell#force_incant	
+barkstun	26	runs			
 bbtest	247	runs			
 beaker	13	runs			
 beast	73	runs			
 beastbelly	34	runs			
 beldig	103	runs			
 berserk	15	runs			
-beseech	58	stops		Spell#available?; Lich::Util	a name defined nowhere
+beseech	58	stops		Lich::Util	a name defined nowhere
 bestbeast	166	runs			
 bestiary	3064	runs			
-betazzherb2	794	stops		Lich's windows (Gtk); Spell#cast	a name defined nowhere
+betazzherb2	794	stops		Lich's windows (Gtk)	a name defined nowhere
 better_pull	26	runs			
 biggus	81	runs			
 bigquick	15	runs			
 bigshit	63	runs			
-bigshit2	7494	stops		the game's markup; Spell#cast; Spell#force_cast; Spell#force_evoke; Spell.after_stance=; Spell#force_incant; Spell#force_channel	
+bigshit2	7494	markup		the game's markup	
 bigshot-bless	15	runs			
 bigshot-child	54	runs			
-bigtap	54	stops		Spell#stance=; Spell#cast	
+bigtap	54	runs			
 bingo	18	runs			
 binom	59	runs			
 bird_fieldguide	556	runs			
@@ -213,7 +213,7 @@ birdwatchingwindow	142	runs
 blacklist	19	runs			
 BlackRose	566	runs			
 blank_man	37	runs			
-bless	17	stops		Spell#cast	
+bless	17	runs			
 blessexample	9	stops			a name defined nowhere
 blessme	7	runs			
 blinding-lights	183	runs			
@@ -234,10 +234,10 @@ borg	117	runs
 bounty	152	stops		Bounty; Log; Group	a library not installed here
 bounty-bitch	108	stops		Lich::Util	
 bounty_instant	42	runs			
-bountyhunter	2562	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Spell#cast	
-bountyhunter-bandits	181	stops		Spell#cast	
+bountyhunter	2562	stops		Lich's windows (Gtk); Spell#putup; Spell#timeleft=	
+bountyhunter-bandits	181	runs			
 bountyhunter-explorer	58	runs			
-bountyhunter-support	203	stops		Spell#cast	
+bountyhunter-support	203	runs			
 bountypopup	18	runs			
 bountytimer	42	runs			
 Bountywhitelist	318	runs			
@@ -249,7 +249,7 @@ boxemptysilvery	27	runs
 bq	32	runs			
 brayquest	47	runs			
 brdsql	28	runs			
-bread2	17	stops		Spell#cast	
+bread2	17	runs			
 break-up	44	runs			
 briar	44	stops		Lich::Util	
 brooch	67	runs			
@@ -264,7 +264,7 @@ bundleall	152	stops		XMLData.stow_container_id
 bundlenotes	121	runs			
 bundling	56	runs			
 buns	72	stops			File.exists? (Ruby 4.0)
-burge	6	stops		Spell#cast	
+burge	6	runs			
 burst	239	runs			
 burst_calc	168	runs			
 burst_calc_new	166	runs			
@@ -280,13 +280,13 @@ calcsanctify	110	runs
 calcsongofluck	123	stops		Lich::Util	
 Calipers	193	runs			
 camptown	8	stops			does not parse
-campy	50	stops		Spell#cast	
+campy	50	runs			
 candycomb	59	runs			
 cannibal	7	runs			
 cannon	13	runs			
 cannonfirehighlighter	56	runs			
 cannons	37	runs			
-cantrips	533	stops		StringProc; Spell#cast; the game's markup	
+cantrips	533	markup		the game's markup	
 capacity	57	runs			
 capacityall	107	runs			
 carousel	189	runs			
@@ -298,12 +298,12 @@ cel	67	runs
 celerity	42	runs			
 celeryme	22	runs			
 censer	54	runs			
-cfind	296	stops		Group; StringProc; the game's markup	
+cfind	296	stops		Group; the game's markup	
 chalk	36	runs			
 chalk2	37	runs			
 champkill	71	runs			
 chanterguide	306	runs			
-character	282	stops		Spell#cast	
+character	282	runs			
 character-planner	20240	stops		Lich's windows (Gtk); Lich::Util	
 chargeimbed	132	markup		the game's markup	
 chargeitem	306	stops		the game's markup	a name defined nowhere
@@ -330,7 +330,7 @@ chrismmake	54	runs
 chrismsort	66	runs			
 chrono	264	stops		Lich::Util	
 chub	73	runs			
-chuntpro	9198	stops		Lich's windows (Gtk); Spell#cast	
+chuntpro	9198	windows		Lich's windows (Gtk)	
 ci_fish	3	runs			
 ci_fishing_weight	136	runs			
 ci_games	267	runs			
@@ -338,7 +338,7 @@ CI_GHOUL	55	markup		the game's markup
 ci_inventory_manager	27	runs			
 ci_support_fishing	3	runs			
 CIDig	227	runs			
-cintel_huntpro	2527	stops		Lich's windows (Gtk); Spell#cast	
+cintel_huntpro	2527	windows		Lich's windows (Gtk)	
 circle3	5363	stops			does not parse
 citizenship	175	runs			
 citrove	25	runs			
@@ -360,25 +360,25 @@ collectcheck	42	runs
 collectible	94	runs			
 collectible_type_data	39	stops			File.exists? (Ruby 4.0)
 collectibles	137	stops		the game's markup; Log	a name defined nowhere
-colmaster	1440	stops		Lich's windows (Gtk); Spell#cast	
+colmaster	1440	windows		Lich's windows (Gtk)	
 COLnobleed	11	runs			
 coltv	429	runs			
 combat-window	762	windows		Lich's windows (Gtk)	
 Combatical	4624	markup		the game's markup; Lich's windows (Gtk); a hook matching markup	
 CombatWindow	139	markup		the game's markup; Lich's windows (Gtk)	
-combo_fury	319	stops		Spell#cast; the game's markup	
+combo_fury	319	markup		the game's markup	
 come	3	runs			
 comp2	56	runs			
 companion-mana-tracking	185	runs			
 companionwatch	167	runs			
-compass_and_wings	1134	stops		Claim; Spell#available?; Lich's windows (Gtk)	
+compass_and_wings	1134	stops		Claim; Lich's windows (Gtk)	
 complete-char-info	114	runs			
 complete-info	258	markup		the game's markup	
 condemn	13	runs			
 config	18	runs			
 confluence_sort	25	stops			does not parse
 consolidateherbs	109	runs			
-constant404	11	stops		Spell#cast	
+constant404	11	runs			
 container-window	999	markup		Lich's windows (Gtk); the game's markup	
 containers	117	runs			
 conundrum	38	runs			
@@ -411,7 +411,7 @@ cs_tracker	30	runs
 cscalculator	240	stops			a name defined nowhere
 csv_enhancive	664	stops		Lich::Util	
 ctt_win	4088	runs			
-curseditemhandler	30	stops		Spell#cast	
+curseditemhandler	30	runs			
 cut	8	runs			
 cutiepie	18	runs			
 dajesus	14	runs			
@@ -465,11 +465,11 @@ disarmwatch	58	runs
 discard_trap_components	95	runs			
 disk_protector	31	runs			
 diskhider	169	differs		a hook matching markup	
-disking	20	stops		Spell#cast	
+disking	20	runs			
 dispel_tracker	40	runs			
 diss	9	runs			
 distiller	101	runs			
-dlocate	81	stops		StringProc	a name defined nowhere
+dlocate	81	stops			a name defined nowhere
 dm	139	stops			a name defined nowhere
 dm2	195	runs			
 dm_runner	254	runs			
@@ -499,7 +499,7 @@ dragstop	105	markup		the game's markup
 drarch	27	runs			
 DRDIG	274	stops			a name defined nowhere
 dreamfire-pocket-guide	129	runs			
-dreavening	878	stops		Lich's windows (Gtk); Spell#cast	
+dreavening	878	windows		Lich's windows (Gtk)	
 dreavquit	15	runs			
 drfarm	189	runs			
 drgemsell	47	runs			
@@ -517,7 +517,7 @@ dsdprime	254	runs
 dskin	8	runs			
 duck-and-weave	29	stops		Log	
 duckduckgoose	42	runs			
-dump-spell-data	84	stops		Spell.list	a name defined nowhere
+dump-spell-data	84	stops			a name defined nowhere
 dumplocker	2	runs			
 dunbox	71	runs			
 durpdurp	1	stops			a name defined nowhere
@@ -546,7 +546,7 @@ eat-right	16	runs
 eat-right-wait	18	runs			
 eattack	51	runs			
 eblade-gsf	101	runs			
-ebladeall	27	stops		Spell#cast	
+ebladeall	27	runs			
 ebon_arena	622	stops		Lich's windows (Gtk); Lich::Util	
 ebonarena	269	runs			
 ebsteinnosuicide	40	runs			
@@ -564,7 +564,7 @@ ego2	1853	markup		the game's markup
 egquest	74	stops			a name defined nowhere
 egsell	119	runs			
 electrocute	33	stops		Spell#active	
-emp-helper	162	stops		Spell#cast	
+emp-helper	162	runs			
 empheal	24	runs			
 emptylocker	48	runs			
 enchant	41	runs			
@@ -572,7 +572,7 @@ enchantcheck	251	runs
 enchantnotes	261	runs			
 encumbrancebar	76	windows		Lich's windows (Gtk)	
 enemy_alert	38	runs			
-energywings	1007	stops		Claim; Spell#available?; Lich's windows (Gtk)	
+energywings	1007	stops		Claim; Lich's windows (Gtk)	
 enhance	194	runs			
 enhance2	222	runs			
 enhancive	109	runs			
@@ -589,7 +589,7 @@ enotsmeg	174	stops			a name defined nowhere
 enotsmeg_phrases	129	stops			does not parse
 ensorcell_calc	253	markup		the game's markup	
 ensorcell_tracker	33	runs			
-epop	343	stops		Spell#cast	
+epop	343	runs			
 errand	64	runs			
 escape_voln_hermit	23	runs			
 escapestom	89	runs			
@@ -599,15 +599,15 @@ esplocate	25	runs
 essence	53	runs			
 etchedstones	542	runs			
 event_support	108	stops			a name defined nowhere
-evokerer	27	stops		Spell#force_evoke	
+evokerer	27	runs			
 exitwindow	929	stops		Lich's windows (Gtk)	a library not installed here
 exp_sagapanel	1596	differs		a hook matching markup	
 expandedview	165	stops			a name defined nowhere
 expbrief	86	stops			a name defined nowhere
 experiencecalc	101	runs			
-explorer	5128	stops		Spell#cast; Spell#force_evoke; Spell#force_channel; the game's markup; Lich's windows (Gtk)	File.exists? (Ruby 4.0)
+explorer	5128	stops		the game's markup; Lich's windows (Gtk)	File.exists? (Ruby 4.0)
 exportmugstoyaml	146	stops			File.exists? (Ruby 4.0)
-express	16	stops		StringProc	
+express	16	runs			
 exptrack	615	runs			
 eyeswitch	15	runs			
 ezambush	15	runs			
@@ -624,13 +624,13 @@ famgo2	98	stops		XMLData.familiar_room_exits; XMLData.familiar_room_title; XMLDa
 familiarkeeper	35	runs			
 fastcc	92	runs			
 fastkill	22	runs			
-fastswim	87	stops		StringProc	
+fastswim	87	runs			
 fated-fortune	78	runs			
 fatty	81	runs			
 fe_test	60	markup		the game's markup	
 feeder	128	runs			
 feint_calc	54	runs			
-findcreature	8094	stops		Lich's windows (Gtk); Spell#cast	
+findcreature	8094	windows		Lich's windows (Gtk)	
 findme	390	windows		Lich's windows (Gtk)	
 findmog	114	stops		Lich::Util	
 findnpc	170	runs			
@@ -648,7 +648,7 @@ fix	86	stops			a name defined nowhere
 fixdb	72	stops		Room#check_location=; Room#check_location	
 fixed-forge-perfects	1214	windows		Lich's windows (Gtk)	
 fixit	128	markup		the game's markup	
-fizzfuse	475	stops		Spell#cast	
+fizzfuse	475	runs			
 flag-simulator	382	stops		Lich::Util	
 flameaura	13	stops		Spell#active	
 flaretracker	952	runs			
@@ -668,7 +668,7 @@ foliod	74	runs
 follow	94	stops			does not parse
 follow2	65	stops			a name defined nowhere
 foodshopper	250	runs			
-forage	253	stops		Spell#cast	
+forage	253	runs			
 foragewindow	63	runs			
 foreachlich4	2236	stops		Map.get_location; a hook matching markup; the game's markup	
 forge	366	runs			
@@ -693,15 +693,15 @@ fuck_forging	25	runs
 fuck_you_water_tunnels	20	runs			
 fuckoff	30	stops			a name defined nowhere
 fullhands	22	runs			
-fun-with-dreaven-video-1	247	stops		Spell#cast	
-fun-with-dreaven-video-2	237	stops		Spell#cast	
+fun-with-dreaven-video-1	247	runs			
+fun-with-dreaven-video-2	237	runs			
 funexp	139	markup		the game's markup	
 fyreim	582	stops		XMLData.reset	
 g2n	33	stops			a name defined nowhere
 GameObjAdd	108	runs			
 GameObjAddMore	66	runs			
-gangplank	371	stops		the game's markup; StringProc	
-gardener	445	stops		Spell#cast	a name defined nowhere
+gangplank	371	markup		the game's markup	
+gardener	445	stops			a name defined nowhere
 garrote	337	runs			
 gateway	57	runs			
 gaze	53	stops			does not parse
@@ -770,7 +770,7 @@ glampy	72	runs
 GlavesAI	28	runs			
 gloot	96	runs			
 go2bandits	151	stops		XMLData.bounty_task	a name defined nowhere
-go2enhanced	1324	stops		StringProc; Map.reload; the game's markup; Spell#cast	
+go2enhanced	1324	stops		Map.reload; the game's markup	
 go2esp	19	runs			
 go2fam	25	stops		XMLData.familiar_room_exits; XMLData.familiar_room_title; XMLData.familiar_room_description	
 go2locate	58	markup		the game's markup	
@@ -783,16 +783,16 @@ goalstracker	1931	stops		Lich::Util
 goalstracker2	1953	stops		Lich::Util	
 gondola	31	runs			
 GoOutOfMelgorehn	69	runs			
-gospaladin2	183	stops		Spell#active; Spell#cast	
-gospaladinfinal	185	stops		Spell#active; Spell#cast	
+gospaladin2	183	stops		Spell#active	
+gospaladinfinal	185	stops		Spell#active	
 gotoandback	31	runs			
 gottago	64	runs			
-gpick	935	stops		Spell#cast	
+gpick	935	runs			
 gpriches	125	runs			
 grabgbb	6	runs			
 gracemon	23	runs			
-graveyard_fix	51	stops		StringProc	
-grguild	3024	stops		Spell#cast; the game's markup	
+graveyard_fix	51	runs			
+grguild	3024	markup		the game's markup	
 grgvars	105	runs			
 grids	4482	windows		Lich's windows (Gtk)	
 grimcount	79	stops			a name defined nowhere
@@ -804,7 +804,7 @@ grofl-auto	102	runs
 grofl-cleanup	19	runs			
 group2	126	markup		the game's markup	
 group_ajar	153	markup		the game's markup	
-groupdisk	31	stops		Spell#cast	
+groupdisk	31	runs			
 growfish	265	runs			
 gs3autoroller	759	markup		the game's markup	
 gs3level	364	runs			
@@ -816,7 +816,7 @@ gsing	69	runs
 gsmagical	103	runs			
 gst	56	runs			
 gswiki	199	runs			
-gtk3-sloot	2204	stops		Lich's windows (Gtk); the game's markup; Spell#cast	
+gtk3-sloot	2204	markup		Lich's windows (Gtk); the game's markup	
 gtk3-thanker	647	windows		Lich's windows (Gtk)	
 gtot	97	runs			
 guess-who	452	stops		Lich::Util	
@@ -827,7 +827,7 @@ halt	18	stops			a name defined nowhere
 handler	15	runs			
 hardcore	49	runs			
 haste-ortar	11	runs			
-hasteme	21	stops		Spell#cast	
+hasteme	21	runs			
 hastetimer	92	markup		the game's markup; Lich's windows (Gtk)	
 hat_queue	80	runs			
 hazardwindow	476	windows		Lich's windows (Gtk)	
@@ -835,11 +835,11 @@ heal	216	runs
 heal2	220	runs			
 heal_tracker	82	runs			
 HealBot	119	runs			
-Healbot2020	360	stops		Spell#cast	
-healbot2025	364	stops		Spell#cast	
+Healbot2020	360	runs			
+healbot2025	364	runs			
 healme	487	runs			
 healself	175	windows		Lich's windows (Gtk)	
-health	150	stops		Spell#cast	
+health	150	runs			
 health-tracker	1028	runs			
 heckle	30	markup		the game's markup	
 heist_tracker	115	runs			
@@ -858,12 +858,12 @@ herbs	37	runs
 herbs2	84	runs			
 hexmal	64	runs			
 hforge	103	runs			
-high_ds	82	stops		Spell#cast	
+high_ds	82	runs			
 high_type	1119	markup		the game's markup; $link_highlight_start; $link_highlight_end; $speech_highlight_start; $speech_highlight_end	
 highlight-manager	10223	markup		the game's markup	
 highlight_links	60	differs		$link_highlight_start; $link_highlight_end	
 highlight_surita	47	runs			
-hinterwildriverfix	13	stops		StringProc	
+hinterwildriverfix	13	runs			
 hinterwilds	23	runs			
 hitlist	39	runs			
 homefix	72	runs			
@@ -880,10 +880,10 @@ hunt_begin	161	runs
 hunt_end	79	runs			
 huntingareas	49	runs			
 huntmaster	18	runs			
-huntplan	3789	stops		StringProc; Bounty; Lich::Util; Spell#active	
-huntpro	19160	stops		Spell#cast; Lich::Util	
+huntplan	3789	stops		Bounty; Lich::Util; Spell#active	
+huntpro	19160	stops		Lich::Util	
 huntsuggest	2899	markup		the game's markup; Lich's windows (Gtk)	
-hw_hunter_attack	654	stops		Spell#cast	
+hw_hunter_attack	654	runs			
 hw_hunter_follower	145	runs			
 hw_hunter_follower_support	111	runs			
 hwbounty	7	runs			
@@ -907,18 +907,18 @@ imagination	265	windows		Lich's windows (Gtk)
 imbed	66	runs			
 imbed_rods	219	runs			
 imbue_amulet	12	runs			
-ImplodeTheRoom	94	stops		Spell#available?; Spell#force_incant	
+ImplodeTheRoom	94	runs			
 imprint_heal	49	runs			
 imprintcheck	83	runs			
 imtrest	22	runs			
 inactivespells	88	windows		Lich's windows (Gtk)	
 inactivespells-gtk3	89	windows		Lich's windows (Gtk)	
 infected	23	runs			
-infomon_backup	1560	stops		Spellsong; Spell.list; Spell#putdown; Spell.upmsgs; Spell.dnmsgs; $infomon_debug; the game's markup; Spell#putup; Spell#timeleft=; Spell#minsleft; Spell#remaining	an older Lich's API
-infomoncommageddon	1590	stops		Spellsong; Spell.list; Spell#putdown; Spell.upmsgs; Spell.dnmsgs; $infomon_debug; the game's markup; Spell#putup; Spell#timeleft=; Spell#minsleft; Spell#remaining	an older Lich's API
-infomonfixspells	1592	stops		Spellsong; Spell.list; Spell#putdown; Spell.upmsgs; Spell.dnmsgs; $infomon_debug; the game's markup; Spell#putup; Spell#timeleft=; Spell#minsleft; Spell#remaining	an older Lich's API
-infuse	252	stops		Spell#cast	
-infuse_scroll	387	stops		Spell#cast	
+infomon_backup	1560	stops		Spellsong; Spell#putdown; Spell.upmsgs; Spell.dnmsgs; $infomon_debug; the game's markup; Spell#putup; Spell#timeleft=	an older Lich's API
+infomoncommageddon	1590	stops		Spellsong; Spell#putdown; Spell.upmsgs; Spell.dnmsgs; $infomon_debug; the game's markup; Spell#putup; Spell#timeleft=	an older Lich's API
+infomonfixspells	1592	stops		Spellsong; Spell#putdown; Spell.upmsgs; Spell.dnmsgs; $infomon_debug; the game's markup; Spell#putup; Spell#timeleft=	an older Lich's API
+infuse	252	runs			
+infuse_scroll	387	runs			
 injurywatch	1638	stops		Lich::Util; a hook matching markup	
 inkweeks	387	markup		the game's markup	
 inkweeks2	395	markup		the game's markup	
@@ -932,7 +932,7 @@ instrumentrest	78	runs
 instrumentrest2	231	runs			
 Intel_Ashborne	12	runs			
 intel_gentle	71	runs			
-intel_huntpro	13265	stops		Spell#cast	
+intel_huntpro	13265	runs			
 intown	578	stops		XMLData.send_fake_tags	a name defined nowhere
 invdb	5009	stops		the game's markup; XMLData.room_window_disabled	
 invdb-beta	6841	stops		the game's markup; XMLData.room_window_disabled; XMLData.bounty_task; Map.uids	
@@ -954,7 +954,7 @@ ironslab_m	266	runs
 isharpie	1198	runs			
 isigils_new	378	runs			
 isigils_with_bandages	169	runs			
-isigns_new	178	stops		Lich's windows (Gtk); Spell#cast	
+isigns_new	178	windows		Lich's windows (Gtk)	
 ising	157	markup		the game's markup	
 isingmin	368	markup		the game's markup	
 itemagic	447	stops		Lich::Util	
@@ -979,7 +979,7 @@ jdisable	42	runs
 jewel	83	runs			
 jewelina	40	runs			
 jewels	64	runs			
-jfloo	338	stops		Spell#cast; Lich::Util	
+jfloo	338	stops		Lich::Util	
 jfreedeed	122	runs			
 jhorse	172	runs			
 jinfo	17	runs			
@@ -1001,9 +1001,9 @@ jur	23	runs
 juryrig	43	runs			
 kdisarm	30	runs			
 keep1625	27	runs			
-keep213	23	stops		Spell#cast	
-keep_spell_active	11	stops		Spell#cast	
-keep_spells	35	stops		Spell#cast	
+keep213	23	runs			
+keep_spell_active	11	runs			
+keep_spells	35	runs			
 keepa2	65	markup		the game's markup	
 keepalive	9	runs			
 keepalive_new	11	runs			
@@ -1023,7 +1023,7 @@ kftask	14	runs
 kfthroat	23	runs			
 killbigshot	7	runs			
 killcounter	450	markup		the game's markup	
-kisskiss	46	stops		Map.loaded; StringProc	
+kisskiss	46	stops		Map.loaded	
 kneel	28	runs			
 kneeler	14	runs			
 knit	112	markup		the game's markup	
@@ -1056,7 +1056,7 @@ listcapacity	30	runs
 Live_Market	439	windows		Lich's windows (Gtk)	
 lk	39	runs			
 lmapp	71	runs			
-lnet2	1667	stops		the game's markup; Spell#circlename	an older Lich's API
+lnet2	1667	stops		the game's markup	an older Lich's API
 load	18	runs			
 loadcannons	183	runs			
 loadidol	42	runs			
@@ -1127,7 +1127,7 @@ mana-tracking	482	runs
 mana2	23	runs			
 mana_balance	236	runs			
 mana_report	59	runs			
-manabattery	188	stops		Spell#cast	an older Lich's API
+manabattery	188	stops			an older Lich's API
 manapool	48	runs			
 manashare	7	runs			
 manatimer	184	markup		the game's markup; Lich's windows (Gtk)	
@@ -1142,13 +1142,13 @@ map-search	31	runs
 mapcopy	14	stops			File.exists? (Ruby 4.0)
 mapdiff	352	stops		Map.load_dat; Map.load_json; Map.load_xml	
 MapEnemyShip	303	runs			
-mapmap	954	stops		StringProc; Map.save; Map.current_or_new; the game's markup	
-mapnav	380	stops		StringProc; Map.load_uids; Map.current_or_new; Map.save; Map.get_free_id	
+mapmap	954	stops		Map.save; Map.current_or_new; the game's markup	
+mapnav	380	stops		Map.load_uids; Map.current_or_new; Map.save; Map.get_free_id	
 mapresize	69	runs			
 markchargable	75	runs			
-masscolors	17	stops		Spell#cast	
-masscomm	343	stops		Spell#cast	a name defined nowhere
-massies	205	stops		Spell#cast	a name defined nowhere
+masscolors	17	runs			
+masscomm	343	stops			a name defined nowhere
+massies	205	stops			a name defined nowhere
 max_lock	127	runs			
 maxcap	590	runs			
 maxlock	43	runs			
@@ -1173,7 +1173,7 @@ midnightarena	75	runs
 mini-me	172	windows		Lich's windows (Gtk)	
 minibar	540	stops		XMLData.bounty_task	
 minibounty	322	stops		XMLData.bounty_task	
-miserable	41	stops		StringProc	
+miserable	41	runs			
 misericorde	21	runs			
 mission-gemstone	714	windows		Lich's windows (Gtk)	
 miu	225	runs			
@@ -1188,12 +1188,12 @@ mood	25	runs
 MoonshardBundle	77	runs			
 moveall	31	runs			
 ms	629	runs			
-msreliever	20	stops		Spell#cast	
+msreliever	20	runs			
 mtrawl	413	runs			
 mug	31	runs			
 mugreport	411	markup		the game's markup	
 multi	66	runs			
-mural	68	stops		StringProc	
+mural	68	runs			
 murderverses	154	runs			
 music	39	runs			
 mxp	286	stops		Lich::Util	
@@ -1217,12 +1217,12 @@ needhelp	33	stops			a name defined nowhere
 nelemarfix	11	runs			
 nerve	114	runs			
 nesatlas	413	runs			
-nesbounty	2062	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Spell#cast	
+nesbounty	2062	stops		Lich's windows (Gtk); Spell#putup; Spell#timeleft=	
 nesbounty-bigshot	61	runs			
 nesherbalist	252	runs			
 nesmapper	583	stops			File.exists? (Ruby 4.0)
 nesstats	559	markup		the game's markup	
-newenemy	345	stops		Room#tags=; StringProc	
+newenemy	345	stops		Room#tags=	
 newfavortracker	518	stops		the game's markup	a name defined nowhere
 news	71	runs			
 newsettings	214	runs			
@@ -1241,18 +1241,18 @@ note	12	runs
 notebook	1	runs			
 noxp	6	runs			
 npcboldspeech	62	markup		the game's markup	
-nuckystuff	1471	stops		Spell#cast	
+nuckystuff	1471	runs			
 numbercomma	21	runs			
 numbers	45	runs			
 obvioushiding	105	runs			
-oc_heist	338	stops		Spell#cast	
+oc_heist	338	runs			
 oc_timer	93	stops			does not parse
 ocean-go2	37482	runs			
 offercheck	48	runs			
 official2	49	runs			
 officialescort	17	stops			does not parse
 old-service-cost	1635	windows		Lich's windows (Gtk)	
-old-tpick	6447	stops		Spell#cast; Lich's windows (Gtk); the game's markup; Lich::Util	
+old-tpick	6447	stops		Lich's windows (Gtk); the game's markup; Lich::Util	
 oldredux	86	runs			
 oneshot	1	runs			
 onstart	3	runs			
@@ -1264,46 +1264,46 @@ order	20	runs
 organize	34	runs			
 origami	302	runs			
 origami_master	114	runs			
-osa-commands	1460	stops		Spell#cast	
+osa-commands	1460	runs			
 osa-map-plugin	9299	stops			a name defined nowhere
 osa_attack	77	runs			
 osa_migrate	400	runs			
 osaanchor	91	stops			a name defined nowhere
 osacannon_watch	95	runs			
-osacombat	6927	stops		Spell#cast; Spell#available?; Lich::Util; Group; Claim; Disk; Lich's windows (Gtk)	an older Lich's API
-osacombat_avalon_wizard	3350	stops		Lich's windows (Gtk); Spell#cast; Spell#available?; the game's markup	
-osacombatv2	961	stops		Spell#cast	
-osacommander	4649	stops		StringProc; Lich::Util; Spell#cast; Group; Lich's windows (Gtk)	
-osacrew	4428	stops		StringProc; Lich::Util; Spell#cast; Group; Lich's windows (Gtk)	
-osacrew_avalon_wizard	4017	stops		Lich's windows (Gtk); StringProc; Spell#cast; the game's markup	
+osacombat	6927	stops		Lich::Util; Group; Claim; Disk; Lich's windows (Gtk)	an older Lich's API
+osacombat_avalon_wizard	3350	markup		Lich's windows (Gtk); the game's markup	
+osacombatv2	961	runs			
+osacommander	4649	stops		Lich::Util; Group; Lich's windows (Gtk)	
+osacrew	4428	stops		Lich::Util; Group; Lich's windows (Gtk)	
+osacrew_avalon_wizard	4017	markup		Lich's windows (Gtk); the game's markup	
 osacrewlite	197	runs			
 osacrewv2	731	stops		Lich's windows (Gtk)	File.exists? (Ruby 4.0)
-osacrewv3	2150	stops		Lich's windows (Gtk); Spell#cast	File.exists? (Ruby 4.0)
+osacrewv3	2150	stops		Lich's windows (Gtk)	File.exists? (Ruby 4.0)
 osahandler	46	stops			does not parse
-osahealthmonitor	257	stops		Spell#cast	
+osahealthmonitor	257	runs			
 osamap	124	runs			
-osamedicalofficer	143	stops		Spell#cast	
+osamedicalofficer	143	runs			
 osanav	145	stops		Lich's windows (Gtk)	a name defined nowhere
 osaorders	44	runs			
 osapicker	112	runs			
 osasail_watch	103	runs			
 osasails	195	stops			a name defined nowhere
-osashare	929	stops		Lich's windows (Gtk); Spell#cast; the game's markup	
+osashare	929	markup		Lich's windows (Gtk); the game's markup	
 osastowaway	146	runs			
 osatask	264	runs			
 osaunderway	180	runs			
 otf_suppress	48	runs			
 overloaded	337	runs			
 pain	47	runs			
-paladin-helper	149	stops		Spell#cast	
+paladin-helper	149	runs			
 paladinaura	95	runs			
 panelcontrol	1087	windows		Lich's windows (Gtk)	
-parasite	38	stops		Spell#cast	
+parasite	38	runs			
 parasitex	246	runs			
 parsebounty	74	stops		Lich::Util	
 partner2	30	runs			
-partner3	108	stops		Spell#active; Spell#cast	
-partner4	199	stops		Spell#active; Spell#cast	
+partner3	108	stops		Spell#active	
+partner4	199	stops		Spell#active	
 party-buddy	426	windows		Lich's windows (Gtk)	
 passcoinsto	14	runs			
 passive-spellbot	324	stops		SpellRanks; Spell#stackable?	a name defined nowhere
@@ -1341,12 +1341,12 @@ pixiepixie	28	runs
 plat_to_prime_copy	259	runs			
 plat_updater	235	stops		Map.reload	File.exists? (Ruby 4.0)
 platebox	13	runs			
-play	2275	stops		XMLData.stow_container_id; Spell#cast; Spell#stackable?; Spell#putdown; Spell#duration	
+play	2275	stops		XMLData.stow_container_id; Spell#stackable?; Spell#putdown; Spell#duration	
 playcount	279	stops			a name defined nowhere; File.exists? (Ruby 4.0)
 playerwindow	2220	windows		Lich's windows (Gtk)	
 plist	108	runs			
 poison	43	runs			
-poisoncheck	72	stops		Spell#cast	a name defined nowhere
+poisoncheck	72	stops			a name defined nowhere
 pokemon	69	runs			
 polarbear	12	runs			
 polarcub	12	runs			
@@ -1359,14 +1359,14 @@ pooled-essence	38	runs
 PoolParty-OG	334	runs			
 poolparty_new	707	markup		the game's markup	
 poolpartyhw	751	markup		the game's markup	
-pop	369	stops		Spell#cast	
+pop	369	runs			
 porcupine	52	runs			
 postcapgoal	498	stops			a name defined nowhere
-potato	264	stops		Spell#cast	
+potato	264	runs			
 power	7	runs			
 powersink	10	runs			
-powersong	28	stops		Spell#cast; Spellsong	
-powpow	59	stops		Spell#cast	
+powersong	28	stops		Spellsong	
+powpow	59	runs			
 pppure	187	stops			an older Lich's API
 pray	22	runs			
 pray2	34	runs			
@@ -1395,7 +1395,7 @@ pure2	187	stops			an older Lich's API
 pure3	287	stops		the game's markup	an older Lich's API
 pure4	187	stops			an older Lich's API
 purify	282	runs			
-purify2	187	stops		Spell#cast	
+purify2	187	runs			
 purifyjars	131	runs			
 PurifyL	298	runs			
 purr	20	runs			
@@ -1403,7 +1403,7 @@ pushover	559	stops		Group
 putsafe	25	runs			
 puzzlebox	158	runs			
 qrs	17159	stops			does not parse
-qskin	385	stops		Spell#cast	a name defined nowhere
+qskin	385	stops			a name defined nowhere
 queen	45	runs			
 quest_aicrystal	92	runs			
 quest_locker	31	runs			
@@ -1416,18 +1416,18 @@ raceprof	283	runs
 raffle	159	runs			
 rafflewindow	1036	windows		Lich's windows (Gtk)	
 ragetracker	278	runs			
-raise	90	stops		Spell#cast	
+raise	90	runs			
 raisedead	311	stops		Lich::Util	
 rally	55	stops			a name defined nowhere
 random-verb	310	runs			
 randomtone	24	runs			
 randowalk	2	runs			
 rangercompanion	102	stops			a name defined nowhere
-rapid	32	stops		Spell#cast	
+rapid	32	runs			
 rapid-fire	147	stops			a name defined nowhere
-rapid2	42	stops		Spell#cast	
+rapid2	42	runs			
 rats-are-dumb	31	runs			
-rcast	156	stops		Spell#cast	
+rcast	156	runs			
 react	20	runs			
 reactive	17	runs			
 reactive2	15	runs			
@@ -1436,7 +1436,7 @@ readscrolls2	117	markup		the game's markup
 readycheck	34	runs			
 readyship	160	runs			
 reagenthoarder	670	markup		the game's markup	
-realkgate	23	stops		Spell#cast	
+realkgate	23	runs			
 realtime	43	runs			
 reap	143	runs			
 rebless	83	markup		the game's markup	
@@ -1470,7 +1470,7 @@ ReplaceLinksWithMyName	23	markup		the game's markup
 reprep	35	runs			
 resay	783	markup		the game's markup	
 rescue-me	26	runs			
-rescue-sunfist	46	stops		Watchfor; Spell#cast	
+rescue-sunfist	46	stops		Watchfor	
 rescue-watch	75	runs			
 reserve	1135	windows		Lich's windows (Gtk)	
 reset_vaalor_timeto	11	runs			
@@ -1484,7 +1484,7 @@ retrieve	50	runs
 reverb	531	markup		the game's markup	
 reverse_locate	21	runs			
 rgem	42	runs			
-ride2	1233	stops		StringProc; Map.reload; the game's markup; Spell#cast	
+ride2	1233	stops		Map.reload; the game's markup	
 rift-entry-timer	79	runs			
 riftboxes	47	runs			
 rifted	83	runs			
@@ -1500,7 +1500,7 @@ rogue-gambits	277	runs
 rogue-lmas-appraise	120	runs			
 rogue-lmas-calibrate	32	runs			
 rogue-lmas-clasp	106	runs			
-rogue-lmas-contest	69	stops		Spell#cast	
+rogue-lmas-contest	69	runs			
 rogue-lmas-makekey	69	runs			
 rogue-lmas-makelock	105	runs			
 rogue-lmas-makepick	114	runs			
@@ -1538,29 +1538,29 @@ runlist	282	runs
 rwclean	9	runs			
 RYSKue	26	runs			
 saccept	182	markup		the game's markup	
-sacrifice_decide	76	stops		Spell#cast; Lich::Util	
+sacrifice_decide	76	stops		Lich::Util	
 sadamantine	115	runs			
 saferepo	2320	runs			
-safety	460	stops		Spell#force_incant; Spell#force_cast; Group	a name defined nowhere
-sail2	1235	stops		the game's markup; Lich::Util; StringProc	
-sailors_grief_swim_fix	273	stops		StringProc	
+safety	460	stops		Group	a name defined nowhere
+sail2	1235	stops		the game's markup; Lich::Util	
+sailors_grief_swim_fix	273	runs			
 saimtest	59	runs			
 saladbar	975	stops		the game's markup	a name defined nowhere
 salert	421	stops		the game's markup	a library not installed here
 sammo	807	markup		the game's markup	
-sammu2	1298	stops		the game's markup; Lich's windows (Gtk); Spell#cast	File.exists? (Ruby 4.0); a name defined nowhere
+sammu2	1298	stops		the game's markup; Lich's windows (Gtk)	File.exists? (Ruby 4.0); a name defined nowhere
 sanctum	193	runs			
-sanctum-mapdb-patch	90	stops		StringProc	
+sanctum-mapdb-patch	90	runs			
 sanctumwatch	67	stops			a name defined nowhere
-sancup	17	stops		Spell#cast	
+sancup	17	runs			
 SaveBountyGems	25	runs			
 saveloc	25	runs			
 sbinnacombo	221	markup		the game's markup	
-sbounty-2017	1835	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Spell#cast	
+sbounty-2017	1835	stops		Lich's windows (Gtk); Spell#putup; Spell#timeleft=	
 sbounty-bandit-example	102	runs			
 sbounty-shunt	53	runs			
-sbountybeta	1568	stops		StringProc; Spell#cast; the game's markup; Spell#putup; Spell#timeleft=	
-sbox	2104	stops		Spell#cast; the game's markup	a name defined nowhere
+sbountybeta	1568	stops		the game's markup; Spell#putup; Spell#timeleft=	
+sbox	2104	stops		the game's markup	a name defined nowhere
 sc	50	runs			
 scalcflares	114	markup		the game's markup	
 scalcmm	56	markup		the game's markup	
@@ -1594,7 +1594,7 @@ selling	74	runs
 sellshard	1	runs			
 sendmana	133	runs			
 sense	21	runs			
-servant	49	stops		Spell#cast	
+servant	49	runs			
 service-cost	523	windows		Lich's windows (Gtk)	
 service_queue	360	runs			
 service_sales	850	windows		Lich's windows (Gtk)	
@@ -1614,25 +1614,25 @@ sfillherbs	129	runs
 sfire	173	runs			
 sfog	533	stops		a hook matching markup	a name defined nowhere
 sgrip	50	runs			
-sguild	3745	stops		StringProc; the game's markup	
+sguild	3745	markup		the game's markup	
 shadowdeath	14	runs			
 shake	99	runs			
-share	893	stops		Lich's windows (Gtk); Spell#cast	
+share	893	windows		Lich's windows (Gtk)	
 shareroom	8	runs			
-sharetest	889	stops		Lich's windows (Gtk); Spell#cast	
+sharetest	889	windows		Lich's windows (Gtk)	
 shaste	156	runs			
 shat_bounty_parser	153	runs			
 shattered_portals	9	runs			
 shatventure	1224	runs			
-sheal	382	stops		Spell#cast; the game's markup	
+sheal	382	markup		the game's markup	
 shealwatch	145	markup		the game's markup	
 shield-size	215	runs			
 shieldmaster	29	runs			
-shieldup	15	stops		Spell#cast	
+shieldup	15	runs			
 ship	123	runs			
-shlooter	2162	stops		Lich's windows (Gtk); the game's markup; Spell#cast	
+shlooter	2162	markup		Lich's windows (Gtk); the game's markup	
 sholler	17	runs			
-shoot	43	stops		Spell#cast	
+shoot	43	runs			
 shopgo	323	markup		the game's markup	
 shopnotes	500	runs			
 shoppin	414	stops		Lich::Util	
@@ -1642,15 +1642,15 @@ short-haste-message	50	runs
 show	29	runs			
 showids	29	runs			
 showxml	223	markup		the game's markup	
-shroud	43	stops		Spell#cast	
+shroud	43	runs			
 shroud_sell	56	runs			
 shunt	1014	stops		Spell#putup; Spell#timeleft=; the game's markup; a hook matching markup	
 shunt-loop	27	runs			
 shutup	226	runs			
 si_heist	257	runs			
 si_timer	100	stops			does not parse
-sigilpower	16	stops		Spell#cast	
-sigilz	463	stops		Spell#cast; Lich's windows (Gtk)	
+sigilpower	16	runs			
+sigilz	463	windows		Lich's windows (Gtk)	
 signature	520	runs			
 signaturewindow	102	markup		a hook matching markup; the game's markup	
 signspacer	341	windows		Lich's windows (Gtk)	
@@ -1666,34 +1666,34 @@ skintracker	205	runs
 slabgenerator	47	runs			
 slats	493	stops			a name defined nowhere
 slavepen	22	runs			
-slich	597	stops		the game's markup; $fill_hands_actions; $fill_left_hand_actions; $fill_right_hand_actions; Spell#cast	a name defined nowhere
+slich	597	stops		the game's markup; $fill_hands_actions; $fill_left_hand_actions; $fill_right_hand_actions	a name defined nowhere
 slocation	19	runs			
-slootbeta	1901	stops		the game's markup; Spell#putup; Spell#timeleft=; Spell#cast	
-slootM	2068	stops		Lich's windows (Gtk); the game's markup; Spell#cast	
+slootbeta	1901	stops		the game's markup; Spell#putup; Spell#timeleft=	
+slootM	2068	markup		Lich's windows (Gtk); the game's markup	
 slurplocker	5	runs			
 smart	46	runs			
 smart_reply	67	runs			
-smart_spellup	42	stops		Spell#cast	
+smart_spellup	42	runs			
 smartheal	1323	stops		Lich's windows (Gtk)	a name defined nowhere
 smarthunt	1177	windows		Lich's windows (Gtk)	
 smartmonk	513	windows		Lich's windows (Gtk)	
 smartsorcerer	277	windows		Lich's windows (Gtk)	
 smartwiz	508	windows		Lich's windows (Gtk)	
 smash	20	runs			
-smastery2	12	stops		Spell#cast	
+smastery2	12	runs			
 smell-all	13	runs			
 smelter	359	runs			
 smithy	39	runs			
 snakewatch	63	stops			a name defined nowhere
 snikt	46	runs			
-sniper	13	stops		Spell#cast	
+sniper	13	runs			
 snitches_get_stiches	42	runs			
 snitchstiches	65	runs			
 Society	132	stops		Spell#active	a name defined nowhere
 societypowers	75	runs			
 som	5	runs			
-sonezz	53	stops		Spell#cast	
-song-manager	602	stops		Lich's windows (Gtk); Spell#cast; Lich::Util	
+sonezz	53	runs			
+song-manager	602	stops		Lich's windows (Gtk); Lich::Util	
 song-timer	78	stops		Spellsong	
 sortedskills	214	markup		the game's markup	
 sorter	265	markup		the game's markup	
@@ -1713,9 +1713,9 @@ speechfinder	356	stops			a library not installed here
 speechify	37	runs			
 speechrandomizer	75	runs			
 speed2	193	markup		the game's markup	
-spell_check	149	stops		Spell.list	
+spell_check	149	runs			
 spell_squelch	152	runs			
-spellactive2	144	stops		Spell#cast	
+spellactive2	144	runs			
 spellbookscan	583	runs			
 spellcaster	418	stops			a name defined nowhere
 spellfade	315	stops		SessionVars	
@@ -1725,7 +1725,7 @@ spellnumbers	9	runs
 spellospells	6	runs			
 spells	15	stops			does not parse
 spelltap	5	runs			
-spelltimer	40	stops		Spell.upmsgs; Spell.list	
+spelltimer	40	stops		Spell.upmsgs	
 spellwatch	476	runs			
 SpiritBeast	925	stops		Lich::Util	
 SpiritBeastTrack	327	markup		the game's markup	
@@ -1742,7 +1742,7 @@ sregister	40	runs
 ssexual-favor	958	markup		the game's markup	
 ssing	301	runs			
 sstamina	42	runs			
-ssword	90	stops		Spell#cast	
+ssword	90	runs			
 stalk	50	runs			
 staminabar	70	windows		Lich's windows (Gtk)	
 staminabar2	82	windows		Lich's windows (Gtk)	
@@ -1759,7 +1759,7 @@ star-charges	119	runs
 star-cod	101	runs			
 star-lore	36	runs			
 star-multi	46	runs			
-star-nap	22	stops		Spell#force_cast	
+star-nap	22	runs			
 star-shimmer	524	runs			
 star-sing	237	stops			a name defined nowhere
 star-squelch	123	runs			
@@ -1807,8 +1807,8 @@ sunfist_world_tour	110	runs
 suntil	70	runs			
 supergemstone	31	runs			
 support	29	runs			
-surge	20	stops		Spell#active; Spell#remaining	
-surgehot	24	stops		Spell#active; Spell#remaining	
+surge	20	stops		Spell#active	
+surgehot	24	stops		Spell#active	
 survey	272	differs		a hook matching markup	
 swapbounty	272	runs			
 swapbounty2	290	runs			
@@ -1818,8 +1818,8 @@ swho	24	runs
 switch_target	183	runs			
 swordmaster	50	runs			
 swordshieldmaster	39	runs			
-SymbolsMonitor	170	stops		Lich's windows (Gtk); Spell#cast	
-symbolz2	180	stops		Spell#cast; Lich's windows (Gtk)	
+SymbolsMonitor	170	windows		Lich's windows (Gtk)	
+symbolz2	180	windows		Lich's windows (Gtk)	
 symmanaloop	8	runs			
 t	612	runs			
 table	30	runs			
@@ -1827,12 +1827,12 @@ tablewatch	353	runs
 tag	28	runs			
 tago2	98	runs			
 tagsearch	82	runs			
-talisman	15	stops		Spell#force_incant	
+talisman	15	runs			
 talisman_sleep	11	runs			
 tambourineman	43	runs			
-tangleweed	29	stops		Spell#cast	
-tap	152	stops		Spell#cast	
-tap2	152	stops		Spell#cast	
+tangleweed	29	runs			
+tap	152	runs			
+tap2	152	runs			
 tap2win	15	runs			
 taparmor	8	runs			
 tapfriend	9	runs			
@@ -1856,7 +1856,7 @@ tdig2020	508	runs
 tdig2021	572	runs			
 tears2	363	runs			
 teartracker	377	runs			
-teleport	378	stops		the game's markup; StringProc	
+teleport	378	markup		the game's markup	
 temp_jfloo	200	markup		the game's markup	
 Temple_Drop	63	runs			
 temporal	769	windows		Lich's windows (Gtk)	
@@ -1867,7 +1867,7 @@ terasrest	24	runs
 terror_watch	372	differs		a hook matching markup	
 test	35	runs			
 test-tickle	4	runs			
-test-tpick	5938	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast	
+test-tpick	5938	stops		Lich::Util; Lich's windows (Gtk); the game's markup	
 test_server_copy	259	runs			
 testme	1692	markup		the game's markup	
 tethereal	33	runs			
@@ -1894,7 +1894,7 @@ title	353	runs
 tlogin	333	stops		Win32	File.exists? (Ruby 4.0)
 tng	101	runs			
 torb	132	runs			
-ToT	545	stops		Spell#cast	
+ToT	545	runs			
 tot2021	352	runs			
 totalsolution	25	runs			
 totalsolution2	97	stops			a name defined nowhere
@@ -1902,12 +1902,12 @@ totbundle	53	runs
 totcandy	670	runs			
 Totemgemsort	142	windows		Lich's windows (Gtk)	
 touchme	63	runs			
-tour	404	stops		StringProc; XMLData.send_fake_tags; the game's markup; a hook matching markup	a name defined nowhere
+tour	404	stops		XMLData.send_fake_tags; the game's markup; a hook matching markup	a name defined nowhere
 towncrier_window	74	stops			a name defined nowhere
 townsmith	248	stops		XMLData.stow_container_id	
 toxicologist	850	stops		Lich::Util	
-tpick	6831	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast	
-tpick2	6361	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast	
+tpick	6831	stops		Lich::Util; Lich's windows (Gtk); the game's markup	
+tpick2	6361	stops		Lich::Util; Lich's windows (Gtk); the game's markup	
 trackbless	251	runs			
 tracker	345	runs			
 tracking	541	markup		the game's markup	
@@ -1924,19 +1924,19 @@ treasure	564	markup		the game's markup
 treasurewindow	985	windows		Lich's windows (Gtk); a hook matching markup	
 tremor	43	runs			
 tremors	39	runs			
-triage	943	stops		a hook matching markup; the game's markup; Spell#cast	
+triage	943	markup		a hook matching markup; the game's markup	
 trigger	203	runs			
 trollhear	114	runs			
 trollspeak	145	runs			
 tsell	45	runs			
-ttap	473	stops		Spell#cast	
+ttap	473	runs			
 turnbrooch	100	runs			
 turnin	50	runs			
 turnkey	96	runs			
 tutelog	3214	markup		the game's markup	
 twarrior	3518	markup		Lich's windows (Gtk); the game's markup	
 twitternfl	169	runs			
-Tysong-duskattack	78	stops		Spell#cast	
+Tysong-duskattack	78	runs			
 uacswap	68	runs			
 uberbar	174	runs			
 uberbarmagic	353	runs			
@@ -1945,8 +1945,8 @@ uberbarv	264	runs
 uberbarv_d	309	stops		Lich::Util	
 UberBarWiz	822	stops		Lich's windows (Gtk); XMLData.last_pulse; Lich::Util	
 uberbounty	328	stops		XMLData.bounty_task	
-uberspells	159	stops		Gift; Spell.list	
-uberspells_no_lumnis	142	stops		Spell.list	
+uberspells	159	stops		Gift	
+uberspells_no_lumnis	142	runs			
 ubw	462	runs			
 UBW-Theme-Dude	71	stops			File.exists? (Ruby 4.0)
 UBW-Theme-Sexy	71	stops			File.exists? (Ruby 4.0)
@@ -1954,11 +1954,11 @@ UBW-Theme-SF	70	stops			File.exists? (Ruby 4.0)
 UBW-Theme-Wrayth	71	stops			File.exists? (Ruby 4.0)
 ucharge	590	runs			
 uid	18	runs			
-umadbro	255	stops		the game's markup; Spell#cast	
+umadbro	255	markup		the game's markup	
 undead_bounty	703	stops		Bounty	
 unendingaspect	42	runs			
 unfubarmap	26	runs			
-unified-effects	227	stops		Spell#remaining	
+unified-effects	227	runs			
 universalkill-champ	71	runs			
 universalkill-daiyon	87	stops			does not parse
 universalkill-nylis	87	runs			
@@ -1976,10 +1976,10 @@ unstunner	54	runs
 unstunwand	41	runs			
 untrammel	127	runs			
 update	27	runs			
-update-playershops	1294	stops		the game's markup; Spell.lock_cast; Spell.unlock_cast; Spell#cast	
-update-playershops_commas	1327	stops		the game's markup; Spell.lock_cast; Spell.unlock_cast; Spell#cast	
+update-playershops	1294	markup		the game's markup	
+update-playershops_commas	1327	markup		the game's markup	
 updater_huntpro	144	runs			
-upickbot4	688	stops		Spell#cast; the game's markup	
+upickbot4	688	markup		the game's markup	
 use_urchins	82	markup		the game's markup	
 useherbs	1430	stops		the game's markup	a name defined nowhere
 useherbs_kf	1447	stops		the game's markup	a name defined nowhere
@@ -2012,9 +2012,9 @@ VolnStep24-RuneSolver	142	runs
 voodoo	190	runs			
 vote_reminder	56	runs			
 vtarget	30	runs			
-waggle4clerics	1230	stops		Spell#cast; Lich's windows (Gtk); the game's markup	a name defined nowhere
-waggle_spell_active	1307	stops		Lich's windows (Gtk); the game's markup; a hook matching markup; Spell.list; $infomon_debug	a name defined nowhere
-wagglegobble	1305	stops		Lich's windows (Gtk); the game's markup; a hook matching markup; Spell.list; $infomon_debug	a name defined nowhere
+waggle4clerics	1230	stops		Lich's windows (Gtk); the game's markup	a name defined nowhere
+waggle_spell_active	1307	stops		Lich's windows (Gtk); the game's markup; a hook matching markup; $infomon_debug	a name defined nowhere
+wagglegobble	1305	stops		Lich's windows (Gtk); the game's markup; a hook matching markup; $infomon_debug	a name defined nowhere
 waggleroom	25	runs			
 wait-one	16	runs			
 wait-three	16	runs			
@@ -2025,7 +2025,7 @@ waitfor	85	stops		Lich::Util
 waitloot	17	runs			
 waitrt	2	runs			
 walk	44	runs			
-wallup	14	stops		Spell#cast	
+wallup	14	runs			
 wanddupe	68	runs			
 wander	286	markup		the game's markup	
 wanderb	1	runs			
@@ -2037,7 +2037,7 @@ wardento	26	runs
 warlogin	305	runs			
 warmonger	355	runs			
 warning	42	runs			
-warp	121	stops		StringProc; Map.save	
+warp	121	stops		Map.save	
 warrior	3811	markup		Lich's windows (Gtk); the game's markup	
 warservice	17	runs			
 watch-locker	163	markup		the game's markup	
@@ -2051,7 +2051,7 @@ weaponsaver	8	runs
 wearstuff	53	runs			
 weaving	42	runs			
 webgoals	33	markup		the game's markup	
-webkill	36	stops		Spell#cast	
+webkill	36	runs			
 wedges	161	runs			
 wedverbie	11	runs			
 weightcalc	103	runs			
@@ -2077,10 +2077,10 @@ Wiz-Meteor	4	runs
 wiz_to_lich	199	stops			File.exists? (Ruby 4.0)
 wizard_esp	91	runs			
 wizard_esp_tones	104	runs			
-wizbot	37	stops		Spell#cast	
-wizshield	23	stops		Spell#cast	
+wizbot	37	runs			
+wizshield	23	runs			
 woahnele	35	runs			
-wol	17	stops		Spell#cast	
+wol	17	runs			
 wood	330	runs			
 wrack	52	runs			
 wracksafe	29	runs			
@@ -2108,24 +2108,24 @@ xp_commas	382	runs
 XPMonitor	32	runs			
 xraffle	777	markup		the game's markup	
 xready	68	stops		XMLData.bounty_task	
-xrogue_alpha	3526	stops		Lich's windows (Gtk); Spell#cast	
-xrogue_teach	3423	stops		Lich's windows (Gtk); Spell#cast	
+xrogue_alpha	3526	windows		Lich's windows (Gtk)	
+xrogue_teach	3423	windows		Lich's windows (Gtk)	
 xtask	148	runs			
 xteplay	14	runs			
 xtonis	47	runs			
 xxx306	2	runs			
 yakbounty	8	stops		XMLData.bounty_task	
 yarnsweatshop	15	runs			
-yatk	41	stops		Spell#cast	
-ybatk	41	stops		Spell#cast	
+yatk	41	runs			
+ybatk	41	runs			
 yelldamage	35	runs			
 zalood	161	runs			
-zap	46	stops		Spell#cast; Spell#active	
+zap	46	stops		Spell#active	
 zesttest	206	runs			
 zesty	38	runs			
-zombie	441	stops		Spell#cast	
+zombie	441	runs			
 zToT	106	runs			
 zulrest	20	runs			
-zzherb	267	stops		Spell#cast	
-zzherb2	277	stops		Spell#cast	
-zzherb3	277	stops		Spell#cast	
+zzherb	267	runs			
+zzherb2	277	runs			
+zzherb3	277	runs			

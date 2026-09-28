@@ -3,7 +3,7 @@
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
-**steps 7 and 8 BUILT**, 9 to 11 not yet. It
+**steps 7 to 9 BUILT**, 10 and 11 not yet. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -770,6 +770,32 @@ elanthia-online's 236 and 1,254 of the old repository's 2,130):
      several search answers only as far as the nearest, where Lich's may search on; a script's
      walk is priced without what a walk finds on the way (a trip's own flags).
 9. **`Spell#cast`**, through the casting step (`plan/37` Stage 3). 105 and 1,522.
+   **BUILT 2026-09-27, otherwise in one respect**, in two commits: not through the casting step,
+   which is the behaviors' pure pieces (the lines, the answers, readiness) with no driver a
+   script could call, but **Lich's own `Spell#cast`** in the runner (`bridges/ruby/hydra/spell.rb`),
+   line for line as `lib/common/spell.rb` writes it, sending and waiting as a script does, over
+   each spell's way to cast from Hydra's table (`incant`, `stance`, `channel`, `cast_proc`: the
+   `spell` and `spells` tools). So a script's contract is whole: what it passes
+   (`results_of_interest`, `channel` or `evoke`, `force_stance`) and what it is answered (the
+   game's line). Two changes, marked in the file: a spell the table lacks is not up rather than
+   an error, and Mental Acuity is not known while the feat list is unread.
+   - **With it**: `force_cast`, `force_channel`, `force_evoke`, `force_incant`, `lock_cast` and
+     `unlock_cast`, `results_regex`, `after_stance`, `available?`, `incant?`, `circle_name`,
+     `remaining`, `last_cast`, and `Spell.list` from one answer; Lich's `Stance`, which a cast
+     restores after a stance spell. `putup`, `putdown` and `timeleft=` are registered not
+     answered: what is up is the game's to say (the copy's effects).
+   - **And Lich's extensions of Ruby's classes** (`common/class_exts/`, loaded by Lich before any
+     script, `lich.rbw:93-100`): `StringProc` (7 and 29 scripts), `5.minutes`, `90.as_time`,
+     `with_commas`, `Hash.put`, `MatchData#to_struct`. Not its synchronized client socket.
+   - **The list** (`inventory/14`): **47% of elanthia-online's scripts and 71% of the old
+     repository's run**: 112 and 1,506, against the forecast 105 and 1,522.
+   - **Tests** (`crates/cena-agent/tests/runner.rs`, `casttest.lic`): an incant with no target,
+     prepare and cast at one, a spell the character cannot afford (`cast: not enough mana`,
+     false), a spell's stance and channel from the table, the cast lock, `Spell.list`; the
+     class extensions (`readstest.lic`); the checker finding `putup`.
+   - **Not yet**: `stackable?`, `refreshable?`, `multicastable?` and `max_duration` (the table's
+     durations by cast type, which the `spell` tool does not send); `Spell.upmsgs` and
+     `dnmsgs`; the Monk and overexertion rules of `affordable?`.
 10. **`Lich::Util`**: `issue_command` and `quiet_command`, over step 4's hooks. 121 and 1,570.
 11. **The game's markup as labelled data** (§6.2): first measured, what markup the scripts read,
     then answered. 148 and 1,734; with Lich's windows, 178 and 1,845.
