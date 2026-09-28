@@ -33,6 +33,16 @@ use crate::layout::{GRID, Layout};
 use crate::story::Story;
 use panes::Engaged;
 
+/// The player's own Lich for the character (`plan/51`): ticked while it
+/// runs; what it was switched to, when it was.
+pub(crate) fn lich_switch(ui: &mut egui::Ui, running: bool) -> Option<bool> {
+    let mut on = running;
+    ui.checkbox(&mut on, "Lich")
+        .on_hover_text("Your own Lich for this character, kept on or off: lich on, lich off")
+        .changed()
+        .then_some(on)
+}
+
 /// What a play window asks for.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Asked {
@@ -43,6 +53,8 @@ pub(crate) enum Asked {
     Stop,
     /// Read the keybinds file again.
     ReloadKeys,
+    /// Switch the player's own Lich on, or off (`;lich on`, `;lich off`).
+    Lich(bool),
 }
 
 /// What a play window shows this frame.
@@ -63,6 +75,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) numlock: Option<bool>,
     /// What the keybinds file bound, and what is wrong in it.
     pub(crate) keys: &'a [String],
+    /// Whether the player's own Lich runs for it.
+    pub(crate) lich: bool,
 }
 
 /// A play window's own state, which outlives a frame.
@@ -128,6 +142,7 @@ impl Play {
         match top {
             Some(draw::Top::Stop) => asked = Some(Asked::Stop),
             Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
+            Some(draw::Top::Lich(on)) => asked = Some(Asked::Lich(on)),
             Some(draw::Top::Fit) => {
                 self.layout = None;
                 changed = true;

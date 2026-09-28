@@ -34,6 +34,8 @@ pub enum HubAction {
     Ask(HubRequest),
     /// Open this session's play window: the window's own business.
     Open(u32),
+    /// Switch this session's own Lich on, or off (`;lich on`, `;lich off`).
+    Lich(u32, bool),
 }
 
 /// What the hub shows this frame, gathered by the window from its sessions.
@@ -51,6 +53,8 @@ pub struct HubView<'a> {
     /// The sessions whose play window is open; a live card without one
     /// offers to open it.
     pub windowed: &'a [u32],
+    /// The sessions whose own Lich runs (`plan/51`).
+    pub lich: &'a [u32],
 }
 
 /// The hub's own state, which outlives a frame.
@@ -161,7 +165,7 @@ fn list(
         .id_salt("hub-cards")
         .show(ui, |ui| {
             for card in cards {
-                if let Some(action) = draw(ui, card, view.windowed) {
+                if let Some(action) = draw(ui, card, view) {
                     *asked = Some(action);
                 }
             }
@@ -171,7 +175,7 @@ fn list(
 /// One card: who, how it is connected, its four gauges, a line of what else
 /// a player glances at -- roundtime, room, group (`plan/29` §5a R3) -- and
 /// what can be done with it.
-fn draw(ui: &mut egui::Ui, card: &SessionCard, windowed: &[u32]) -> Option<HubAction> {
+fn draw(ui: &mut egui::Ui, card: &SessionCard, view: &HubView<'_>) -> Option<HubAction> {
     let mut asked = None;
     let number = card.session.parse::<u32>().ok();
     egui::Frame::group(ui.style()).show(ui, |ui| {
@@ -219,8 +223,11 @@ fn draw(ui: &mut egui::Ui, card: &SessionCard, windowed: &[u32]) -> Option<HubAc
                 }
                 return;
             }
-            if !windowed.contains(&number) && ui.button("Open window").clicked() {
+            if !view.windowed.contains(&number) && ui.button("Open window").clicked() {
                 asked = Some(HubAction::Open(number));
+            }
+            if let Some(on) = crate::play::lich_switch(ui, view.lich.contains(&number)) {
+                asked = Some(HubAction::Lich(number, on));
             }
             if ui.button("Quit").clicked() {
                 asked = Some(HubAction::Ask(HubRequest::Remove(number)));

@@ -21,6 +21,7 @@ struct Board {
     merged: Vec<MergedLine>,
     said: Option<String>,
     windowed: Vec<u32>,
+    lich: Vec<u32>,
     asked: Vec<HubAction>,
 }
 
@@ -32,6 +33,7 @@ impl Board {
             merged: &self.merged,
             said: self.said.as_deref(),
             windowed: &self.windowed,
+            lich: &self.lich,
         };
         if let Some(action) = self.hub.show(ui, &view) {
             self.asked.push(action);
@@ -249,6 +251,27 @@ fn a_headless_character_offers_its_window() {
     harness.get_by_label("Open window").click();
     harness.run();
     assert_eq!(harness.state().asked, [HubAction::Open(1)]);
+}
+
+/// Each live card's Lich switch shows whether the character's own Lich
+/// runs, and asks for it on or off (`plan/51`).
+#[test]
+fn each_card_switches_its_own_lich() {
+    let mut harness = hub(Board {
+        lich: vec![1],
+        ..board()
+    });
+    // Ashryn's, off; then Baelor's, on.
+    for switch in 0..2 {
+        if let Some(lich) = harness.get_all_by_label("Lich").nth(switch) {
+            lich.click();
+        }
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().asked,
+        [HubAction::Lich(0, true), HubAction::Lich(1, false)]
+    );
 }
 
 /// Shutting down ends every character, so it asks first; keeping on asks

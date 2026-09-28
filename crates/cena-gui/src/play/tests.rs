@@ -147,6 +147,7 @@ impl Scene {
             hunt: self.hunt.as_ref(),
             numlock: None,
             keys: &[],
+            lich: false,
         };
         if let Some(asked) = self.play.show(ui, &view) {
             self.asked.push(asked);
@@ -230,6 +231,15 @@ fn stop_asks_to_stop() {
     harness.get_by_label("Stop").click();
     harness.run();
     assert_eq!(harness.state().asked, [Asked::Stop]);
+}
+
+/// The Lich switch asks for the character's own Lich (`plan/51`).
+#[test]
+fn the_lich_switch_asks_for_lich() {
+    let mut harness = harness();
+    harness.get_by_label("Lich").click();
+    harness.run();
+    assert_eq!(harness.state().asked, [Asked::Lich(true)]);
 }
 
 /// The author's complaint about Despana, and `VellumFE`'s answer: a click

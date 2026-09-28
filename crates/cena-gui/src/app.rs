@@ -125,18 +125,29 @@ impl App {
             .filter(|(_, window)| window.open)
             .map(|(session, _)| *session)
             .collect();
+        let lich: Vec<u32> = seats
+            .iter()
+            .filter(|seat| seat.handle.lich_running())
+            .map(|seat| seat.id.0)
+            .collect();
         let view = HubView {
             cards: &glance.cards,
             offered: &glance.offered,
             merged: &glance.merged,
             said: glance.said.as_deref(),
             windowed: &windowed,
+            lich: &lich,
         };
         match self.hub.show(ui, &view) {
             Some(HubAction::Ask(request)) => self.sessions.ask(request),
             Some(HubAction::Open(session)) => {
                 if let Some(window) = self.plays.get_mut(&session) {
                     window.open = true;
+                }
+            }
+            Some(HubAction::Lich(session, on)) => {
+                if let Some(seat) = seats.iter().find(|seat| seat.id.0 == session) {
+                    self.hydras(seat, lich_word(on));
                 }
             }
             None => {}
@@ -196,6 +207,7 @@ impl App {
                     hunt: hunt.as_ref(),
                     numlock,
                     keys: keys_said,
+                    lich: seat.handle.lich_running(),
                 };
                 let asked = window.play.show(ui, &view);
                 drop(story);
@@ -214,15 +226,19 @@ impl App {
         match asked {
             Some(Asked::ReloadKeys) => self.read_keys(),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
-            Some(Asked::Stop) => {
-                let symbol = seat
-                    .handle
-                    .command_symbol()
-                    .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
-                self.sessions.send(seat, format!("{symbol}stop"));
-            }
+            Some(Asked::Stop) => self.hydras(seat, "stop"),
+            Some(Asked::Lich(on)) => self.hydras(seat, lich_word(on)),
             None => {}
         }
+    }
+
+    /// Send Hydra's command `word` on `seat`'s character, with its symbol.
+    fn hydras(&self, seat: &Arc<Seat>, word: &str) {
+        let symbol = seat
+            .handle
+            .command_symbol()
+            .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
+        self.sessions.send(seat, format!("{symbol}{word}"));
     }
 
     /// The window was asked to close. With a character still playing, it
@@ -241,6 +257,11 @@ impl App {
         }
         true
     }
+}
+
+/// `;lich`'s word for switching the player's own Lich `on`, or off.
+fn lich_word(on: bool) -> &'static str {
+    if on { "lich on" } else { "lich off" }
 }
 
 /// Whether something in a play window counts down by itself -- roundtime,
@@ -447,5 +468,24 @@ mod tests {
         harness.run();
         harness.run();
         assert!(harness.query_by_label("> ;stop").is_some());
+        // The Lich switch is the character's own `;lich on`, as if typed:
+        // the window's (the card's lies under the window here), then, with
+        // the window closed, the card's.
+        if let Some(lich) = harness.get_all_by_label("Lich").nth(1) {
+            lich.click();
+        }
+        harness.run();
+        harness.run();
+        assert!(harness.query_by_label("> ;lich on").is_some());
+        if let Some(window) = harness.state_mut().plays.get_mut(&0) {
+            window.open = false;
+        }
+        harness.run();
+        harness.get_by_label("Lich").click();
+        harness.run();
+        harness.get_by_label("Open window").click();
+        harness.run();
+        harness.run();
+        assert_eq!(harness.query_all_by_label("> ;lich on").count(), 2);
     }
 }

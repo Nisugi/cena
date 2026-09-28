@@ -21,6 +21,8 @@ pub(super) enum Top {
     Grid,
     /// The keybinds were to be read again.
     ReloadKeys,
+    /// The player's own Lich was switched on, or off.
+    Lich(bool),
 }
 
 /// The top bar: who, how connected, the clocks, the hands, the keybinds,
@@ -62,6 +64,9 @@ pub(super) fn top(
                 .clicked()
             {
                 asked = Some(Top::Stop);
+            }
+            if let Some(on) = super::lich_switch(ui, view.lich) {
+                asked = Some(Top::Lich(on));
             }
             ui.menu_button("Keys", |ui| {
                 for said in view.keys {

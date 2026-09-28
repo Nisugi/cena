@@ -10,7 +10,9 @@ against the real Lich, offline. Steps 3, 4 and 5 APPROVED by the author the same
 (*"Great I approve steps 3, 4, and 5."*); **step 3 BUILT**: what Lich shows is the
 character's text (`crates/cena-session/src/actor/lich_text.rs`); **step 4 BUILT**: a Lich
 started late is handed the login and the latest word on each piece of state it keeps
-(`crates/cena-session/src/script/lich/kept.rs`). Steps 5 and 6 are next.
+(`crates/cena-session/src/script/lich/kept.rs`); **step 5 BUILT**: `;lich on|off`, kept per
+character, `;lich folder`, and a *Lich* switch on the hub's card and the play window
+(`crates/cena/src/lich.rs`). Step 6, the live run, is the author's.
 
 ## 1. The author's position
 
@@ -352,4 +354,33 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
      prompt and its script looks; with nothing handed, it never does. The real Lich started
      after `Ready` (10.1 s, offline).
 5. The switch: settings for Lich's path, and a *Lich* switch on the card and the play window.
+
+   **BUILT 2026-09-28**, on this branch's GUI, kept small for the merge with `gui-widgets`.
+   - **The command**, `crates/cena/src/lich.rs`, in Hydra's command table
+     (`crates/cena/src/commands.rs`, `lich help` in `help`): `lich on` starts the
+     character's Lich through the relay and keeps it on in the character's settings file
+     (a `lich` section), so it starts whenever the character does; `lich off` stops it and
+     keeps it off; `lich` says whether it runs, whether it is kept on, and where Lich is.
+     Off until asked. Registered once the login has named the character, as `agent` is, and
+     a character kept on starts its Lich then (`crates/cena/src/play.rs`, beside the
+     scripts; its Lich stops when it leaves the table, and every Lich when Hydra stops).
+   - **Lich's path**: `lich folder <folder>`, the folder with `lich.rbw` in it, kept once for
+     every character in `lich.json` in Hydra's data folder. Ruby is found as the script
+     runner finds it (`find_ruby`: the `PATH`, then `C:\Ruby4Lich5`). This branch has no
+     settings pages; `gui-widgets` has (`plan/50`), and can show both there once merged.
+   - **The switch**: a *Lich* checkbox in the play window's top bar and on each live card of
+     the hub, ticked while the character's Lich runs (`SessionHandle::lich_running`, new),
+     sending `lich on` or `lich off` with the character's symbol, as Stop sends `stop`
+     (`crates/cena-gui/src/play.rs`, `play/draw.rs`, `hub.rs`, `app.rs`). Nothing in
+     `cena-ui` changed: the card learns it the way it learns whether its window is open.
+   - **At the merge with `gui-widgets`**: the top bar, the card and `app.rs` are theirs,
+     reworked; the switch is a checkbox and one `HubAction` to carry over. Their story draws
+     its prompt from `Frame::Prompt` and should read `Event::Prompt` (step 3).
+   - **Tests.** `lich_on_and_off_are_kept_for_the_character`: typed through the command line
+     against the stand-in as `lich.rbw`, `lich on` starts it and keeps it on, `lich off` stops
+     it and keeps it off, and a character kept on starts its Lich when seated again. The
+     folder is kept only once it holds `lich.rbw`. In the GUI: each card's switch shows its
+     state and asks for its own character; the window's asks `Lich(true)`; through the whole
+     window, the window's switch and then the card's each send `;lich on`. The two images
+     of the top bar and the card were redrawn with the switch.
 6. A live run, with the author.

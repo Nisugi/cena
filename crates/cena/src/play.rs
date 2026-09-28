@@ -97,6 +97,8 @@ struct Table {
     agent: Option<crate::agent::Agent>,
     /// Every character's Lich scripts and their runners (`plan/46`).
     scripts: crate::scripts::Scripts,
+    /// Every character's own Lich that runs (`plan/51`).
+    lichs: crate::lich::Lichs,
     /// The window's sessions, when this run has a window (`gui.rs`).
     gui: Option<cena_gui::Sessions>,
     /// What every character's hunt shares: the groups' boards and the
@@ -166,6 +168,7 @@ pub(crate) async fn serve(
         web: frontend::Frontend::open(&map).await,
         agent: crate::agent::Agent::open(&dir).await,
         scripts: crate::scripts::Scripts::new(&dir, &map),
+        lichs: crate::lich::Lichs::default(),
         party: crate::hunt::Party::new(gui.clone()),
         gui,
         map,
@@ -217,6 +220,7 @@ pub(crate) async fn serve(
         agent.shutdown().await;
     }
     table.scripts.shutdown().await;
+    table.lichs.shutdown().await;
     eprintln!("\n[disconnect] quitting every session");
     let (stopped, refused) = Box::pin(table.stop_everything()).await;
     if let Some(gui) = &table.gui {
@@ -295,6 +299,12 @@ impl Table {
             character.clone(),
         ));
         proven.on_ready(&hosted.observer, &self.turn);
+        tokio::spawn(self.lichs.clone().at_login(
+            id,
+            hosted.handle.clone(),
+            hosted.observer.clone(),
+            commands.clone(),
+        ));
         tokio::spawn(after_ready(
             hosted.handle.clone(),
             hosted.observer.clone(),
@@ -443,6 +453,7 @@ impl Table {
             agent.unseat(id);
         }
         self.scripts.close(id).await;
+        self.lichs.close(id).await;
         if let Some(gui) = &self.gui {
             gui.detach(id);
         }

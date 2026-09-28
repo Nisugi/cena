@@ -62,6 +62,7 @@ pub(crate) const HELP: &[&str] = &[
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "multi help, foreach help   run commands several times, or once for each item",
     "agent help       what an agent (a program such as Claude Code) may do with this character",
+    "lich help        run your own Lich for this character, and keep it on",
     "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
     "to <name> <command>, all <command>   send a command on another character, or on every one",
     "<script> [args]  run one of your Lich scripts; k, l, p, u as in Lich. scripts: where they are; scripts import, scripts check",
@@ -90,6 +91,8 @@ pub(crate) struct Commands {
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
     agent: Arc<OnceLock<Handler>>,
+    /// The player's own Lich (`crate::lich`).
+    lich: Arc<OnceLock<Handler>>,
     relay: Arc<OnceLock<Starter>>,
     /// The player's own scripts (`crate::scripts`): heard last of all.
     scripts: Arc<OnceLock<Handler>>,
@@ -133,6 +136,8 @@ impl Commands {
                 Some("Hunt")
             } else if line.split_whitespace().next() == Some("agent") {
                 Some("Agent")
+            } else if line.split_whitespace().next() == Some("lich") {
+                Some("Lich")
             } else {
                 None
             };
@@ -179,6 +184,7 @@ impl Commands {
             &self.sorter,
             &self.trigger,
             &self.agent,
+            &self.lich,
         ] {
             if let Some(handler) = family.get()
                 && handler(line).is_some()
@@ -248,6 +254,13 @@ impl Commands {
     pub(crate) fn agent(&self, handler: Handler) {
         if self.agent.set(handler).is_err() {
             eprintln!("  !! [commands] agent was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;lich` to `handler` from now on. Once, as for travel.
+    pub(crate) fn lich(&self, handler: Handler) {
+        if self.lich.set(handler).is_err() {
+            eprintln!("  !! [commands] lich was registered twice; keeping the first");
         }
     }
 

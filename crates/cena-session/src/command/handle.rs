@@ -305,6 +305,14 @@ impl SessionHandle {
         self.events.hand_to_lich(line)
     }
 
+    /// Whether the player's Lich is attached to this character
+    /// (`crate::script::lich`): started and not yet stopped. What a
+    /// frontend's Lich switch shows.
+    #[must_use]
+    pub fn lich_running(&self) -> bool {
+        self.events.lich_attached()
+    }
+
     /// A script runner's hooks (`crate::script`).
     pub(crate) fn hooks(&self) -> &crate::script::Hooks {
         self.events.hooks()

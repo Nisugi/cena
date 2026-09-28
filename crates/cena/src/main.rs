@@ -52,6 +52,7 @@ mod hunt;
 mod hunt_setup;
 mod interrupt;
 mod learn;
+mod lich;
 mod loot;
 mod map_context;
 mod perform;
