@@ -10,6 +10,7 @@ use cena_behavior::heal::{self, HealProfile};
 use cena_behavior::hunt::command::{Of, Setting, Topic, help as help_for};
 use cena_behavior::hunt::{self, LoadError};
 use cena_behavior::keep::{self, KeepProfile};
+use cena_behavior::loot;
 use cena_behavior::settings::{self, Key, Stored};
 use cena_behavior::spellcaster::{self, CasterProfile};
 use cena_behavior::waggle::{self, WaggleProfile};
@@ -215,7 +216,7 @@ fn caster_canonical(text: &str) -> Result<String, String> {
 }
 
 /// Every character profile the menu shows, in its order.
-pub(crate) fn profiles() -> [Profile; 4] {
+pub(crate) fn profiles() -> [Profile; 7] {
     [
         Profile {
             id: "heal",
@@ -249,7 +250,38 @@ pub(crate) fn profiles() -> [Profile; 4] {
             table: spellcaster::TABLE,
             takes: "at once",
         },
+        // The loot profile, as three pages over one file (`plan/50` §7
+        // step 5): its own settings, `[skin]` and `[town]`.
+        Profile {
+            id: "loot",
+            label: "Loot",
+            path: loot::path,
+            canonical: loot_canonical,
+            table: loot::profile::TABLE,
+            takes: "the next time the hunt loots",
+        },
+        Profile {
+            id: "skin",
+            label: "Skinning",
+            path: loot::path,
+            canonical: loot_canonical,
+            table: loot::profile::SKIN_TABLE,
+            takes: "the next time the hunt skins",
+        },
+        Profile {
+            id: "town",
+            label: "Selling",
+            path: loot::path,
+            canonical: loot_canonical,
+            table: cena_behavior::town::settings::TABLE,
+            takes: "at the next selling round",
+        },
     ]
+}
+
+/// The loot profile with every setting written out, the three pages' values.
+fn loot_canonical(text: &str) -> Result<String, String> {
+    loot::LootProfile::parse(text)?.to_toml_whole()
 }
 
 fn of_profile(of: Of) -> Profile {

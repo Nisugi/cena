@@ -138,10 +138,18 @@ pub fn shown(own: &str, canonical: &str, table: &[Key]) -> Result<Vec<Shown>, St
         .iter()
         .map(|key| Shown {
             key: *key,
-            value: full.get(key.name).map(held),
-            here: own.contains_key(key.name),
+            value: at(&full, key.name).map(held),
+            here: at(&own, key.name).is_some(),
         })
         .collect())
+}
+
+/// The value `name` names in `table`, a dotted name reaching into the
+/// tables under it: `skin.enable`.
+fn at<'a>(table: &'a Table, name: &str) -> Option<&'a Value> {
+    let mut parts = name.split('.');
+    let first = table.get(parts.next()?)?;
+    parts.try_fold(first, |value, part| value.as_table()?.get(part))
 }
 
 /// A TOML value as the menu shows it.

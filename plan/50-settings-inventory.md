@@ -426,6 +426,27 @@ Claude's order, each step shippable and committed on its own:
      caught. Not tested: the binary finding the map's settings once (`map_context::settings`),
      a lookup over what `Map::setting_names` does.
 5. **Loot**, the loot profile's page.
+
+   **BUILT 2026-09-27.**
+   - *Three pages over one file.* The loot profile (`hunt/loot/<ic>.toml`) was written only by
+     `;hunt import-loot`. It is now three pages, each a table beside its struct, through the
+     writer `;heal set` uses (`crates/cena/src/hunt/settings.rs`, `profiles`):
+     - *Loot*: its own ten settings (`crates/cena-behavior/src/loot/profile.rs`, `TABLE`).
+     - *Skinning*: `[skin]`'s eleven (`SKIN_TABLE`).
+     - *Selling*: the seventeen `[town]` keys the selling round reads, under eloot's own
+       names (`crates/cena-behavior/src/town/settings.rs`, `TABLE`). The disk is not among
+       them: it is Loot's own `disk`.
+   - *Dotted keys:* `settings::shown` finds a dotted key's value (`skin.enable`), and the
+     writer already set one.
+   - *Values in effect:* `LootProfile::to_toml_whole` writes the profile out whole for the
+     pages. Skinning is shown even when off. Selling is shown as the round reads it, through
+     `Town::to_table`, `Town::from_table`'s inverse, which a test holds to it by a round trip.
+     A limit that is none is left out, and shown unset.
+   - *Not shown:* the `[town]` keys the importer carries from eloot that nothing reads. They
+     stay in the file as they were.
+   - *Checked:* 10 mutants over the dotted lookup, the whole profile, the town's table and
+     the three pages, all caught once the town's round trip used towns whose switches differ:
+     with every switch on, two swapped names would have read back the same.
 6. **Hunt:** first the chain in effect, each value with where it came from; then its pages,
    one per table, with *check* beside *save*.
 7. **Layouts by game and name**, a name-only layout taken as the first. Then **the fixed

@@ -212,7 +212,8 @@ mod tests {
         assert_eq!(
             ids,
             [
-                "general", "log", "record", "travel", "heal", "waggle", "keep", "sc"
+                "general", "log", "record", "travel", "heal", "waggle", "keep", "sc", "loot",
+                "skin", "town"
             ],
             "the character's own file first"
         );
@@ -326,6 +327,63 @@ mod tests {
         assert_eq!(
             row(&pages, "general", "sorter").map(|row| (&row.value, row.here)),
             Some((&Value::On(true), true))
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The loot profile is three pages over one file: a skinning or selling
+    /// setting is written into its own table, and each page shows the value
+    /// in effect, a default among them.
+    #[test]
+    fn the_loot_profile_is_three_pages() {
+        let dir = scratch("loot");
+        let map = BTreeSet::new();
+        let said = apply(&dir, &map, &wanted("skin", "skin.enable", Some("on")));
+        assert!(said.starts_with("Skinning: "), "{said}");
+        apply(
+            &dir,
+            &map,
+            &wanted("town", "town.sell_keep_silver", Some("5000")),
+        );
+        apply(
+            &dir,
+            &map,
+            &wanted("loot", "take", Some("[\"gem\", \"box\"]")),
+        );
+
+        let path = cena_behavior::loot::path(&dir, "Prime", "Nisugi").expect("a file name");
+        let text = std::fs::read_to_string(&path).expect("written");
+        let profile = cena_behavior::loot::LootProfile::parse(&text).expect("it reads");
+        assert!(profile.skin.enable);
+        assert_eq!(profile.take, ["gem", "box"]);
+        let town = cena_behavior::town::Town::from_table(&profile.town);
+        assert_eq!(town.keep_silver, 5000);
+
+        let pages = super::pages(&dir, &map, "GS3:Nisugi").expect("pages");
+        let shown =
+            |page: &str, key: &str| row(&pages, page, key).map(|row| (row.value.clone(), row.here));
+        assert_eq!(shown("skin", "skin.enable"), Some((Value::On(true), true)));
+        assert_eq!(shown("skin", "skin.kneel"), Some((Value::On(false), false)));
+        assert_eq!(
+            shown("town", "town.sell_keep_silver"),
+            Some((Value::Text("5000".to_owned()), true))
+        );
+        assert_eq!(
+            shown("town", "town.sell_container"),
+            Some((Value::List(vec!["default".to_owned()]), false)),
+            "the round's own default"
+        );
+        assert_eq!(
+            shown("town", "town.sell_appraise_gemshop"),
+            Some((Value::Unset, false)),
+            "no limit"
+        );
+
+        apply(&dir, &map, &wanted("skin", "skin.enable", None));
+        let pages = super::pages(&dir, &map, "GS3:Nisugi").expect("pages");
+        assert_eq!(
+            row(&pages, "skin", "skin.enable").map(|row| (row.value.clone(), row.here)),
+            Some((Value::On(false), false))
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

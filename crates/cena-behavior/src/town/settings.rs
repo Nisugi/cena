@@ -152,6 +152,47 @@ impl Town {
         }
     }
 
+    /// These settings as the `[town]` table writes them, under eloot's
+    /// names: [`Self::from_table`]'s inverse, what the settings menu shows
+    /// (`plan/50` §7 step 5). A limit that is none (`u64::MAX`) is left out,
+    /// as is the disk, which is the loot profile's own `disk`.
+    #[must_use]
+    pub fn to_table(&self) -> Table {
+        use toml::Value;
+        let list =
+            |items: &[String]| Value::Array(items.iter().cloned().map(Value::String).collect());
+        let number = |n: u64| i64::try_from(n).ok().map(Value::Integer);
+        let entries = [
+            ("sell_loot_types", Some(list(&self.sell_types))),
+            ("sell_container", Some(list(&self.containers))),
+            ("sell_exclude", Some(list(&self.exclude))),
+            ("sell_appraise_types", Some(list(&self.appraise_types))),
+            ("sell_appraise_gemshop", number(self.appraise_gemshop)),
+            ("sell_appraise_pawnshop", number(self.appraise_pawnshop)),
+            ("sell_collectibles", Some(Value::Boolean(self.collectibles))),
+            ("sell_gold_rings", Some(Value::Boolean(self.gold_rings))),
+            ("keep_transmogs", Some(Value::Boolean(self.keep_transmogs))),
+            ("sell_keep_silver", number(self.keep_silver)),
+            (
+                "appraisal_container",
+                Some(Value::String(self.appraisal_container.clone())),
+            ),
+            ("sell_locksmith_pool", Some(Value::Boolean(self.pool))),
+            ("sell_locksmith_pool_tip", number(self.pool_tip)),
+            (
+                "sell_locksmith_pool_tip_percent",
+                Some(Value::Boolean(self.pool_tip_percent)),
+            ),
+            ("charm_name", Some(Value::String(self.charm.clone()))),
+            ("sell_pawn_recheck", Some(Value::Boolean(self.pawn_recheck))),
+            ("sell_keep_scrolls", Some(list(&self.keep_scrolls))),
+        ];
+        entries
+            .into_iter()
+            .filter_map(|(key, value)| Some((key.to_owned(), value?)))
+            .collect()
+    }
+
     /// The settings for a loot profile: its `[town]` table, and the disk
     /// the loot side uses.
     #[must_use]
@@ -191,5 +232,185 @@ impl Town {
         self.exclude
             .iter()
             .any(|word| !word.is_empty() && name.contains(word.as_str()))
+    }
+}
+
+/// Every selling setting as the settings menu shows it (`plan/50` §7 step
+/// 5), under the `[town]` table's own names, which are eloot's. The disk is
+/// not here: it is the loot profile's `disk`.
+pub const TABLE: &[crate::settings::Key] = {
+    use crate::settings::{Key, KeyKind};
+    const SILVER: KeyKind = KeyKind::Whole {
+        min: 0,
+        max: 1_000_000_000,
+    };
+    &[
+        Key {
+            name: "town.sell_loot_types",
+            label: "Sell these kinds",
+            help: "Object categories sold at the rest: gem, skin, box, ...",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "town.sell_container",
+            label: "Sell from",
+            help: "Stow slots whose bags are sold from: default, overflow, or a slot's name.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "town.sell_exclude",
+            label: "Never sell",
+            help: "Names, or words in names, never sold.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "town.sell_appraise_types",
+            label: "Appraise these kinds first",
+            help: "Categories appraised before they are sold.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "town.sell_appraise_gemshop",
+            label: "Gem shop limit",
+            help: "Sell at the gem shop only what appraises at or under this. Empty: no limit.",
+            kind: SILVER,
+        },
+        Key {
+            name: "town.sell_appraise_pawnshop",
+            label: "Pawnshop limit",
+            help: "Sell at the pawnshop only what appraises at or under this. Empty: no limit.",
+            kind: SILVER,
+        },
+        Key {
+            name: "town.sell_collectibles",
+            label: "Hand in collectibles",
+            help: "Hand collectibles in at the collectibles shop.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "town.sell_gold_rings",
+            label: "Gold rings to the Chronomage",
+            help: "Give gold rings to the Chronomage.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "town.keep_transmogs",
+            label: "Keep transmogs",
+            help: "Analyze what could be a transmog before selling it, and keep it.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "town.sell_keep_silver",
+            label: "Silver kept in hand",
+            help: "Silver kept on the character when depositing.",
+            kind: SILVER,
+        },
+        Key {
+            name: "town.appraisal_container",
+            label: "Bag for what is over the limit",
+            help: "A word of the bag's name. Empty: it goes back where it came from.",
+            kind: KeyKind::Text,
+        },
+        Key {
+            name: "town.sell_locksmith_pool",
+            label: "Use the locksmith pool",
+            help: "Drop boxes in the locksmith pool.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "town.sell_locksmith_pool_tip",
+            label: "Pool tip",
+            help: "The tip per box.",
+            kind: SILVER,
+        },
+        Key {
+            name: "town.sell_locksmith_pool_tip_percent",
+            label: "Tip as a percent",
+            help: "The tip is a percent of the box's value, not silver.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "town.charm_name",
+            label: "Coin charm",
+            help: "A charm that gathers a box's coins, by its name.",
+            kind: KeyKind::Text,
+        },
+        Key {
+            name: "town.sell_pawn_recheck",
+            label: "Pawnshop recheck",
+            help: "Appraise, never sell, at the pawnshop what the gem shop found too valuable.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "town.sell_keep_scrolls",
+            label: "Scrolls kept",
+            help: "Scrolls kept for these spells: 215 keeps one that is not vibrant, 215v one that is.",
+            kind: KeyKind::Words,
+        },
+    ]
+};
+
+#[cfg(test)]
+mod tests {
+    use super::{TABLE, Town};
+
+    /// A town of every setting, none at its default but the disk.
+    fn every() -> Town {
+        Town {
+            sell_types: vec!["gem".to_owned()],
+            containers: vec!["overflow".to_owned()],
+            exclude: vec!["heirloom".to_owned()],
+            appraise_types: vec!["jewelry".to_owned()],
+            appraise_gemshop: 50_000,
+            appraise_pawnshop: 20_000,
+            collectibles: true,
+            gold_rings: true,
+            keep_transmogs: true,
+            keep_silver: 5000,
+            appraisal_container: "cloak".to_owned(),
+            pool: true,
+            pool_tip: 25,
+            pool_tip_percent: true,
+            charm: "silver charm".to_owned(),
+            pawn_recheck: true,
+            keep_scrolls: vec!["215v".to_owned()],
+            disk: false,
+        }
+    }
+
+    /// `TABLE` is every setting `to_table` writes, in order, and what it
+    /// writes reads back the same: the menu shows what the round acts on.
+    #[test]
+    fn the_table_is_every_setting_and_reads_back() {
+        let written = every().to_table();
+        let keys: Vec<String> = written.keys().map(|key| format!("town.{key}")).collect();
+        let names: Vec<String> = crate::settings::names(TABLE)
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+        assert_eq!(keys, names);
+        assert_eq!(Town::from_table(&written), every());
+        // Switches that differ, so no two can be written under each other's
+        // names and still read back.
+        let alternate = Town {
+            gold_rings: false,
+            pool: false,
+            pawn_recheck: false,
+            ..every()
+        };
+        assert_eq!(Town::from_table(&alternate.to_table()), alternate);
+        let other = Town {
+            collectibles: false,
+            keep_transmogs: false,
+            pool_tip_percent: false,
+            ..every()
+        };
+        assert_eq!(Town::from_table(&other.to_table()), other);
+        let none = Town::default().to_table();
+        assert!(
+            !none.contains_key("sell_appraise_gemshop"),
+            "no limit is left out"
+        );
+        assert_eq!(Town::from_table(&none), Town::default());
     }
 }
