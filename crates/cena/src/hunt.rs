@@ -281,7 +281,13 @@ fn start_placed(
     let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
     tokio::spawn(async move {
         match observer.subscribe().await {
-            Ok(joined) => {
+            Ok((snapshot, events)) => {
+                // Rejoinable, so a lag is recovered from, not decided
+                // through (the crate review of 2026-09-28, R1).
+                let joined = (
+                    snapshot,
+                    cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
+                );
                 if let Some(run) = desk.run_placed(&handle, joined, command, place) {
                     let _ = run.await;
                 }

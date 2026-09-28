@@ -49,6 +49,34 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         fold_into(&mut self.state, event)
     }
 
+    /// Events were lost ([`Heard::behind`](crate::travel::Heard::behind)):
+    /// the state is taken afresh from the session before anything more is
+    /// decided, and a stream that cannot be stops the hunt rather than hunt
+    /// on a state with holes in it (the crate review of 2026-09-28, R1).
+    pub(super) async fn caught_up(&mut self) -> Result<(), BehaviorError> {
+        if !self.events.behind() {
+            return Ok(());
+        }
+        let snapshot = self.events.again().await.ok_or(BehaviorError::FellBehind)?;
+        self.state = snapshot.state;
+        self.lifecycle = snapshot.lifecycle;
+        self.generation = snapshot.generation;
+        self.cursor = snapshot.cursor;
+        self.transcript.clear();
+        self.line.clear();
+        match snapshot.lifecycle {
+            State::Ready => self.down = false,
+            State::Reconnecting => self.link_lost(),
+            State::Closed => return Err(BehaviorError::Dead),
+            _ => {}
+        }
+        self.handle.say(Notice::line(
+            NoticeKind::Info,
+            "Hunt: fell behind the game; took its state afresh.".to_owned(),
+        ));
+        Ok(())
+    }
+
     /// The connection dropped: what it made stale is forgotten, and the
     /// hunt waits for the session to be ready again (`plan/30` §7: "a
     /// reconnect mid-hunt keeps the hunt").

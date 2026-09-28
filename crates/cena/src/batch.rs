@@ -74,7 +74,13 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
                 let (handle, observer, hydra) = (told.clone(), observer.clone(), hydra.clone());
                 Some(Took::Started(tokio::spawn(async move {
                     match observer.subscribe().await {
-                        Ok(joined) => {
+                        Ok((snapshot, events)) => {
+                            // Rejoinable, so a lag is recovered from, not
+                            // decided through (the crate review, R1).
+                            let joined = (
+                                snapshot,
+                                cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
+                            );
                             if let Some(run) = desk.run(&handle, joined, job, hydra) {
                                 let _ = run.await;
                             }

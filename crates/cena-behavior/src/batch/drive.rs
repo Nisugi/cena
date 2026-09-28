@@ -182,7 +182,7 @@ impl<'a> Driver<'a> {
             if let Some(gone) = BehaviorError::from_outcome(&outcome) {
                 return Err(gone.into());
             }
-            self.drain()?;
+            self.drain().await?;
             if let Outcome::Refused(refusal) = outcome {
                 if refusal == Refusal::Permanent {
                     return Err(Halt::Failed(format!(
@@ -241,7 +241,7 @@ impl<'a> Driver<'a> {
             if let Some(gone) = BehaviorError::from_outcome(&outcome) {
                 return Err(gone.into());
             }
-            self.drain()?;
+            self.drain().await?;
             match outcome {
                 Outcome::Refused(Refusal::Permanent) => {
                     return Err(Halt::Failed(format!(
@@ -277,7 +277,7 @@ impl<'a> Driver<'a> {
             };
             match event {
                 Ok(event) => self.fold(&event)?,
-                Err(RecvError::Lagged(_)) => {}
+                Err(RecvError::Lagged(_)) => self.caught_up().await?,
                 Err(RecvError::Closed) => return Err(BehaviorError::Dead.into()),
             }
         };
@@ -293,13 +293,13 @@ impl<'a> Driver<'a> {
         if self.handle.claim(self.token).await.is_err() {
             return Err(BehaviorError::AuthorityHeld.into());
         }
-        self.drain()?;
+        self.drain().await?;
         Ok(())
     }
 
     /// Wait until `done` says so, folding the stream.
     async fn wait_until(&mut self, done: impl Fn(&Self) -> bool) -> Result<(), Halt> {
-        self.drain()?;
+        self.drain().await?;
         while !done(self) {
             self.hold(BEAT).await?;
         }
@@ -308,7 +308,7 @@ impl<'a> Driver<'a> {
 
     /// Wait for a main-window line, from now on, that `heard` takes.
     async fn wait_to_hear(&mut self, heard: impl Fn(&str) -> bool) -> Result<(), Halt> {
-        self.drain()?;
+        self.drain().await?;
         self.answer.clear();
         loop {
             if self.answer.iter().any(|line| heard(&line.text())) {
@@ -322,7 +322,7 @@ impl<'a> Driver<'a> {
     /// Wait out roundtime, cast roundtime, a stun and a web, up to
     /// [`SETTLE_CAP`].
     async fn settle(&mut self) -> Result<(), Halt> {
-        self.drain()?;
+        self.drain().await?;
         let cap = Instant::now() + SETTLE_CAP;
         while busy(&self.state) && Instant::now() < cap {
             self.hold(BEAT).await?;
@@ -343,22 +343,44 @@ impl<'a> Driver<'a> {
             };
             match event {
                 Ok(event) => self.fold(&event)?,
-                Err(RecvError::Lagged(_)) => {}
+                Err(RecvError::Lagged(_)) => self.caught_up().await?,
                 Err(RecvError::Closed) => return Err(BehaviorError::Dead.into()),
             }
         }
     }
 
-    /// Fold whatever the stream already holds.
-    pub(super) fn drain(&mut self) -> Result<(), Halt> {
+    /// Fold whatever the stream already holds, and take the state afresh
+    /// if events were lost (`caught_up`).
+    pub(super) async fn drain(&mut self) -> Result<(), Halt> {
         loop {
             match self.events.try_recv() {
                 Ok(event) => self.fold(&event)?,
                 Err(TryRecvError::Lagged(_)) => {}
-                Err(TryRecvError::Empty) => return Ok(()),
+                Err(TryRecvError::Empty) => return self.caught_up().await,
                 Err(TryRecvError::Closed) => return Err(BehaviorError::Dead.into()),
             }
         }
+    }
+
+    /// Events were lost ([`Heard::behind`]): the state is taken afresh from
+    /// the session before the batch decides or sends anything more; a
+    /// stream that cannot be stops the batch (the crate review of
+    /// 2026-09-28, R1).
+    async fn caught_up(&mut self) -> Result<(), Halt> {
+        if !self.events.behind() {
+            return Ok(());
+        }
+        let snapshot = self.events.again().await.ok_or(BehaviorError::FellBehind)?;
+        match snapshot.lifecycle {
+            State::Reconnecting => return Err(BehaviorError::Disconnected.into()),
+            State::Closed => return Err(BehaviorError::Dead.into()),
+            _ => {}
+        }
+        self.state = snapshot.state;
+        self.answer.clear();
+        let chunk = self.state.open_chunk();
+        self.heard = chunk.dropped() + chunk.lines().len();
+        Ok(())
     }
 
     /// One event: a frame is folded, and a main-window line heard; a

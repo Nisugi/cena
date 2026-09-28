@@ -205,7 +205,13 @@ async fn run_fresh(
     command: Command,
 ) {
     match observer.subscribe().await {
-        Ok(joined) => {
+        Ok((snapshot, events)) => {
+            // Rejoinable, so a lag is recovered from, not decided through
+            // (the crate review of 2026-09-28, R1).
+            let joined = (
+                snapshot,
+                cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
+            );
             if let Some(walk) = travel.run(handle, joined, command) {
                 walked(walk.await);
             }

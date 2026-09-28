@@ -246,6 +246,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             if let Err(gone) = self.drain() {
                 return HuntEnd::Stopped(gone);
             }
+            if let Err(gone) = self.caught_up().await {
+                return HuntEnd::Stopped(gone);
+            }
             if self.down {
                 if let Err(end) = self.hold(BEAT).await {
                     return end;
@@ -390,7 +393,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             };
             match event {
                 Ok(event) => self.fold(&event).map_err(HuntEnd::Stopped)?,
-                Err(RecvError::Lagged(_)) => {}
+                Err(RecvError::Lagged(_)) => self.caught_up().await.map_err(HuntEnd::Stopped)?,
                 Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
             }
         }
