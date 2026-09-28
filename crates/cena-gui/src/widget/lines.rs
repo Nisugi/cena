@@ -7,13 +7,14 @@
 //! word wrap; and the story's prompts and what the player typed, each shown
 //! or not.
 
+use std::borrow::Cow;
 use std::collections::VecDeque;
 
 use cena_ui::StyledRun;
 use egui::Id;
 use serde::{Deserialize, Serialize};
 
-use super::Seen;
+use super::{Clicked, Seen};
 use crate::story::{Hours, Shown, Stamp};
 use crate::text::{self, WRONG};
 
@@ -79,27 +80,32 @@ impl Lines {
     }
 
     /// A line of the game's as this draws it: its runs, with the time `at`
-    /// where this puts it.
-    fn label(self, ui: &mut egui::Ui, at: Stamp, runs: &[StyledRun]) {
+    /// where this puts it; the link clicked in it, if one was.
+    fn label(self, ui: &mut egui::Ui, at: Stamp, runs: &[StyledRun]) -> Option<Clicked> {
         let run = |text: String| StyledRun {
             text,
             ..StyledRun::default()
         };
         let said = || at.said(self.seconds, self.hours);
-        let job = match self.stamps {
-            Stamps::None => text::job(runs, ui.style()),
+        let all: Cow<'_, [StyledRun]> = match self.stamps {
+            Stamps::None => Cow::Borrowed(runs),
             Stamps::Start => {
                 let mut all = vec![run(format!("[{}] ", said()))];
                 all.extend_from_slice(runs);
-                text::job(&all, ui.style())
+                Cow::Owned(all)
             }
             Stamps::End => {
                 let mut all = runs.to_vec();
                 all.push(run(format!(" [{}]", said())));
-                text::job(&all, ui.style())
+                Cow::Owned(all)
             }
         };
+        let job = text::job(&all, ui.style());
+        if all.iter().any(|run| run.link.is_some()) {
+            return text::linked(ui, job, &all).map(|(link, at)| Clicked::Link(link, at));
+        }
         ui.label(job);
+        None
     }
 
     /// A scrolled body of lines, newest at the bottom, where it stays unless
@@ -123,20 +129,22 @@ impl Lines {
     }
 }
 
-/// The story, a stream's lines left out while a widget of it is `open`.
+/// The story, a stream's lines left out while a widget of it is `open`;
+/// the link clicked in it, if one was.
 pub(super) fn story(
     ui: &mut egui::Ui,
     lines: &VecDeque<(Stamp, Shown)>,
     open: &[String],
     (id, options): (Id, Lines),
-) {
+) -> Option<Clicked> {
+    let mut clicked = None;
     options.scrolled(ui, id.with("story"), |ui| {
         for (at, shown) in lines {
             match shown {
-                Shown::Game(runs) => options.label(ui, *at, runs),
+                Shown::Game(runs) => clicked = clicked.take().or(options.label(ui, *at, runs)),
                 Shown::From(stream, runs) => {
                     if !open.contains(stream) {
-                        options.label(ui, *at, runs);
+                        clicked = clicked.take().or(options.label(ui, *at, runs));
                     }
                 }
                 Shown::Typed { prompt, line } => {
@@ -155,15 +163,22 @@ pub(super) fn story(
             }
         }
     });
+    clicked
 }
 
-/// One of the game's streams.
-pub(super) fn stream(ui: &mut egui::Ui, seen: &Seen<'_>, stream: &str, (id, options): (Id, Lines)) {
+/// One of the game's streams; the link clicked in it, if one was.
+pub(super) fn stream(
+    ui: &mut egui::Ui,
+    seen: &Seen<'_>,
+    stream: &str,
+    (id, options): (Id, Lines),
+) -> Option<Clicked> {
+    let mut clicked = None;
     options.scrolled(ui, id.with("stream"), |ui| {
         match seen.story.streams.get(stream) {
             Some(kept) => {
                 for (at, runs) in &kept.lines {
-                    options.label(ui, *at, runs);
+                    clicked = clicked.take().or(options.label(ui, *at, runs));
                 }
             }
             None => {
@@ -171,6 +186,7 @@ pub(super) fn stream(ui: &mut egui::Ui, seen: &Seen<'_>, stream: &str, (id, opti
             }
         }
     });
+    clicked
 }
 
 #[cfg(test)]

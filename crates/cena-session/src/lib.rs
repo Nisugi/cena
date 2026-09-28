@@ -90,7 +90,7 @@ pub use cena_model::trigger;
 pub use cena_model::{guard, herbs};
 pub use cena_platform::{DEFAULT_GAME_CODE, GAMES, instance};
 pub use cena_protocol::InventoryItem;
-pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, Style, TextFrame};
+pub use cena_protocol::frame::{Amount, Link, LinkKind, Menu, ProgressBar, Style, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};
 pub use character_store::MAX_STALE;
 pub use command::attendance::Watching;

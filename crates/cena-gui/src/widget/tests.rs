@@ -404,7 +404,9 @@ fn compass<'a>(
                 who,
                 open: &[],
             };
-            if let Some(line) = Widget::Compass.draw(ui, &seen, Id::new("compass")) {
+            if let Some(super::Clicked::Send(line)) =
+                Widget::Compass.draw(ui, &seen, Id::new("compass"))
+            {
                 heard
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)

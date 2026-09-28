@@ -22,7 +22,7 @@ pub(super) fn draw(
     seen: &Seen<'_>,
     id: Id,
     chosen: &super::Chosen,
-) -> Option<String> {
+) -> Option<super::Clicked> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
     let look = chosen.look.clone().or_else(|| widget.bar_look());
     let lines = chosen.lines.unwrap_or_default();
@@ -42,7 +42,9 @@ pub(super) fn draw(
     match widget {
         // Never for another character's compass: a click would move this
         // window's character.
-        Widget::Compass => return room::compass(ui, state, seen.who.is_none()),
+        Widget::Compass => {
+            return room::compass(ui, state, seen.who.is_none()).map(super::Clicked::Send);
+        }
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
         Widget::Room => scrolled(ui, &mut |ui| {
             super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default());
@@ -52,8 +54,12 @@ pub(super) fn draw(
         Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),
         Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
         Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
-        Widget::Story => super::lines::story(ui, &seen.story.lines, seen.open, (id, lines)),
-        Widget::Stream(stream_id) => super::lines::stream(ui, seen, stream_id, (id, lines)),
+        Widget::Story => {
+            return super::lines::story(ui, &seen.story.lines, seen.open, (id, lines));
+        }
+        Widget::Stream(stream_id) => {
+            return super::lines::stream(ui, seen, stream_id, (id, lines));
+        }
         Widget::Hydra => hydra(ui, &seen.story.said, id),
         Widget::Hunt => scrolled(ui, &mut |ui| hunt(ui, seen.hunt)),
         Widget::GameState => super::state::game_state(ui, state, seen.who, id),

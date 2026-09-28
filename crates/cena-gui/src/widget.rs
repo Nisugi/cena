@@ -82,7 +82,7 @@ impl Widget {
     /// A line the player asked it to send, as if typed -- a compass's
     /// direction -- if one was.
     #[cfg(test)]
-    pub(crate) fn draw(&self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
+    pub(crate) fn draw(&self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<Clicked> {
         draw::draw(self, ui, seen, id, &Chosen::default())
     }
 
@@ -94,9 +94,18 @@ impl Widget {
         seen: &Seen<'_>,
         id: Id,
         chosen: &Chosen,
-    ) -> Option<String> {
+    ) -> Option<Clicked> {
         draw::draw(self, ui, seen, id, chosen)
     }
+}
+
+/// What a click in a widget asked for.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Clicked {
+    /// A line to send, as if typed: a compass's direction.
+    Send(String),
+    /// A link in a line of the game's, clicked at a place on the screen.
+    Link(cena_ui::RunLink, egui::Pos2),
 }
 
 /// What the player chose for one placed widget on its own page, whichever

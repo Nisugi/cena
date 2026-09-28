@@ -24,6 +24,7 @@
 mod arrange;
 mod draw;
 mod holders;
+mod links;
 mod menu;
 mod options;
 
@@ -44,6 +45,9 @@ pub(crate) enum Asked {
     /// Send this line on the character, as typed: Hydra's command line
     /// first, then the game.
     Send(String),
+    /// Send this line as `Send` does, but not echoed in the story: a menu
+    /// asked for on a click, which the player did not type.
+    Quietly(String),
     /// Stop everything Hydra is doing on the character (`;stop`).
     Stop,
     /// Read the keybinds file again.
@@ -122,6 +126,11 @@ pub(crate) struct Play {
     adding: Option<menu::Adding>,
     /// A window's or widget's right-click menu, while open (`menu.rs`).
     menu: Option<menu::Menu>,
+    /// An object's menu, asked of the game on a click, until it is chosen
+    /// from or closed (`links.rs`).
+    asking: Option<links::Asking>,
+    /// Object menus asked for, ever: the next request's number.
+    menus_asked: u32,
     /// What a menu asked of the app this frame, which the window hands on.
     out: Option<Asked>,
     /// Why the layout could not be saved, until it can.
@@ -166,6 +175,8 @@ impl Play {
             read: std::collections::HashMap::new(),
             adding: None,
             menu: None,
+            asking: None,
+            menus_asked: 0,
             out: None,
             unsaved: None,
             input: String::new(),
@@ -242,6 +253,7 @@ impl Play {
         let received: Vec<&str> = view.story.streams.ids().collect();
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others, &received);
+        self.object_menu(ui.ctx(), view);
         asked = asked.or(self.out.take());
         if changed {
             self.save();

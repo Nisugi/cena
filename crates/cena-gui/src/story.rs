@@ -69,6 +69,8 @@ pub(crate) struct Story {
     pub(crate) told: u64,
     /// Each stream's own lines, for a widget of it (`streams.rs`).
     pub(crate) streams: streams::Streams,
+    /// The game's last answer to a menu asked for (`play/links.rs`).
+    pub(crate) menu: Option<cena_session::Menu>,
     /// Inside a quiet command's window.
     quiet: bool,
     /// The last prompt shown; `>` before any.
@@ -123,11 +125,11 @@ impl Story {
                     self.since_prompt = true;
                 }
             }
-            Event::Frame(frame) => {
-                if let Frame::Prompt { text, .. } = frame.as_ref() {
-                    self.prompted(text);
-                }
-            }
+            Event::Frame(frame) => match frame.as_ref() {
+                Frame::Prompt { text, .. } => self.prompted(text),
+                Frame::MenuResponse(menu) => self.menu = Some(menu.clone()),
+                _ => {}
+            },
             Event::Notice(notice) => self.tell(notice.clone()),
             Event::Attention(call) => {
                 if let Some(alert) = &call.alert {

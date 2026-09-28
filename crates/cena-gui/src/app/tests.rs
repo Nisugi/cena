@@ -526,3 +526,25 @@ fn a_play_window_opens_the_menu_where_it_is_set() {
     assert_eq!(harness.state().menu.character(), None);
     assert_eq!(harness.state().menu.page(), Some("keys"));
 }
+
+/// A menu asked for on a click goes quietly: not echoed in the story, as a
+/// line the player typed is.
+#[test]
+fn a_menu_asked_for_is_not_echoed() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    let seat = sessions.seat_for_test(handle(), "Ashryn");
+    sessions.send_quietly(&seat, "_menu #456 1".to_owned());
+    sessions.send(&seat, "look".to_owned());
+    let typed: Vec<String> = lock(&seat.story)
+        .lines
+        .iter()
+        .filter_map(|(_, shown)| match shown {
+            crate::story::Shown::Typed { line, .. } => Some(line.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(typed, ["look"]);
+}

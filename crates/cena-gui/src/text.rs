@@ -2,12 +2,13 @@
 //! font. The colours were decided in the session, by the character's
 //! triggers (`plan/45` §0); this only reads them, never picks one.
 
-use cena_ui::StyledRun;
+use cena_ui::{RunLink, StyledRun};
 use egui::text::{LayoutJob, TextFormat};
-use egui::{Color32, TextStyle};
+use egui::{Color32, Pos2, TextStyle};
 
 /// `runs` as one job, in `style`'s fonts: a run's trigger colour, else its
-/// preset's ([`preset`]), else the strong colour for a bold run, else the
+/// preset's ([`preset`]), else a link's ([`LINK`]) where it is not bold (a
+/// creature keeps its own), else the strong colour for a bold run, else the
 /// text colour; monospace runs in the monospace font.
 pub(crate) fn job(runs: &[StyledRun], style: &egui::Style) -> LayoutJob {
     let body = TextStyle::Body.resolve(style);
@@ -33,6 +34,7 @@ pub(crate) fn job(runs: &[StyledRun], style: &egui::Style) -> LayoutJob {
                     .as_deref()
                     .and_then(hex)
                     .or_else(|| run.preset.as_deref().and_then(preset))
+                    .or_else(|| (run.link.is_some() && !run.bold).then_some(LINK))
                     .unwrap_or(plain),
                 background: run
                     .background
@@ -58,6 +60,65 @@ pub(crate) fn preset(name: &str) -> Option<Color32> {
         _ => None,
     }
 }
+
+/// A line whose runs have links in it, `job` drawn as a label is: a link
+/// under the pointer shows the hand, and the one clicked is returned with
+/// where. The runs are the job's, in order, their text its text.
+pub(crate) fn linked(
+    ui: &mut egui::Ui,
+    job: LayoutJob,
+    runs: &[StyledRun],
+) -> Option<(RunLink, Pos2)> {
+    let (at, galley, response) = egui::Label::new(job)
+        .sense(egui::Sense::click())
+        .selectable(false)
+        .layout_in_ui(ui);
+    let enabled = ui.is_enabled();
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, enabled, galley.text()));
+    if ui.is_rect_visible(response.rect) {
+        ui.painter().galley(
+            at,
+            std::sync::Arc::clone(&galley),
+            ui.visuals().text_color(),
+        );
+    }
+    let link_at = |pointer: Pos2| {
+        // The nearest boundary between characters, and the character under
+        // the pointer the one before it when the pointer is left of it: on
+        // the right half of a link's last letter, the boundary is past it.
+        let cursor = galley.cursor_from_pos(pointer - at);
+        let mut char_at: usize = cursor.index.into();
+        if char_at > 0 && (pointer - at).x < galley.pos_from_cursor(cursor).min.x {
+            char_at -= 1;
+        }
+        let byte = galley
+            .text()
+            .char_indices()
+            .nth(char_at)
+            .map_or(galley.text().len(), |(byte, _)| byte);
+        let mut start = 0;
+        runs.iter()
+            .find(|run| {
+                let span = start..start + run.text.len();
+                start = span.end;
+                span.contains(&byte)
+            })
+            .and_then(|run| run.link.clone())
+    };
+    if response.hover_pos().and_then(link_at).is_some() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    if !response.clicked() {
+        return None;
+    }
+    let pointer = response.interact_pointer_pos()?;
+    link_at(pointer).map(|link| (link, pointer))
+}
+
+/// A link's colour: `VellumFE`'s, its `links` and `commands` presets' `Link`
+/// (`defaults/globals/colors.toml`).
+pub(crate) const LINK: Color32 = Color32::from_rgb(0x47, 0x7a, 0xb3);
 
 /// Despana's amber: a room's name, a warning.
 pub(crate) const AMBER: Color32 = Color32::from_rgb(0xd7, 0xad, 0x63);
@@ -102,6 +163,38 @@ mod tests {
             [
                 Color32::from_rgb(0xff, 0x80, 0x00),
                 style.visuals.text_color()
+            ]
+        );
+    }
+
+    /// A link takes the link colour; a bold one (a creature) keeps the
+    /// strong colour, and a trigger's paint still wins.
+    #[test]
+    fn a_link_takes_the_link_colour() {
+        let style = egui::Style::default();
+        let link = Some(cena_ui::RunLink::Command {
+            command: "go north".to_owned(),
+        });
+        let linked = |bold: bool, color: Option<&str>| StyledRun {
+            bold,
+            link: link.clone(),
+            ..run("north", color)
+        };
+        let job = job(
+            &[
+                linked(false, None),
+                linked(true, None),
+                linked(false, Some("#ff8000")),
+            ],
+            &style,
+        );
+        let colors: Vec<Color32> = job.sections.iter().map(|s| s.format.color).collect();
+        assert_eq!(
+            colors,
+            [
+                LINK,
+                style.visuals.strong_text_color(),
+                Color32::from_rgb(0xff, 0x80, 0x00)
             ]
         );
     }

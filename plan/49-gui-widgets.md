@@ -780,6 +780,31 @@ Each BUILT the same day, each with its tests:
    none is let go by a press, none is movable or resizable, and Arrange cannot be turned
    on. It is kept with the character's layout (`Layout::locked`). The layout's keeping
    moved into `crates/cena-gui/src/layout/kept.rs` to make room.
+4. **Links, clickable, with their menus.** Relayed by the M7b session, in the author's
+   words: *"we need to implement links using the preset highlights, clickable with their
+   menus popping up."* The author, on the cost to Despana's wire: *"if despana quits
+   working thats ok ... Don't let despana limit you."* Built as `VellumFE` does it
+   (`frontend/gui/app.rs`, `resolve_link_dispatch`; `core/app_core/state/menus.rs`):
+   - A run keeps its link through `cena_ui::painted` (`StyledRun::link`, a `RunLink`),
+     which dropped it before, and a link run is never merged into the text beside it.
+     Added within wire version 1, as `color` was; Despana ignores it (`a2e4a35`).
+   - The story and a stream draw a link in `VellumFE`'s link colour, `#477ab3`, unless a
+     trigger or a preset coloured it or it is bold (a creature keeps its own). The
+     pointer shows a hand over one (`crates/cena-gui/src/text.rs`, `linked`).
+   - A command link (`<d>`) sends its command as typed. An object link whose `coord=`
+     names a command sends that. Any other object link asks for the object's menu,
+     `_menu #<id> <n>`, sent without an echo. The menu the game answers with `id=<n>`
+     pops up where the click was, labelled for the object by the model's dictionary
+     (`cena_ui::object_menu`), a category a level down under its name, closed. An entry
+     chosen sends its command; Escape or a press elsewhere closes it; an answer to
+     another request is not shown (`crates/cena-gui/src/play/links.rs`).
+   - A web address opens in the browser. Not tested: egui's opening it.
+   - **The model's menu was wrong, and a live menu shows it.** `@` was filled with the
+     `<mi noun=>`. The wiki says `@` is the object clicked
+     (`reference/wiki_clean/Wrayth protocol.txt:28`), and the author's own menu sends
+     `ask @ about %` with `noun="amplify"`: the item's noun is `%`. Fixed in `cce1b98`.
+   - The dictionary's 45 `_dialog` entries open dialogs of Wrayth's own, and are left
+     out, as `VellumFE` leaves them out.
 
 ### Stage E — drawers
 

@@ -341,6 +341,12 @@ impl Sessions {
     /// once; a line that may not have gone is said in Hydra's pane.
     pub(crate) fn send(&self, seat: &Arc<Seat>, line: String) {
         lock(&seat.story).typed(&line);
+        self.send_quietly(seat, line);
+    }
+
+    /// Send `line` as [`Self::send`] does, but not echoed in the story: a
+    /// menu asked for on a click, which the player did not type.
+    pub(crate) fn send_quietly(&self, seat: &Arc<Seat>, line: String) {
         let Some(generation) = lock(&seat.snapshot).as_ref().map(|shot| shot.generation) else {
             lock(&seat.story).tell(Notice::line(
                 NoticeKind::Warn,

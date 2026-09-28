@@ -31,7 +31,7 @@ pub(super) struct Drawing<'a> {
     /// How far each widget that counts what it says was read, by id.
     pub(super) read: &'a mut HashMap<u32, u64>,
     /// A line a widget asked to send this frame, as if typed.
-    pub(super) sent: Option<String>,
+    pub(super) sent: Option<crate::widget::Clicked>,
 }
 
 impl Drawing<'_> {

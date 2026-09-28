@@ -27,7 +27,7 @@ use super::{Play, PlayView, arrange, draw};
 use crate::layout::{Holder, Holds, Layout, SMALLEST};
 use crate::snap::{self, Guide};
 use crate::text::AMBER;
-use crate::widget::Seen;
+use crate::widget::{Clicked, Seen};
 
 /// How far outside a window its resize handles reach, so a press there
 /// reaches it.
@@ -171,8 +171,10 @@ impl Play {
                 drawn.push((id, shown.response.rect.translate(-offset)));
             }
         }
-        if let Some(line) = drawing.sent {
-            self.out = Some(super::Asked::Send(line));
+        match drawing.sent {
+            Some(Clicked::Send(line)) => self.out = Some(super::Asked::Send(line)),
+            Some(Clicked::Link(link, at)) => self.clicked(context, link, at),
+            None => {}
         }
         ((drawn, insides), released)
     }

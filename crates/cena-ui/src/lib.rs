@@ -7,6 +7,7 @@ mod hub;
 mod input;
 mod lines;
 mod merge;
+mod object_menu;
 mod projection;
 pub mod settings;
 mod view;
@@ -18,6 +19,7 @@ pub use lines::{MAX_LINE_BYTES, MAX_LINE_RUNS, painted, story_lines};
 pub use merge::{
     MATCH_WINDOW, MAX_MERGED_HISTORY, MERGED_STREAMS, MergedHistory, MergedLine, Merger,
 };
+pub use object_menu::{MenuEntry, MenuGroup, link_command, object_menu};
 pub use projection::{room_description, room_player};
 pub use view::{
     Closed, GroupView, HandView, HuntView, LifecycleView, MapLocationView, RoomItemView, RoomView,
