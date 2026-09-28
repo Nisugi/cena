@@ -10,3 +10,14 @@ echo "far: running=#{running?('go2')} exists=#{Script.exists?('go2')}"
 stop_script('go2')
 wait_while { Script.running?('go2') }
 echo "stopped: running=#{Script.running?('go2')}"
+# Killed at once: its run's number may not have come back yet.
+start_script('go2', ['far'])
+stop_script('go2')
+wait_while { Script.running?('go2') }
+echo 'stopped at once'
+# Killed while Hydra is still starting it.
+start_script('go2', ['slow'])
+sleep 0.1
+stop_script('go2')
+wait_while { Script.running?('go2') }
+echo 'stopped while starting'

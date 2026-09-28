@@ -82,27 +82,100 @@ module Hydra
       end
 
       # Have Hydra run `line`, and wait for it to end: whether the work was
-      # done. A script killed while it waits stops Hydra's run with it.
+      # done. A script killed while it waits stops Hydra's run with it,
+      # whether or not the run's number had come back yet.
       def perform(line)
-        answer = Hydra.connection.call('perform', { line: line })
+        started = Started.new
+        finished = false
+        Errands.later { started.answered(ask(line)) }
+        answer = started.wait
         if answer['refused']
+          finished = true
           respond "[#{Script.current&.name}: #{answer['refused']}]"
           return false
         end
-        run = answer['run']
-        finished = false
-        begin
-          ended = Runs.wait(run)
-          finished = true
-          ended['work'] == 'completed'
-        ensure
-          stop(run) unless finished
-        end
+        ended = Runs.wait(answer['run'])
+        finished = true
+        ended['work'] == 'completed'
+      ensure
+        started.abandon unless finished
       end
 
       private
 
-      def stop(run)
+      def ask(line)
+        Hydra.connection.call('perform', { line: line })
+      rescue Unanswered => e
+        { 'refused' => e.message }
+      end
+    end
+
+    # A run being started for a script: its answer, from the runner's own
+    # thread, and whether the script is still there to take it.
+    class Started
+      def initialize
+        @lock = Mutex.new
+        @answered = ConditionVariable.new
+        @answer = nil
+        @abandoned = false
+      end
+
+      # Hydra answered: a run started for a script already gone is stopped.
+      def answered(answer)
+        gone = @lock.synchronize do
+          @answer = answer
+          @answered.broadcast
+          @abandoned
+        end
+        Errands.stop(answer['run']) if gone && answer['run']
+      end
+
+      # The answer, once it came.
+      def wait
+        @lock.synchronize do
+          @answered.wait(@lock) until @answer
+          @answer
+        end
+      end
+
+      # The script is gone: its run is stopped, now or when its number comes.
+      def abandon
+        run = @lock.synchronize do
+          @abandoned = true
+          @answer && @answer['run']
+        end
+        Errands.stop(run) if run
+      end
+    end
+  end
+
+  # The runner's own errands for scripts, done by a thread outside every
+  # script: starting a built-in, and stopping one whose script was killed.
+  # Lich stops a script by killing its threads, so a call made from one can
+  # be cut short -- a second kill from its parent's cleanup, say -- and a
+  # run left going, or started with no one to learn its number. A script's
+  # thread only asks, and waits.
+  module Errands
+    @jobs = Queue.new
+    @thread = Thread.new do
+      loop do
+        job = @jobs.pop
+        begin
+          job.call
+        rescue StandardError => e
+          Lich.log "error: an errand: #{e.message}"
+        end
+      end
+    end
+
+    # Do `job` on the runner's own thread, in turn.
+    def self.later(&job)
+      @jobs.push(job)
+    end
+
+    # Stop run `run`.
+    def self.stop(run)
+      later do
         Hydra.connection.call('stop', { run: run })
       rescue Unanswered => e
         Lich.log "error: stopping run #{run}: #{e.message}"

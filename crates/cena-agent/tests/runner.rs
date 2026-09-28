@@ -42,12 +42,27 @@ struct World<'a> {
     walker: bool,
 }
 
+/// How many `go2 far` walks were started, and how many stopped.
+#[derive(Default)]
+struct Walks {
+    started: std::sync::atomic::AtomicUsize,
+    stopped: std::sync::atomic::AtomicUsize,
+}
+
+impl Walks {
+    fn counts(&self) -> (usize, usize) {
+        use std::sync::atomic::Ordering::SeqCst;
+        (self.started.load(SeqCst), self.stopped.load(SeqCst))
+    }
+}
+
 /// A stand-in for Hydra's travel, the binary's performer: `go2 229` walks
-/// north and arrives; `go2 far` walks until it is stopped, and says so in
-/// `stopped`.
+/// north and arrives; `go2 far` walks until it is stopped, counted in
+/// `walks`; `go2 slow` too, taking 300 ms to start, so a script can be
+/// killed before its run's number comes back.
 fn walker(
     handle: &cena_session::SessionHandle,
-    stopped: Arc<std::sync::atomic::AtomicBool>,
+    walks: Arc<Walks>,
 ) -> cena_session::operation::Performer {
     use cena_session::operation::{Ended, Performer, Started, Work};
     let walking = handle.clone();
@@ -61,15 +76,25 @@ fn walker(
             }
         }),
         start: Arc::new(move |line: &str, _reporter| {
-            let (walking, stopped) = (walking.clone(), Arc::clone(&stopped));
+            let (walking, walks) = (walking.clone(), Arc::clone(&walks));
             let halt = Arc::new(tokio::sync::Notify::new());
             let heard = Arc::clone(&halt);
-            let far = line == "go2 far";
+            let far = line == "go2 far" || line == "go2 slow";
+            if line == "go2 slow" {
+                std::thread::sleep(Duration::from_millis(300));
+            }
+            if far {
+                walks
+                    .started
+                    .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            }
             Started {
                 ended: Box::pin(async move {
                     if far {
                         heard.notified().await;
-                        stopped.store(true, std::sync::atomic::Ordering::SeqCst);
+                        walks
+                            .stopped
+                            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                         return Ended::plainly(Work::Interrupted, "stopped");
                     }
                     walking
@@ -92,8 +117,8 @@ fn walker(
 struct Running {
     handle: cena_session::SessionHandle,
     transcript: TranscriptHandle,
-    /// Whether the stand-in travel was stopped mid-walk.
-    walk_stopped: Arc<std::sync::atomic::AtomicBool>,
+    /// The stand-in travel's far walks, started and stopped.
+    walks: Arc<Walks>,
     legacy: Receiver<Event>,
     runners: Runners,
     token: String,
@@ -119,7 +144,7 @@ impl Running {
             answers,
             atlas,
             before,
-            walker: walks,
+            walker: walking,
         } = world;
         let ruby = find_ruby()?;
         let (source, transcript) =
@@ -132,10 +157,10 @@ impl Running {
         let observer = session.observer();
         let (_, legacy) = session.subscribe();
         tokio::spawn(session.into_actor().run());
-        let walk_stopped = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        if walks {
+        let walks = Arc::new(Walks::default());
+        if walking {
             handle
-                .set_performer(walker(&handle, Arc::clone(&walk_stopped)))
+                .set_performer(walker(&handle, Arc::clone(&walks)))
                 .then_some(())?;
         }
         for line in before {
@@ -183,7 +208,7 @@ impl Running {
         Some(Self {
             handle,
             transcript,
-            walk_stopped,
+            walks,
             legacy,
             runners,
             token,
@@ -546,6 +571,8 @@ async fn a_script_runs_go2_as_hydras_travel() {
         "[builtintest: walked true: now 229]",
         "[builtintest: far: running=true exists=true]",
         "[builtintest: stopped: running=false]",
+        "[builtintest: stopped at once]",
+        "[builtintest: stopped while starting]",
     ] {
         assert!(
             heard.told.iter().any(|line| line == expected),
@@ -553,20 +580,29 @@ async fn a_script_runs_go2_as_hydras_travel() {
             heard.told
         );
     }
-    for _ in 0..50 {
-        if running
-            .walk_stopped
-            .load(std::sync::atomic::Ordering::SeqCst)
-        {
+    // Every far walk a killed script started is stopped: the one it waited
+    // on, the one killed at once, and the slow one killed before its run's
+    // number came back. Over HTTP from the runner's own thread, which may still be
+    // starting the second when the script has gone: the counts must hold
+    // equal for 300 ms, within ten seconds for a busy machine.
+    let mut counts = running.walks.counts();
+    let mut steady = 0;
+    for _ in 0..500 {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        let now = running.walks.counts();
+        steady = if now == counts && now.0 >= 2 && now.0 == now.1 {
+            steady + 1
+        } else {
+            0
+        };
+        counts = now;
+        if steady == 15 {
             break;
         }
-        tokio::time::sleep(Duration::from_millis(20)).await;
     }
     assert!(
-        running
-            .walk_stopped
-            .load(std::sync::atomic::Ordering::SeqCst),
-        "killing the script stopped travel's walk"
+        counts.0 >= 2 && counts.0 == counts.1,
+        "killing the script stops travel's walk: {counts:?} (started, stopped)"
     );
     running.end().await;
     let _ = std::fs::remove_dir_all(&dir);
