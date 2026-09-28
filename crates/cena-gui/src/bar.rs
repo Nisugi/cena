@@ -108,9 +108,6 @@ impl Fills {
     }
 }
 
-/// How thick an across bar is: one line.
-const THICK: f32 = 18.0;
-
 /// The least a bar is, either way, however little room it is given.
 const LEAST: f32 = 8.0;
 
@@ -246,9 +243,10 @@ impl<'a> Bar<'a> {
             .fill(Color32::from_rgb(red, green, blue))
     }
 
-    /// Sized to what `ui` has left, its text outside it counted. Across, it is
-    /// as wide as the room and one line thick; upright, as wide and as tall as
-    /// the room, so the space it is given is its shape.
+    /// Sized to what `ui` has left, its text outside it counted: as wide and
+    /// as tall as the room, across or upright, so the space it is given is its
+    /// shape (the author, 2026-09-28: *"if I make a progress bar horizontal
+    /// fill and make it taller, the bar doesn't get taller, it should"*).
     pub fn fitted(mut self, ui: &egui::Ui) -> Self {
         let room = ui.available_size();
         let words = self.words();
@@ -270,12 +268,7 @@ impl<'a> Bar<'a> {
             Place::Left | Place::Right => Vec2::new(room.x - text.x, room.y),
             Place::Inside | Place::Hidden => room,
         };
-        let height = if self.fills.upright() {
-            left.y
-        } else {
-            left.y.min(THICK)
-        };
-        self.size = Some(Vec2::new(left.x.max(LEAST), height.max(LEAST)));
+        self.size = Some(Vec2::new(left.x.max(LEAST), left.y.max(LEAST)));
         self
     }
 
@@ -560,6 +553,26 @@ mod tests {
             Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(100.0, 10.0))
         );
         assert_eq!(filled(bar, Fills::Right, 250), bar, "past 100 is full");
+    }
+
+    /// A fitted bar is as tall and as wide as the space it is given, across
+    /// or upright: a taller cell makes a thicker bar.
+    #[test]
+    fn a_fitted_bar_takes_the_space_it_is_given_either_way() {
+        use egui_kittest::kittest::Queryable as _;
+        for fills in [Fills::Right, Fills::Up] {
+            let mut harness = egui_kittest::Harness::builder()
+                .with_size((200.0, 120.0))
+                .build_ui(move |ui| {
+                    ui.add(Bar::new("HP", Some(amount(40))).fills(fills).fitted(ui));
+                });
+            harness.run();
+            let drawn = harness.get_by_label("HP 40%").rect();
+            assert!(
+                drawn.height() > 90.0 && drawn.width() > 170.0,
+                "{fills:?}: {drawn:?}"
+            );
+        }
     }
 
     /// A frame's corners keep their size and its middle is left clear,
