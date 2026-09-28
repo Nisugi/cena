@@ -330,8 +330,10 @@ pub struct SessionActor<S: ByteSource> {
 struct Quitting {
     /// When to stop waiting for the server's EOF.
     deadline: tokio::time::Instant,
-    /// Where the verdict goes. Taken by whichever path resolves first.
-    reply: Option<tokio::sync::oneshot::Sender<crate::command::Farewell>>,
+    /// Every caller waiting for the verdict: the quit that sent the command,
+    /// and any asked while it waited. Answered all at once, with the one
+    /// verdict, by whichever path resolves first; the loop ends with it.
+    replies: Vec<tokio::sync::oneshot::Sender<crate::command::Farewell>>,
 }
 
 impl<S: ByteSource> SessionActor<S> {

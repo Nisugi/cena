@@ -397,3 +397,44 @@ async fn a_cancel_interrupts_a_stalled_write() {
         "the command caught in the write is answered, not dropped"
     );
 }
+
+/// Two quits asked before the server answers are both told its answer: the
+/// command goes out once, and `Acknowledged` means the server closed -- for
+/// the second caller too, which was told so at once while the server had
+/// said nothing (the crate review of 2026-09-28, R7).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn two_quits_share_the_servers_answer() {
+    for closes in [true, false] {
+        let (source, transcript) = AnsweringSource::new(PROMPT);
+        let session = Session::new(source);
+        let handle = session.handle();
+        let task = tokio::spawn(session.into_actor().run());
+
+        let quit = |handle: cena_session::SessionHandle| {
+            tokio::spawn(async move {
+                tokio::time::timeout(Duration::from_hours(1), handle.quit(EXIT_TIMEOUT)).await
+            })
+        };
+        let first = quit(handle.clone());
+        while transcript.written_count() == 0 {
+            tokio::task::yield_now().await;
+        }
+        let second = quit(handle.clone());
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(!second.is_finished(), "the second waits for the server too");
+        if closes {
+            transcript.hang_up();
+        }
+        let expected = if closes {
+            Farewell::Acknowledged
+        } else {
+            Farewell::TimedOut
+        };
+        for asked in [first, second] {
+            let farewell = asked.await.expect("no panic").expect("answered in time");
+            assert_eq!(farewell, expected, "the server closes: {closes}");
+        }
+        assert_eq!(transcript.lines(), ["quit"], "sent once");
+        let _ = task.await;
+    }
+}

@@ -267,11 +267,13 @@ impl<S: ByteSource> SessionActor<S> {
     /// what observes the close -- see [`SessionActor::quitting`]. What this
     /// does is put the command on the wire and arm the deadline.
     ///
-    /// A second quit while one is pending is ignored rather than re-sent: the
-    /// server has already been asked, and sending `quit` twice against a
-    /// type-ahead buffer of 2 would spend a slot for nothing (`plan/16` §5.2b).
-    /// The newer caller is answered when the first one resolves, so nobody is
-    /// left waiting on a reply that never comes.
+    /// A second quit while one is pending is not re-sent: the server has
+    /// already been asked, and sending `quit` twice against a type-ahead
+    /// buffer of 2 would spend a slot for nothing (`plan/16` §5.2b). The newer
+    /// caller waits for the first one's verdict and is told the same, so
+    /// `Acknowledged` always means the server closed. It was told
+    /// `Acknowledged` at once, while the server had said nothing
+    /// (the crate review of 2026-09-28, R7).
     /// Returns `false` if the write failed, which means **the connection is
     /// gone** and the caller must end it rather than keep reading.
     pub(super) async fn begin_quit(
@@ -280,14 +282,8 @@ impl<S: ByteSource> SessionActor<S> {
         reply: tokio::sync::oneshot::Sender<crate::command::Farewell>,
     ) -> bool {
         if let Some(pending) = self.quitting.as_mut() {
-            // Already asked. Whoever resolves first answers both -- but only
-            // one sender fits, so the later caller is told the same thing
-            // immediately rather than being dropped silently.
-            let _ = reply.send(if pending.reply.is_some() {
-                crate::command::Farewell::Acknowledged
-            } else {
-                crate::command::Farewell::Unsent
-            });
+            // Already asked: this caller waits for the same verdict.
+            pending.replies.push(reply);
             return true;
         }
 
@@ -331,7 +327,7 @@ impl<S: ByteSource> SessionActor<S> {
                 .unwrap_or_else(|| {
                     tokio::time::Instant::now() + std::time::Duration::from_hours(24)
                 }),
-            reply: Some(reply),
+            replies: vec![reply],
         });
         true
     }

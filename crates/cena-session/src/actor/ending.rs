@@ -183,14 +183,18 @@ impl<S: ByteSource> SessionActor<S> {
     /// ambiguous -- an `Ok(0)` that is either the server hanging up or the
     /// server doing exactly what it was asked.
     ///
-    /// Idempotent: the reply is `take`n, so a quit answered by the EOF is not
-    /// answered again by the deadline.
+    /// Idempotent: the callers are taken, so a quit answered by the EOF is
+    /// not answered again by the deadline. Every caller waiting is told the
+    /// one verdict (the crate review of 2026-09-28, R7).
     pub(super) fn finish_quit(&mut self, farewell: crate::command::Farewell) -> bool {
         let Some(pending) = self.quitting.as_mut() else {
             return false;
         };
-        if let Some(reply) = pending.reply.take() {
+        let replies = std::mem::take(&mut pending.replies);
+        if !replies.is_empty() {
             self.log(&format!("quit: {farewell:?}"));
+        }
+        for reply in replies {
             let _ = reply.send(farewell);
         }
         true
