@@ -157,6 +157,9 @@ impl Seen {
 
 /// Put `snapshot` on the seat, and its card, and wake the window.
 fn show(seat: &Seat, snapshot: Snapshot, window: &Wake) {
+    // The feed wakes every 100 ms while a roundtime runs, so the live `R>`
+    // is settled within a tick of its end.
+    lock(&seat.story).settle(&snapshot.state);
     let view = SessionView::project(
         &snapshot.state,
         &snapshot.triggers,

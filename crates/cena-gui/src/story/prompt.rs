@@ -5,6 +5,17 @@
 //! the player types echoed after the last prompt shown, `>look`
 //! (`core/app_core/commands.rs`, the echo). The author, 2026-09-28: *"there
 //! is no prompt"*.
+//!
+//! Where `VellumFE` stops short, the live prompt -- the last line, nothing
+//! printed after it -- drops its `R` once roundtime has run out
+//! ([`Story::settle`]). The author, the same day: *"It shows the R> to indicate
+//! roundtime, but roundtime ending doesn't send a prompt to update that ...
+//! because the game also doesn't send a message saying hey you're out of
+//! roundtime, it tells you up front exactly when it will end."* That is
+//! `plan/15` §2a.1: a prompt gives onset only. The end is the model's clock
+//! against `<roundTime>`.
+
+use cena_session::GameState;
 
 use super::{Shown, Story};
 
@@ -26,5 +37,25 @@ impl Story {
             self.push(Shown::Prompt(text.to_owned()));
         }
         self.since_prompt = false;
+    }
+
+    /// The live prompt as the clock has it now: `R>` becomes `>` once
+    /// `state`'s roundtime has run out. Only `R`: the other letters end with
+    /// an action, and an action brings a prompt. The scrollback's prompts stay
+    /// as printed, each true when it was; an unknown clock changes nothing.
+    /// What a new prompt is compared with, and an echo follows, is the prompt
+    /// as shown.
+    pub(crate) fn settle(&mut self, state: &GameState) {
+        if state.in_roundtime() != Some(false) {
+            return;
+        }
+        let Some(Shown::Prompt(text)) = self.lines.back_mut() else {
+            return;
+        };
+        if !text.contains('R') {
+            return;
+        }
+        *text = text.replacen('R', "", 1);
+        self.prompt = Some(text.clone());
     }
 }

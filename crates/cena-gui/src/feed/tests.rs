@@ -296,3 +296,39 @@ fn a_retry_says_its_attempt_and_delay() {
         }
     );
 }
+
+/// The live `R>` is settled when a later snapshot says roundtime has run
+/// out, with no event to say so: the game sends no prompt for its end
+/// (`plan/15` §2a.1).
+#[tokio::test(start_paused = true)]
+async fn the_live_prompt_settles_as_roundtime_ends() {
+    let ending = |cursor, ends| {
+        let mut shot = snapshot(cursor, State::Ready, None);
+        shot.state.apply(&cena_session::Frame::Prompt {
+            time: "1000".to_owned(),
+            text: "R>".to_owned(),
+        });
+        shot.state.roundtime_ends = Some(ends);
+        shot
+    };
+    // Out of roundtime, so nothing is asked for until the events; then in
+    // it, asked after each tick; then out again.
+    let script = Script::new([
+        Ok(ending(0, 1_000)),
+        Ok(ending(2, 1_003)),
+        Ok(ending(2, 1_000)),
+    ]);
+    let (seat, _task) = start(&script);
+    settle().await;
+    let _ = script.events.send(observed(1, said("", "You swing.")));
+    let prompt = cena_session::Frame::Prompt {
+        time: "1000".to_owned(),
+        text: "R>".to_owned(),
+    };
+    let _ = script
+        .events
+        .send(observed(2, Event::Frame(Box::new(prompt))));
+    settle().await;
+    let last = lock(&seat.story).lines.back().cloned();
+    assert_eq!(last, Some(crate::story::Shown::Prompt(">".to_owned())));
+}

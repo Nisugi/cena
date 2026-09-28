@@ -190,6 +190,57 @@ fn a_prompt_follows_what_the_game_said() {
     assert_eq!(story.heard, 2, "a prompt is not a line heard");
 }
 
+/// The live prompt drops its `R` once roundtime has run out, the game
+/// sending no prompt for that (`plan/15` §2a.1): not before, not with the
+/// clock unknown, not in the scrollback. A bare `>` after it is not printed
+/// again, and the echo follows the prompt as shown.
+#[test]
+fn the_live_prompt_drops_its_r_when_roundtime_ends() {
+    let clock = |ends: u32| {
+        let mut state = GameState::default();
+        state.apply(&Frame::Prompt {
+            time: "1000".to_owned(),
+            text: ">".to_owned(),
+        });
+        state.roundtime_ends = Some(ends);
+        state
+    };
+    let mut story = Story::default();
+    for event in [
+        said("", "You swing."),
+        prompt("R>"),
+        said("", "You swing again."),
+        prompt("R>"),
+    ] {
+        story.hear(&observed(0, event), None);
+    }
+    story.settle(&GameState::default());
+    assert_eq!(
+        texts(&story).last().map(String::as_str),
+        Some("R>"),
+        "no clock"
+    );
+    story.settle(&clock(1030));
+    assert_eq!(
+        texts(&story).last().map(String::as_str),
+        Some("R>"),
+        "still in it"
+    );
+    story.settle(&clock(1000));
+    story.hear(&observed(0, prompt(">")), None);
+    story.typed("look");
+    assert_eq!(
+        texts(&story),
+        ["You swing.", "R>", "You swing again.", ">", ">look"]
+    );
+    let mut hidden = Story::default();
+    for event in [said("", "You hide."), prompt("HR>")] {
+        hidden.hear(&observed(0, event), None);
+    }
+    hidden.settle(&clock(1000));
+    assert_eq!(texts(&hidden), ["You hide.", "H>"], "only the R");
+}
+
 #[test]
 fn a_hole_is_marked_once_and_the_story_is_bounded() {
     let mut story = Story::default();
