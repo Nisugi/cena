@@ -16,7 +16,7 @@
 //! The room *description* is genuinely text: it is prose the game wrote, and
 //! there is nothing else it could be. What makes it typed rather than raw is
 //! that it arrives as a [`Frame::Component`] with `id = "room desc"` and a
-//! parsed [`Runs`] body -- the component tells the
+//! parsed [`Runs`](cena_protocol::runs::Runs) body -- the component tells the
 //! consumer what the prose *is*, and the body has already had its markup
 //! resolved. Vellum stores the inner XML string verbatim here
 //! (`reference/VellumFE/src/parser.rs:803-832`); `Runs` is the fix, and it is
@@ -35,7 +35,6 @@
 use crate::effects::Effects;
 use crate::status::StatusInfo;
 use cena_protocol::Frame;
-use cena_protocol::runs::Runs;
 use idle::{IDLE_WARNING, IdleWarning};
 use std::time::Instant;
 
@@ -273,18 +272,10 @@ pub struct GameState {
     stream_windows: stream_windows::Windows,
     /// Routed and discarded line tallies; see [`streams::LineTally`].
     tally: streams::LineTally,
-    /// The line being assembled for each stream, not yet terminated.
-    ///
-    /// **A frame boundary is not a line boundary.** The parser emits one run per
-    /// markup boundary, so `  a` + `<a>pebbled grey leather doublet</a>` is two
-    /// frames of one line -- the split that printed the author's worn inventory
-    /// down the screen. `TextFrame`'s `ends_line` is what says where a line really
-    /// ends, and this holds the runs until it does.
-    ///
-    /// Keyed by stream because two streams can be mid-line at once: a
-    /// `pushStream` can interrupt an unterminated run and the enclosing stream
-    /// resumes afterwards.
-    pending: std::collections::BTreeMap<String, Runs>,
+    /// The line being assembled for each stream, not yet terminated
+    /// ([`Unfinished`](crate::line::Unfinished): a frame boundary is not a
+    /// line boundary).
+    pending: crate::line::Unfinished,
     /// The combat state machine (`state/combat/tracker.rs`). Private: its
     /// inputs are the chunk and the clock, both owned here.
     combat: combat::CombatTracker,
@@ -476,7 +467,7 @@ impl GameState {
             // measurement that chose this over clearing on push.
             Frame::ClearStream { id } => {
                 self.clear_stream(id);
-                self.pending.remove(id);
+                self.pending.clear_stream(id);
                 if id == known_spells::STREAM {
                     self.known_spells.begin();
                 }

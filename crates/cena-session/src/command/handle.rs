@@ -291,8 +291,12 @@ impl SessionHandle {
     }
 
     /// Attach the player's Lich (`crate::script::lich`).
-    pub(crate) fn attach_lich(&self, tap: crate::script::lich::Tap) -> bool {
-        self.events.attach_lich(tap)
+    pub(crate) fn attach_lich(
+        &self,
+        tap: crate::script::lich::Tap,
+        text: crate::script::lich::LichText,
+    ) -> bool {
+        self.events.attach_lich(tap, text)
     }
 
     /// Hand a typed line to the player's Lich, if one is attached.

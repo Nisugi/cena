@@ -106,6 +106,7 @@ mod gate;
 mod handle;
 mod hooked;
 mod io;
+mod lich_text;
 mod line;
 mod owed;
 mod readiness;
@@ -227,10 +228,14 @@ pub struct SessionActor<S: ByteSource> {
     /// was sent to modify (review SE-5). It was a bare count until review
     /// finding 1 showed the count assumed an order; see `owed.rs`.
     owed: owed::OwedPrompts,
-    /// Whether the open window is a quiet command's (`Event::Quiet`, `io.rs`).
-    quiet_window: bool,
+    /// The open window is a quiet command's (`Event::Quiet`, `io.rs`).
+    quiet_window: Option<lich_text::QuietWindow>,
     /// What a viewer is shown, held for a script runner's display hooks.
     held: hooked::Held,
+    /// What the player's Lich shows, shown in place of the game's text
+    /// while it runs (`lich_text.rs`). The session's, taken from its
+    /// publisher, and put back there when this connection ends.
+    lich_text: Option<crate::script::lich::LichText>,
     /// Whether this connection's login burst has finished: `Syncing` becomes
     /// `Ready` on the first prompt after `<endSetup/>` (`readiness.rs`).
     readiness: readiness::Readiness,
@@ -375,8 +380,9 @@ impl<S: ByteSource> SessionActor<S> {
             lifecycle: State::Connecting,
             queue: CommandQueue::new(),
             owed: owed::OwedPrompts::default(),
-            quiet_window: false,
+            quiet_window: None,
             held: hooked::Held::default(),
+            lich_text: None,
             readiness: readiness::Readiness::default(),
             commands,
             events,
@@ -421,6 +427,7 @@ impl<S: ByteSource> SessionActor<S> {
         // because the loop cannot fall through.
         let reason;
         loop {
+            self.take_lich_text();
             // Drain the queue before waiting. A command admitted on the last
             // turn must go out before the loop parks in a read, or a manual
             // command typed into a quiet session would wait READ_DEADLINE.
@@ -491,6 +498,14 @@ impl<S: ByteSource> SessionActor<S> {
                 // Only while lines are held for a script's display hooks.
                 () = hooked::wake(self.events.hooks(), self.held.due()), if self.held.is_waiting() => {
                     self.show_held(false);
+                }
+
+                // Only while the player's Lich shows the text.
+                shown = lich_text::next(&mut self.lich_text), if self.lich_text.is_some() => {
+                    match shown {
+                        Some(chunk) => self.show_lichs(&chunk),
+                        None => self.lich_text = None,
+                    }
                 }
 
                 request = self.observations.requests.recv() => {

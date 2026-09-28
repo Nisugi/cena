@@ -27,8 +27,9 @@
 //!   and Hydra's own lines that start with Lich's `;`
 //!   (`cena_session::script::lich`, the player's typing);
 //! - what it would show a frontend comes out of its standard output, which
-//!   is to be the character's text (`plan/51` §7, step 3). Until then it is
-//!   read and let go, so Lich never waits to write it.
+//!   is carried to the session as it came, to be the character's text
+//!   ([`cena_session::script::lich::Shown`]). Always read, so Lich never
+//!   waits to write it.
 //!
 //! Closing its standard input stops it
 //! (`reference/lich-5/lib/common/pipe_io.rb`).
@@ -41,12 +42,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use cena_session::script::Sending;
-use cena_session::script::lich::{Attached, LICH_SYMBOL, LichDoor, LineFrom, WIRE_CHUNKS};
+use cena_session::script::lich::{Attached, LICH_SYMBOL, LichDoor, LineFrom, Shown, WIRE_CHUNKS};
 use cena_session::{Notice, NoticeKind};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::process::{Child, ChildStderr, ChildStdin, Command};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -224,6 +225,7 @@ async fn relay(
     Attached {
         mut wire,
         mut typing,
+        shown,
     }: Attached,
     stop: &CancellationToken,
 ) -> Ended {
@@ -243,12 +245,12 @@ async fn relay(
         Ok(child) => child,
         Err(why) => return Ended::Failed(format!("{}: {why}", launch.ruby.display())),
     };
-    let (Some(mut stdin), Some(mut stdout), Some(stderr)) =
+    let (Some(mut stdin), Some(stdout), Some(stderr)) =
         (child.stdin.take(), child.stdout.take(), child.stderr.take())
     else {
         return Ended::Failed("its standard streams were not piped".to_owned());
     };
-    tokio::spawn(async move { tokio::io::copy(&mut stdout, &mut tokio::io::sink()).await });
+    show(stdout, shown, door.clone());
     let errors = keep_errors(stderr);
     if let Err(why) = stdin
         .write_all(format!("{key}\n{VERSION}\n").as_bytes())
@@ -401,6 +403,33 @@ async fn pass_on(door: &LichDoor, line: &str) {
         NoticeKind::Warn,
         format!("Lich's line was not sent ({why}): {line}"),
     ));
+}
+
+/// Carries what Lich writes to its standard output to the session, as it
+/// wrote it, until it ends. What the session had no room for is not shown,
+/// and the player is told, once.
+fn show(mut stdout: ChildStdout, shown: Shown, door: LichDoor) {
+    tokio::spawn(async move {
+        let mut buf = vec![0; 8 * 1024];
+        let mut told = false;
+        loop {
+            match stdout.read(&mut buf).await {
+                Ok(0) | Err(_) => return,
+                Ok(n) => {
+                    if !shown.show(buf[..n].to_vec()) && !told {
+                        told = true;
+                        door.say(Notice::line(
+                            NoticeKind::Warn,
+                            format!(
+                                "Some of what Lich showed was not shown: the character had \
+                                 {WIRE_CHUNKS} chunks of it unread."
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+    });
 }
 
 /// Keeps Lich's last [`ERRORS_KEPT`] lines of standard error.

@@ -42,7 +42,24 @@ pub enum Event {
     /// events published since, hidden or changed by them. Lines still come
     /// in the order the game sent them.
     /// `Arc` because every subscriber shares one allocation.
+    ///
+    /// **While the player's Lich runs** (`crate::script::lich`), these are
+    /// Lich's lines, what it would show a frontend, and never the game's: its
+    /// squelches hold, its scripts' messages show, and the game's line is
+    /// still the model's, the log's, a script runner's and what the triggers
+    /// act on. Sorted and painted as the game's would be. A quiet command's
+    /// report is left out of them here, since Lich's copy of it comes after
+    /// the window, and [`Event::Quiet`] is not published.
     Line(std::sync::Arc<cena_model::line::Line>),
+    /// The prompt a viewer shows, ending what was shown before it: the
+    /// game's, `>` or `HR>`, published right after its [`Event::Frame`], or,
+    /// while the player's Lich runs, the one Lich passed on, after Lich's
+    /// lines ([`Event::Line`]). What a story draws its prompt from, so it
+    /// lands after the lines it ends: Lich's come later than the game's frame.
+    ///
+    /// Not held for a script runner's display hooks, as lines are: with lines
+    /// held, it may come before them.
+    Prompt(String),
     /// A frame finished a line of game text, **as the game sent it**: the
     /// model's line before `;sorter` and the character's triggers answer it,
     /// published just before the [`Event::Line`]s it becomes (`plan/46`

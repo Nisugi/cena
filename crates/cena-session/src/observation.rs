@@ -187,6 +187,9 @@ pub(crate) struct EventPublisher {
     /// Here for `sorting`'s reasons: Lich stays up through a reconnect, and
     /// sees the new login as more of the stream.
     lich: Arc<Mutex<Option<crate::script::lich::Tap>>>,
+    /// What that Lich shows, waiting for the actor that shows it: a new
+    /// Lich's until the actor's next turn, and between connections.
+    lich_text: Arc<crate::script::lich::Parked>,
 }
 
 /// A character's triggers and their memory, replaced together: new
@@ -226,27 +229,53 @@ impl EventPublisher {
             hooks: Arc::default(),
             triggers: Arc::default(),
             lich: Arc::default(),
+            lich_text: Arc::default(),
         }
     }
 
-    /// Attach the player's Lich from now on. False, and `tap` unused, while
-    /// another is still attached: one Lich per character.
-    pub(crate) fn attach_lich(&self, tap: crate::script::lich::Tap) -> bool {
+    /// Attach the player's Lich from now on, and what it shows. False, and
+    /// both unused, while another is still attached: one Lich per character.
+    pub(crate) fn attach_lich(
+        &self,
+        tap: crate::script::lich::Tap,
+        text: crate::script::lich::LichText,
+    ) -> bool {
         let mut lich = self.lich.lock().unwrap_or_else(PoisonError::into_inner);
         if lich.as_ref().is_some_and(crate::script::lich::Tap::is_open) {
             return false;
         }
         *lich = Some(tap);
+        self.lich_text.park(text);
         true
     }
 
+    /// Where what the attached Lich shows waits for an actor.
+    pub(crate) fn lich_text(&self) -> &crate::script::lich::Parked {
+        &self.lich_text
+    }
+
+    /// Whether a Lich is attached, and so shows the character's text.
+    pub(crate) fn lich_attached(&self) -> bool {
+        self.lich
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(crate::script::lich::Tap::is_open)
+    }
+
     /// Copy a chunk of the game's bytes, as it arrived, to the Lich attached,
-    /// if one is. A Lich that stopped, or fell behind, is let go here.
-    pub(crate) fn wire(&self, chunk: &[u8]) {
+    /// if one is: whether one took it, and so shows what it says. A Lich that
+    /// stopped, or fell behind, is let go here.
+    pub(crate) fn wire(&self, chunk: &[u8]) -> bool {
         let mut lich = self.lich.lock().unwrap_or_else(PoisonError::into_inner);
-        if lich.as_ref().is_some_and(|tap| !tap.copy(chunk)) {
+        let Some(tap) = lich.as_ref() else {
+            return false;
+        };
+        let took = tap.copy(chunk);
+        if !took {
             *lich = None;
         }
+        took
     }
 
     /// Hand a line the player typed to the Lich attached: `None` with none

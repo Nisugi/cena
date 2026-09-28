@@ -96,6 +96,11 @@ impl<S: ByteSource> SessionActor<S> {
             self.observations
                 .finish(self.events.snapshot(&self.state, self.lifecycle));
         }
+        // The player's Lich outlives the connection: what it shows waits for
+        // the next one's actor.
+        if let Some(text) = self.lich_text.take() {
+            self.events.lich_text().put_back(text);
+        }
         SessionEnd {
             recorder: self.recorder,
             state: self.state,

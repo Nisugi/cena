@@ -101,6 +101,7 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
             Ok(
                 Event::Frame(_)
                 | Event::Line(_)
+                | Event::Prompt(_)
                 | Event::Heard(_)
                 | Event::Combat(_)
                 | Event::Quiet(_)

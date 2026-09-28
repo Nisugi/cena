@@ -29,9 +29,14 @@ struct Character {
 }
 
 impl Character {
-    fn start(launch: Launch) -> Self {
+    /// The game answers each of `answers`' commands with its bytes, and the
+    /// rest with a prompt.
+    fn start(launch: Launch, answers: &[(&str, &[u8])]) -> Self {
         let (source, transcript) =
             AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+        for (command, reply) in answers {
+            transcript.answer(command, reply);
+        }
         let session = Session::new(source);
         let handle = session.handle();
         let (_, events) = session.subscribe();
@@ -96,6 +101,20 @@ impl Character {
         .await
     }
 
+    /// The lines a viewer is shown, from here on until one says `words`.
+    async fn shown_until(&mut self, words: &str) -> Vec<String> {
+        let mut shown = Vec::new();
+        self.next(|event| match event {
+            Event::Line(line) => {
+                shown.push(line.text());
+                line.text().contains(words).then_some(())
+            }
+            _ => None,
+        })
+        .await;
+        shown
+    }
+
     async fn stop(self) -> Option<Ended> {
         self.stop.cancel();
         tokio::time::timeout(DEADLINE, self.relay).await.ok()?.ok()
@@ -119,7 +138,7 @@ fn standin(ruby: PathBuf) -> Launch {
 #[tokio::test(flavor = "multi_thread")]
 async fn lich_takes_hydra_as_its_game() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
-    let mut character = Character::start(standin(ruby));
+    let mut character = Character::start(standin(ruby), &[]);
 
     let told = character.told("Lich's commands can't be reached").await;
     assert!(told.is_some_and(|line| line.contains("such as .")));
@@ -145,11 +164,29 @@ async fn lich_takes_hydra_as_its_game() {
     assert_eq!(character.stop().await, Some(Ended::Stopped));
 }
 
+/// What Lich shows is the character's text: the game's, less the line it
+/// hid, and what its script says. The game's own copy is not shown too.
+#[tokio::test(flavor = "multi_thread")]
+async fn what_lich_shows_is_the_characters_text() {
+    let ruby = find_ruby().expect("Ruby, which CI installs");
+    let look = b"The room.\r\nA line to hide me.\r\n<prompt time=\"2\">&gt;</prompt>\r\n";
+    // Its script looks once it has seen the login's prompt.
+    let mut character = Character::start(standin(ruby), &[("look", look)]);
+    assert_eq!(character.shown_until("The room").await, ["The room."]);
+    character.types(";echo Hello from Lich.").await;
+    assert_eq!(
+        character.shown_until("Hello").await,
+        ["Hello from Lich."],
+        "the hidden line never, and the game's copy of neither"
+    );
+    assert_eq!(character.stop().await, Some(Ended::Stopped));
+}
+
 /// One Lich per character: a second is refused while the first runs.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_second_lich_for_a_character_is_refused() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
-    let character = Character::start(standin(ruby.clone()));
+    let character = Character::start(standin(ruby.clone()), &[]);
     let door = character.handle.lich_door();
     let second = run(door, standin(ruby), CancellationToken::new()).await;
     assert_eq!(second, Ended::Busy);
@@ -186,15 +223,18 @@ async fn the_real_lich() {
         args.push(OsString::from(format!("--{name}={}", folder.display())));
     }
     let refuse = OsString::from("http://127.0.0.1:9");
-    let mut character = Character::start(Launch {
-        ruby,
-        lich: lich.join("lich.rbw"),
-        args,
-        env: vec![
-            ("https_proxy".into(), refuse.clone()),
-            ("http_proxy".into(), refuse),
-        ],
-    });
+    let mut character = Character::start(
+        Launch {
+            ruby,
+            lich: lich.join("lich.rbw"),
+            args,
+            env: vec![
+                ("https_proxy".into(), refuse.clone()),
+                ("http_proxy".into(), refuse),
+            ],
+        },
+        &[],
+    );
 
     // No Hydra commands run here, so `;` is Lich's.
     character.types(r#";e put "frontend #{$frontend}""#).await;
@@ -204,6 +244,15 @@ async fn the_real_lich() {
     );
     character.types("exp").await;
     assert_eq!(character.sent("exp").await, Some(Origin::Manual));
+    // What its script shows is the character's text.
+    character.types(r#";e respond "Hello from Lich.""#).await;
+    let shown = character.shown_until("Hello from Lich.").await;
+    assert!(
+        shown
+            .last()
+            .is_some_and(|line| line.contains("Hello from Lich.")),
+        "{shown:?}"
+    );
 
     assert_eq!(character.stop().await, Some(Ended::Stopped));
     let _ = std::fs::remove_dir_all(&home);

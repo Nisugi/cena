@@ -160,10 +160,7 @@ impl GameState {
     /// `pushStream` may interrupt an unterminated run, and the enclosing stream
     /// resumes after the pop.
     pub(super) fn route_text(&mut self, text: &TextFrame) {
-        let pending = self.pending.entry(text.stream.clone()).or_default();
-        pending.runs.push(text.as_run());
-        if text.ends_line {
-            let line = std::mem::take(pending);
+        if let Some(line) = self.pending.push(text) {
             // **The chunk sees the line too, and only the main stream's.**
             // A report's output is prose in the main window; a `thoughts` or
             // `bounty` stream carries someone else's words and must not become

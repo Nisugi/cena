@@ -6,7 +6,9 @@ Pipe mode's frontend fix was tried locally and works (§4, item 1). **§7's step
 BUILT 2026-09-28**: the relay itself, with the session's side
 (`crates/cena-session/src/script/lich.rs`) and Lich's process (`crates/cena-agent/src/lich.rs`),
 and the player's typing reaching Lich after Hydra's commands; tested against a stand-in and
-against the real Lich, offline. Steps 3-6 are next.
+against the real Lich, offline. Steps 3, 4 and 5 APPROVED by the author the same day
+(*"Great I approve steps 3, 4, and 5."*); **step 3 BUILT**: what Lich shows is the
+character's text (`crates/cena-session/src/actor/lich_text.rs`). Steps 4-6 are next.
 
 ## 1. The author's position
 
@@ -258,7 +260,51 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
      Moving the hand-off ahead of the desk fails it. The stand-in now runs a `;` line as a
      script and has one alias: `;put look around` reaches the game as Lich's, and `gg` as
      the player's `get gem`. The real Lich (11.4 s) types through `send_typed_at`.
+   - **CORRECTED with step 3.** Step 2 was checked with the relay's own tests only, and two
+     tests in `crates/cena-session/tests/claimed_commands.rs` still asserted the rule before
+     it: `;` the game's with no desk, or with Hydra's symbol `/`. Both failed from `d0902d9`
+     on. They now assert the author's rule: `;` is Lich's, and with no Lich the player is
+     told. The whole session suite passes.
 3. The display from Lich's stdout.
+
+   **BUILT 2026-09-28.** From the chunk a Lich takes the copy of, what a viewer is shown
+   comes from what Lich writes, and the game's own parse is everything else.
+   - **The path.** The relay carries Lich's stdout to the session as it came
+     (`Attached::shown`, `crates/cena-session/src/script/lich.rs`); nothing in `cena-agent`
+     reads it. The session parses it with a parser of its own, and puts its lines together
+     with the model's own line assembly, moved into `cena_model::line::Unfinished` so both
+     end a line in the same place (`crates/cena-model/src/line.rs`). A viewer is given
+     Lich's lines as `Event::Line`, sorted by `.sorter` and painted by the triggers' looks,
+     as the game's would be. The game's lines are still the model's, the player log's, a
+     script runner's (`Event::Heard`), and what the triggers *do*: a flag, attention, a send
+     act once, on the game's line, including a line Lich hid.
+   - **The prompt.** A new `Event::Prompt` is the prompt a viewer shows: the game's, right
+     after its frame, or Lich's, after Lich's lines. `gui-widgets`' story draws its prompt
+     from `Frame::Prompt` (`crates/cena-gui/src/story.rs` there), which arrives before Lich's
+     copy of the lines it ends, so each prompt would land a chunk early. At the merge the
+     story reads `Event::Prompt` instead. Despana draws no prompt.
+   - **A quiet command's report** (the character sync, `.foreach`'s looks). Lich's copy of
+     it comes after the window, so the viewers' `Event::Quiet` cannot bracket it. While
+     Lich shows the text, the session publishes no `Quiet` and leaves the report out
+     itself: each main line in the window is expected back, and left out when Lich passes it
+     on, in order among Lich's own lines. What Lich hid or changed of it is not waited for
+     past `QUIET_LAG` (30 s). Counting prompts to find the report in Lich's output was ruled
+     out: Lich's own quiet commands drop their prompt too
+     (`reference/lich-5/lib/util/util.rb:177-178`).
+   - **Across reconnects.** A connection's actor takes Lich's text when it starts, and puts
+     it back when it ends (`lich_text: Parked` in the session's publisher), so what Lich says
+     while there is no connection is shown once there is one.
+   - **Not held for a script runner's display hooks** (`plan/46`), as lines are: a runner
+     with display hooks beside a Lich may see a prompt come before held lines.
+   - **Tests.** In the session (`crates/cena-session/tests/lich_text.rs`), the test plays
+     Lich, hiding a line and adding one: the viewer gets Lich's lines and prompt once; the
+     triggers paint Lich's line and set the flag of the line Lich hid; a quiet report is
+     left out and no `Quiet` published; once Lich stops the game's text and prompt are shown
+     again; what Lich says during a reconnect is shown after it. Four mutations each fail at
+     least one of them: no put-back, no quiet matching, the game's prompt always, the game's
+     lines always. With the stand-in, which now hides a line and runs `;echo`, the window
+     shows `The room.` and `Hello from Lich.`, not the hidden line. The real Lich (12.1 s,
+     offline): a script's `respond` reaches the window.
 4. Starting late: the login kept and replayed, then the latest room.
 5. The switch: settings for Lich's path, and a *Lich* switch on the card and the play window.
 6. A live run, with the author.
