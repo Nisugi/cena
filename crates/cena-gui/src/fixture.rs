@@ -57,7 +57,9 @@ pub(crate) fn snapshot() -> Snapshot {
             body: ChunkLine::plain("").runs,
         });
     }
-    state.room.title = Some("[Rawknuckle's, Watering Hole]".to_owned());
+    // As the model keeps it: the subtitle less its leading ` - `, with no
+    // brackets (`cena_model::state::Room::title`).
+    state.room.title = Some("Rawknuckle's, Watering Hole".to_owned());
     state.room.exits = Some(vec!["north".to_owned(), "out".to_owned()]);
     state.room.creatures = vec![item("kobold", "a kobold")];
     state.room.players = vec![item("Maravel", "Maravel")];

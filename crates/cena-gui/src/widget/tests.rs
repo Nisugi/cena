@@ -66,6 +66,7 @@ fn each_widget_draws_what_it_shows() {
         "Left: a steel broadsword",
         "RT —",
         "CT —",
+        "Rawknuckle's, Watering Hole",
         "[Rawknuckle's, Watering Hole]",
         "Description unknown",
         "a kobold",
@@ -77,7 +78,11 @@ fn each_widget_draws_what_it_shows() {
         "Waiting: mana 30%, wants 50%",
         "Prepared: none",
     ] {
-        assert!(harness.query_by_label(label).is_some(), "{label}");
+        // Some twice: the Room widget says the room whole, beside its parts.
+        assert!(
+            harness.query_all_by_label(label).next().is_some(),
+            "{label}"
+        );
     }
 }
 
@@ -91,7 +96,7 @@ fn a_widget_says_what_it_does_not_know() {
         ("Right: ?", 1),
         ("Left: ?", 1),
         ("RT —", 1),
-        ("Room unknown", 1),
+        ("Room unknown", 2),
         ("Description unknown", 1),
         ("unknown", 3),
         ("Exits unknown", 2),

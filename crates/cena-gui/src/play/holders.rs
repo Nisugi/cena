@@ -61,8 +61,17 @@ impl Play {
     pub(super) fn arrange(&mut self, ui: &mut egui::Ui, view: &PlayView<'_>) -> bool {
         let area = ui.available_rect_before_wrap();
         let context = ui.ctx().clone();
-        self.layout
-            .get_or_insert_with(|| Layout::fitted(area.size()));
+        if self.layout.is_none() {
+            #[cfg(test)]
+            let fitted = if self.room_parts {
+                Layout::with_room_parts(area.size())
+            } else {
+                Layout::fitted(area.size())
+            };
+            #[cfg(not(test))]
+            let fitted = Layout::fitted(area.size());
+            self.layout = Some(fitted);
+        }
         self.press(&context, area);
         let open = self
             .layout
@@ -131,6 +140,7 @@ impl Play {
             others,
             follows: &layout.follows,
             looks: &layout.looks,
+            rooms: &layout.rooms,
             session,
             read: &mut self.read,
             sent: None,

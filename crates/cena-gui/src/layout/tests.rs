@@ -13,7 +13,7 @@ fn at(x: f32, y: f32, width: f32, height: f32) -> Rect {
 #[test]
 fn the_first_layout_tiles_the_area() {
     let area = Vec2::new(900.0, 600.0);
-    let layout = Layout::fitted(area);
+    let layout = Layout::with_room_parts(area);
     let titles: Vec<String> = layout
         .holders
         .iter()
@@ -41,7 +41,7 @@ fn the_first_layout_tiles_the_area() {
 #[test]
 fn a_short_area_keeps_the_room_and_hydra() {
     let area = Vec2::new(900.0, 400.0);
-    let layout = Layout::fitted(area);
+    let layout = Layout::with_room_parts(area);
     for title in ["Room", "Hydra"] {
         let rect = layout.titled(title).map(Holder::rect).expect(title);
         assert!(rect.height() >= SMALLEST.y, "{title}: {rect:?}");
@@ -55,7 +55,7 @@ fn a_short_area_keeps_the_room_and_hydra() {
 /// §7c), and the vitals are four widgets, a bar each (`plan/49` §1 row 1).
 #[test]
 fn every_window_and_widget_has_an_id_of_its_own() {
-    let layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let mut ids = HashSet::new();
     for holder in &layout.holders {
         assert!(ids.insert(holder.id), "window {}", holder.id);
@@ -191,7 +191,7 @@ fn a_layout_is_kept_by_game_and_name() {
         file(&dir, Some("Prime"), "Nisugi"),
         dir.join("prime_nisugi.json")
     );
-    let old = Layout::fitted(Vec2::new(900.0, 600.0));
+    let old = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     old.save(&dir, None, "Nisugi").expect("saved");
     assert_eq!(
         Layout::load(&dir, Some("Prime"), "Nisugi").as_ref(),
@@ -218,7 +218,7 @@ fn a_layout_is_kept_by_game_and_name() {
 fn a_layout_is_kept_by_name_whatever_its_case() {
     let dir = std::env::temp_dir().join(format!("cena-layout-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let room = layout
         .titled("Room")
         .map(|holder| holder.id)
@@ -279,7 +279,7 @@ fn widgets_in(layout: &Layout, title: &str) -> Vec<Widget> {
 #[test]
 fn a_widget_let_go_in_the_open_gets_a_window_of_its_own() {
     let area = Vec2::new(900.0, 600.0);
-    let mut layout = Layout::fitted(area);
+    let mut layout = Layout::with_room_parts(area);
     let (room, exits) = room_with(&layout, &Widget::Exits);
     layout.release(room, Taking::Cell(exits), pos2(890.0, 300.0), &[], area);
     let window = layout.titled("Exits").expect("a window of its own");
@@ -294,7 +294,7 @@ fn a_widget_let_go_in_the_open_gets_a_window_of_its_own() {
 #[test]
 fn a_widget_let_go_on_a_custom_window_joins_it() {
     let area = Vec2::new(900.0, 600.0);
-    let mut layout = Layout::fitted(area);
+    let mut layout = Layout::with_room_parts(area);
     let fresh = layout.new_custom();
     let inside = Rect::from_min_size(pos2(20.0, 60.0), Vec2::new(288.0, 156.0));
     let (room, exits) = room_with(&layout, &Widget::Exits);
@@ -323,7 +323,7 @@ fn a_widget_let_go_on_a_custom_window_joins_it() {
 /// joins it and goes; dropped elsewhere, nothing changes.
 #[test]
 fn a_standalone_window_joins_the_custom_window_it_is_dropped_on() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let hunt = layout
         .titled("Hunt")
         .map(|holder| holder.id)
@@ -369,7 +369,7 @@ fn a_tab_taken_out_leaves_the_rest_of_its_stack() {
 /// window of one tab stack, where the other was, the first tab showing.
 #[test]
 fn a_window_dropped_on_anothers_title_stacks_with_it() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let hunt = layout
         .titled("Hunt")
         .map(|holder| holder.id)
@@ -483,7 +483,7 @@ fn a_cell_stacked_onto_itself_stays() {
 #[test]
 fn a_stack_let_go_in_the_open_keeps_together() {
     let area = Vec2::new(900.0, 600.0);
-    let mut layout = Layout::fitted(area);
+    let mut layout = Layout::with_room_parts(area);
     let (room, creatures) = room_with(&layout, &Widget::Creatures);
     let (_, objects) = room_with(&layout, &Widget::Objects);
     if let Some(Holder {
@@ -519,7 +519,7 @@ fn a_stack_let_go_in_the_open_keeps_together() {
 fn an_added_widget_gets_a_window_and_keeps_whom_it_follows() {
     let dir = std::env::temp_dir().join(format!("cena-layout-follows-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let first = layout.add_widget(Widget::Health, Some("Baelor".to_owned()));
     let second = layout.add_widget(Widget::Mana, None);
     let rect_of = |layout: &Layout, placed: u32| {
@@ -550,7 +550,7 @@ fn an_added_widget_gets_a_window_and_keeps_whom_it_follows() {
 /// window removed takes all its widgets, and theirs.
 #[test]
 fn removing_forgets_what_followed() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let (room, exits) = room_with(&layout, &Widget::Exits);
     layout.follow(exits, Some("Baelor".to_owned()));
     layout.remove_widget(room, exits);
@@ -572,11 +572,46 @@ fn removing_forgets_what_followed() {
     assert!(layout.follows.is_empty());
 }
 
+/// A custom window removed takes what its widgets kept by their ids: a
+/// bar's look, and a Room widget's parts.
+#[test]
+fn a_window_removed_takes_its_widgets_looks_and_parts() {
+    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let window = layout.custom(
+        Rect::from_min_size(pos2(0.0, 0.0), Vec2::splat(300.0)),
+        "Around",
+        &[&[Widget::Room], &[Widget::Health]],
+    );
+    let Some(Holds::Custom(custom)) = layout.holder(window).map(|holder| &holder.holds) else {
+        panic!("a custom window");
+    };
+    let placed: Vec<Placed> = custom
+        .cells
+        .iter()
+        .flat_map(|cell| cell.tabs.iter().cloned())
+        .collect();
+    for one in placed {
+        if let Some(look) = one.widget.bar_look() {
+            layout.looks.insert(one.id, look);
+        } else {
+            let apart = crate::widget::RoomParts {
+                apart: true,
+                ..crate::widget::RoomParts::default()
+            };
+            layout.rooms.insert(one.id, apart);
+        }
+    }
+    assert_eq!((layout.rooms.len(), layout.looks.len()), (1, 1));
+    layout.remove_window(window);
+    assert!(layout.rooms.is_empty(), "its parts");
+    assert!(layout.looks.is_empty(), "its look");
+}
+
 /// A custom window takes a new title, trimmed; following is undone by
 /// following the window's own again.
 #[test]
 fn a_custom_window_is_renamed_and_a_widget_unfollowed() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let vitals = layout
         .titled("Vitals")
         .map(|holder| holder.id)
@@ -595,7 +630,7 @@ fn a_bars_look_is_kept_with_the_layout() {
     use crate::bar::{Fills, Look, Place, Says};
     let dir = std::env::temp_dir().join(format!("cena-layout-look-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let look = Look {
         fills: Fills::Up,
         place: Place::Below,
@@ -612,4 +647,15 @@ fn a_bars_look_is_kept_with_the_layout() {
     let read = Layout::load(&dir, None, "Ashryn").expect("read back");
     assert_eq!(read.looks.get(&7), Some(&look));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The first layout's Room window is the one Room widget, the room as the
+/// game describes it (the author, 2026-09-28), not the room in its parts.
+#[test]
+fn the_first_layouts_room_is_one_widget() {
+    let layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    match layout.titled("Room").map(|holder| &holder.holds) {
+        Some(Holds::One(placed)) => assert_eq!(placed.widget, Widget::Room),
+        other => panic!("{other:?}"),
+    }
 }

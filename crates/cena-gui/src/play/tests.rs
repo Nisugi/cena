@@ -23,7 +23,10 @@ struct Scene {
 impl Scene {
     fn new() -> Self {
         Self {
-            play: Play::new(0, "Ashryn", None, None),
+            play: Play {
+                room_parts: true,
+                ..Play::new(0, "Ashryn", None, None)
+            },
             snapshot: snapshot(),
             story: story(),
             hunt: Some(cena_ui::HuntView {
@@ -86,7 +89,7 @@ fn the_window_shows_what_a_player_glances_at() {
         "HP 348/400 87%",
         "MP 48/120 40%",
         "SP ?",
-        "[Rawknuckle's, Watering Hole]",
+        "Rawknuckle's, Watering Hole",
         "a kobold",
         "Maravel",
         "Obvious exits: north, out",

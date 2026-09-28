@@ -75,6 +75,10 @@ pub(crate) struct Layout {
     /// dragging them windows"*).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) locked: bool,
+    /// Which parts each Room widget shows, by the widget's id, when the
+    /// player chose on its page; one not here shows them all, joined.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) rooms: BTreeMap<u32, crate::widget::RoomParts>,
 }
 
 /// One window in a play window: a standalone window or a custom window.
@@ -141,6 +145,20 @@ impl Layout {
     /// are as tall as what they hold; in a short area they give way, so the
     /// room and Hydra's messages keep the smallest a window can be.
     pub(crate) fn fitted(area: Vec2) -> Self {
+        Self::fitted_as(area, false)
+    }
+
+    /// The same, but for its Room window: a custom window of the room's
+    /// parts, each its own widget, as the default was before the Room
+    /// widget; the tests of arranging cells arrange those.
+    #[cfg(test)]
+    pub(crate) fn with_room_parts(area: Vec2) -> Self {
+        Self::fitted_as(area, true)
+    }
+
+    /// [`Self::fitted`], its Room window the one Room widget, or with
+    /// `parts` the room's parts in a custom window.
+    fn fitted_as(area: Vec2, parts: bool) -> Self {
         let on_grid = |value: f32| (value / GRID).round() * GRID;
         let split = on_grid(area.x * 0.66).max(SMALLEST.x);
         let side = (area.x - split).max(SMALLEST.x);
@@ -159,6 +177,7 @@ impl Layout {
             follows: BTreeMap::new(),
             looks: BTreeMap::new(),
             locked: false,
+            rooms: BTreeMap::new(),
         };
         let story = layout.place(Widget::Story);
         layout.add(
@@ -196,17 +215,22 @@ impl Layout {
         let hunt = layout.place(Widget::Hunt);
         layout.add(hunt_at, Holds::One(hunt));
         let room_at = next(room);
-        layout.custom(
-            room_at,
-            "Room",
-            &[
-                &[Widget::RoomTitle],
-                &[Widget::Creatures],
-                &[Widget::Objects],
-                &[Widget::Players],
-                &[Widget::Exits],
-            ],
-        );
+        if parts {
+            layout.custom(
+                room_at,
+                "Room",
+                &[
+                    &[Widget::RoomTitle],
+                    &[Widget::Creatures],
+                    &[Widget::Objects],
+                    &[Widget::Players],
+                    &[Widget::Exits],
+                ],
+            );
+        } else {
+            let room = layout.place(Widget::Room);
+            layout.add(room_at, Holds::One(room));
+        }
         let hydra_at = next(hydra);
         let hydra = layout.place(Widget::Hydra);
         layout.add(hydra_at, Holds::One(hydra));

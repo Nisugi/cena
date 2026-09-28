@@ -248,6 +248,12 @@ Everything after it adds widgets, so the model goes first and every widget is wr
    its hands and clocks are widgets now, and the Layout menu's *Lay out afresh* replaces
    *Fit the panes afresh*.
 
+   > **CHANGED 2026-09-28.** The first layout's Room window is now the one **Room** widget
+   > (`crates/cena-gui/src/widget/described.rs`). It draws the room as Wrayth does, and its
+   > own page picks the parts, at the author's asking (`plan/50` §7 step 8 records it). The
+   > custom window of parts is still what the tests of arranging cells lay out
+   > (`Layout::with_room_parts`), and a layout saved before keeps it.
+
    A custom window's cells follow it when it is resized (`layout/custom.rs`): across, each
    scales with the inside's width, so a row of bars stays as wide as the window and two
    clocks stay halves; down, a cell on the bottom edge keeps to it, and a line stays a line.

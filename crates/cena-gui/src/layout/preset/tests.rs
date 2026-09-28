@@ -23,7 +23,7 @@ fn hydras_presets_are_put_together() {
     let presets = Preset::hydras();
     let names: HashSet<&str> = presets.iter().map(|preset| preset.name.as_str()).collect();
     assert_eq!(names.len(), presets.len());
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let row = presets
         .iter()
         .find(|preset| preset.name == "Vitals row")
@@ -53,7 +53,7 @@ fn hydras_presets_are_put_together() {
 /// copy apart, and saving over the preset later changes no copy.
 #[test]
 fn a_preset_placed_is_a_copy() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let vitals = Preset::hydras().remove(0);
     let first = layout.add_preset(&vitals, None);
     let second = layout.add_preset(&vitals, None);
@@ -93,7 +93,7 @@ fn a_preset_placed_is_a_copy() {
 /// but a story, which stays its own window's.
 #[test]
 fn a_preset_placed_for_another_follows_but_its_story() {
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let placed = |id, widget| Placed { id, widget };
     let custom = Custom::rows(
         "Mixed",
@@ -167,7 +167,7 @@ fn a_character_named_presets_keeps_the_library_whole() {
         panic!("Hydra's presets");
     };
     library.keep(vitals);
-    let layout = Layout::fitted(Vec2::new(1200.0, 800.0));
+    let layout = Layout::with_room_parts(Vec2::new(1200.0, 800.0));
     layout.save(&dir, None, "Presets").expect("saved");
     assert_eq!(
         Library::load(Some(dir.clone())).presets(),
@@ -189,7 +189,7 @@ fn the_indicators_and_effects_presets_are_whole() {
             .cloned()
             .expect(name)
     };
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let indicators = layout.add_preset(&found("Indicators"), None);
     let Some(Holds::Custom(custom)) = layout.holder(indicators).map(|holder| &holder.holds) else {
         panic!("a custom window");
@@ -214,7 +214,7 @@ fn the_streams_preset_stacks_the_streams_most_read() {
         .into_iter()
         .find(|preset| preset.name == "Streams")
         .expect("a streams preset");
-    let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
+    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
     let window = layout.add_preset(&streams, None);
     let Some(Holds::Custom(custom)) = layout.holder(window).map(|holder| &holder.holds) else {
         panic!("a custom window");

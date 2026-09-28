@@ -21,6 +21,8 @@ pub(super) struct Drawing<'a> {
     pub(super) follows: &'a BTreeMap<u32, String>,
     /// How each bar widget draws its bar, by id (`Layout::looks`).
     pub(super) looks: &'a BTreeMap<u32, crate::bar::Look>,
+    /// Which parts each Room widget shows, by id (`Layout::rooms`).
+    pub(super) rooms: &'a BTreeMap<u32, crate::widget::RoomParts>,
     /// Which session: every id in the window is its own.
     pub(super) session: u32,
     /// How far each widget that counts what it says was read, by id.
@@ -221,8 +223,11 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
         if let Some(count) = placed.widget.count(&drawing.seen) {
             drawing.read.insert(placed.id, count);
         }
-        let look = drawing.looks.get(&placed.id).cloned();
-        if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, look) {
+        let options = (
+            drawing.looks.get(&placed.id).cloned(),
+            drawing.rooms.get(&placed.id).copied(),
+        );
+        if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, options) {
             drawing.sent = Some(line);
         }
         return;
@@ -240,8 +245,11 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
                 ..drawing.seen
             };
             // Another character's widget sends nothing on this one's.
-            let look = drawing.looks.get(&placed.id).cloned();
-            let _ = placed.widget.draw_with(ui, &seen, id, look);
+            let options = (
+                drawing.looks.get(&placed.id).cloned(),
+                drawing.rooms.get(&placed.id).copied(),
+            );
+            let _ = placed.widget.draw_with(ui, &seen, id, options);
         }
         None => {
             ui.weak(format!("{who} is not running."));

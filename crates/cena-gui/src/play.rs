@@ -106,6 +106,10 @@ pub(crate) struct Play {
     /// The grid and the snapping guides are showing: a window pressed has
     /// moved or changed its size, not merely been clicked.
     guiding: bool,
+    /// Fitted with the room's parts in a custom window, for the tests of
+    /// arranging cells (`Layout::with_room_parts`).
+    #[cfg(test)]
+    pub(super) room_parts: bool,
     /// The cell being moved or resized, with Arrange on.
     cell: Option<arrange::CellGesture>,
     /// Each custom window's inside as last drawn, from the play area's top
@@ -155,6 +159,8 @@ impl Play {
             engaged: Vec::new(),
             arranging: false,
             guiding: false,
+            #[cfg(test)]
+            room_parts: false,
             cell: None,
             insides: Vec::new(),
             read: std::collections::HashMap::new(),

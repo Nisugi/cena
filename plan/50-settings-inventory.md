@@ -553,9 +553,45 @@ Claude's order, each step shippable and committed on its own:
    >
    > The menu gained a choice row and a colour row (`RowKind::Choice`, `RowKind::Color`). A
    > widget with no settings of its own offers no *Settings...*. A framed, nine-slice overlay
-   > needs each image's border sizes, and waits for skins (`plan/49` Stage F). The room's
-   > own page, choosing and joining its parts, is next.
+   > needs each image's border sizes, and waits for skins (`plan/49` Stage F).
    >
    > Checked: 8 mutants over the pages, the menu and the app's wiring, 7 caught once a test
    > saved a change with the layout. Not tested: the colour button itself asking, egui's
    > own picker, which the harness cannot drive. It is one line, `if picked.changed()`.
+   >
+   > **The room's own page, BUILT 2026-09-28.** The author, of the same menu: *"on room it
+   > takes you travel ... it should take you to pick which streams show in the room window
+   > (title, description, room objects, room players, room exits)"*. They also asked that it
+   > be displayed as Wrayth draws it:
+   >
+   > - `[Rawknuckle's, Watering Hole] (7503251)`;
+   > - the description, with *You also see ...* run on after it;
+   > - *Also here:* when anyone is;
+   > - the exits.
+   >
+   > They asked as well for *"the option to take the objects and break it up into creatures
+   > / objects based on the pushBold wrapping it"*.
+   >
+   > It is a widget of its own, **Room** (`crates/cena-gui/src/widget/described.rs`), and the
+   > first layout's Room window holds it in place of the custom window of parts. Its page has
+   > a switch for each of title, description, objects, creatures, players and exits, and
+   > *Creatures apart*. With that last switch on, the description stands alone, followed by a
+   > *You also see:* line and a *Creatures:* line. The game's bold decides which is which: in
+   > the joined sentence a bold run is drawn in the creatures' colour, and apart the lines come
+   > from the model's objects and creatures, which the same bold sorted.
+   >
+   > What each widget shows is kept in the layout by the widget's id (`Layout::rooms`, beside
+   > `looks`), and goes with the widget or its window.
+   >
+   > A layout saved before this keeps its custom window of parts; *Lay out afresh*, or the Room
+   > widget added from the list, gives the new one.
+   >
+   > **A fixture corrected on the way.** The GUI's test snapshot named the room
+   > `[Rawknuckle's, Watering Hole]`, brackets and all, which the wire never sends: the model
+   > keeps the subtitle less its leading ` - ` (`crates/cena-model/src/state/room.rs:519`). The
+   > Room widget adds brackets and would have drawn two pairs, with every test green.
+   >
+   > Checked: 14 mutants over the joining, each switch, the title's number, the creature
+   > colour, the page, putting a part back and removal. 12 were caught at first. The two
+   > survivors were real gaps, *objects* off while apart, and a custom window removed with a
+   > Room widget in it; each now has a test that catches it.

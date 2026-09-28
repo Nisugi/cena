@@ -23,6 +23,7 @@ pub(super) fn draw(
     seen: &Seen<'_>,
     id: Id,
     look: Option<bar::Look>,
+    room: Option<super::RoomParts>,
 ) -> Option<String> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
     let look = look.or_else(|| widget.bar_look());
@@ -44,6 +45,9 @@ pub(super) fn draw(
         // window's character.
         Widget::Compass => return room::compass(ui, state, seen.who.is_none()),
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
+        Widget::Room => scrolled(ui, &mut |ui| {
+            super::described::room(ui, seen.snapshot, room.unwrap_or_default());
+        }),
         Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
         Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),

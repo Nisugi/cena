@@ -305,7 +305,10 @@ fn an_arranged_layout_is_kept_by_name() {
     let dir = std::env::temp_dir().join(format!("cena-arrange-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let mut scene = Scene::new();
-    scene.play = Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()));
+    scene.play = Play {
+        room_parts: true,
+        ..Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()))
+    };
     let mut harness = Harness::builder()
         .with_size((1000.0, 700.0))
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
@@ -499,6 +502,136 @@ fn a_bars_page_is_saved_with_the_layout() {
         .map(|row| row.value);
     assert_eq!(fills, Some(cena_ui::settings::Value::Text("up".to_owned())));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A play window laid out as a player's first is, with the Room widget,
+/// and that widget's page.
+fn with_the_room_widget<'a>() -> (Harness<'a, Scene>, u32, String) {
+    let mut harness = Harness::builder()
+        .with_size((1000.0, 700.0))
+        .build_ui_state(
+            |ui, scene: &mut Scene| scene.draw(ui),
+            Scene {
+                play: Play::new(0, "Ashryn", None, None),
+                ..Scene::new()
+            },
+        );
+    harness.run();
+    let room = layout(&harness)
+        .holders
+        .iter()
+        .find_map(|holder| match &holder.holds {
+            Holds::One(placed) if placed.widget == Widget::Room => Some(placed.id),
+            Holds::One(_) | Holds::Custom(_) => None,
+        })
+        .unwrap_or_default();
+    (harness, room, format!("widget:{room}"))
+}
+
+/// The Room widget's right-click opens its own page (the author,
+/// 2026-09-28: *"it should take you to pick which streams show in the room
+/// window"*): each part, all on, and the creatures not apart.
+#[test]
+fn the_rooms_right_click_opens_its_page() {
+    use cena_ui::settings::Value;
+    let (mut harness, _, page) = with_the_room_widget();
+    harness
+        .get_by_label("Obvious exits: north, out")
+        .click_secondary();
+    harness.run();
+    harness.get_by_label("Settings...").click();
+    harness.run();
+    assert!(
+        matches!(&harness.state().asked[..], [Asked::Settings(Some(opened))] if *opened == page),
+        "{:?}",
+        harness.state().asked
+    );
+    let pages = harness.state().play.widget_pages(&[]);
+    let own = pages
+        .iter()
+        .find(|found| found.id == page)
+        .expect("its page");
+    assert_eq!(own.title, "Room");
+    let rows: Vec<(&str, &Value)> = own
+        .rows
+        .iter()
+        .map(|row| (row.key.as_str(), &row.value))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("title", &Value::On(true)),
+            ("description", &Value::On(true)),
+            ("objects", &Value::On(true)),
+            ("creatures", &Value::On(true)),
+            ("players", &Value::On(true)),
+            ("exits", &Value::On(true)),
+            ("apart", &Value::On(false)),
+        ]
+    );
+    assert!(own.rows.iter().all(|row| !row.here), "as it comes");
+}
+
+/// A change on the Room widget's page is kept by the widget's id and drawn
+/// at once; every part back as it was keeps nothing; its parts go with it
+/// when it is removed.
+#[test]
+fn the_room_shows_the_parts_its_page_picks() {
+    let (mut harness, room, page) = with_the_room_widget();
+    assert!(harness.query_by_label("Also here:").is_some());
+    assert!(harness.query_by_label("Creatures:").is_none());
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "players", Some("off"))
+        .expect("changed");
+    play.widget_change(&page, "apart", Some("on"))
+        .expect("changed");
+    assert!(play.widget_change(&page, "apart", Some("maybe")).is_err());
+    assert!(play.widget_change(&page, "weather", Some("on")).is_err());
+    harness.run();
+    assert!(
+        harness.query_by_label("Also here:").is_none(),
+        "drawn at once"
+    );
+    assert!(harness.query_by_label("Creatures:").is_some(), "apart");
+    let kept = layout(&harness).rooms.get(&room).copied().expect("kept");
+    assert!(!kept.players && kept.apart && kept.exits);
+    let pages = harness.state().play.widget_pages(&[]);
+    let here: Vec<&str> = pages
+        .iter()
+        .find(|found| found.id == page)
+        .expect("its page")
+        .rows
+        .iter()
+        .filter(|row| row.here)
+        .map(|row| row.key.as_str())
+        .collect();
+    assert_eq!(here, ["players", "apart"]);
+
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "players", Some("on"))
+        .expect("put back");
+    play.widget_change(&page, "apart", None).expect("put back");
+    assert!(
+        !layout(&harness).rooms.contains_key(&room),
+        "as it comes again"
+    );
+    harness
+        .state_mut()
+        .play
+        .widget_change(&page, "description", Some("off"))
+        .expect("changed");
+    harness.run();
+    assert!(layout(&harness).rooms.contains_key(&room), "kept");
+    harness
+        .get_by_label("Obvious exits: north, out")
+        .click_secondary();
+    harness.run();
+    harness.get_by_label("Remove").click();
+    harness.run();
+    assert!(
+        !layout(&harness).rooms.contains_key(&room),
+        "its parts go with it"
+    );
 }
 
 /// The grid shows once a window moves, never for a click on one (the

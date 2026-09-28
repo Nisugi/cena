@@ -8,7 +8,9 @@
 //!
 //! The pages are the play window's, built from its layout, and a change is
 //! made to the layout and saved with it: no behavior is behind them. A bar
-//! widget's page holds its [`Look`].
+//! widget's page holds its [`Look`]; the Room widget's, which of its parts
+//! it shows ([`RoomParts`]): *"it should take you to pick which streams show
+//! in the room window"*.
 
 use std::path::PathBuf;
 
@@ -17,7 +19,7 @@ use cena_ui::settings::{Page, Row, RowKind, Value};
 use super::Play;
 use crate::bar::{Fills, Look, Place};
 use crate::layout::Holds;
-use crate::widget::Widget;
+use crate::widget::{RoomParts, Widget};
 
 /// What a widget page's id begins with; the widget's id follows.
 pub(crate) const PREFIX: &str = "widget:";
@@ -29,7 +31,54 @@ pub(crate) fn page_id(placed: u32) -> String {
 
 /// Whether `widget` has a page of its own.
 pub(crate) fn has_page(widget: &Widget) -> bool {
-    widget.bar_look().is_some()
+    widget.bar_look().is_some() || *widget == Widget::Room
+}
+
+/// The Room widget's parts, as its page names each: its key, what a player
+/// calls it, and a line of what it is.
+const PARTS: [(&str, &str, &str); 7] = [
+    (
+        "title",
+        "Title",
+        "The room's name, and the game's number for it.",
+    ),
+    ("description", "Description", "What the room looks like."),
+    (
+        "objects",
+        "Objects",
+        "What else is here: the game's \"You also see\".",
+    ),
+    (
+        "creatures",
+        "Creatures",
+        "The creatures here, on their own line when they stand apart.",
+    ),
+    ("players", "Players", "Who else is here, when anyone is."),
+    ("exits", "Exits", "The ways out."),
+    (
+        "apart",
+        "Creatures apart",
+        "Objects and creatures each on a line of their own, split by the game's bold, rather than run on after the description.",
+    ),
+];
+
+/// The part of `parts` a page's `key` names.
+fn part<'a>(parts: &'a mut RoomParts, key: &str) -> Option<&'a mut bool> {
+    Some(match key {
+        "title" => &mut parts.title,
+        "description" => &mut parts.description,
+        "objects" => &mut parts.objects,
+        "creatures" => &mut parts.creatures,
+        "players" => &mut parts.players,
+        "exits" => &mut parts.exits,
+        "apart" => &mut parts.apart,
+        _ => return None,
+    })
+}
+
+/// Whether the part a page's `key` names is on in `parts`.
+fn shows(mut parts: RoomParts, key: &str) -> bool {
+    part(&mut parts, key).is_some_and(|on| *on)
 }
 
 /// Which way a bar fills, as the page names each.
@@ -75,8 +124,10 @@ impl Play {
                 ),
             };
             for one in placed {
-                let Some(default) = one.widget.bar_look() else {
-                    continue;
+                let rows = match one.widget.bar_look() {
+                    Some(default) => bar_rows(layout.looks.get(&one.id), &default, overlays),
+                    None if one.widget == Widget::Room => room_rows(layout.rooms.get(&one.id)),
+                    None => continue,
                 };
                 let name = one.widget.name();
                 pages.push(Page {
@@ -86,7 +137,7 @@ impl Play {
                     file: file.clone(),
                     takes: "at once".to_owned(),
                     problem: None,
-                    rows: bar_rows(layout.looks.get(&one.id), &default, overlays),
+                    rows,
                 });
             }
         }
@@ -127,6 +178,28 @@ impl Play {
             .find(|one| one.id == placed)
             .map(|one| one.widget.clone())
             .ok_or_else(|| "That widget is no longer in the window.".to_owned())?;
+        if widget == Widget::Room {
+            let mut parts = layout.rooms.get(&placed).copied().unwrap_or_default();
+            let default = RoomParts::default();
+            let asked = to.map(|to| match to {
+                "on" => Ok(true),
+                "off" => Ok(false),
+                other => Err(format!("`{other}` is not on or off.")),
+            });
+            let now =
+                part(&mut parts, key).ok_or_else(|| format!("The room has no part {key}."))?;
+            *now = match asked {
+                Some(asked) => asked?,
+                None => shows(default, key),
+            };
+            if parts == default {
+                layout.rooms.remove(&placed);
+            } else {
+                layout.rooms.insert(placed, parts);
+            }
+            self.save();
+            return Ok("Room: changed.".to_owned());
+        }
         let default = widget
             .bar_look()
             .ok_or_else(|| format!("{} has no settings of its own.", widget.name()))?;
@@ -182,6 +255,28 @@ fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(
         (key, _) => return Err(format!("A bar has no setting {key}.")),
     }
     Ok(())
+}
+
+/// The Room widget's rows: each part, on or off, as `parts` says or all.
+fn room_rows(parts: Option<&RoomParts>) -> Vec<Row> {
+    let default = RoomParts::default();
+    let now = parts.copied().unwrap_or_default();
+    PARTS
+        .iter()
+        .map(|(key, label, help)| {
+            let on = shows(now, key);
+            let was = shows(default, key);
+            Row {
+                key: (*key).to_owned(),
+                label: (*label).to_owned(),
+                help: (*help).to_owned(),
+                kind: RowKind::Toggle,
+                value: Value::On(on),
+                here: on != was,
+                from: None,
+            }
+        })
+        .collect()
 }
 
 /// A choice among `named`, each its value and what a player calls it.

@@ -13,6 +13,7 @@
 //! would like, and draws itself; what holds it decides where.
 
 mod character;
+mod described;
 mod draw;
 mod kind;
 mod lists;
@@ -27,6 +28,7 @@ use cena_ui::HuntView;
 use egui::Id;
 
 use crate::story::Story;
+pub(crate) use described::RoomParts;
 pub(crate) use kind::{Group, Widget};
 pub(crate) use status::{Category, Indicator};
 
@@ -79,7 +81,7 @@ impl Widget {
     /// direction -- if one was.
     #[cfg(test)]
     pub(crate) fn draw(&self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
-        draw::draw(self, ui, seen, id, None)
+        draw::draw(self, ui, seen, id, None, None)
     }
 
     /// [`Self::draw`], a bar drawn as `look` says when the player picked one
@@ -89,9 +91,9 @@ impl Widget {
         ui: &mut egui::Ui,
         seen: &Seen<'_>,
         id: Id,
-        look: Option<crate::bar::Look>,
+        (look, room): (Option<crate::bar::Look>, Option<RoomParts>),
     ) -> Option<String> {
-        draw::draw(self, ui, seen, id, look)
+        draw::draw(self, ui, seen, id, look, room)
     }
 }
 

@@ -34,6 +34,10 @@ pub(crate) enum Widget {
     Roundtime,
     /// The cast time left.
     CastTime,
+    /// The room as the game describes it, joined: its name and number, its
+    /// description with what is here, who else is, and the ways out; its
+    /// parts chosen on its own page (the author, 2026-09-28).
+    Room,
     /// The room's name.
     RoomTitle,
     /// The room's description.
@@ -156,7 +160,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 37] = [
+    const PLAIN: [Widget; 38] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -166,6 +170,7 @@ impl Widget {
         Widget::LeftHand,
         Widget::Roundtime,
         Widget::CastTime,
+        Widget::Room,
         Widget::RoomTitle,
         Widget::RoomDescription,
         Widget::Creatures,
@@ -209,6 +214,7 @@ impl Widget {
             Widget::LeftHand => "Left hand",
             Widget::Roundtime => "Roundtime",
             Widget::CastTime => "Cast time",
+            Widget::Room => "Room",
             Widget::RoomTitle => "Room name",
             Widget::RoomDescription => "Room description",
             Widget::Creatures => "Creatures",
@@ -277,7 +283,8 @@ impl Widget {
             | Widget::WorldEvents
             | Widget::Effects(_) => Group::Info,
             Widget::Indicator(_) => Group::Indicators,
-            Widget::RoomTitle
+            Widget::Room
+            | Widget::RoomTitle
             | Widget::RoomDescription
             | Widget::Objects
             | Widget::Players
@@ -340,6 +347,7 @@ impl Widget {
             Widget::Hunt => (260.0, 90.0),
             Widget::GameState => (380.0, 420.0),
             Widget::RoomDescription => (320.0, 80.0),
+            Widget::Room => (320.0, 160.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
             Widget::ExperienceTotals | Widget::Resources | Widget::Reserve => (260.0, 60.0),
             Widget::Spellbook | Widget::Containers => (280.0, 200.0),
