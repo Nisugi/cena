@@ -3,7 +3,7 @@
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
-**steps 7 to 9 BUILT**, 10 and 11 not yet. It
+**steps 7 to 10 BUILT**, 11 not yet. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -797,5 +797,24 @@ elanthia-online's 236 and 1,254 of the old repository's 2,130):
      durations by cast type, which the `spell` tool does not send); `Spell.upmsgs` and
      `dnmsgs`; the Monk and overexertion rules of `affordable?`.
 10. **`Lich::Util`**: `issue_command` and `quiet_command`, over step 4's hooks. 121 and 1,570.
+    **BUILT 2026-09-27**, in two commits (`bridges/ruby/hydra/gemstone.rb`):
+    - **Lich's own commands, unchanged**: `quiet_command`, `silver_count`, and `issue_command`
+      with `usexml: false` run as Lich's code, the command sent and its text read as a script
+      reads the game's, with `quiet` hidden from the player by a display hook (step 4). Step 7
+      had marked them unanswered without trying them; they needed nothing more, since Lich's text
+      stream carries no prompt line either (`markup.rb`, `DATA_ELEMENTS`), so a text end pattern
+      is what a script already passes.
+    - **Those that read the markup say so**: `issue_command`'s default (`usexml`) and
+      `quiet_command_xml` raise, naming the markup, rather than wait out their timeout for lines
+      that never come; the checker counts them as markup unless a call passes `usexml: false`.
+      MEASURED over both collections, 426 calls: `quiet_command_xml` 188, `issue_command` 136
+      (most with its default), `quiet_command` 67, `silver_count` 35.
+    - **The list** (`inventory/14`): **50% of elanthia-online's scripts and 71% of the old
+      repository's run** (118 and 1,511, against the forecast 121 and 1,570): the markup gap
+      grew to 57 and 256 scripts, as the `quiet_command_xml` callers moved into it.
+    - **Tests** (`crates/cena-agent/tests/runner.rs`, `utiltest.lic`): a quiet command's lines,
+      the silver count from `info` (nine runs in a row: the hook and the script race for its
+      last line under Lich too), `quiet_command_xml` saying why; the checker's default and
+      text-only `issue_command`.
 11. **The game's markup as labelled data** (§6.2): first measured, what markup the scripts read,
     then answered. 148 and 1,734; with Lich's windows, 178 and 1,845.
