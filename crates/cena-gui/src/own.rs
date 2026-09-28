@@ -8,10 +8,13 @@
 //!   kept when a drag of a card's side lets go, or typed on the page.
 //! - **Closing a play window when its session closes** (§6 item 11): off,
 //!   so the window stays open with the character's last state.
+//! - **The key held to drag an object** from a link (`carry.rs`): Ctrl, or
+//!   Alt or Shift, as `VellumFE`'s `drag_modifier_key` is.
 
 use std::path::{Path, PathBuf};
 
 use cena_ui::settings::{Page, Row, RowKind, Value};
+use egui::Modifiers;
 
 use crate::hub::CardWidth;
 
@@ -30,7 +33,17 @@ struct File {
     card_width: Option<f32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     close_with_session: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    drag_with: Option<String>,
 }
+
+/// The keys an object may be dragged with: each as the file writes it, as
+/// the page names it, and as egui holds it.
+const DRAG_KEYS: [(&str, &str, Modifiers); 3] = [
+    ("ctrl", "Ctrl", Modifiers::CTRL),
+    ("alt", "Alt", Modifiers::ALT),
+    ("shift", "Shift", Modifiers::SHIFT),
+];
 
 /// Hydra's own settings, and where they are kept.
 #[derive(Debug, Default)]
@@ -68,6 +81,15 @@ impl Own {
     }
 
     /// Whether a play window closes when its session does.
+    /// The key held to drag an object from a link: Ctrl unless chosen.
+    pub(crate) fn drag_with(&self) -> Modifiers {
+        let chosen = self.file.drag_with.as_deref().unwrap_or("ctrl");
+        DRAG_KEYS
+            .iter()
+            .find(|(written, ..)| *written == chosen)
+            .map_or(Modifiers::CTRL, |(.., key)| *key)
+    }
+
     pub(crate) fn close_with_session(&self) -> bool {
         self.file.close_with_session.unwrap_or(false)
     }
@@ -129,6 +151,21 @@ impl Own {
                 here: self.file.close_with_session.is_some(),
                 from: None,
             },
+            Row {
+                key: "drag_with".to_owned(),
+                label: "Drag an item with".to_owned(),
+                help: "The key held while dragging an object's link to a hand, a container or the floor."
+                    .to_owned(),
+                kind: RowKind::Choice(
+                    DRAG_KEYS
+                        .iter()
+                        .map(|(written, called, _)| ((*written).to_owned(), (*called).to_owned()))
+                        .collect(),
+                ),
+                value: Value::Text(self.file.drag_with.clone().unwrap_or_else(|| "ctrl".to_owned())),
+                here: self.file.drag_with.is_some(),
+                from: None,
+            },
         ];
         page
     }
@@ -171,6 +208,18 @@ impl Own {
                     "a play window {} when its session closes",
                     if on { "closes" } else { "stays open" }
                 )
+            }
+            ("drag_with", Some(to)) => {
+                let (written, called, _) = DRAG_KEYS
+                    .iter()
+                    .find(|(written, ..)| *written == to.trim())
+                    .ok_or_else(|| format!("Window: an item is not dragged with `{to}`."))?;
+                file.drag_with = Some((*written).to_owned());
+                format!("an item is dragged with {called}")
+            }
+            ("drag_with", None) => {
+                file.drag_with = None;
+                "an item is dragged with Ctrl, its default".to_owned()
             }
             ("card_width", None) => {
                 file.card_width = None;
@@ -217,6 +266,7 @@ mod tests {
         let mut own = Own::load(&data);
         assert_eq!(own.card_width(), CardWidth::FOUR_BARS);
         assert!(!own.close_with_session(), "off by default");
+        assert_eq!(own.drag_with(), Modifiers::CTRL, "Ctrl by default");
         assert!(own.page().rows.iter().all(|row| !row.here));
 
         assert_eq!(
@@ -224,8 +274,10 @@ mod tests {
             Ok("Window: a play window closes when its session closes.")
         );
         own.change("card_width", Some("420.4")).expect("changed");
+        own.change("drag_with", Some("alt")).expect("changed");
         let read = Own::load(&data);
         assert!(read.close_with_session());
+        assert_eq!(read.drag_with(), Modifiers::ALT);
         assert_eq!(read.card_width(), CardWidth(420.0));
         assert!(read.page().rows.iter().all(|row| row.here));
 
@@ -233,6 +285,7 @@ mod tests {
         assert_eq!(Own::load(&data).card_width(), CardWidth::FOUR_BARS);
         assert!(own.change("card_width", Some("90")).is_err(), "too narrow");
         assert!(own.change("close_with_session", Some("yes")).is_err());
+        assert!(own.change("drag_with", Some("meta")).is_err());
         assert!(own.change("volume", Some("3")).is_err());
         let _ = std::fs::remove_dir_all(&data);
     }

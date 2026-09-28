@@ -61,16 +61,30 @@ pub(crate) fn preset(name: &str) -> Option<Color32> {
     }
 }
 
+/// What a line with links in it was asked this frame.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Acted {
+    /// A link clicked, and where.
+    Clicked(RunLink, Pos2),
+    /// A line to send without an echo: an object carried let go on another,
+    /// `_drag #<item> #<onto>` (`carry.rs`).
+    Quietly(String),
+}
+
 /// A line whose runs have links in it, `job` drawn as a label is: a link
-/// under the pointer shows the hand, and the one clicked is returned with
-/// where. The runs are the job's, in order, their text its text.
-pub(crate) fn linked(
-    ui: &mut egui::Ui,
-    job: LayoutJob,
-    runs: &[StyledRun],
-) -> Option<(RunLink, Pos2)> {
+/// under the pointer shows the hand; with the drag key held an object's
+/// link is carried from it (`carry.rs`), and one carried let go on another
+/// object's link goes into it. The runs are the job's, in order, their text
+/// its text.
+pub(crate) fn linked(ui: &mut egui::Ui, job: LayoutJob, runs: &[StyledRun]) -> Option<Acted> {
+    let carrying = crate::carry::held(ui);
+    let sense = if carrying {
+        egui::Sense::click_and_drag()
+    } else {
+        egui::Sense::click()
+    };
     let (at, galley, response) = egui::Label::new(job)
-        .sense(egui::Sense::click())
+        .sense(sense)
         .selectable(false)
         .layout_in_ui(ui);
     let enabled = ui.is_enabled();
@@ -83,7 +97,7 @@ pub(crate) fn linked(
             ui.visuals().text_color(),
         );
     }
-    let link_at = |pointer: Pos2| {
+    let run_at = |pointer: Pos2| {
         // The nearest boundary between characters, and the character under
         // the pointer the one before it when the pointer is left of it: on
         // the right half of a link's last letter, the boundary is past it.
@@ -98,22 +112,45 @@ pub(crate) fn linked(
             .nth(char_at)
             .map_or(galley.text().len(), |(byte, _)| byte);
         let mut start = 0;
-        runs.iter()
-            .find(|run| {
-                let span = start..start + run.text.len();
-                start = span.end;
-                span.contains(&byte)
-            })
-            .and_then(|run| run.link.clone())
+        runs.iter().find(|run| {
+            let span = start..start + run.text.len();
+            start = span.end;
+            span.contains(&byte)
+        })
     };
+    let link_at = |pointer: Pos2| run_at(pointer).and_then(|run| run.link.clone());
     if response.hover_pos().and_then(link_at).is_some() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    if carrying
+        && response.drag_started()
+        && let Some(origin) = ui.input(|input| input.pointer.press_origin())
+        && let Some(run) = run_at(origin)
+        && let Some(RunLink::Object { exist, .. }) = &run.link
+    {
+        response.dnd_set_drag_payload(crate::carry::Carried {
+            exist: exist.clone(),
+            name: run.text.clone(),
+        });
+    }
+    if let Some(carried) = response.dnd_release_payload::<crate::carry::Carried>() {
+        let onto = ui
+            .input(|input| input.pointer.interact_pos())
+            .and_then(link_at);
+        if let Some(RunLink::Object { exist, .. }) = onto {
+            // Into another object; onto itself, nothing.
+            return (exist != carried.exist)
+                .then(|| Acted::Quietly(format!("_drag #{} #{exist}", carried.exist)));
+        }
+        // Let go on the line's words: the window's own place takes it, the
+        // story's floor.
+        egui::DragAndDrop::set_payload(ui.ctx(), (*carried).clone());
     }
     if !response.clicked() {
         return None;
     }
     let pointer = response.interact_pointer_pos()?;
-    link_at(pointer).map(|link| (link, pointer))
+    link_at(pointer).map(|link| Acted::Clicked(link, pointer))
 }
 
 /// A link's colour: `VellumFE`'s, its `links` and `commands` presets' `Link`

@@ -421,6 +421,7 @@ fn layout<'a>(harness: &'a Harness<'_, Scene>) -> &'a crate::layout::Layout {
 }
 
 mod arrange;
+mod drag;
 mod links;
 mod menus;
 mod pages;

@@ -104,6 +104,9 @@ impl Widget {
 pub(crate) enum Clicked {
     /// A line to send, as if typed: a compass's direction.
     Send(String),
+    /// A line to send without an echo: an object carried and let go,
+    /// `_drag #<item> <onto>` (`carry.rs`).
+    Quietly(String),
     /// A link in a line of the game's, clicked at a place on the screen.
     Link(cena_ui::RunLink, egui::Pos2),
 }

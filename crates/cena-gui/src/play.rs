@@ -254,6 +254,7 @@ impl Play {
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others, &received);
         self.object_menu(ui.ctx(), view);
+        crate::carry::show(ui.ctx(), session);
         asked = asked.or(self.out.take());
         if changed {
             self.save();

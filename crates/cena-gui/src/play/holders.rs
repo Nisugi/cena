@@ -173,6 +173,7 @@ impl Play {
         }
         match drawing.sent {
             Some(Clicked::Send(line)) => self.out = Some(super::Asked::Send(line)),
+            Some(Clicked::Quietly(line)) => self.out = Some(super::Asked::Quietly(line)),
             Some(Clicked::Link(link, at)) => self.clicked(context, link, at),
             None => {}
         }

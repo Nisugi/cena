@@ -9,7 +9,7 @@ use super::*;
 use crate::story::Shown;
 use cena_session::{Event, Frame, Generation, Link, LinkKind, ObservedEvent, SessionId};
 
-fn observed(event: Event) -> ObservedEvent {
+pub(super) fn observed(event: Event) -> ObservedEvent {
     ObservedEvent {
         session: SessionId::FIRST,
         generation: Generation::FIRST,
@@ -19,7 +19,7 @@ fn observed(event: Event) -> ObservedEvent {
 }
 
 /// The story hears a line of `runs`: each its text, and for some a link.
-fn heard(scene: &mut Scene, runs: &[(&str, Option<LinkKind>)]) {
+pub(super) fn heard(scene: &mut Scene, runs: &[(&str, Option<LinkKind>)]) {
     let mut line = cena_session::ChunkLine::plain("template").runs;
     let template = line.runs.first().cloned();
     line.runs = runs
@@ -53,7 +53,7 @@ fn answered(scene: &mut Scene, id: &str, coords: &[&str]) {
     scene.story.hear(&observed(event), None);
 }
 
-fn rat() -> LinkKind {
+pub(super) fn rat() -> LinkKind {
     LinkKind::Exist {
         id: "456".to_owned(),
         noun: "rat".to_owned(),

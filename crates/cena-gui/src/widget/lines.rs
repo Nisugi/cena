@@ -102,7 +102,10 @@ impl Lines {
         };
         let job = text::job(&all, ui.style());
         if all.iter().any(|run| run.link.is_some()) {
-            return text::linked(ui, job, &all).map(|(link, at)| Clicked::Link(link, at));
+            return text::linked(ui, job, &all).map(|acted| match acted {
+                text::Acted::Clicked(link, at) => Clicked::Link(link, at),
+                text::Acted::Quietly(line) => Clicked::Quietly(line),
+            });
         }
         ui.label(job);
         None
@@ -163,7 +166,9 @@ pub(super) fn story(
             }
         }
     });
-    clicked
+    // Its blank space is the floor: an object carried and let go there, on
+    // no other object, is dropped (the author, 2026-09-28).
+    clicked.or_else(|| crate::carry::target(ui, id.with("story"), "drop").map(Clicked::Quietly))
 }
 
 /// One of the game's streams; the link clicked in it, if one was.

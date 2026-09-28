@@ -608,14 +608,18 @@ fn the_lists_say_what_the_character_has() {
         reserved(ui, Some(&["a steel broadsword", "a buckler"]));
         reserved(ui, Some(&[]));
         reserved(ui, None);
-        containers_listed(
+        let _ = containers_listed(
             ui,
             &[
-                ("My Cloak".to_owned(), vec!["a gold ring", "a pink pearl"]),
-                ("stow".to_owned(), vec![]),
+                (
+                    "My Cloak".to_owned(),
+                    "64863904".to_owned(),
+                    vec!["a gold ring", "a pink pearl"],
+                ),
+                ("stow".to_owned(), "64863905".to_owned(), vec![]),
             ],
         );
-        containers_listed(ui, &[]);
+        let _ = containers_listed(ui, &[]);
     });
     harness.run();
     for (label, count) in [

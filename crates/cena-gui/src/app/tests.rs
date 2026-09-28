@@ -548,3 +548,25 @@ fn a_menu_asked_for_is_not_echoed() {
         .collect();
     assert_eq!(typed, ["look"]);
 }
+
+/// The drag key chosen on the *Window* page is the one every window reads
+/// this frame (`carry.rs`).
+#[test]
+fn the_drag_key_chosen_is_the_windows() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
+    harness.run();
+    assert_eq!(crate::carry::key(&harness.ctx), egui::Modifiers::CTRL);
+    harness
+        .state_mut()
+        .own
+        .change("drag_with", Some("shift"))
+        .expect("changed");
+    harness.run();
+    assert_eq!(crate::carry::key(&harness.ctx), egui::Modifiers::SHIFT);
+}

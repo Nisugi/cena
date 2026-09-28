@@ -144,6 +144,7 @@ impl App {
     /// and act on what the player asked. What eframe calls each frame, and
     /// what a test drives directly.
     pub fn draw(&mut self, ui: &mut egui::Ui) {
+        crate::carry::set_key(ui.ctx(), self.own.drag_with());
         let seats = self.sessions.seated();
         self.seat(&seats);
         let glance = self.sessions.glance();

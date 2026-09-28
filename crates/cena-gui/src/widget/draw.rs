@@ -51,7 +51,11 @@ pub(super) fn draw(
         }),
         Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
-        Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),
+        Widget::Containers => {
+            let mut put = None;
+            scrolled(ui, &mut |ui| put = lists::containers(ui, state));
+            return put.map(super::Clicked::Quietly);
+        }
         Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
         Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
         Widget::Story => {
@@ -91,8 +95,14 @@ pub(super) fn draw(
             bar::SPIRIT,
             look,
         ),
-        Widget::RightHand => held(ui, &named("Right"), state.map(|state| &state.right_hand)),
-        Widget::LeftHand => held(ui, &named("Left"), state.map(|state| &state.left_hand)),
+        Widget::RightHand => {
+            held(ui, &named("Right"), state.map(|state| &state.right_hand));
+            return place(ui, id, "right");
+        }
+        Widget::LeftHand => {
+            held(ui, &named("Left"), state.map(|state| &state.left_hand));
+            return place(ui, id, "left");
+        }
         Widget::Roundtime => clock(
             ui,
             &named("RT"),
@@ -262,6 +272,13 @@ fn read_image(context: &egui::Context, path: &str) -> Option<egui::TextureHandle
 }
 
 /// What a hand holds, after which hand: `?` until the game has said.
+/// An object carried and let go on this widget, put `onto` it
+/// (`carry.rs`). Another character's widget asks nothing of this window:
+/// the play window draws it and sends nothing (`play/draw.rs`).
+fn place(ui: &mut egui::Ui, id: Id, onto: &str) -> Option<super::Clicked> {
+    crate::carry::target(ui, id, onto).map(super::Clicked::Quietly)
+}
+
 fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>) {
     let holds = match hand {
         None | Some(Hand::Unknown) => "?",

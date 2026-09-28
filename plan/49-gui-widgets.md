@@ -805,6 +805,28 @@ Each BUILT the same day, each with its tests:
      `ask @ about %` with `noun="amplify"`: the item's noun is `%`. Fixed in `cce1b98`.
    - The dictionary's 45 `_dialog` entries open dialogs of Wrayth's own, and are left
      out, as `VellumFE` leaves them out.
+5. **An object carried from its link.** *"holding modifier key (default ctrl) + left mouse
+   down and drag on a link that is an object is considered a drag and drop. Dropping it in
+   a blank area of the story window actually drops the item. Dragging it onto a hand
+   widget puts it in that hand, dragging it to a container widget or container link, puts
+   it into that container. using _drag command. Vellum can tell you how it's done."*
+   Built as `VellumFE` carries one (`frontend/gui/widgets/links_bars.rs`,
+   `frontend/gui/app.rs`), on egui's drag and drop (`crates/cena-gui/src/carry.rs`):
+   - With the drag key held, a press on an object's link that moves past egui's click
+     distance carries the object; a short press is still a click. While carried, the
+     pointer says *Dragging: a grey rat*. The key is Hydra's own setting, *Drag an item
+     with*, Ctrl, Alt or Shift (`own.rs`), as `VellumFE`'s `drag_modifier_key` is.
+   - Let go on another object's link: `_drag #<item> #<it>`, as Lich's `stash.rb`
+     sends; on its own link, nothing. On a hand widget: `_drag #<item> left` or `right`.
+     On a container in the Containers widget: `_drag #<item> #<container>`, by the
+     container object's id, which `stow`'s window id is not. On the story's blank space or
+     its plain words: `_drag #<item> drop`. Each is sent without an echo.
+   - **Unlike `VellumFE`, let go anywhere else and nothing happens.** It drops the item on
+     the ground over any window it does not recognise, or none; the author named only the
+     story's blank area.
+   - A widget following another character takes nothing: the line goes to this window's.
+   - A window over the story goes under it once the story is pressed, as any window does,
+     so a drop meant for it lands on the story's floor. Tiled windows do not meet this.
 
 ### Stage E — drawers
 

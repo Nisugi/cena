@@ -68,18 +68,26 @@ pub(super) fn reserved(ui: &mut egui::Ui, items: Option<&[&str]>) {
     }
 }
 
-/// Every container the game has shown, each with what it holds.
-pub(super) fn containers(ui: &mut egui::Ui, state: Option<&GameState>) {
+/// One container as the widget lists it: its title, the id an object
+/// carried onto it goes into, and what it holds.
+pub(super) type Listed<'a> = (String, String, Vec<&'a str>);
+
+/// Every container the game has shown, each with what it holds; an object
+/// carried and let go on one goes into it: `_drag #<item> #<container>`.
+pub(super) fn containers(ui: &mut egui::Ui, state: Option<&GameState>) -> Option<String> {
     let Some(state) = state else {
         ui.weak("Containers unknown");
-        return;
+        return None;
     };
-    let containers: Vec<(String, Vec<&str>)> = state
+    let containers: Vec<Listed<'_>> = state
         .inventory
         .containers()
         .map(|(id, container)| {
             (
                 container.title.clone().unwrap_or_else(|| id.to_owned()),
+                // The container object's id, which the window's is not
+                // always: `stow` is a name (`Container::target`).
+                container.target.clone().unwrap_or_else(|| id.to_owned()),
                 container
                     .items
                     .iter()
@@ -88,17 +96,19 @@ pub(super) fn containers(ui: &mut egui::Ui, state: Option<&GameState>) {
             )
         })
         .collect();
-    containers_listed(ui, &containers);
+    containers_listed(ui, &containers)
 }
 
-/// `containers`, each a heading that opens to what it holds.
-pub(super) fn containers_listed(ui: &mut egui::Ui, containers: &[(String, Vec<&str>)]) {
+/// `containers`, each a heading that opens to what it holds; what is
+/// carried and let go on one, put into it.
+pub(super) fn containers_listed(ui: &mut egui::Ui, containers: &[Listed<'_>]) -> Option<String> {
     if containers.is_empty() {
         ui.weak("No container seen yet");
-        return;
+        return None;
     }
-    for (title, items) in containers {
-        egui::CollapsingHeader::new(format!("{title} ({})", items.len()))
+    let mut put = None;
+    for (title, target, items) in containers {
+        let shown = egui::CollapsingHeader::new(format!("{title} ({})", items.len()))
             .id_salt(("container", title))
             .default_open(false)
             .show(ui, |ui| {
@@ -109,5 +119,15 @@ pub(super) fn containers_listed(ui: &mut egui::Ui, containers: &[(String, Vec<&s
                     ui.colored_label(OBJECT, *item);
                 }
             });
+        let onto = format!("#{target}");
+        put = put
+            .or_else(|| crate::carry::dropped(&shown.header_response, &onto))
+            .or_else(|| {
+                shown
+                    .body_response
+                    .as_ref()
+                    .and_then(|body| crate::carry::dropped(body, &onto))
+            });
     }
+    put
 }
