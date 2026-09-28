@@ -40,16 +40,21 @@ module Hydra
       lines.empty? ? [''] : lines
     end
 
-    # What the runner defines and does not answer yet, by `Class#method`,
-    # with what to use instead: the checker (check.rb) points at each call.
+    # What the runner defines and does not answer yet, by `Class#method`
+    # or `Module.method`, with what to use instead: the checker (check.rb)
+    # points at each call.
     def not_yet
       @not_yet ||= {}
     end
 
     # Define `klass`'s `name` as not answered yet: it raises, naming itself
-    # and `instead`.
+    # and `instead`. A module's own method is its singleton class's.
     def unanswered(klass, name, instead)
-      label = "#{klass.name.split('::').last}##{name}"
+      label = if klass.singleton_class?
+                "#{klass.attached_object.name.split('::').last}.#{name}"
+              else
+                "#{klass.name.split('::').last}##{name}"
+              end
       not_yet[label] = instead
       klass.define_method(name) do |*|
         raise NotImplementedError, "#{label} is not answered by Hydra yet (plan/46): #{instead}"

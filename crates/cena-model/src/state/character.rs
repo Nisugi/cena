@@ -225,6 +225,8 @@ pub struct Character {
     /// Parts explicitly observed in this connection, for conservative recovery.
     /// Not persisted: an empty injury map alone cannot prove a healthy body.
     pub observed_body_parts: u16,
+    /// What the injury window shows ([`body::InjuryMode`]); `None` until said.
+    pub injury_mode: Option<body::InjuryMode>,
     /// `<progressBar id='pbarStance' text='defensive (100%)'>`.
     pub stance: Option<String>,
     /// `pbarStance`'s `value=`: percent of stance contributing to defense.
@@ -391,6 +393,7 @@ impl Character {
             experience,
             injuries,
             observed_body_parts,
+            injury_mode,
             stance,
             stance_percent,
             encumbrance,
@@ -414,6 +417,8 @@ impl Character {
         // --- Cleared: a suppression flag whose evidence is gone ------------
         *shrouded = false;
         *observed_body_parts = 0;
+        // The login burst re-sends the injury window, its mode with it.
+        *injury_mode = None;
 
         // `profile` must be run again to be true again: a title or an
         // achievement can change while a character is logged out, and nothing

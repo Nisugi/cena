@@ -1,6 +1,6 @@
 # A script of Hydra's own for the checker (crates/cena-agent/tests/checker.rs):
 # a line of each kind it finds, then lines it must not find. Never run.
-level = Stats.level
+level = Bounty.task
 Spell[401].cast
 task = XMLData.bounty_task
 there = File.exists?('x')
@@ -25,3 +25,5 @@ UpstreamHook.add('checktest', proc { |line| line.sub(/\A<c>tt\z/, 'target') })
 USAGE:
 echo level, task, there
 Walktest::Stride.new
+echo Stats.level, Skills.edged_weapons, CMan.known?('bearhug'), Wounds.head, Resources.weekly
+Infomon.sync

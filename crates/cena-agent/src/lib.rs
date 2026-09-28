@@ -24,6 +24,7 @@
 //!   player, over the character's script door.
 
 pub mod characters;
+pub mod gemstone;
 pub mod happenings;
 pub mod http;
 pub mod projection;

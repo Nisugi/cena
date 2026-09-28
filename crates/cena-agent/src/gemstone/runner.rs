@@ -1,0 +1,91 @@
+//! The runner's files that are the game's own (`plan/46` §11 step 7): what
+//! a Lich script reads of its character -- `Stats`, `Skills`, `Society`, the
+//! PSMs, `Wounds` and the rest -- as Lich's game loader loads them for this
+//! game, and the edge that loads them. Written out beside
+//! `crate::scripts::runner::FILES`, by their path under the same folder.
+
+/// The game's files of the runner, by their path under its folder.
+pub const FILES: &[(&str, &str)] = &[
+    (
+        "hydra/gemstone.rb",
+        include_str!("../../../../bridges/ruby/hydra/gemstone.rb"),
+    ),
+    (
+        "lich/lib/gemstone/society.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/society.rb"),
+    ),
+    (
+        "lich/lib/gemstone/societies/council_of_light.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/societies/council_of_light.rb"),
+    ),
+    (
+        "lich/lib/gemstone/societies/guardians_of_sunfist.rb",
+        include_str!(
+            "../../../../bridges/ruby/lich/lib/gemstone/societies/guardians_of_sunfist.rb"
+        ),
+    ),
+    (
+        "lich/lib/gemstone/societies/order_of_voln.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/societies/order_of_voln.rb"),
+    ),
+    (
+        "lich/lib/gemstone/experience.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/experience.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/armor.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/armor.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/ascension.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/ascension.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/cman.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/cman.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/feat.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/feat.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/qstrike.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/qstrike.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/shield.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/shield.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/warcry.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/warcry.rb"),
+    ),
+    (
+        "lich/lib/gemstone/psms/weapon.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/psms/weapon.rb"),
+    ),
+    (
+        "lich/lib/gemstone/wounds.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/wounds.rb"),
+    ),
+    (
+        "lich/lib/gemstone/scars.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/scars.rb"),
+    ),
+    (
+        "lich/lib/gemstone/injured.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/injured.rb"),
+    ),
+    (
+        "lich/lib/gemstone/effects.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/effects.rb"),
+    ),
+    (
+        "lich/lib/gemstone/currency.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/currency.rb"),
+    ),
+];

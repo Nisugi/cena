@@ -110,6 +110,105 @@ async fn a_script_reads_its_character_as_lich_does() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// What the scripted game says to the commands that fill the sheet, in
+/// the game's words (the model's tests': `character_blocks.rs`,
+/// `character_skills.rs`, `crates/cena-protocol/tests/fixtures/psm_list.xml`).
+const SHEET: &[(&str, &[u8])] = &[
+    (
+        "info",
+        b"Name: Nisugi Race: Half-Elf  Profession: Ranger\n\
+Gender: Male    Age: 36    Expr: 43904921    Level: 100\n\
+    Strength (STR):   110 (30)    ...  115 (32)    ...  120 (35)\n\
+<prompt time=\"2\">&gt;</prompt>\n",
+    ),
+    (
+        "skills",
+        b" Nisugi (at level 100), your current skill bonuses and ranks (including all modifiers) are:\n\
+  Skill Name                         | Current Current\n\
+                                     |   Bonus   Ranks\n\
+  Two Weapon Combat..................|     312     212\n\
+  Elemental Lore - Air...............|     150      50\n\
+\n\
+Spell Lists\n\
+  Minor Elemental....................|              75\n\
+\n\
+Training Points: 3673 Phy 0 Mnt\n\
+<prompt time=\"3\">&gt;</prompt>\n",
+    ),
+    (
+        "society",
+        b"   You are a member in the Order of Voln at step 12.\n<prompt time=\"4\">&gt;</prompt>\n",
+    ),
+    (
+        "cman",
+        b"<a exist=\"-10966483\" noun=\"Nisugi\">Nisugi</a>, the following Combat Maneuvers are available:\n\
+\n\
+<output class=\"mono\"/>\n\
+  Skill                Mnemonic        Ranks Type           Category        Subcategory\n\
+  -------------------------------------------------------------------------------------\n\
+<pushBold/>  Combat Focus         <d cmd='cman HELP focus'>focus</d>           5/5   <d cmd='cman LIST passive'>Passive</d>\n\
+<popBold/>  Dirtkick             <d cmd='cman HELP dirtkick'>dirtkick</d>        0/5   <d cmd='cman LIST setup'>Setup</d>\n\
+<pushBold/>  Hamstring            <d cmd='cman HELP hamstring'>hamstring</d>       4/5   <d cmd='cman LIST setup'>Setup</d>\n\
+<popBold/>\n\
+   Subcategory: all\n\
+<output class=\"\"/>\n\
+<prompt time=\"5\">&gt;</prompt>\n",
+    ),
+    (
+        "exp",
+        b"<dialogData id='expr'><label id='yourLvl' value='Level 100' top='0' left='0'/>\
+<progressBar id='mindState' value='25' text='fresh and clear' top='45' left='3' field_exp='270' max_field_exp='1403' ascension_exp='24899176' lumnis='4' exp='43904921' until_next='79'/>\
+</dialogData>\n<prompt time=\"6\">&gt;</prompt>\n",
+    ),
+    (
+        "injuries",
+        b"<dialogData id='injuries'><image id='head' name='Injury2'/><image id='neck' name='Scar1'/>\
+<radio id='injrRad' value='0' text='Injuries'/><radio id='scarRad' value='0' text='Scars'/><radio id='bothRad' value='1' text='Both'/></dialogData>\n\
+You glance over your injuries.\n<prompt time=\"7\">&gt;</prompt>\n",
+    ),
+];
+
+/// **The character's sheet** (`plan/46` §11 step 7): Lich's own `Stats`,
+/// `Skills`, `Spells`, `Society`, `Experience`, `CMan`, `Warcry`, `Wounds`
+/// and `Scars`, unchanged, reading what the game said of the character
+/// through an `Infomon` answered from the copy; nil before it said.
+#[tokio::test(flavor = "current_thread")]
+async fn a_script_reads_its_sheet_through_lichs_own_classes() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("sheet");
+    let scripts = scripts_with(&dir, "sheettest.lic").unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: SHEET,
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
+    let heard = running.run("sheettest", "sheettest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[sheettest: before: refresh=true skill=0 society=nil]",
+        "[sheettest: stats: Half-Elf Ranger 115 32 base=[110, 30] enhanced=[120, 35] level=100]",
+        "[sheettest: skills: 212 150 50 minor elemental=75]",
+        "[sheettest: society: Order of Voln 12]",
+        "[sheettest: experience: 270/1403 until=79 lumnis=4]",
+        "[sheettest: psms: focus=5 hamstring=false dirtkick=false holler=false]",
+        "[sheettest: injuries: head=2 neck=1 mode=2]",
+        "[sheettest: after: refresh=false resources=nil]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// **The map and the stores** (`plan/46` §11 step 2): `Room.current` named
 /// by Hydra, its `wayto` walked with Lich's own `move`, and `CharSettings`
 /// kept in `lich.db3` from one runner to the next: the second runner is a

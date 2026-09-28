@@ -50,6 +50,7 @@ $lich_char = ENV.fetch('HYDRA_SYMBOL', ';')
 require_relative 'engine'
 
 XMLData = Hydra::Data.new('GS3', 'Checker', Hydra::Copy.new)
+require_relative 'gemstone'
 
 module Hydra
   module Check
@@ -526,6 +527,11 @@ module Hydra
           path = receiver.slice.delete_prefix('::')
           return if own?(path) || guarded?(path)
 
+          label = "#{path.split('::').last}.#{name}"
+          if Hydra.not_yet.key?(label)
+            found(node, 'stops', label, "not answered by Hydra yet (plan/46): #{Hydra.not_yet[label]}", hydra: true)
+            return
+          end
           answered?(resolve(path), name) || unanswered(node, path, ".#{name}")
         when Prism::CallNode
           instance_of_hydras(node, receiver, name)

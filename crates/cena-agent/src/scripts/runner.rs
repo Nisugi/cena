@@ -14,9 +14,12 @@
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
+use crate::gemstone::runner::FILES as GAME_FILES;
+
 /// The runner's files, by their path under the folder they are written to:
 /// its own (`bridges/ruby/hydra`), and Lich's engine as upstream wrote it
-/// (`bridges/ruby/lich`, `bridges/ruby/README.md`).
+/// (`bridges/ruby/lich`, `bridges/ruby/README.md`). The game's own are the
+/// game module's (`crate::gemstone::runner`, `plan/05` Rule 3.4).
 pub const FILES: &[(&str, &str)] = &[
     (
         "hydra/runner.rb",
@@ -67,6 +70,10 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../../bridges/ruby/hydra/hooks.rb"),
     ),
     (
+        "hydra/infomon.rb",
+        include_str!("../../../../bridges/ruby/hydra/infomon.rb"),
+    ),
+    (
         "lich/lib/common/gtk.rb",
         include_str!("../../../../bridges/ruby/lich/lib/common/gtk.rb"),
     ),
@@ -85,6 +92,30 @@ pub const FILES: &[(&str, &str)] = &[
     (
         "lich/lib/common/upstreamhook.rb",
         include_str!("../../../../bridges/ruby/lich/lib/common/upstreamhook.rb"),
+    ),
+    (
+        "lich/lib/attributes/stats.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/attributes/stats.rb"),
+    ),
+    (
+        "lich/lib/attributes/skills.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/attributes/skills.rb"),
+    ),
+    (
+        "lich/lib/attributes/spells.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/attributes/spells.rb"),
+    ),
+    (
+        "lich/lib/attributes/resources.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/attributes/resources.rb"),
+    ),
+    (
+        "lich/lib/util/util.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/util/util.rb"),
+    ),
+    (
+        "lich/lib/util/deep_freeze.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/util/deep_freeze.rb"),
     ),
     (
         "lich/LICENSE.txt",
@@ -227,7 +258,7 @@ pub const ENTRY: &str = "hydra/runner.rb";
 ///
 /// A file could not be written.
 pub fn unpack(dir: &Path) -> std::io::Result<()> {
-    for (path, text) in FILES {
+    for (path, text) in FILES.iter().chain(GAME_FILES) {
         let target = dir.join(path);
         if std::fs::read_to_string(&target).is_ok_and(|kept| kept == *text) {
             continue;
@@ -352,7 +383,11 @@ mod tests {
             }
         }
         on_disk.sort();
-        let mut carried: Vec<String> = FILES.iter().map(|(path, _)| (*path).to_owned()).collect();
+        let mut carried: Vec<String> = FILES
+            .iter()
+            .chain(GAME_FILES)
+            .map(|(path, _)| (*path).to_owned())
+            .collect();
         carried.sort();
         assert_eq!(carried, on_disk);
     }

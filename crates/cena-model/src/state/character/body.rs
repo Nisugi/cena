@@ -39,6 +39,57 @@ use super::Injury;
 
 /// Keep injury folding and observation coverage together. An unrecognized
 /// image preserves legacy injury behavior but cannot prove this part healthy.
+/// Which injuries the game's injury window shows: its three radio buttons,
+/// `injrRad`, `scarRad` and `bothRad`, the one set with `value='1'`
+/// (`lib/common/xmlparser.rb:884-891`, INFERRED from Lich: no capture here
+/// has them). Lich's `Wounds` and `Scars` set it to both before they read
+/// (`_injury 2`, `lib/games.rb:1311`), since a wound covers a scar otherwise.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InjuryMode {
+    /// `injrRad`: wounds.
+    Wounds,
+    /// `scarRad`: scars.
+    Scars,
+    /// `bothRad`: both, a wound over a scar.
+    Both,
+}
+
+impl InjuryMode {
+    /// `wounds`, `scars` or `both`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Wounds => "wounds",
+            Self::Scars => "scars",
+            Self::Both => "both",
+        }
+    }
+}
+
+/// Read the injury window's radio buttons: the one set names the mode.
+pub(crate) fn read_radios(
+    character: &mut super::Character,
+    widgets: &cena_protocol::frame::DialogWidgets,
+) {
+    for attrs in &widgets.widgets {
+        let get = |name: &str| {
+            attrs
+                .iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| value.as_str())
+        };
+        let mode = match get("id") {
+            Some("injrRad") => InjuryMode::Wounds,
+            Some("scarRad") => InjuryMode::Scars,
+            Some("bothRad") => InjuryMode::Both,
+            _ => continue,
+        };
+        if get("value") == Some("1") {
+            character.injury_mode = Some(mode);
+        }
+    }
+}
+
 pub(super) fn apply_image(character: &mut super::Character, part: &str, name: &str) {
     if let Some(index) = ALL_PARTS.iter().position(|id| *id == part) {
         if name == part

@@ -127,6 +127,26 @@ module Hydra
     def map_room = @copy['map_room']
     # The spells the spell list names, by number (spell.rb, `known?`).
     def known_spells = @copy['known_spells']
+    # The sheet by Lich's Infomon keys (infomon.rb).
+    def infomon = @copy.infomon
+
+    # What the injury window shows, by Lich's numbers: 0 wounds, 1 scars,
+    # 2 both; 0 until the game has said, as Lich starts.
+    def injury_mode = { 'scars' => 1, 'both' => 2 }.fetch(@copy['injury_mode'], 0)
+
+    # Level and experience, at Lich's defaults: 0, or nil for what is sent
+    # only while it applies (lumnis, rpa, fashlonae).
+    def level = experience['level'].to_i
+    def exp = experience['experience'].to_i
+    def next_level_text = experience['next_level'].to_s
+    def next_level_value = experience['next_level_percent'].to_i
+    def until_next = experience['until_next'].to_i
+    def field_exp = experience['field_experience'].to_i
+    def max_field_exp = experience['field_experience_max'].to_i
+    def ascension_exp = experience['ascension_experience'].to_i
+    def lumnis = experience['lumnis']
+    def fashlonae = experience['fashlonae']
+    def rpa = experience['rpa']&.to_f
     def current_target_ids = [@copy['target']].compact
 
     # The statuses as Lich's indicators: `IconSTUNNED` => `y`. One the game
@@ -190,6 +210,8 @@ module Hydra
     private
 
     def room = @copy['room'] || {}
+
+    def experience = @copy['experience'] || {}
 
     def vital(bar, part)
       (((@copy['vitals'] || {})[bar]) || {})[part].to_i

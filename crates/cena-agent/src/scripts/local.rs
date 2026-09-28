@@ -69,6 +69,9 @@ pub struct Local {
     /// The spells the character's spell list names, by number; `null` until
     /// the game has sent the list.
     pub known_spells: Option<Vec<u32>>,
+    /// What the injury window shows: `wounds`, `scars` or `both`; `null`
+    /// until the game has said. Lich's `Wounds` and `Scars` want `both`.
+    pub injury_mode: Option<&'static str>,
     /// What the game has said of the character: stats, skills, PSMs,
     /// society, experience (`super::sheet`).
     #[serde(flatten)]
@@ -117,6 +120,10 @@ pub fn local(character: &str, snapshot: &Snapshot, map_room: Option<u32>) -> Loc
                 .map(|(number, _)| number)
                 .collect()
         }),
+        injury_mode: state
+            .character
+            .injury_mode
+            .map(cena_session::body::InjuryMode::as_str),
         sheet: sheet(state),
     }
 }

@@ -405,3 +405,26 @@ fn a_mind_bar_without_the_gift_says_it_is_gone() {
     );
     assert_eq!(exp.mind_bar.until_next, Some(79));
 }
+
+#[test]
+fn the_injury_window_says_its_mode_by_the_radio_set() {
+    // Lich's reading (`lib/common/xmlparser.rb:884-891`): of the three
+    // radios, the one with `value='1'` is the mode.
+    let wire = b"<dialogData id='injuries'>\
+<radio id='injrRad' value='0' text='Injuries'/><radio id='scarRad' value='0' text='Scars'/>\
+<radio id='bothRad' value='1' text='Both'/></dialogData>\n";
+    let state = fold(wire);
+    assert_eq!(
+        state.character.injury_mode,
+        Some(cena_model::state::character::body::InjuryMode::Both)
+    );
+
+    let mut wire = wire.to_vec();
+    wire.extend_from_slice(
+        b"<dialogData id='injuries'><radio id='scarRad' value='1' text='Scars'/></dialogData>\n",
+    );
+    assert_eq!(
+        fold(&wire).character.injury_mode,
+        Some(cena_model::state::character::body::InjuryMode::Scars)
+    );
+}

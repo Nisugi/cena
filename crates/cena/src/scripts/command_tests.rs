@@ -176,7 +176,7 @@ async fn scripts_check_is_answered_on_the_command_line() {
     std::fs::write(dir.join("scripts/fine.lic"), "echo 'hi'\n").unwrap();
     std::fs::write(
         dir.join("scripts/broken.lic"),
-        "level = Stats.level\nthere = File.exists?('x')\n",
+        "task = Bounty.task\nthere = File.exists?('x')\n",
     )
     .unwrap();
     let (source, _transcript) =
@@ -205,7 +205,7 @@ async fn scripts_check_is_answered_on_the_command_line() {
         .await;
     let told = told_until(&mut events, "File.exists?").await;
     assert!(
-        told.iter().any(|l| l.contains("line 1  Stats: Lich's")),
+        told.iter().any(|l| l.contains("line 1  Bounty: Lich's")),
         "{told:#?}"
     );
     assert!(

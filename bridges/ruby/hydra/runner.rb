@@ -27,6 +27,7 @@ require_relative 'engine'
 
 copy = Hydra::Copy.new
 XMLData = Hydra::Data.new(hydra_setting('HYDRA_GAME'), hydra_setting('HYDRA_CHARACTER'), copy)
+require_relative 'gemstone'
 $stdout = Hydra::Screen.new
 Hydra.connection = Hydra::Connection.new(hydra_setting('HYDRA_URL'), hydra_setting('HYDRA_TOKEN'))
 

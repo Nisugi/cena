@@ -21,6 +21,8 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | `copy.rb` | the local copy of the character from Hydra's `state` events, `XMLData` answered from it by Lich's names, and Lich's `GameObj` filled from it |
 | `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's |
 | `spell.rb` | `Spell[n]` from Hydra's spell table, evaluated for the character; known and up from the copy |
+| `infomon.rb` | Lich's `Infomon` answered from the copy's sheet: the stats, skills, circles, PSMs, society, resources, currency and experience by Lich's keys |
+| `gemstone.rb` | the game's own classes, loaded once `XMLData` is made as Lich's game loader loads them: `Stats`, `Skills`, `Spells`, `Society`, `Experience`, `Resources`, `Currency`, the PSMs, `Effects`, `Wounds`, `Scars`, `Injured`, over `infomon.rb`; and Lich's `CharacterStatus` from `games.rb`, which the runner does not load |
 | `builtins.rb` | Lich scripts Hydra has built in (`go2`), started by name as Lich's are, as an exec script named after them that waits on Hydra's run |
 | `hooks.rb` | a script's display and input hooks, kept by Lich's own registries, told to Hydra as they come and go, and asked about each line the player is shown or types |
 | `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script and then to the display hooks, the player's commands to Lich's command table or `Script.start`, the player's typing to the input hooks |
@@ -44,7 +46,10 @@ command table, the helpers those read at load time, the classes a script reads i
 through (`constants.rb`, `common/gameobj.rb`, `attributes/char.rb`), the stores (`lich.rb`,
 `common/settings.rb` and its folder, `common/vars.rb`, `common/uservars.rb`), and the hooks
 (`common/downstreamhook.rb`, `common/upstreamhook.rb` and the `common/hook_registry.rb` they
-share), and Lich's Gtk support (`common/gtk.rb`, `util/gtk_compaction.rb`), loaded only when Hydra
+share), the character's sheet (`attributes/stats.rb`, `skills.rb`, `spells.rb`, `resources.rb`;
+`gemstone/society.rb` and its `societies/`, `experience.rb`, `psms.rb` and its `psms/`,
+`currency.rb`, `effects.rb`, `injured.rb`, `wounds.rb`, `scars.rb`; `util/util.rb` and the
+`util/deep_freeze.rb` it requires), and Lich's Gtk support (`common/gtk.rb`, `util/gtk_compaction.rb`), loaded only when Hydra
 lets the runner open windows (`HYDRA_WINDOWS`) and the player has the `gtk3` gem. The gems are
 Lich's installer's: `ox`, `sqlite3`, `sequel`. To take a newer Lich, copy the same
 files from the new commit, update the commit above, and run the runner's tests.

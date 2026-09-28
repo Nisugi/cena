@@ -85,6 +85,7 @@ stated is `null`), less what only counts the clock (`clock`, `captured_unix_ms`,
 | `map_room` | the map's own number for the room, when Hydra has a map and names the room **without guessing**; `null` otherwise |
 | `target` | the id of the creature the character targets |
 | `known_spells` | the numbers of the spells the character's spell list names; `null` until the game has sent the list |
+| `injury_mode` | what the injury window shows: `wounds`, `scars` or `both` (a wound over a scar); `null` until the game has said |
 
 And the character's sheet: what the game has said of the character in `info`, `skills`,
 `experience`, `society`, `resource`, `wealth` and the PSM lists, as Hydra read it. Here too a

@@ -35,7 +35,7 @@ async fn the_checker_finds_each_kind_and_nothing_else() {
     assert_eq!(
         found,
         [
-            (3, Verdict::Stops, "Stats", true),
+            (3, Verdict::Stops, "Bounty", true),
             (4, Verdict::Stops, "Spell#cast", true),
             (5, Verdict::Stops, "XMLData.bounty_task", true),
             (6, Verdict::Stops, "File.exists?", false),
@@ -49,6 +49,7 @@ async fn the_checker_finds_each_kind_and_nothing_else() {
                 true
             ),
             (11, Verdict::Markup, "$_SERVERBUFFER_", true),
+            (29, Verdict::Stops, "Infomon.sync", true),
         ],
         "{:#?}",
         script.findings
