@@ -15,9 +15,9 @@ use super::pin::open_pinned;
 use super::refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 use super::wire::hash_password;
 use super::wire::{
-    Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF, err,
-    expect_echo, is_launch_ok, offered_game_codes, parse_launch, redact, redact_char_code,
-    resolve_char_code,
+    Credentials, EACCESS_HOST, EACCESS_PORT, EaccessError, LaunchPayload, READ_BUF,
+    character_names, err, expect_echo, is_launch_ok, offered_game_codes, parse_launch, redact,
+    redact_char_code, resolve_char_code,
 };
 use crate::bytes::ByteSource;
 use std::path::Path;
@@ -176,6 +176,46 @@ pub(super) async fn converse(
     select_instance(conn, creds, progress).await?;
     let char_code = resolve_character(conn, creds, progress).await?;
     launch_character(conn, &char_code, progress).await
+}
+
+/// Ask which characters an account has on one game: the handshake's `K A M F
+/// G P C`, stopping before `L` launches anything (`plan/49` Stage C step 7).
+/// The window's login lists them; playing one logs in afresh, as a reconnect
+/// must. `creds.character` is not read.
+///
+/// # Errors
+///
+/// As [`authenticate`]'s, as far as `C`: a wrong password is `A`'s refusal,
+/// and counts against the account as any login's does.
+pub async fn list_characters(
+    creds: Credentials<'_>,
+    pin: &Path,
+    mut progress: impl FnMut(&str),
+) -> Result<Vec<String>, EaccessError> {
+    progress(&format!(
+        "[stage: tls_handshake] {EACCESS_HOST}:{EACCESS_PORT}, no SNI (matching Lich)"
+    ));
+    let mut conn = open_pinned(EACCESS_HOST, EACCESS_PORT, pin, &mut progress).await?;
+    let listed = list(&mut conn, creds, &mut progress).await;
+    // Closed once the list is in: nothing waits on this connection.
+    let _ = conn.shutdown().await;
+    listed
+}
+
+/// The `K A M F G P C` conversation over any [`ByteSource`]: what
+/// [`list_characters`] runs, without the connect, as [`converse`] is
+/// [`authenticate`]'s.
+pub(super) async fn list(
+    conn: &mut impl ByteSource,
+    creds: Credentials<'_>,
+    progress: &mut impl FnMut(&str),
+) -> Result<Vec<String>, EaccessError> {
+    prove_identity(conn, creds, progress).await?;
+    select_instance(conn, creds, progress).await?;
+    send(conn, "C", "c_request").await?;
+    let c = read_response(conn, "c_response").await?;
+    expect_echo(&c, 'C', "c_response")?;
+    Ok(character_names(&c).into_iter().map(str::to_owned).collect())
 }
 
 /// `K` then `A`: get the server's hash key, and prove we know the password.

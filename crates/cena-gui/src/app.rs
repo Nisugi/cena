@@ -141,6 +141,7 @@ impl App {
             cards: &glance.cards,
             offered: &glance.offered,
             roster: &glance.roster,
+            listing: glance.listing.as_ref(),
             merged: &glance.merged,
             said: glance.said.as_ref().map(|(said, _)| said.as_str()),
             windowed: &windowed,

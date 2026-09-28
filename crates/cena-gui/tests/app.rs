@@ -60,7 +60,7 @@ fn a_start_reaches_the_binary_and_its_answer_is_shown() {
         .with_size((560.0, 400.0))
         .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
 
-    harness.get_by_label("Launch").click();
+    harness.get_by_label_contains("Not launched").click();
     harness.run();
     harness.get_by_label("Start Orsen").click();
     assert!(until_shown(&mut harness, "handled Add(\"Orsen\")"));
@@ -78,7 +78,7 @@ fn with_nobody_to_answer_the_hub_says_so() {
     let mut harness = Harness::builder()
         .with_size((560.0, 400.0))
         .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
-    harness.get_by_label("Launch").click();
+    harness.get_by_label_contains("Not launched").click();
     harness.run();
     harness.get_by_label("Start Orsen").click();
     assert!(until_shown(

@@ -15,7 +15,7 @@ use cena_session::{
     Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
 };
 use cena_ui::{
-    HubControl, HubRequest, HuntView, MergedHistory, MergedLine, RosterCard, SessionCard,
+    HubControl, HubRequest, HuntView, Listing, MergedHistory, MergedLine, RosterCard, SessionCard,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -50,6 +50,8 @@ struct Shared {
     offered: Mutex<Vec<String>>,
     /// Every character on the roster, as the binary last said.
     roster: Mutex<Vec<RosterCard>>,
+    /// The last account whose characters the binary listed.
+    listing: Mutex<Option<Listing>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
     /// The binary's answer to the last request, and when it came.
@@ -129,6 +131,7 @@ pub(crate) struct Glance {
     pub(crate) cards: Vec<SessionCard>,
     pub(crate) offered: Vec<String>,
     pub(crate) roster: Vec<RosterCard>,
+    pub(crate) listing: Option<Listing>,
     pub(crate) merged: Vec<MergedLine>,
     /// The binary's last answer, while it is fresh, and how long it has left.
     pub(crate) said: Option<(String, Duration)>,
@@ -147,6 +150,7 @@ impl Sessions {
                 control: Mutex::default(),
                 offered: Mutex::default(),
                 roster: Mutex::default(),
+                listing: Mutex::default(),
                 merged: Arc::default(),
                 said: Mutex::default(),
             }),
@@ -216,6 +220,13 @@ impl Sessions {
         self.shared.window.wake();
     }
 
+    /// The characters an account has on one game, as the login service
+    /// listed them, for the Not launched tab (`plan/49` Stage C step 7).
+    pub fn characters(&self, listing: Listing) {
+        *lock(&self.shared.listing) = Some(listing);
+        self.shared.window.wake();
+    }
+
     /// Close the window: the run is over. Called by the binary once every
     /// character has quit, however the ending began.
     pub fn close(&self) {
@@ -278,6 +289,7 @@ impl Sessions {
             cards: self.cards(),
             offered: lock(&self.shared.offered).clone(),
             roster: lock(&self.shared.roster).clone(),
+            listing: lock(&self.shared.listing).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
             said,
         }

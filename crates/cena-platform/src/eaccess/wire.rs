@@ -388,6 +388,13 @@ pub fn resolve_char_code<'a>(c_response: &'a str, character: &str) -> Option<&'a
     None
 }
 
+/// Every character a `C` response lists, by name, in the server's order: the
+/// names of [`resolve_char_code`]'s code and name pairs, from field 5.
+#[must_use]
+pub fn character_names(c_response: &str) -> Vec<&str> {
+    c_response.trim().split('\t').skip(6).step_by(2).collect()
+}
+
 /// The instance codes an `M` response offers.
 ///
 /// Format: `M \t <code> \t <name> [\t <code> \t <name>]...`

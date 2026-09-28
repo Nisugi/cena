@@ -32,8 +32,8 @@ use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::{
-    batch, combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, sorter,
-    travel, triggers, watch,
+    batch, combat, connector, frontend, interrupt, launcher, learn, loot, roster, secrets, setup,
+    sorter, travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -357,27 +357,13 @@ impl Table {
                     Err(e) => e,
                 }
             }
-            HubRequest::Forget(name) => match roster::forget(&self.dir, &name) {
-                Ok(Some(entry)) => format!("{} is off the roster.", entry.character),
-                Ok(None) => format!("{name} is not on the roster."),
-                Err(e) => format!("The roster could not be changed: {e}"),
-            },
-            HubRequest::ForgetPassword(account) => match secrets::forget(&account) {
-                // The keyring's is gone; the account's variable is the
-                // player's own, and still answers.
-                Ok(()) if secrets::saved(&account) => format!(
-                    "The OS keyring keeps no password for {account}; {} still holds one.",
-                    secrets::env_name(&account)
-                ),
-                Ok(()) => format!("The password kept for {account} is forgotten."),
-                Err(e) => format!("The OS keyring would not forget it: {e}"),
-            },
-            HubRequest::Favourite(name, star) => match roster::favourite(&self.dir, &name, star) {
-                Ok(Some(entry)) if star => format!("{} is a favourite.", entry.character),
-                Ok(Some(entry)) => format!("{} is no longer a favourite.", entry.character),
-                Ok(None) => format!("{name} is not on the roster."),
-                Err(e) => format!("The roster could not be changed: {e}"),
-            },
+            HubRequest::Forget(name) => launcher::forget(&self.dir, &name),
+            HubRequest::ForgetPassword(account) => launcher::forget_password(&account),
+            HubRequest::Favourite(name, star) => launcher::favourite(&self.dir, &name, star),
+            HubRequest::Remember(saved) => launcher::remember(&self.dir, &saved),
+            HubRequest::Characters(account) => {
+                launcher::characters(&self.pin, account, self.gui.as_ref()).await
+            }
             HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {
                 eprintln!("[play] shut down from the hub");

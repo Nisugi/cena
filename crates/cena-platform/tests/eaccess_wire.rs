@@ -24,8 +24,9 @@
 //! is what these are for.
 
 use cena_platform::eaccess::{
-    CLIENT_BANNER, describe_launch_refusal, expect_echo, hash_password, is_launch_ok,
-    launch_refusal_is_fatal, offered_game_codes, parse_launch, redact, resolve_char_code,
+    CLIENT_BANNER, character_names, describe_launch_refusal, expect_echo, hash_password,
+    is_launch_ok, launch_refusal_is_fatal, offered_game_codes, parse_launch, redact,
+    resolve_char_code,
 };
 use cena_platform::{Credentials, EaccessError, LaunchPayload};
 
@@ -154,6 +155,18 @@ fn missing_character_resolves_to_none() {
     assert_eq!(resolve_char_code(c, "Nobody"), None);
     let truncated = "C\t1\t100\t0\t0\tW_<ACCOUNT>_000";
     assert_eq!(resolve_char_code(truncated, "Nisugi"), None);
+}
+
+/// Every name on the account, in the server's order; a code whose name was
+/// cut off is not a character, and an account with none lists none.
+#[test]
+fn lists_every_character_by_name() {
+    let c = "C	2	100	0	0	W_<ACCOUNT>_000	Nisugi	W_<ACCOUNT>_001	Other
+";
+    assert_eq!(character_names(c), ["Nisugi", "Other"]);
+    let truncated = "C	1	100	0	0	W_<ACCOUNT>_000	Nisugi	W_<ACCOUNT>_001";
+    assert_eq!(character_names(truncated), ["Nisugi"]);
+    assert!(character_names("C	0	0	0	0").is_empty());
 }
 
 /// `plan/10` §12.3: `splitn(2, '=')`, because a KEY value can itself

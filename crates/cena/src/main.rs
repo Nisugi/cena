@@ -50,6 +50,7 @@ mod gui;
 mod hunt;
 mod hunt_setup;
 mod interrupt;
+mod launcher;
 mod learn;
 mod loot;
 mod map_context;

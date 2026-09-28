@@ -1,6 +1,6 @@
 //! The hub: every character this Hydra runs, at a glance, in two tabs
-//! (`plan/47` §3), and a third to launch them from (`launch.rs`, `plan/49`
-//! Stage C). The author: *"we probably don't want to clutter the live cards
+//! (`plan/47` §3), and a third holding those not launched (`launch.rs`,
+//! `plan/49` Stage C). The author: *"we probably don't want to clutter the live cards
 //! with the closed cards. so tab for closed and tab for live?"*
 //!
 //! A card is [`SessionCard`], the web hub's own, so both hubs show the same
@@ -21,7 +21,7 @@
 //! depending on window size"*).
 
 use cena_ui::{
-    GroupView, HubRequest, LifecycleView, MergedLine, RosterCard, SessionCard, VitalView,
+    GroupView, HubRequest, LifecycleView, Listing, MergedLine, RosterCard, SessionCard, VitalView,
 };
 
 use crate::bar::{self, Amount, Bar};
@@ -34,8 +34,9 @@ pub enum Tab {
     Live,
     /// Characters that ended this run, each with why.
     Closed,
-    /// The roster, a new login, and the kept passwords (`plan/49` Stage C).
-    Launch,
+    /// The roster's characters not on the table, a login by account, and
+    /// the kept passwords (`plan/49` Stage C).
+    NotLaunched,
 }
 
 /// What the player asked the hub for.
@@ -57,6 +58,8 @@ pub struct HubView<'a> {
     pub offered: &'a [String],
     /// Every character on the roster.
     pub roster: &'a [RosterCard],
+    /// The last account whose characters the login service listed.
+    pub listing: Option<&'a Listing>,
     /// The merged streams, oldest first.
     pub merged: &'a [MergedLine],
     /// What the binary answered the last request, if it has.
@@ -73,7 +76,7 @@ pub struct Hub {
     pub tab: Tab,
     /// Asking whether to shut Hydra down.
     confirming: bool,
-    /// What the Launch tab is typing.
+    /// What the Not launched tab is typing, and the account logged in.
     launch: crate::launch::Launch,
     /// Every card's width, as the player last dragged it.
     pub card_width: CardWidth,
@@ -117,7 +120,11 @@ impl Hub {
                 Tab::Closed,
                 format!("Closed ({})", closed.len()),
             );
-            ui.selectable_value(&mut self.tab, Tab::Launch, "Launch");
+            ui.selectable_value(
+                &mut self.tab,
+                Tab::NotLaunched,
+                format!("Not launched ({})", crate::launch::waiting(view).len()),
+            );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 // With nothing playing there is nothing to lose, so it does
                 // not ask, as closing the window does not (author, 2026-09-27).
@@ -174,7 +181,7 @@ impl Hub {
                     width,
                     &mut asked,
                 ),
-                Tab::Launch => self.launch.show(ui, view, &mut asked),
+                Tab::NotLaunched => self.launch.show(ui, view, width, &mut asked),
             }
         });
         asked

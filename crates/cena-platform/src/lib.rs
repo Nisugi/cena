@@ -63,7 +63,7 @@ pub use answering::{AnsweringSource, LOGIN_BURST, TranscriptHandle};
 pub use bytes::ByteSource;
 pub use eaccess::{
     Credentials, EaccessError, LaunchPayload, PIN_FILENAME, Prefer, Provider, authenticate,
-    authenticate_via, connect_game,
+    authenticate_via, connect_game, list_characters,
 };
 pub use live::{KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, LiveSource, UNACKED_SEND_TIMEOUT};
 pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};

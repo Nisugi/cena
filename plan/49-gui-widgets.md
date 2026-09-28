@@ -660,6 +660,46 @@ So Stage C gains four steps:
 Superseded by the revision: the paragraph below, which excluded the listing, and step 2's
 Launch tab name.
 
+**Steps 4 and 5 BUILT 2026-09-27** (`57f37db`, `crates/cena-gui/src/hub.rs`).
+
+- *No red flashes.* Everything below the hub's header has an id of its own, so a line
+  appearing above no longer renumbers the streams panel under it.
+- *The test hears egui's own warning* (`log`, by the thread that drew it). Before the fix
+  it failed on exactly the four boxes of the author's screenshot. Its logger is boxed and
+  handed to `log`, not a `static` of ours (Rule 5.2).
+- *Cards in a grid.* A card is as wide as its four bars (312), and dragging its side sets
+  every card's width, no narrower than 160. Cards tile as many to a row as fit. The rows
+  are counted rather than left to egui's wrapping, which cannot wrap what it has not yet
+  measured.
+- *Mutants:* five, four caught. A card's own id survives, because egui's check also needs
+  a widget's parent unchanged and each card is its own parent. The id is kept so a card's
+  widgets keep their state as others come and go.
+- *Not persisted yet.* The card width lasts the run; keeping it is a Stage D setting.
+
+**Steps 6 and 7 BUILT 2026-09-27.**
+
+- *Not launched* (`crates/cena-gui/src/launch.rs`) holds the roster's characters that are
+  not on the table, live or closed. They are cards in the same grid, starred first, then by
+  name, and counted on the tab.
+- *Log in by account.* It asks for the account and password, with the game on Prime. The
+  login service lists the account's characters (`cena_platform::list_characters`:
+  `K A M F G P C`, no `L`, over the same scripted server the handshake's tests use). The
+  binary hands the window a `Listing`.
+- *Each listed character* has *Add* (*Forget* once on the roster), a star (which adds it
+  starred if it is not yet on the roster), and *Play*, which logs in with the password
+  held since *Log in*. One on the table says *Playing*. *Log out* lets go of the account,
+  its list and its password.
+- *Keeping the password.* It goes to the keyring at *Log in* when *Keep the password* is
+  ticked, once the service has proved it.
+- *Where the answers live.* The binary's answers to the roster and password requests moved
+  out of `play.rs`, which sat at its cap, into `crates/cena/src/launcher.rs`.
+- *Mutants:* fifteen, across the tab, the binary's answers, the parser of `C` and the
+  listing's conversation. All fifteen are caught, after one hole was closed while writing
+  them: no test ticked the account login's *Keep the password*, so a login that ignored
+  it would have passed.
+- *Not tested here:* the listing against the live service, the keyring, and the binary's
+  answer on the live table. Each is the author's to see.
+
 Not in Stage C: asking the login service which characters an account has, as Lich's
 manual tab does (`manual_login_tab.rb`). It needs a new exchange with the live service,
 which no test here may make; the character is typed by name, and a wrong one is refused at

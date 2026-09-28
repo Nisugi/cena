@@ -33,7 +33,7 @@ egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "test-util", "time"] }
 # To hear egui's own debug warning that a widget changed its id in place,
 # which a debug build draws as a red box (`tests/hub.rs`).
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 
 [lints]
 workspace = true

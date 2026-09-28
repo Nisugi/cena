@@ -1,7 +1,8 @@
 //! What a hub asks of whoever runs the sessions: start a character, quit
 //! one, log a stopped one back in, shut Hydra down (`plan/29` step 5c); and,
-//! from the window's launcher, log one in by what was typed, and keep the
-//! roster and the kept passwords (`plan/49` Stage C).
+//! from the window's Not launched tab, log one in by what was typed, list an
+//! account's characters, and keep the roster and the kept passwords
+//! (`plan/49` Stage C).
 //!
 //! Two hubs ask it -- Despana's page and the window's (`plan/47` §4) -- and
 //! one answerer, the binary, which alone knows the roster and the keyring.
@@ -38,6 +39,51 @@ pub enum HubRequest {
     ForgetPassword(String),
     /// Star this roster character as a favourite, or unstar it.
     Favourite(String, bool),
+    /// List the characters an account has on one game. The binary answers
+    /// with a line and gives the window the [`Listing`]. Only the window's
+    /// hub asks it, as it does [`HubRequest::Login`].
+    Characters(Account),
+    /// Put this character on the roster without playing it.
+    Remember(Saved),
+}
+
+/// An account logged in to list its characters: the Not launched tab's login,
+/// typed without a character.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Account {
+    /// The account.
+    pub account: String,
+    /// Its password.
+    pub password: Password,
+    /// The game's code: `GS3` is Prime.
+    pub game: String,
+    /// Keep the password in the OS keyring once the service has proved it.
+    pub remember: bool,
+}
+
+/// A character to put on the roster, as an account's listing named it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Saved {
+    /// The character, as the service spells it.
+    pub character: String,
+    /// The account it is on.
+    pub account: String,
+    /// The game's code.
+    pub game: String,
+    /// Starred as it is put on.
+    pub favourite: bool,
+}
+
+/// The characters an account has on one game, as the login service listed
+/// them, in its order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Listing {
+    /// The account.
+    pub account: String,
+    /// The game's code.
+    pub game: String,
+    /// The characters, by name.
+    pub characters: Vec<String>,
 }
 
 /// A login typed whole, in the window's launcher.
