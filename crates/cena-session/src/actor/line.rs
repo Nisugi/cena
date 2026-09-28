@@ -1,11 +1,14 @@
 //! A finished line leaves the model here: once, to every viewer.
 //!
-//! `route_text` is the one place a frame boundary becomes a line boundary
-//! (`cena-model`'s `state/streams.rs`), and `lines_seen` moving is how it says
-//! it just made one. The player log already took its line from that point;
-//! this publishes the same line as [`Event::Line`](super::Event::Line), so a
-//! viewer draws the line the classifiers and the log read, rather than
-//! assembling a second one from frames (`plan/45` §4a).
+//! `route_text` is where the model's lines are finished (`cena-model`'s
+//! `state/streams.rs`, by [`Unfinished`](cena_model::line::Unfinished), the
+//! one place a frame boundary becomes a line boundary), and `lines_seen`
+//! moving is how it says it just made one. The player log already took its
+//! line from that point; this publishes the same line as
+//! [`Event::Line`](super::Event::Line), so a viewer draws the line the
+//! classifiers and the log read, rather than assembling a second one from
+//! frames (`plan/45` §4a). While the player's Lich runs, a viewer is shown
+//! Lich's copy instead (`lich_text.rs`).
 //!
 //! It is also the point M8's triggers run at (`plan/45` §4): once per line, in
 //! the session, before any viewer, so every viewer and a session nobody
@@ -30,6 +33,20 @@ use cena_platform::ByteSource;
 use cena_protocol::Frame;
 
 use super::{Event, SessionActor};
+
+/// Where the lines a finished line becomes go, and whether the triggers that
+/// fire on it act.
+enum Show<'a> {
+    /// To every viewer, now; the triggers act. The game's line.
+    Now,
+    /// Held for a script runner's display hooks; the triggers act.
+    Held(&'a mut Vec<Arc<Line>>),
+    /// Nowhere, since the player's Lich shows its copy; the triggers act.
+    Not,
+    /// To every viewer, now; the triggers do not act, having acted on the
+    /// game's line. A line the player's Lich showed.
+    Lichs,
+}
 
 impl<S: ByteSource> SessionActor<S> {
     /// The line `frame` finished, if it finished one.
@@ -57,33 +74,93 @@ impl<S: ByteSource> SessionActor<S> {
     /// Sorting first is what lets the triggers match each sorted line, as
     /// `VellumFE` sorts before it highlights (`plan/45` §4a). The model's
     /// scrollback and the player log keep the game's text either way.
-    pub(super) fn publish_line(&mut self, line: Arc<Line>) {
+    ///
+    /// While a script runner listens, the line goes first as the game sent
+    /// it ([`Event::Heard`](super::Event::Heard)): what a script reads is
+    /// never what the player's triggers made of it. While the runner has
+    /// display hooks, what a viewer is shown of it waits for their answer
+    /// (`hooked.rs`); what the triggers do beyond the line does not.
+    ///
+    /// `lich`: the player's Lich took this line's chunk, and shows it
+    /// (`lich_text.rs`). Its copy of the line is what a viewer is shown; this
+    /// one is what the triggers act on.
+    pub(super) fn publish_line(&mut self, line: Arc<Line>, lich: bool) {
+        let heard = self
+            .events
+            .hears_lines()
+            .then(|| self.events.numbered(Event::Heard(Arc::clone(&line))));
+        if lich {
+            self.expect_quiet(&line);
+            self.publish_sorted(line, Show::Not);
+            return;
+        }
+        let mut held = if heard.is_some() && self.events.hooks().display() {
+            Some(Vec::new())
+        } else {
+            // Shown now, so whatever was held goes first.
+            if self.held.is_waiting() {
+                self.show_held(true);
+            }
+            None
+        };
+        let show = held.as_mut().map_or(Show::Now, Show::Held);
+        self.publish_sorted(Arc::clone(&line), show);
+        if let (Some(cursor), Some(shown)) = (heard, held) {
+            self.hold(cursor, line, shown);
+        }
+    }
+
+    /// Publish a line the player's Lich showed, as the game's would be:
+    /// sorted and painted, with nothing the triggers do beyond the look,
+    /// which they did on the game's line.
+    pub(super) fn show_lichs_line(&mut self, line: Arc<Line>) {
+        if self.held.is_waiting() {
+            self.show_held(true);
+        }
+        self.publish_sorted(line, Show::Lichs);
+    }
+
+    /// Publish each line `line` sorts into, as `show` says.
+    fn publish_sorted(&mut self, line: Arc<Line>, mut show: Show<'_>) {
         let triggers = self.events.triggers();
-        let main = line.stream.is_empty() || line.stream == "main";
-        if main
+        if super::lich_text::is_main(&line.stream)
             && self.events.sorts_containers()
             && let Some(sorted) = cena_model::sorter::sort(&line.runs)
         {
             for runs in sorted {
-                self.publish_answered(&triggers, Arc::new(Line::new(line.stream.clone(), runs)));
+                let sorted = Arc::new(Line::new(line.stream.clone(), runs));
+                self.publish_answered(&triggers, sorted, &mut show);
             }
-            return;
+        } else {
+            self.publish_answered(&triggers, line, &mut show);
         }
-        self.publish_answered(&triggers, line);
     }
 
-    /// Publish what `triggers` make of `line`, then what the ones that
-    /// fired do beyond it: on a squelched line too.
-    fn publish_answered(&mut self, triggers: &Matcher, line: Arc<Line>) {
+    /// Publish what `triggers` make of `line`, as `show` says, then what the
+    /// ones that fired do beyond it: on a squelched line too.
+    fn publish_answered(&mut self, triggers: &Matcher, line: Arc<Line>, show: &mut Show<'_>) {
         if triggers.triggers().is_empty() {
-            let _ = self.events.send(Event::Line(line));
+            self.show(vec![line], show);
             return;
         }
         let answer = triggers.answer(&line, &self.state);
-        for shown in answer.lines {
-            let _ = self.events.send(Event::Line(Arc::new(shown)));
+        self.show(answer.lines.into_iter().map(Arc::new).collect(), show);
+        if !matches!(show, Show::Lichs) {
+            self.fired(triggers, &answer.fired, answer.attention, answer.acts);
         }
-        self.fired(triggers, &answer.fired, answer.attention, answer.acts);
+    }
+
+    /// Publish `lines` to every viewer, add them to what is held, or neither.
+    fn show(&self, lines: Vec<Arc<Line>>, show: &mut Show<'_>) {
+        match show {
+            Show::Held(held) => held.extend(lines),
+            Show::Now | Show::Lichs => {
+                for line in lines {
+                    let _ = self.events.send(Event::Line(line));
+                }
+            }
+            Show::Not => {}
+        }
     }
 
     /// At a prompt: each condition that became true does what it does.

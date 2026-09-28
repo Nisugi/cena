@@ -283,8 +283,14 @@ fn known_fallback(name: &str, tag: &str) -> Frame {
         "playerID" => Frame::PlayerId {
             id: text::attribute(tag, "id").unwrap_or_default(),
         },
-        "settings" | "settingsInfo" | "sentSettings" | "presets" | "palette" | "macros"
-        | "mode" | "FEVersion" | "LichWebUI" => Frame::WindowHints {
+        // Typed for the same reason: a Lich started late is told its game
+        // by it (`plan/51` §7, step 4).
+        "settingsInfo" => Frame::SettingsInfo {
+            instance: text::attribute(tag, "instance"),
+            attrs,
+        },
+        "settings" | "sentSettings" | "presets" | "palette" | "macros" | "mode" | "FEVersion"
+        | "LichWebUI" => Frame::WindowHints {
             id: name.to_owned(),
             attrs,
         },

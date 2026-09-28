@@ -54,6 +54,7 @@ impl Scene {
             keys: &[],
             others: &self.others,
             presets: &self.presets,
+            lich: false,
         };
         if let Some(asked) = self.play.show(ui, &view) {
             self.asked.push(asked);
@@ -185,6 +186,15 @@ fn a_widget_opens_its_own_settings() {
         matches!(&asked[..], [Asked::Settings(Some(page)), Asked::Keys] if page.starts_with("widget:")),
         "{asked:?}"
     );
+}
+
+/// The Lich switch asks for the character's own Lich (`plan/51`).
+#[test]
+fn the_lich_switch_asks_for_lich() {
+    let mut harness = harness();
+    harness.get_by_label("Lich").click();
+    harness.run();
+    assert_eq!(harness.state().asked, [Asked::Lich(true)]);
 }
 
 /// The author's complaint about Despana, and `VellumFE`'s answer: a click

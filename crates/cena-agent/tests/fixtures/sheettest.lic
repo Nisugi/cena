@@ -1,0 +1,17 @@
+# A script of Hydra's own, for the runner's sheet (crates/cena-agent/tests/runner.rs):
+# Lich's own Stats, Skills, Spells, Society, Experience, CMan, Warcry,
+# Wounds and Scars, reading what the game has said of the character from
+# the runner's local copy.
+
+echo "before: refresh=#{Infomon.db_refresh_needed?} skill=#{Skills.two_weapon_combat} society=#{Society.status.inspect}"
+%w[info skills society cman exp injuries].each do |command|
+  put command
+end
+waitfor 'You glance over your injuries'
+echo "stats: #{Stats.race} #{Stats.prof} #{Stats.strength.value} #{Stats.strength.bonus} base=#{Stats.base_str.inspect} enhanced=#{Stats.enhanced_str.inspect} level=#{Stats.level}"
+echo "skills: #{Skills.two_weapon_combat} #{Skills.to_bonus(:elemental_lore_air)} #{Skills.elemental_lore_air} minor elemental=#{Spells.minor_elemental}"
+echo "society: #{Society.status} #{Society.rank}"
+echo "experience: #{Experience.fxp_current}/#{Experience.fxp_max} until=#{Experience.until_next} lumnis=#{Experience.lumnis.inspect}"
+echo "psms: focus=#{CMan['focus']} hamstring=#{CMan.known?('hamstring', min_rank: 5)} dirtkick=#{CMan.known?('dirtkick')} holler=#{Warcry.known?('holler')}"
+echo "injuries: head=#{Wounds.head} neck=#{Scars.neck} mode=#{XMLData.injury_mode}"
+echo "after: refresh=#{Infomon.db_refresh_needed?} resources=#{Resources.type.inspect}"

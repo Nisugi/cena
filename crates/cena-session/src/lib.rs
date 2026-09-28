@@ -31,6 +31,7 @@
 //! [`ObservedEvent`] stream. Observing does not confer command authority.
 
 pub mod actor;
+pub mod agent;
 pub mod character_store;
 pub mod combat_recorder;
 pub mod command;
@@ -40,8 +41,10 @@ pub mod lifecycle;
 pub mod menu_store;
 pub mod notice;
 pub mod observation;
+pub mod operation;
 pub mod player_log;
 pub mod queue;
+pub mod script;
 pub mod settings_store;
 pub mod store;
 pub mod supervisor;
@@ -55,15 +58,14 @@ pub use cena_model::movement::{self, MoveFeedback};
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
-pub use cena_model::state::creatures::boons;
 pub use cena_model::state::{
-    claim, containers, creature, flags, gameobj, group, hands, incident, inspect, societies,
-    stream_windows, world, worn,
+    claim, containers, creature, creatures::boons, flags, gameobj, group, hands, incident, inspect,
+    societies, stream_windows, world, worn,
 };
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).
 pub use cena_model::{Appraiser, Buyer, LootFact};
-pub use cena_model::{ChunkLine, GameState, Room, RoomItem, UnknownTag};
+pub use cena_model::{ChunkLine, GameState, Hand, Room, RoomItem, UnknownTag};
 // The creature a hunt reads and the status words it asks about: `plan/30`
 // section 1's table of what the model answers a hunter with. Beside the
 // other model vocabulary re-exported for behaviors, on the same terms.
@@ -83,11 +85,9 @@ pub use cena_model::{
 };
 pub use cena_model::{Task, TaskKind};
 // The herbs eherbs knows and where they are sold (`plan/36`), and the
-// wound and scar reader the healing chooses by.
-pub use cena_model::state::character::body;
-pub use cena_model::state::kit;
-pub use cena_model::trigger;
-pub use cena_model::{guard, herbs};
+// wound and scar reader the healing chooses by; the guard words and the
+// triggers (`plan/45`).
+pub use cena_model::{guard, herbs, state::character::body, state::kit, trigger};
 pub use cena_platform::{DEFAULT_GAME_CODE, GAMES, instance};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Amount, Link, LinkKind, Menu, ProgressBar, Style, TextFrame};

@@ -95,6 +95,11 @@ any script touching `Room.current` loads the map. So a relay costs about 470 MB 
 character, about 11.7 GB committed for 25, most of it 25 copies of one map. Kept as a
 possible escape hatch for one character and one unported script. Not planned.
 
+> **REOPENED 2026-09-28** (`plan/51`). The author: *"Ok well memory seems like a dumb
+> reason."* Most players run 3-5 characters, 10 at most, and each already runs a whole Lich
+> and a frontend today. Twenty-five was the case this section priced, and it is rare. The
+> relay was spiked the same day, and it works.
+
 ### 2b. Re-implementing Lich's API exactly
 
 `research/11-player-requirements.md` §C.4 concluded that script compatibility *"cannot be

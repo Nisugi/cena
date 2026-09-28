@@ -1,0 +1,9 @@
+# A script of Hydra's own, for the Ruby runner's end-to-end test
+# (crates/cena-agent/tests/runner.rs): its arguments, a line to the game, the
+# game's answer read back, and text for the player, as a Lich script would.
+
+echo "args: #{script.vars[1..-1].join('|')}"
+put 'look'
+line = waitfor 'quiet room'
+echo "heard: #{line}"
+respond ['a table', '  row one']

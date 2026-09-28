@@ -1,0 +1,14 @@
+[package]
+name = "lich-relay-spike"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Throwaway. Settles whether real Lich, in pipe mode, takes Hydra as its game
+# server: Hydra keeps the game connection and hands Lich the game's bytes.
+# Nothing here reaches the game; the "game" is a committed recording.
+[dependencies]
+
+[[bin]]
+name = "lich-relay-spike"
+path = "src/main.rs"

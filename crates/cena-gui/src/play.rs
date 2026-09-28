@@ -39,6 +39,16 @@ use crate::layout::{GRID, Layout};
 use crate::story::Story;
 use holders::Engaged;
 
+/// The player's own Lich for the character (`plan/51`): ticked while it
+/// runs; what it was switched to, when it was.
+pub(crate) fn lich_switch(ui: &mut egui::Ui, running: bool) -> Option<bool> {
+    let mut on = running;
+    ui.checkbox(&mut on, "Lich")
+        .on_hover_text("Your own Lich for this character, kept on or off: lich on, lich off")
+        .changed()
+        .then_some(on)
+}
+
 /// What a play window asks for.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Asked {
@@ -62,6 +72,8 @@ pub(crate) enum Asked {
     Settings(Option<String>),
     /// Open the settings menu at Hydra's *Keys* page (step 8).
     Keys,
+    /// Switch the player's own Lich on, or off (`;lich on`, `;lich off`).
+    Lich(bool),
 }
 
 /// What a play window shows this frame.
@@ -86,6 +98,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) others: &'a [crate::widget::Character],
     /// The presets a player saved, which every character adds from.
     pub(crate) presets: &'a crate::layout::Library,
+    /// Whether the player's own Lich runs for it.
+    pub(crate) lich: bool,
 }
 
 /// A play window's own state, which outlives a frame.
@@ -223,6 +237,7 @@ impl Play {
             Some(draw::Top::Settings) => asked = Some(Asked::Settings(None)),
             Some(draw::Top::Keys) => asked = Some(Asked::Keys),
             Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
+            Some(draw::Top::Lich(on)) => asked = Some(Asked::Lich(on)),
             Some(draw::Top::Fit) => {
                 self.layout = None;
                 changed = true;

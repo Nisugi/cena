@@ -1,0 +1,237 @@
+script	lines	verdict	builtin	hydra_answers	its_own
+0net	1781	stops		the game's markup; Log	
+absorb	128	runs			
+alchemy	3091	markup		the game's markup	
+alias	519	windows		Lich's windows (Gtk)	
+alteration	158	runs			
+arenatimer	88	runs			
+armor	1352	windows		Lich's windows (Gtk)	
+assess	89	stops		Log	
+attunecheck	252	markup		the game's markup	
+autoreact	19	runs			
+autostart	456	markup		Lich's windows (Gtk); the game's markup	
+banditpatrol	137	stops		the game's markup; Bounty	
+bardwag	1008	stops		Lich's windows (Gtk); the game's markup	a name defined nowhere
+battery	183	runs			
+betazzherb	630	windows		Lich's windows (Gtk)	
+bigshot	10422	markup		the game's markup	
+BlackArts	9184	markup		the game's markup	
+blue-tracker	579	runs			
+bodega	1668	runs			
+boltdf	302	runs			
+bonuses	164	runs			
+boon	1996	markup		Lich's windows (Gtk); the game's markup	
+botcamp	132	runs			
+bottle	34	runs			
+boxes	207	stops		Group	a library not installed here
+briefcombat	1054	runs			
+bsprofiles	2007	windows		Lich's windows (Gtk)	
+buff_tracker	158	runs			
+burstcalc	193	runs			
+cake	53	runs			
+calibrate_creaturebar	1819	windows		Lich's windows (Gtk)	
+cartograph	317	runs			
+citizenship2	250	runs			
+clearcheckwiz	212	windows		Lich's windows (Gtk)	
+clobber	51	runs			
+cluster	600	runs			
+coin4deed	141	runs			
+coins	50	markup		the game's markup	
+combat_stats	1563	runs			
+CombatLog	564	markup		the game's markup	
+combo	248	markup		the game's markup	
+commas	99	runs			
+creaturebar	3155	stops		DB_Store; Lich's windows (Gtk)	
+crits	124	markup		the game's markup	
+dailyvote	399	runs			
+deepthoughts	28	runs			
+disarmed	132	stops		Spell#timeleft=	
+discordhook	105	stops			a library not installed here
+diskus	29	runs			
+duskruin_watch	59	runs			
+dyetied	395	markup		the game's markup	
+ebestiary	2534	runs			
+eboost	229	markup		the game's markup	
+ebounty	3894	stops		the game's markup; Group; StowList; Bounty; Claim	
+ecaster	432	runs			
+echild	519	stops		Watchfor	
+ecleanse	1912	stops		ReadyList; the game's markup	
+ECTracker	372	markup		the game's markup	
+ecure	1425	stops		the game's markup; Group; Lich's windows (Gtk)	
+efamgo2	384	stops		XMLData.familiar_room_title; XMLData.familiar_room_description; XMLData.familiar_room_exits	
+effect-watcher	80	stops		Log	
+effectmon	123	runs			
+eforgery	1945	markup		Lich's windows (Gtk); the game's markup	
+eg_docent	558	runs			
+egemhoarder	1040	markup		the game's markup	
+eherbs	3639	markup		the game's markup	
+ejoustsmart	306	runs			
+elogin	835	runs			
+eloot	8111	stops		the game's markup; ReadyList; StowList; Bounty; Disk; Group	
+elore	861	runs			
+enhancives	442	stops		DB_Store; the game's markup	
+enhdetect	100	runs			
+eohunter	1	runs			
+escortgo2	1641	runs			
+ewaggle	1796	markup		Lich's windows (Gtk); the game's markup; $infomon_debug	
+ewander	557	stops		the game's markup; Claim	
+ewatchdog	66	differs		$_IDLETIMESTAMP_	
+exchange	774	markup		the game's markup	
+experfect	193	runs			
+familiar	133	runs			
+flarelog	837	stops		CritRanks	
+fletchit	2144	markup		the game's markup; Lich's windows (Gtk)	
+foreach	2192	stops		Map.get_location; a hook matching markup; the game's markup	
+ForgeMaster	3292	windows		Lich's windows (Gtk)	
+furrier	38	runs			
+gauntletcharger	673	stops		the game's markup; StowList	
+gem	35	runs			
+gemshop	38	runs			
+gemsort2	606	runs			
+gemtracker	1518	runs			
+give	100	stops		Log	a library not installed here
+go2	2517	markup	yes	the game's markup	
+goshop	432	markup		the game's markup	
+grep	124	runs			
+group	194	runs			
+guidebook	191	markup		the game's markup	
+hands_and_room	142	windows		Lich's windows (Gtk)	
+heal_spellup	285	windows		Lich's windows (Gtk)	
+healbot_actions	468	runs			
+healbot_core	206	runs			
+herbhunt	182	runs			
+holdhands	254	runs			
+hud_bounty	281	stops		Log	
+inbox	166	runs			
+infomon	1514	stops		Spellsong; Spell#putdown; $infomon_debug; Spell.upmsgs; Spell.dnmsgs; the game's markup; Spell#putup; Spell#timeleft=	an older Lich's API
+invoker	325	runs			
+isigils	168	windows		Lich's windows (Gtk)	
+iSigns	182	windows		Lich's windows (Gtk)	
+isquelch	235	runs			
+jbackup	643	runs			
+jbook	164	runs			
+jinx	2686	stops		Map.reload; Lich's windows (Gtk)	
+junk	37	runs			
+keymaster	369	markup		the game's markup	
+Killtracker	1249	runs			
+kswole	394	runs			
+ledger	1116	markup		the game's markup	
+libeo	1	runs			
+lich5-update	444	stops		Lich::Util; the game's markup	
+linktothefast	127	runs			
+lnet	1741	markup		the game's markup	
+localchat	358	windows		Lich's windows (Gtk)	
+log	221	stops			a name defined nowhere
+log_search	358	runs			
+logxml	138	markup		the game's markup	
+looploot	174	markup		the game's markup	
+loot-be-gone	1801	stops		the game's markup; Lich's windows (Gtk)	a name defined nowhere
+loottracker	5013	runs			
+lte	36	runs			
+lumnismon	1712	runs			
+madwarrior	3558	windows		Lich's windows (Gtk)	
+manaleech	103	runs			
+map	2946	windows		Lich's windows (Gtk)	
+mapdupes	33	runs			
+mechfire	1219	windows		Lich's windows (Gtk)	
+memory_profiler	2065	runs			
+mend	355	markup		the game's markup	
+messaging	678	runs			
+milkman	141	markup		the game's markup; a hook matching markup	
+moneychanger	70	runs			
+move2	72	runs			
+multi	66	runs			
+mybounty	567	stops		Lich's windows (Gtk); XMLData.bounty_task	
+MyFletch	515	windows		Lich's windows (Gtk)	
+newchrism	220	runs			
+no_mstrike	53	runs			
+noop	13	runs			
+notify	793	stops		the game's markup; Lich::Util	
+oleani-lib	1706	stops		Map.get_location	
+orbuculum	1010	stops		Lich's windows (Gtk)	a name defined nowhere
+overwatch	178	markup		the game's markup	
+perfume	138	windows		Lich's windows (Gtk)	
+pilepull	1205	stops		the game's markup; StowList	
+poisoncraft	194	stops		the game's markup; Log	a name defined nowhere
+poolparty	717	markup		the game's markup	
+portkey	246	stops		the game's markup	a name defined nowhere
+proctor	502	stops			URI.encode (Ruby 4.0); URI.decode (Ruby 4.0)
+puritan	685	runs			
+purser	186	runs			
+rainbowear	80	runs			
+reimmessage	151	runs			
+repository	3035	runs			
+resource	1320	markup		the game's markup	
+restart	52	runs			
+rofl-notes	48	runs			
+rofl-puzzles	1551	runs			
+rofl-questions	1194	runs			
+rofl-run	315	runs			
+route2	182	runs			
+runestaffds	99	markup		the game's markup	
+samaritan	234	stops		Group	a library not installed here
+sammu	1140	stops		Lich's windows (Gtk)	a name defined nowhere
+sbounty	1904	stops		Lich's windows (Gtk); Spell#putup; Spell#timeleft=	
+sbounty-bigshot	61	runs			
+scripts	172	runs			
+sellunder	831	stops		Lich's windows (Gtk); StowList	
+send	7	runs			
+shatteredmap	760	stops		Map.loaded; Map.load_json; Map.load_xml; Map.load_dat; Room#unique_loot=; Room#check_location=; Room#tags=; Room#image_coords=; Room#image=; Room#timeto=; Room#wayto=; Room#terrain=; Room#climate=; Room#location=; Map.uids_add; Room#description=; Room#paths=	
+shift	150	stops			a name defined nowhere
+shoard	721	markup		the game's markup	
+shop-me-not	109	markup		the game's markup	
+shopkeeper	93	runs			
+showexits	97	runs			
+signore	1370	windows		Lich's windows (Gtk)	
+simuprizebundle	104	markup		the game's markup	
+sk	112	stops		DB_Store	
+sloot	2165	markup		Lich's windows (Gtk); the game's markup	
+slop-lib	1131	stops			a name defined nowhere
+snapshot	36	runs			
+soundfx	292	windows		Lich's windows (Gtk)	
+spa	2459	markup		the game's markup	
+spellactive	244	runs			
+spellburst	201	markup		the game's markup	
+spellson	181	windows		Lich's windows (Gtk)	
+SpellWindows	700	stops		Spellsong; Group; Spell#max_duration	
+sspell	438	windows		Lich's windows (Gtk)	
+standgroup	81	runs			
+symbolz	440	windows		Lich's windows (Gtk)	
+tag_checker	116	stops		Preset	
+tags	695	stops		the game's markup; Room#tags=; Room#climate=; Room#terrain=; Map.uids	
+targetlist	56	runs			
+targetwindow	128	runs			
+tdarts	101	runs			
+tdig	566	runs			
+tdusk	1334	runs			
+tduskpray	113	runs			
+tears	22	runs			
+tfish	565	runs			
+tgames	472	runs			
+tilde	258	runs			
+tmillicent	139	runs			
+to	76	stops		Log	
+tonis	21	runs			
+totalrecall	20	runs			
+tourniquet	407	runs			
+tperfume	102	runs			
+tradingranks	271	runs			
+traffle	579	markup		the game's markup	
+treim	1310	stops		Group; XMLData.reset	
+trix	563	runs			
+trove	56	runs			
+trovecheck	318	markup		the game's markup	
+tsquelch	438	runs			
+uberbar_eo	1323	stops		the game's markup	a name defined nowhere
+uberfletch	2461	markup		Lich's windows (Gtk); the game's markup	
+uhaul	140	runs			
+update-lich5	66	runs			
+vars	225	windows		Lich's windows (Gtk)	
+version	606	windows		Lich's windows (Gtk)	
+voln-favor	304	stops		a hook matching markup; the game's markup; Oleani	
+wannabe	1932	runs			
+warcries	11	runs			
+webdispel	90	runs			
+webui	367	runs			
+wps	157	runs			
+xnarost	878	stops		Lich's windows (Gtk)	a name defined nowhere

@@ -17,6 +17,7 @@ pub mod runs;
 pub mod scrub;
 pub mod tags;
 pub mod text;
+pub mod write;
 
 pub use frame::{
     Capacity, CmdListEntry, CmdListUpdate, Continuation, Frame, InventoryItem, InventoryResponse,

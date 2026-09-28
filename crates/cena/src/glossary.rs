@@ -50,7 +50,9 @@
 //!   one of those numbered on an observer's stream. The combat model's
 //!   *attack event* is a third, inside one [`Event::Combat`]. A trigger's
 //!   `event` is a fourth: what the model reads a finished line as, a
-//!   [`LineEvent`]; call it a **line event**.
+//!   [`LineEvent`]; call it a **line event**. What a script runner is told is
+//!   a fifth, at positions of its own
+//!   ([`listening::Event`](cena_agent::scripts::listening::Event)).
 //! - **flag** is a name a trigger sets, which the guard word `flag "<name>"`
 //!   reads ([`Flags`]), and a creature's `<crtrStatus>` flags, which the
 //!   guard words `ascended`, `mini_boss` and the rest read ([`Fact::Flag`]).
@@ -72,6 +74,10 @@
 //!   ([`Step::held`]). The authority being held by another claimant is
 //!   [`AuthorityHeld`]. A trigger's `held` is what an import kept that Hydra
 //!   does not do yet: a Wrayth sound, until sounds are built ([`wrayth`]).
+//!   An operation an agent **holds** defends itself and starts nothing until
+//!   resumed ([`Control::Hold`](cena_session::operation::Control::Hold), the
+//!   author's and LAB's word); the hunt's claim on a room is a fourth, inside
+//!   the engine and never public.
 //! - **role** is a group member's part, lead, follow or solo
 //!   ([`group::Role`]), and a spell's kind in the spell table
 //!   ([`spells::Role`]). The combat model's message families have a third
@@ -82,10 +88,15 @@
 //! - **category** is the sorter's item type, `gem` or `wand` in a sorted
 //!   container look ([`SessionHandle::sort_containers`]), and a trigger's group in the triggers file,
 //!   the author's word for what the editor sets (`plan/45` §1 row 3).
-//! - **script** is not a Hydra concept (see **Retired**), and survives in
-//!   three places: the Lich scripts Hydra ports from, bigshot's `script` step
-//!   that the importer turns into a sequence, and the **scripted game**, the
-//!   fake server that tests talk to.
+//! - **script** is the player's own program, run by a script runner (see
+//!   **Scripts**), and three older things: the Lich scripts Hydra ports
+//!   from, bigshot's `script` step that the importer turns into a sequence,
+//!   and the **scripted game**, the fake server that tests talk to.
+//! - **runner** is the desk's command function every Hydra command goes to,
+//!   [`Runner`](cena_session::command::claimant::Runner), and a **script
+//!   runner**, the process that runs one character's scripts
+//!   ([`Runners`](cena_agent::scripts::Runners)). Say "script runner" for the
+//!   second.
 //!
 //! # The wire and the model
 //!
@@ -123,7 +134,8 @@
 //! |---|---|---|
 //! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream, with the triggers its lines were answered with: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
-//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]) | display line, story line |
+//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]). While the player's Lich runs, the lines it showed are published in the game's place, put together the same way (`plan/51` step 3) | display line, story line |
+//! | **Shown prompt** | the prompt a viewer draws after the lines it ends: [`Event::Prompt`](cena_session::Event::Prompt), the game's right after its frame, or, while the player's Lich runs, the one Lich passed on, after Lich's lines | the prompt frame, which is the game's and ends a round trip |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
@@ -137,6 +149,13 @@
 //! | **Claimant** | whoever may hold the authority (`plan/12` §4.1): a behavior, later an agent, and never manual input | |
 //! | **Preempt** | take the authority from its holder, cooperatively for [`PREEMPT_GRACE`] and then by force: [`SessionHandle::preempt`], [`Preempted`]. Only an explicit stop, or the watchdog, preempts | |
 //! | **Refusal** | why the session would not send a command: [`Refusal`] | |
+//! | **Agent level** | what an agent may do with one character, set only by its player and kept in the character's settings: [`agent::Level`](cena_session::agent::Level), `off` until raised (`plan/35` §3) | |
+//! | **Door** | the only way an agent acts on a session, each act checked against the level: [`agent::Door`](cena_session::agent::Door). The agent crate holds a door and never a [`SessionHandle`] | |
+//! | **Operation** | a behavior an agent started, read and steered by its number to its end: a ticket, not a reply ([`Door::perform`](cena_session::agent::Door::perform), [`operation::Report`](cena_session::operation::Report)). Its result keeps apart what the work came to, what it left undone, and whether its authority was released | |
+//! | **Request id** | the caller's own id for an act: the same id again, for the same act, is answered as the first time and never done twice ([`agent::Call`](cena_session::agent::Call)) | |
+//! | **Takeover** | an agent holding the character: an operation that stopped what ran and holds the authority under the agent's token until it gives it back, the player takes it (`;agent stop`), or it ends ([`agent::TOKEN`](cena_session::agent::TOKEN), [`Door::take_over`](cena_session::agent::Door::take_over)). Nothing resumes by itself afterwards | |
+//! | **Denylist** | what an agent may never send to the game at any level: LAB's list, and a `put` that is a drop and the abbreviations of every denied verb ([`agent::refused`](cena_session::agent::refused)). Not a list of what is safe | |
+//! | **Approval** | the player's yes to one act an agent asked for above its level: that act, once, on that connection, within [`APPROVAL_LIFETIME`](cena_session::agent::APPROVAL_LIFETIME) ([`SessionHandle::approve_agent`](cena_session::SessionHandle::approve_agent)). It grants nothing further | |
 //! | **Quit** | send `quit` and wait for the game to hang up: [`SessionHandle::quit`], told as a [`Farewell`] | |
 //!
 //! # Behaviors
@@ -233,6 +252,22 @@
 //! | **Act** | a trigger's line sent as if the player typed it: through the `;` command table first, then to the game as [`Origin::Trigger`], never counted as a person; at most once in the trigger's cooldown and at the character's pace ([`Act`], [`Pace`]) | action, which `plan/12` §6a.3 keeps for a registry not built |
 //! | **Approved** | the line a trigger from elsewhere may send (`;trigger approve`): only that line, so a changed one is held again | trusted |
 //!
+//! # Scripts
+//!
+//! `plan/46`, M7b: the player's own programs, out of process, in their own
+//! language. A script is not a behavior, which is Hydra's own and curated,
+//! and not an agent, which has a level and a denylist.
+//!
+//! | Term | Means | Not |
+//! |---|---|---|
+//! | **Script** | the player's own program, a Lich `.lic` first, run by a script runner in its own language's runtime: started with `;name`, and doing what a Lich script does ([`script`](cena_session::script)). Back from **Retired**: the author, 2026-09-26 (`CLAUDE.md`, Settled decisions) | behavior; the scripted game |
+//! | **Script runner** | the process that runs one character's scripts, Hydra's own child: Ruby with Lich's engine (`bridges/ruby`), started on the character's first script and stopped when it leaves the table ([`Runners`](cena_agent::scripts::Runners)) | runner alone, which is also the desk's |
+//! | **Local copy** | what a script runner keeps of its character, so a script reads without asking: the agent's projection and what a script needs beyond it, told as `state` events, a chunk's changes before its lines ([`scripts::local`](cena_agent::scripts::local)) | snapshot, which is the session's own |
+//! | **Heard line** | a finished line as the game sent it, before `;sorter` and the triggers, published only while a script runner listens: [`Event::Heard`](cena_session::Event::Heard). What a script reads, as Lich's scripts read before its hooks, and what a runner's display hooks answer | line, which a viewer is given |
+//! | **Hook** | a script's say in what the player is shown of a line (a **display hook**) or what the player's typing becomes (an **input hook**): Lich's `DownstreamHook` and `UpstreamHook`, answered by its script runner within [`HOOK_DEADLINE`](cena_session::script::HOOK_DEADLINE), past which the line goes as it came. Only the showing and the typing wait on one ([`script::Door::hook_lines`](cena_session::script::Door::hook_lines), [`hook_typing`](cena_session::script::Door::hook_typing)) | trigger, which is the player's own; squelch, which a trigger does |
+//! | **Checker** | what reads one of the player's scripts and says which of its lines will not work under Hydra, and why, by Ruby's own parser against the runner's own names: `;scripts check`, [`scripts::checker`](cena_agent::scripts::checker). Run over both script collections, it made `inventory/14-what-runs.md` | census, which measured the collections for `plan/46` from Python |
+//! | **Script door** | the only way a script runner acts on a session: listen, send a line as typed, say, start a built-in, and hook what is shown and typed ([`script::Door`](cena_session::script::Door)); `cena-agent` holds it and never the handle | door alone, which is the agent's and checks a level |
+//!
 //! # Names
 //!
 //! | Term | Means | Not |
@@ -248,7 +283,6 @@
 //!
 //! | Term | Was | Why it went |
 //! |---|---|---|
-//! | **Script** | one Lua program in a session | scripting is deferred, not built, and nothing may be designed around it (`CLAUDE.md`, Settled decisions). A proposal to add it later is a live question; until then the word names nothing of Hydra's |
 //! | **Adapter** | the per-game implementation, `GameAdapter` | refused: the second game is deferred all-or-nothing, and an abstraction for it is not built ahead of it (`plan/12` §9d) |
 //! | **Ladder** | the resend-and-recover protocol around one command | Lich's `fput`. Hydra's counterpart is the **round trip**, and the word is taken by three ladders the code does have |
 //!

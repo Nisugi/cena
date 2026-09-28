@@ -1,0 +1,32 @@
+[package]
+name = "cena-agent"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+cena-session.workspace = true
+# `plan/46` §11 step 2: a script's `Room.current` is a room of the map the
+# binary loaded, named as travel names it.
+cena-map.workspace = true
+# `plan/35` §2: MCP over loopback, measured and chosen 2026-09-27.
+rmcp = { version = "3.4", default-features = false, features = ["server", "macros", "transport-streamable-http-server"] }
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt", "sync", "time", "net", "process", "io-util"] }
+tokio-util = "0.7"
+serde.workspace = true
+serde_json.workspace = true
+# `limits`: `ATTACH` is refused by setting its limit to zero (`records.rs`).
+rusqlite = { workspace = true, features = ["limits"] }
+getrandom = "0.3"
+
+[dev-dependencies]
+cena-platform.workspace = true
+# The end-to-end test drives the router as a tower service and reads its body.
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+# `rt-multi-thread` for tests/measure.rs, which measures on the binary's kind of runtime.
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "test-util", "time"] }
+
+[lints]
+workspace = true

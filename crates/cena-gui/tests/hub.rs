@@ -139,6 +139,27 @@ fn the_hub_opens_the_settings_menu() {
     assert_eq!(harness.state().asked, [HubAction::Settings]);
 }
 
+/// Each live card's Lich switch shows whether the character's own Lich
+/// runs, and asks for it on or off (`plan/51`).
+#[test]
+fn each_card_switches_its_own_lich() {
+    let mut harness = hub(Board {
+        lich: vec![1],
+        ..board()
+    });
+    // Ashryn's, off; then Baelor's, on.
+    for switch in 0..2 {
+        if let Some(lich) = harness.get_all_by_label("Lich").nth(switch) {
+            lich.click();
+        }
+        harness.run();
+    }
+    assert_eq!(
+        harness.state().asked,
+        [HubAction::Lich(0, true), HubAction::Lich(1, false)]
+    );
+}
+
 /// Shutting down ends every character, so it asks first; keeping on asks
 /// nothing.
 #[test]

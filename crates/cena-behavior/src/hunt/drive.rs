@@ -285,6 +285,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 self.machine.incidents(&incidents);
             }
             let now = self.state.game_time_now();
+            // Held, resumed or retreating, as whoever steers it said last.
+            self.machine.heed();
             let said = self.machine.tick(
                 &self.state,
                 Here {
@@ -296,6 +298,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             );
             self.publish(here, State::Ready);
             self.report(&said);
+            // How it is getting on, for whoever steers it.
+            self.machine.report_progress(now);
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));

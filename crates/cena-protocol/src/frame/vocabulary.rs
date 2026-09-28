@@ -206,6 +206,23 @@ pub enum Frame {
         /// `id=`, verbatim; empty when absent.
         id: String,
     },
+    /// `<settingsInfo client= major= crc= instance=>`: which of the game's
+    /// instances this connection plays, by the game's own code, and the
+    /// client settings it expects. Sent once in every login burst
+    /// (`tests/fixtures/login_setup.xml`).
+    ///
+    /// Typed for [`Frame::PlayerId`]'s reason: a consumer keys on it. The
+    /// model keeps `instance`, which is how Lich knows which game it is in
+    /// (`reference/lich-5/lib/common/xmlparser.rb:918-928`), for a Lich
+    /// handed the login late (`plan/51` §7, step 4); and matching a
+    /// `WindowHints` bag by its id string is re-reading markup. The other
+    /// attributes ride in `attrs`, so nothing the bag carried is lost.
+    SettingsInfo {
+        /// `instance=`, verbatim; `None` when absent.
+        instance: Option<String>,
+        /// Every attribute, in wire order.
+        attrs: Attrs,
+    },
     /// `<endSetup/>`: the login setup is over. The session keys `Ready` on the
     /// first `<prompt>` after it (`cena-session`, `actor/readiness.rs`). It
     /// was a `WindowHints` bag, which a consumer could only recognise by

@@ -37,6 +37,7 @@
 //! is a full re-login (`LiveConnector`). The wire is written to disk, with
 //! the credential redacted (`Redactions`).
 
+mod agent;
 mod architecture;
 mod ask;
 mod attention;
@@ -54,12 +55,16 @@ mod hunt_setup;
 mod interrupt;
 mod launcher;
 mod learn;
+mod lich;
 mod loot;
 mod map_context;
 mod pages;
+mod perform;
 mod play;
+mod proven;
 mod relay;
 mod roster;
+mod scripts;
 mod secrets;
 mod setup;
 mod sorter;

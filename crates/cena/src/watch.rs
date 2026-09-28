@@ -45,19 +45,12 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
     loop {
         match events.recv().await {
             Ok(Event::Sent { line, origin }) => {
-                let tag = match origin {
-                    Origin::Manual => "manual",
-                    Origin::Behavior(_) => "behavior",
-                    // Distinguished HERE, which is the whole reason it is
-                    // a separate variant: it queues like manual input, but
-                    // a reader of this transcript has to be able to tell
-                    // "the player typed this" from "another character's
-                    // script sent this".
-                    Origin::Script => "script",
-                    // A trigger's send (`plan/45` Stage 5): never the
-                    // player's, so never shown as `manual`.
-                    Origin::Trigger => "trigger",
-                };
+                // Who sent it, which is the whole reason a script's, a
+                // trigger's, an agent's and Lich's are variants of their own:
+                // each queues like manual input, but a reader of this
+                // transcript has to be able to tell "the player typed this"
+                // from the rest.
+                let tag = origin.word();
                 eprintln!("{who}  -> [{tag}] {line}");
             }
             Ok(Event::StateChanged(state)) => eprintln!("{who}  .. lifecycle: {state:?}"),
@@ -103,15 +96,19 @@ pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: St
             // Not shown here: the game's text is the browser's to show, and a
             // combat view is a frontend's to build. A trigger's flag is what
             // its trigger concluded from that text; `;trigger test` says
-            // which a line would set.
+            // which a line would set. A change on the agent's side was
+            // answered in a notice when it was made.
             Ok(
                 Event::Frame(_)
                 | Event::Line(_)
+                | Event::Prompt(_)
+                | Event::Heard(_)
                 | Event::Combat(_)
                 | Event::Quiet(_)
                 | Event::Flag(_)
                 | Event::Attention(_)
-                | Event::Act { .. },
+                | Event::Act { .. }
+                | Event::Agent(_),
             ) => {}
             // Keep watching. A `while let Ok(..)` here ended the watcher on
             // the first lag, which would silence the `-> [manual]` and

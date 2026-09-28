@@ -442,6 +442,7 @@ mod tests {
             merged: &[],
             said: None,
             windowed: &[],
+            lich: &[],
         };
         assert!(on_table(&view, "gs3", "ashryn"));
         assert!(!on_table(&view, "GSF", "Ashryn"));

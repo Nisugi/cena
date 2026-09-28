@@ -159,6 +159,11 @@ impl App {
             .filter(|(_, window)| window.open)
             .map(|(session, _)| *session)
             .collect();
+        let lich: Vec<u32> = seats
+            .iter()
+            .filter(|seat| seat.handle.lich_running())
+            .map(|seat| seat.id.0)
+            .collect();
         let view = HubView {
             cards: &glance.cards,
             offered: &glance.offered,
@@ -167,6 +172,7 @@ impl App {
             merged: &glance.merged,
             said: glance.said.as_ref().map(|(said, _)| said.as_str()),
             windowed: &windowed,
+            lich: &lich,
         };
         match self.hub.show(ui, &view) {
             Some(HubAction::Ask(request)) => self.sessions.ask(request),
@@ -176,6 +182,11 @@ impl App {
                 }
             }
             Some(HubAction::Settings) => self.menu.open_for(None),
+            Some(HubAction::Lich(session, on)) => {
+                if let Some(seat) = seats.iter().find(|seat| seat.id.0 == session) {
+                    self.hydras(seat, lich_word(on));
+                }
+            }
             None => {}
         }
         // A width a drag set is kept once the drag lets go.
@@ -278,6 +289,7 @@ impl App {
                     keys: keys_said,
                     others: &others,
                     presets: &self.presets,
+                    lich: seat.handle.lich_running(),
                 };
                 let asked = window.play.show(ui, &view);
                 drop(story);
@@ -300,16 +312,20 @@ impl App {
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
             Some(Asked::Quietly(line)) => self.sessions.send_quietly(seat, line),
             Some(asked @ (Asked::Settings(_) | Asked::Keys)) => return Some(asked),
-            Some(Asked::Stop) => {
-                let symbol = seat
-                    .handle
-                    .command_symbol()
-                    .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
-                self.sessions.send(seat, format!("{symbol}stop"));
-            }
+            Some(Asked::Stop) => self.hydras(seat, "stop"),
+            Some(Asked::Lich(on)) => self.hydras(seat, lich_word(on)),
             None => {}
         }
         None
+    }
+
+    /// Send Hydra's command `word` on `seat`'s character, with its symbol.
+    fn hydras(&self, seat: &Arc<Seat>, word: &str) {
+        let symbol = seat
+            .handle
+            .command_symbol()
+            .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
+        self.sessions.send(seat, format!("{symbol}{word}"));
     }
 
     /// The window was asked to close. With a character still playing, it
@@ -328,6 +344,11 @@ impl App {
         }
         true
     }
+}
+
+/// `;lich`'s word for switching the player's own Lich `on`, or off.
+fn lich_word(on: bool) -> &'static str {
+    if on { "lich on" } else { "lich off" }
 }
 
 /// When something in a play window counts down by itself -- roundtime,

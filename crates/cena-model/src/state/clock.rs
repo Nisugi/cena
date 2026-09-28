@@ -14,9 +14,37 @@
 //! also why they are the methods a roundtime gate calls, and why their
 //! `Option` semantics needed a page of justification apiece.
 
+use std::time::Instant;
+
 use super::GameState;
 
 impl GameState {
+    /// A prompt: the game's clock, and the end of the worn and reserve
+    /// lists and of the chunk. Moved out of `GameState::apply` when the M7
+    /// and GUI lines met there and took it past clippy's 100 lines.
+    pub(super) fn apply_prompt(&mut self, time: &str, text: &str) {
+        self.prompt = Some(text.to_owned());
+        // The server's clock, and when it reached us. Together these are what
+        // make `game_time_now()` keep counting between prompts -- which
+        // matters because a prompt is only sent when something happens, so
+        // an idle client gets none at all (`plan/15` §2a.1, MEASURED §2a.4a).
+        if let Ok(t) = time.parse::<u32>() {
+            self.game_time = Some(t);
+            self.game_time_received = Some(Instant::now());
+            // Effects that arrived with no clock -- the login burst precedes
+            // its first prompt -- get their end time now (`effects.rs`,
+            // `Effects::pending`).
+            self.effects.anchor(t);
+        }
+        // The worn and reserve lists end here, popped or not (`worn.rs`).
+        self.close_lists();
+        // **The chunk closes here**, and this is the only place it does. See
+        // `state/chunks.rs`: Lich closes container fills, combat chunks and
+        // its own parser FSM on the prompt, for the same reason -- a
+        // command's output has no terminator of its own.
+        self.close_chunk();
+    }
+
     /// The last prompt's own server time, unextrapolated.
     ///
     /// What a RECORD of the past wants: it is a fact of the stream, so a

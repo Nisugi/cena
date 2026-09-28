@@ -1,0 +1,14 @@
+# A script of Hydra's own, for the runner's casting (crates/cena-agent/tests/runner.rs):
+# Lich's own Spell#cast, over Hydra's spell table, sending and waiting as a
+# script does.
+
+put 'look'
+waitfor 'quiet room'
+echo "incant: #{Spell[215].cast}"
+echo "at: #{Spell[215].cast('Kiyna')}"
+echo "poor: #{Spell[540].cast}"
+shock = Spell[901]
+echo "901: stance=#{shock.stance} channel=#{shock.channel} incant=#{shock.incant?} circle=#{shock.circlename}"
+Spell.lock_cast
+Spell.unlock_cast
+echo "list: #{Spell.list.size > 100} #{Spell[215].last_cast.is_a?(Time)}"

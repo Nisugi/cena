@@ -1,0 +1,1945 @@
+# frozen_string_literal: true
+
+require 'ox'
+require 'rexml/document' # retained for script compatibility; parsing now uses Ox
+
+module Lich
+  module Common
+    # Represents a game object (NPC, loot, inventory item, room description, etc.)
+    # within the Lich game automation framework.
+    #
+    # GameObj tracks all in-game entities across categorized class-level registries
+    # (loot, NPCs, PCs, inventory, room descriptions, familiar counterparts, and hands).
+    # Each registry deduplicates entries by the composite key of +id+, +name+, and +noun+.
+    #
+    # @example Create a new NPC
+    #   npc = GameObj.new_npc('1234', 'goblin', 'a snarling goblin')
+    #
+    # @example Look up an object by ID string
+    #   obj = GameObj['1234']
+    class GameObj
+      # ---------------------------------------------------------------------------
+      # Class-level registries
+      # ---------------------------------------------------------------------------
+
+      @@loot          = []
+      @@npcs          = []
+      @@npc_status    = {}
+      @@pcs           = []
+      @@pc_status     = {}
+      @@inv           = []
+      @@reserve       = nil
+      @@contents      = {}
+      @@right_hand    = nil
+      @@left_hand     = nil
+      @@room_desc     = []
+      @@fam_loot      = []
+      @@fam_npcs      = []
+      @@fam_pcs       = []
+      @@fam_room_desc = []
+      @@type_data     = {}
+      @@type_cache    = {}
+      @@sellable_data = {}
+
+      # ---------------------------------------------------------------------------
+      # Shared identity index - single persistent O(1) lookup pool with TTL.
+      #
+      # Maps composite key String <tt>"id|noun|name"</tt> to a two-element array
+      # <tt>[GameObj, last_seen_at]</tt> where +last_seen_at+ is a Float timestamp
+      # (from +Process.clock_gettime(Process::CLOCK_MONOTONIC)+) recording when
+      # the entry was last accessed by +find_or_create+.
+      #
+      # All registries share this one index because a GameObj with the same
+      # id, noun, and name is the same logical game entity regardless of which
+      # registry it belongs to.
+      #
+      # The index is intentionally *not* flushed when a registry is cleared.
+      # Room transitions call multiple +clear_*+ methods in quick succession;
+      # flushing on every clear would cause every re-encountered object to be
+      # needlessly reallocated. Instead, stale index entries self-heal: when
+      # +find_or_create+ finds an entry for an object that was cleared from
+      # its registry, it simply re-adds that same instance to the target
+      # registry and refreshes its +last_seen_at+ timestamp.
+      #
+      # Garbage collection is handled by +prune_index!+, which removes entries
+      # whose +last_seen_at+ is older than a given TTL (default 15 minutes).
+      # Call it at natural session breakpoints (e.g. after a room transition or
+      # from a script's idle loop). It is safe to call frequently - entries that
+      # were just accessed will never be pruned regardless of how often it runs.
+      #
+      # Use +index_stats+ to inspect the current state of the index at any time.
+      #
+      # For very long automated sessions an alternative +LruIndex+ drop-in is
+      # also available - see +Lich::Common::LruIndex+ below.
+      # ---------------------------------------------------------------------------
+
+      @@index = {}
+
+      # Serializes structural access to @@index (inserts and the delete_if
+      # sweeps). The index is mutated from at least two threads - the game
+      # parser thread on every object insert, and the MemoryReleaser background
+      # worker via +prune_index!+ - so without this a sweep could iterate the
+      # hash while another thread inserts a key, raising "can't add a new key
+      # into hash during iteration". Held only around the structural operations,
+      # never while computing the live-object set.
+      @@index_mutex = Mutex.new
+
+      # ---------------------------------------------------------------------------
+      # Index pruning
+      #
+      # Stale entries are reclaimed by +prune_index!+, which is driven
+      # periodically off the game thread by +Lich::Util::MemoryReleaser+ (the
+      # engine's single memory-maintenance scheduler). The index is therefore
+      # not pruned from the hot insert path - that would run an O(n) sweep on
+      # the parser thread and duplicate the releaser's job. See +prune_index!+
+      # and +sweep_stale!+ below.
+      # ---------------------------------------------------------------------------
+
+      # ---------------------------------------------------------------------------
+      # Staging buffers for atomic registry refresh.
+      #
+      # While a stream or component is being parsed, incoming objects accumulate
+      # in a private staging buffer instead of the published registry. A matching
+      # +commit_*+ swaps the buffer in with a single reference assignment, so a
+      # reader never observes an empty or half-filled registry mid-stream - it
+      # sees the previous complete snapshot until commit, then the new one.
+      #
+      # Each buffer is +nil+ when no refresh is in flight and an Array (or Hash,
+      # for the paired status maps) while one is open. This mirrors the existing
+      # +@dr_active_spells_tmp+ swap-on-prompt pattern in xmlparser.rb.
+      #
+      # Under MRI the reference swap is atomic and the reader's +dup+ is
+      # consistent, so no lock is required.
+      # ---------------------------------------------------------------------------
+
+      @@staging_inv           = nil
+      @@staging_reserve       = nil
+      @@staging_loot          = nil
+      @@staging_npcs          = nil
+      @@staging_npc_status    = nil
+      @@staging_pcs           = nil
+      @@staging_pc_status     = nil
+      @@staging_room_desc     = nil
+      @@staging_fam_room_desc = nil
+      @@staging_fam_loot      = nil
+      @@staging_fam_npcs      = nil
+      @@staging_fam_pcs       = nil
+      @@staging_contents      = {}
+
+      # Dedicated buffer for a full-replacement container refresh (DR +INV LIST+),
+      # kept separate from +@@staging_contents+ so the whole-buffer swap/discard of
+      # a full refresh can never clobber an unrelated per-container
+      # +begin_container+ refresh that happens to be in flight at the same time.
+      @@staging_all_contents   = {}
+
+      # True while a full-replacement container refresh (DR +INV LIST+) is open.
+      # While set, +new_inv+ routes container placements not already owned by an
+      # open per-container refresh into +@@staging_all_contents+ instead of the
+      # live +@@contents+, so an interrupted listing never mutates the published
+      # model. See {.begin_all_containers}.
+      @@staging_all_containers = false
+
+      # Deferred +before_name+/+after_name+ refreshes for objects observed while a
+      # staged registry refresh is open. +find_or_create+ returns the shared,
+      # still-published instance, so mutating its metadata mid-refresh would leak
+      # an uncommitted value to readers and could not be rolled back if the refresh
+      # is discarded. Instead the change is recorded here and applied by the
+      # matching +commit_*+ (see {.apply_pending_metadata}), or dropped by every
+      # discard path (+abort_*+, {.delete_container}, {.clear_all_containers}, an
+      # +begin_inv+/+begin_container+ restart, {.discard_inv_refresh}, and
+      # {.discard_staged_refreshes}).
+      #
+      # Scoped PER staging buffer: the outer hash is keyed by the buffer Array's
+      # identity (+compare_by_identity+ -- two empty Arrays are +==+, so content
+      # keying would collide), the inner by GameObj identity. Buffer scoping is
+      # what keeps two concurrently-open refreshes of the same object from
+      # overwriting each other's pending values and lets a discard drop exactly
+      # its own buffer's entries and no others.
+      @@pending_metadata = {}.compare_by_identity
+
+      # ---------------------------------------------------------------------------
+      # Instance interface
+      # ---------------------------------------------------------------------------
+
+      # @return [String] the unique string ID of this object
+      attr_reader :id
+
+      # @return [String, nil] noun used to refer to this object (e.g. "goblin")
+      attr_accessor :noun
+
+      # @return [String, nil] full descriptive name (e.g. "a snarling goblin")
+      attr_accessor :name
+
+      # @return [String, nil] text prepended before the name in full display
+      attr_accessor :before_name
+
+      # @return [String, nil] text appended after the name in full display
+      attr_accessor :after_name
+
+      # Initializes a new GameObj, normalizing certain irregular noun values.
+      #
+      # @param id     [Integer, String] the object's unique game ID
+      # @param noun   [String, nil]     the object's noun
+      # @param name   [String, nil]     the object's descriptive name
+      # @param before [String, nil]     optional text before the name
+      # @param after  [String, nil]     optional text after the name
+      def initialize(id, noun, name, before = nil, after = nil)
+        @id          = id.is_a?(Integer) ? id.to_s : id
+        @noun        = normalize_noun(noun, name)
+        @name        = name
+        @before_name = before
+        @after_name  = after
+      end
+
+      # Returns a human-readable representation of the object (its noun).
+      #
+      # @return [String, nil]
+      def to_s
+        @noun
+      end
+
+      # Legacy coercion method - returns the noun.
+      # Kept for backwards-compatibility with scripts calling +obj.GameObj+.
+      #
+      # @return [String, nil]
+      # @deprecated Use {#noun} or {#to_s} instead.
+      def GameObj
+        @noun
+      end
+
+      # Always returns +false+; GameObj instances are never considered empty.
+      #
+      # @return [false]
+      def empty?
+        false
+      end
+
+      # Returns a duplicated snapshot of the object's container contents.
+      #
+      # @return [Array<GameObj>, nil]
+      def contents
+        @@contents[@id]&.dup
+      end
+
+      # Returns the full display name, assembling before/name/after parts.
+      #
+      # @return [String]
+      def full_name
+        parts = [@before_name, @name, @after_name]
+        parts.compact.reject(&:empty?).join(' ')
+      end
+
+      # ---------------------------------------------------------------------------
+      # Type / sellable classification
+      # ---------------------------------------------------------------------------
+
+      # Returns a comma-separated string of matching type tags for this object,
+      # or +nil+ if no types match.
+      #
+      # Results are memoized in +@@type_cache+ under a composite key combining
+      # +noun+, +name+, and {#full_name} - i.e. every value {#matching_data_keys}
+      # inspects. Two objects that differ in any matcher input (for example a
+      # shared +full_name+ but a different +noun+, or differing
+      # +before_name+/+after_name+) are therefore cached independently rather
+      # than sharing an entry. The +"|"+-delimited form mirrors the composite
+      # keys used by +@@index+.
+      #
+      # @return [String, nil]
+      def type
+        # +load_data+ nils +@@type_data+ (not +{}+) when the data file is missing
+        # or corrupt, and returns false rather than raising. Only attempt the load
+        # from the pristine +{}+ state (a nil is falsy under +&&+, so a failed load
+        # isn't retried on every call -- it echoes its error once, then degrades),
+        # and guard the lookup so a broken +gameobj-data.xml+ yields +nil+ instead
+        # of crashing every +#type+ caller -- including every Inventory::Item,
+        # which now exposes this as public API.
+        GameObj.load_data if @@type_data && @@type_data.empty?
+        return nil if @@type_data.nil?
+
+        cache_key = "#{@noun}|#{@name}|#{full_name}"
+        return @@type_cache[cache_key] if @@type_cache.key?(cache_key)
+
+        matches = matching_data_keys(@@type_data)
+        @@type_cache[cache_key] = matches.empty? ? nil : matches.join(',')
+      end
+
+      # Returns whether this object matches the given type tag.
+      #
+      # @param type_to_check [String] a single type string (e.g. "herb")
+      # @return [Boolean]
+      def type?(type_to_check)
+        type.to_s.split(',').include?(type_to_check)
+      end
+
+      # Returns a comma-separated string of sellable categories, or +nil+.
+      #
+      # @return [String, nil]
+      def sellable
+        # See +#type+: degrade to +nil+ (loudly once, then quietly) when the data
+        # file is missing/corrupt rather than raising on +nil.empty?+/+nil.keys+.
+        GameObj.load_data if @@sellable_data && @@sellable_data.empty?
+        return nil if @@sellable_data.nil?
+
+        matches = matching_data_keys(@@sellable_data)
+        matches.empty? ? nil : matches.join(',')
+      end
+
+      # ---------------------------------------------------------------------------
+      # Status
+      # ---------------------------------------------------------------------------
+
+      # Returns the current status string of this object, or +nil+ if present
+      # but unstated, or +"gone"+ if not found in any registry.
+      #
+      # The published status maps are consulted first, then the staging maps.
+      # That order is deliberate: while a refresh is in flight a reader must
+      # still see the previous complete snapshot (see the staging notes above),
+      # so a staged value must never shadow a published one. The staging maps
+      # are only a fallback for an object that has no published entry at all,
+      # which would otherwise be reported as +"gone"+ despite being mid-refresh.
+      #
+      # Note that a dedupe hit in +find_or_create+ means a staged object and its
+      # published counterpart are frequently the *same* instance, so this method
+      # cannot distinguish which of the two a caller holds. Callers that need
+      # the in-flight value (i.e. the parser) must track it themselves and write
+      # through +#status=+ rather than reading it back through here.
+      #
+      # The +"gone"+ sentinel is a frozen literal and must not be mutated in
+      # place; build a new String from it instead.
+      #
+      # @return [String, nil]
+      def status
+        return @@npc_status[@id] if @@npc_status.key?(@id)
+        return @@pc_status[@id]  if @@pc_status.key?(@id)
+        return @@staging_npc_status[@id] if @@staging_npc_status&.key?(@id)
+        return @@staging_pc_status[@id]  if @@staging_pc_status&.key?(@id)
+
+        present_in_any_registry? ? nil : 'gone'
+      end
+
+      # Sets the status of this NPC or PC by ID.
+      #
+      # When a room-objects or room-players refresh is in flight, the object
+      # lives in the staging buffer rather than the published registry, so this
+      # checks the staging pools first and writes to the staging status map.
+      # When no refresh is open it behaves exactly as before.
+      #
+      # @param val [String, nil] the new status value
+      # @return [String, nil]
+      def status=(val)
+        npc_pool = @@staging_npcs || @@npcs
+        pc_pool  = @@staging_pcs  || @@pcs
+        if npc_pool.any? { |npc| npc.id == @id }
+          (@@staging_npc_status || @@npc_status)[@id] = val
+        elsif pc_pool.any? { |pc| pc.id == @id }
+          (@@staging_pc_status || @@pc_status)[@id] = val
+        end
+      end
+
+      # ---------------------------------------------------------------------------
+      # Class-level factory methods
+      # ---------------------------------------------------------------------------
+
+      # Creates and registers a new NPC.
+      #
+      # @param id     [Integer, String]
+      # @param noun   [String, nil]
+      # @param name   [String, nil]
+      # @param status [String, nil]
+      # @return [GameObj]
+      def self.new_npc(id, noun, name, status = nil)
+        obj = find_or_create(@@staging_npcs || @@npcs, id, noun, name)
+        (@@staging_npc_status || @@npc_status)[obj.id] = status
+        obj
+      end
+
+      # Creates and registers a new loot object.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_loot(id, noun, name)
+        find_or_create(@@staging_loot || @@loot, id, noun, name)
+      end
+
+      # Creates and registers a new PC.
+      #
+      # @param id     [Integer, String]
+      # @param noun   [String, nil]
+      # @param name   [String, nil]
+      # @param status [String, nil]
+      # @return [GameObj]
+      def self.new_pc(id, noun, name, status = nil)
+        obj = find_or_create(@@staging_pcs || @@pcs, id, noun, name)
+        (@@staging_pc_status || @@pc_status)[obj.id] = status
+        obj
+      end
+
+      # Creates and registers a new inventory item, optionally in a container.
+      #
+      # @param id        [Integer, String]
+      # @param noun      [String, nil]
+      # @param name      [String, nil]
+      # @param container [String, nil]   ID of the containing object, or +nil+ for top-level inv
+      # @param before    [String, nil]
+      # @param after     [String, nil]
+      # @return [GameObj]
+      def self.new_inv(id, noun, name, container = nil, before = nil, after = nil)
+        # A write is "staged" when it targets an open staging buffer rather than
+        # the live registry. Metadata refreshes are then deferred into that same
+        # buffer so an uncommitted (or later discarded) value is never published
+        # on the shared instance -- see +@@pending_metadata+.
+        if container
+          staged =
+            if @@staging_contents.key?(container)
+              # An explicit per-container refresh (+begin_container+, e.g. a
+              # +clearContainer+ fill) already owns this container -- stage into
+              # it even during a full INV LIST refresh so the two paths never
+              # share a buffer.
+              @@staging_contents[container]
+            elsif @@staging_all_containers
+              # Full INV LIST refresh: stage every other container into the
+              # dedicated buffer so nothing touches the live model until the
+              # listing commits cleanly.
+              @@staging_all_contents[container] ||= []
+            end
+          # +staged+ is the target staging buffer (either kind) or nil for a live
+          # write; either way it is both the placement target and the deferral
+          # scope, so an uncommitted metadata change lands in that same buffer.
+          target = staged || (@@contents[container] ||= [])
+          find_or_create(target, id, noun, name, before, after, defer_to: staged)
+        else
+          find_or_create(@@staging_inv || @@inv, id, noun, name, before, after, defer_to: @@staging_inv)
+        end
+      end
+
+      # Upserts an inventory item by id for a PARTIAL (filtered) scrape -- e.g.
+      # +INV SEARCH <word>+ or +INV <category> full+, which list only the
+      # matching items and so must not clear unrelated inventory the way a full
+      # +INV LIST+ refresh does. Any prior placement of +id+ is removed from
+      # +@@inv+ and every +@@contents+ list first, so an item that moved
+      # containers (or whose name changed, e.g. gained "(closed)") is refreshed
+      # in exactly one place with neither a duplicate nor a stale copy left
+      # behind. It is then (re)placed via {.new_inv}: worn (+container+ nil) into
+      # +@@inv+, otherwise into +@@contents[container]+.
+      #
+      # Because a filtered scrape only reports matches, it can add or relocate
+      # items but can never prove an item is gone -- removals are left to the
+      # next full refresh.
+      #
+      # The removal runs under +@@index_mutex+ (the same lock +find_or_create+
+      # holds for registry writes) so it cannot race the off-thread
+      # +prune_index!+ sweep that walks +@@inv+/+@@contents+. It is a separate
+      # acquisition from the +new_inv+ that follows -- Ruby's Mutex is not
+      # reentrant, and +new_inv+ takes the lock itself -- so remove and re-add
+      # are not one atomic step; that is fine because the parser thread is the
+      # sole writer and a reader can at worst momentarily not see the item.
+      #
+      # @param id        [Integer, String]
+      # @param noun      [String, nil]
+      # @param name      [String, nil]
+      # @param container [String, nil]
+      # @param before    [String, nil]
+      # @param after     [String, nil]
+      # @return [GameObj]
+      def self.upsert_inv(id, noun, name, container = nil, before = nil, after = nil)
+        str_id = id.is_a?(Integer) ? id.to_s : id
+        remove_inv_item(str_id)
+        obj = new_inv(str_id, noun, name, container, before, after)
+
+        # A name change keys a NEW index entry ("id|noun|newname"); the prior
+        # "id|noun|oldname" instance was just pulled from every registry by
+        # remove_inv_item, but its index key lingers until the TTL prune. On the
+        # cold scrape path, evict any index entry for this id whose instance is no
+        # longer live so a frequently-renamed item (e.g. a pouch toggling
+        # "(closed)") can't accumulate orphaned variants between sweeps. Guarded by
+        # object identity via +live_registry_objects+ (computed outside the lock,
+        # matching +sweep_stale!+) so a variant still held anywhere -- the instance
+        # just re-added, or a hand slot -- is kept.
+        live = live_registry_objects
+        @@index_mutex.synchronize do
+          @@index.delete_if { |_key, (indexed, _ts)| indexed.id == str_id && !live.include?(indexed) }
+        end
+
+        obj
+      end
+
+      # Removes every placement of +id+ from the worn inventory (+@@inv+) and
+      # from all container contents (+@@contents+). Used as the removal half of
+      # {.upsert_inv} and to reconcile the model when an item leaves inventory
+      # for a hand (a held item is neither worn nor in a container). Leaves
+      # +@@right_hand+/+@@left_hand+ and the shared identity index untouched.
+      #
+      # A +nil+ or empty id is an explicit no-op: empty hands stream a hand tag
+      # with no +exist+ id, so this is called constantly with +nil+, and matching
+      # +obj.id == nil+ would wrongly wipe any (future) nil-id entry -- and also
+      # scan the whole inventory for nothing. The +reject!+ runs under
+      # +@@index_mutex+ (the lock +find_or_create+ holds for registry writes) so
+      # it cannot race the off-thread prune sweep that walks these registries.
+      #
+      # @param id [Integer, String, nil]
+      # @return [void]
+      def self.remove_inv_item(id)
+        str_id = id.is_a?(Integer) ? id.to_s : id
+        return if str_id.nil? || str_id.empty?
+
+        @@index_mutex.synchronize do
+          @@inv.reject! { |obj| obj.id == str_id }
+          @@contents.each_value { |list| list.reject! { |obj| obj.id == str_id } }
+          # Scrub any in-flight staging buffers too: a hand pickup during a full
+          # INV LIST refresh must not be resurrected in its old container when the
+          # staged listing commits.
+          @@staging_inv&.reject! { |obj| obj.id == str_id }
+          @@staging_contents.each_value { |list| list.reject! { |obj| obj.id == str_id } }
+          @@staging_all_contents.each_value { |list| list.reject! { |obj| obj.id == str_id } }
+        end
+        nil
+      end
+
+      # Creates and registers a new reserve slot item.
+      #
+      # +@@reserve+ is +nil+ until the first reserve stream is seen; thereafter
+      # it is always an Array (possibly empty).
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_reserve(id, noun, name)
+        @@reserve ||= []
+        find_or_create(@@staging_reserve || @@reserve, id, noun, name)
+      end
+
+      # Creates and registers a new room description object.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_room_desc(id, noun, name)
+        find_or_create(@@staging_room_desc || @@room_desc, id, noun, name)
+      end
+
+      # Creates and registers a new familiar room description object.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_fam_room_desc(id, noun, name)
+        find_or_create(@@staging_fam_room_desc || @@fam_room_desc, id, noun, name)
+      end
+
+      # Creates and registers a new familiar loot object.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_fam_loot(id, noun, name)
+        find_or_create(@@staging_fam_loot || @@fam_loot, id, noun, name)
+      end
+
+      # Creates and registers a new familiar NPC.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_fam_npc(id, noun, name)
+        find_or_create(@@staging_fam_npcs || @@fam_npcs, id, noun, name)
+      end
+
+      # Creates and registers a new familiar PC.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_fam_pc(id, noun, name)
+        find_or_create(@@staging_fam_pcs || @@fam_pcs, id, noun, name)
+      end
+
+      # Sets the right-hand object, replacing any existing one.
+      #
+      # Routes through the shared identity index so the same item picked up
+      # again returns the existing +GameObj+ instance rather than allocating
+      # a new one. Replace semantics are preserved - +@@right_hand+ is always
+      # overwritten with the result.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_right_hand(id, noun, name)
+        @@right_hand = index_or_create(id, noun, name)
+      end
+
+      # Sets the left-hand object, replacing any existing one.
+      #
+      # Routes through the shared identity index so the same item picked up
+      # again returns the existing +GameObj+ instance rather than allocating
+      # a new one. Replace semantics are preserved - +@@left_hand+ is always
+      # overwritten with the result.
+      #
+      # @param id   [Integer, String]
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [GameObj]
+      def self.new_left_hand(id, noun, name)
+        @@left_hand = index_or_create(id, noun, name)
+      end
+
+      # Looks up an existing +GameObj+ in the shared identity index by composite
+      # key (+id+, +noun+, +name+), or creates and indexes a new one.
+      #
+      # Unlike +find_or_create+, this method does *not* push the object into any
+      # registry array. It is intended for callers that manage their own storage
+      # slot (e.g. +new_right_hand+/+new_left_hand+) or for external code that
+      # constructs +GameObj+ instances via +GameObj.new+ but wants to participate
+      # in the shared identity index so objects are reused and tracked for TTL-
+      # based garbage collection.
+      #
+      # When a matching entry is found, +before_name+ and +after_name+ are
+      # refreshed from a differing non-nil incoming value; a nil observation
+      # never clobbers a known value. (Hand slots pass no before/after, so in
+      # practice this path only ever backfills.)
+      #
+      # @example Replace a bare GameObj.new call
+      #   # Before:
+      #   obj = GameObj.new(id, noun, name, before, after)
+      #
+      #   # After - participates in the shared index:
+      #   obj = GameObj.index_or_create(id, noun, name, before, after)
+      #
+      # @param id     [Integer, String]
+      # @param noun   [String, nil]
+      # @param name   [String, nil]
+      # @param before [String, nil]   sets +before_name+ from a differing non-nil observation
+      # @param after  [String, nil]   sets +after_name+ from a differing non-nil observation
+      # @return [GameObj]
+      # @api private Internal identity-index plumbing. No compatibility guarantee.
+      def self.index_or_create(id, noun, name, before = nil, after = nil)
+        str_id = id.is_a?(Integer) ? id.to_s : id
+        key    = "#{str_id}|#{noun}|#{name}"
+        now    = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+        @@index_mutex.synchronize do
+          if (entry = @@index[key])
+            existing, _ts        = entry
+            @@index[key]         = [existing, now]
+            # Refresh command metadata whenever a differing non-nil observation
+            # arrives -- e.g. a name-preserving move updates +before_name+ from
+            # "get #id in #old" to "get #id in #new". A nil observation never
+            # clobbers a known value (a sighting from a source that carries no
+            # command, such as the hand slot, must not blank it).
+            existing.before_name = before if !before.nil? && existing.before_name != before
+            existing.after_name  = after  if !after.nil?  && existing.after_name  != after
+            existing
+          else
+            new_obj      = GameObj.new(id, noun, name, before, after)
+            @@index[key] = [new_obj, now]
+            new_obj
+          end
+        end
+      end
+
+      # ---------------------------------------------------------------------------
+      # Class-level registry accessors (return dup or nil)
+      # ---------------------------------------------------------------------------
+
+      # @return [Array<GameObj>, nil]
+      def self.right_hand  = @@right_hand&.dup
+
+      # @return [Array<GameObj>, nil]
+      def self.left_hand   = @@left_hand&.dup
+
+      # @return [Array<GameObj>, nil]
+      def self.npcs        = registry_or_nil(@@npcs)
+
+      # @return [Array<GameObj>, nil]
+      def self.loot        = registry_or_nil(@@loot)
+
+      # @return [Array<GameObj>, nil]
+      def self.pcs         = registry_or_nil(@@pcs)
+
+      # @return [Array<GameObj>, nil]
+      def self.inv         = registry_or_nil(@@inv)
+
+      # @return [Array<GameObj>, nil]
+      def self.reserve     = @@reserve&.dup
+
+      # @return [Array<GameObj>, nil]
+      def self.room_desc   = registry_or_nil(@@room_desc)
+
+      # @return [Array<GameObj>, nil]
+      def self.fam_room_desc = registry_or_nil(@@fam_room_desc)
+
+      # @return [Array<GameObj>, nil]
+      def self.fam_loot    = registry_or_nil(@@fam_loot)
+
+      # @return [Array<GameObj>, nil]
+      def self.fam_npcs    = registry_or_nil(@@fam_npcs)
+
+      # @return [Array<GameObj>, nil]
+      def self.fam_pcs     = registry_or_nil(@@fam_pcs)
+
+      # Returns a snapshot of all container contents: the outer hash and every
+      # inner array are duplicated, so a caller iterating +containers[id]+ is not
+      # affected by concurrent in-place mutation of the live registry (e.g. a hand
+      # pickup's +remove_inv_item+ +reject!+, or +new_inv+'s +push+). Matches the
+      # dup-on-read contract of the other registry accessors and instance
+      # +#contents+. The GameObj elements themselves are shared, not copied.
+      #
+      # @return [Hash{String => Array<GameObj>}]
+      def self.containers  = @@contents.transform_values(&:dup)
+
+      # ---------------------------------------------------------------------------
+      # Class-level clear methods
+      # ---------------------------------------------------------------------------
+
+      # @return [void]
+      def self.clear_loot          = @@loot.clear
+
+      # @return [void]
+      def self.clear_npcs          = (@@npcs.clear; @@npc_status.clear)
+
+      # @return [void]
+      def self.clear_pcs           = (@@pcs.clear; @@pc_status.clear)
+
+      # @return [void]
+      def self.clear_inv           = @@inv.clear
+
+      # @return [void]
+      def self.clear_reserve       = (@@reserve = [])
+
+      # @return [void]
+      def self.clear_room_desc     = @@room_desc.clear
+
+      # @return [void]
+      def self.clear_fam_room_desc = @@fam_room_desc.clear
+
+      # @return [void]
+      def self.clear_fam_loot      = @@fam_loot.clear
+
+      # @return [void]
+      def self.clear_fam_npcs      = @@fam_npcs.clear
+
+      # @return [void]
+      def self.clear_fam_pcs       = @@fam_pcs.clear
+
+      # Clears all container registries. Any in-flight staged container
+      # refreshes are aborted as well. The shared identity index is preserved
+      # so previously seen objects are reused if re-encountered.
+      #
+      # @return [void]
+      def self.clear_all_containers
+        @@staging_contents.each_value { |staged| drop_pending_metadata(staged) }
+        @@staging_all_contents.each_value { |staged| drop_pending_metadata(staged) }
+        @@staging_contents.clear
+        @@staging_all_contents.clear
+        @@staging_all_containers = false
+        @@contents.clear
+      end
+
+      # Resets a single container's contents to an empty array.
+      # The shared identity index is preserved.
+      #
+      # @param container_id [String]
+      # @return [Array]
+      def self.clear_container(container_id)
+        @@contents[container_id] = []
+      end
+
+      # Removes a container and all its contents from the registry.
+      # Any in-flight staged refresh for the same container is aborted so a
+      # later commit cannot resurrect the deleted key.
+      # The shared identity index is preserved.
+      #
+      # @param container_id [String]
+      # @return [GameObj, nil]
+      def self.delete_container(container_id)
+        staged = @@staging_contents.delete(container_id)
+        drop_pending_metadata(staged) if staged
+        @@contents.delete(container_id)
+      end
+
+      # Whether a top-level inventory (+@@inv+) staged refresh is currently open.
+      # Lets a second writer (e.g. the {Lich::Common::Inventory} read-model) skip
+      # its own +begin_inv+/+commit_inv+ cycle so it cannot prematurely publish or
+      # truncate an in-flight classic +@@inv+ refresh.
+      #
+      # @return [Boolean]
+      def self.inv_refresh_open? = !@@staging_inv.nil?
+
+      # Whether a staged refresh for one container's contents is currently open.
+      # Same purpose as {.inv_refresh_open?}, scoped to a single container id.
+      #
+      # A full INV LIST refresh ({.begin_all_containers}) owns *every* container
+      # the instant it opens, but only allocates a per-container buffer when an
+      # item line for that container arrives. A container not yet seen in the
+      # listing therefore has no key in +@@staging_contents+ and would look
+      # unowned -- letting a second writer publish into or delete it mid-refresh.
+      # Report a full refresh as owning all containers so those writers defer.
+      #
+      # @param container_id [String]
+      # @return [Boolean]
+      def self.container_refresh_open?(container_id)
+        @@staging_all_containers || @@staging_contents.key?(container_id)
+      end
+
+      # ---------------------------------------------------------------------------
+      # Staged registry refresh - begin/commit pairs
+      #
+      # +begin_*+ opens a refresh by allocating a fresh staging buffer; the
+      # published registry is left untouched and stays visible to readers.
+      # Incoming objects route into the staging buffer (see the +new_*+ methods).
+      # +commit_*+ publishes the staged buffer with a single reference swap and
+      # closes the refresh.
+      #
+      # Each +commit_*+ is a no-op when its refresh was never opened, so an
+      # interrupted stream simply leaves the previous published snapshot in
+      # place rather than emptying it.
+      #
+      # These intentionally do *not* replace the +clear_*+ methods: room
+      # movement (+<nav>+) still clears immediately via +clear_*+ to publish an
+      # empty "contents unknown" state, and the subsequent component fill is the
+      # staged part.
+      # ---------------------------------------------------------------------------
+
+      # Applies the metadata deferred for one staging +buffer+ to its objects and
+      # clears that buffer's pending entries. Called by each +commit_*+ just before
+      # it publishes the buffer, so the new +before_name+/+after_name+ become
+      # visible together with the new membership rather than mid-refresh. No-op for
+      # a buffer that deferred nothing.
+      #
+      # @param buffer [Array, nil] the staging buffer being committed
+      # @return [void]
+      def self.apply_pending_metadata(buffer)
+        pending = @@pending_metadata.delete(buffer)
+        return unless pending
+
+        pending.each do |obj, (before, after)|
+          obj.before_name = before unless before.nil?
+          obj.after_name  = after  unless after.nil?
+        end
+      end
+
+      # Drops the metadata deferred for one staging +buffer+ without applying it --
+      # the abort counterpart to {.apply_pending_metadata}. Called by every path
+      # that discards a buffer so a rolled-back refresh cannot later publish its
+      # staged values. No-op for a buffer that deferred nothing.
+      #
+      # @param buffer [Array, nil] the staging buffer being discarded
+      # @return [void]
+      def self.drop_pending_metadata(buffer)
+        @@pending_metadata.delete(buffer)
+      end
+
+      # Opens a refresh of worn inventory. Restarting an already-open refresh (a
+      # second +begin_inv+ before commit) discards the prior buffer, so drop its
+      # deferred metadata too rather than orphan it (mirrors {.begin_container}).
+      #
+      # @return [Array]
+      def self.begin_inv
+        drop_pending_metadata(@@staging_inv)
+        @@staging_inv = []
+      end
+
+      # @return [void]
+      def self.commit_inv
+        return if @@staging_inv.nil?
+
+        apply_pending_metadata(@@staging_inv)
+        @@inv         = @@staging_inv
+        @@staging_inv = nil
+      end
+
+      # Discards an open +@@inv+ staging buffer WITHOUT publishing it, leaving the
+      # previously published +@@inv+ visible. Rolls back a +begin_inv+ whose fill
+      # failed partway (e.g. a second writer's mirror raised mid-registration) so a
+      # later cycle does not see {.inv_refresh_open?} stuck open. No-op when none is
+      # open. Symmetric with {.commit_inv}.
+      #
+      # @return [void]
+      def self.abort_inv
+        return if @@staging_inv.nil?
+
+        drop_pending_metadata(@@staging_inv)
+        @@staging_inv = nil
+      end
+
+      # @return [Array]
+      def self.begin_reserve = @@staging_reserve = []
+
+      # @return [void]
+      def self.commit_reserve
+        return if @@staging_reserve.nil?
+
+        @@reserve         = @@staging_reserve
+        @@staging_reserve = nil
+      end
+
+      # Opens a refresh of the room object registries (loot + npcs + npc status).
+      #
+      # @return [void]
+      def self.begin_room_objs
+        @@staging_loot       = []
+        @@staging_npcs       = []
+        @@staging_npc_status = {}
+      end
+
+      # @return [void]
+      def self.commit_room_objs
+        return if @@staging_npcs.nil?
+
+        @@loot               = @@staging_loot
+        @@npcs               = @@staging_npcs
+        @@npc_status         = @@staging_npc_status
+        @@staging_loot       = nil
+        @@staging_npcs       = nil
+        @@staging_npc_status = nil
+      end
+
+      # Opens a refresh of the room player registries (pcs + pc status).
+      #
+      # @return [void]
+      def self.begin_room_players
+        @@staging_pcs       = []
+        @@staging_pc_status = {}
+      end
+
+      # @return [void]
+      def self.commit_room_players
+        return if @@staging_pcs.nil?
+
+        @@pcs               = @@staging_pcs
+        @@pc_status         = @@staging_pc_status
+        @@staging_pcs       = nil
+        @@staging_pc_status = nil
+      end
+
+      # @return [Array]
+      def self.begin_room_desc = @@staging_room_desc = []
+
+      # @return [void]
+      def self.commit_room_desc
+        return if @@staging_room_desc.nil?
+
+        @@room_desc         = @@staging_room_desc
+        @@staging_room_desc = nil
+      end
+
+      # Opens a refresh of the four familiar registries.
+      #
+      # @return [void]
+      def self.begin_familiar
+        @@staging_fam_room_desc = []
+        @@staging_fam_loot      = []
+        @@staging_fam_npcs      = []
+        @@staging_fam_pcs       = []
+      end
+
+      # @return [void]
+      def self.commit_familiar
+        return if @@staging_fam_npcs.nil?
+
+        @@fam_room_desc         = @@staging_fam_room_desc
+        @@fam_loot              = @@staging_fam_loot
+        @@fam_npcs              = @@staging_fam_npcs
+        @@fam_pcs               = @@staging_fam_pcs
+        @@staging_fam_room_desc = nil
+        @@staging_fam_loot      = nil
+        @@staging_fam_npcs      = nil
+        @@staging_fam_pcs       = nil
+      end
+
+      # Opens a refresh of a single container's contents. Restarting an
+      # already-open refresh (a second +begin_container+ before commit) discards
+      # the prior buffer, so drop its deferred metadata too rather than orphan it.
+      #
+      # @param container_id [String]
+      # @return [Array]
+      def self.begin_container(container_id)
+        drop_pending_metadata(@@staging_contents[container_id])
+        @@staging_contents[container_id] = []
+      end
+
+      # @param container_id [String]
+      # @return [void]
+      def self.commit_container(container_id)
+        staged = @@staging_contents.delete(container_id)
+        return if staged.nil?
+
+        apply_pending_metadata(staged)
+        @@contents[container_id] = staged
+      end
+
+      # Discards one container's open staging buffer WITHOUT publishing it, leaving
+      # the previously published +@@contents[id]+ visible. Rolls back a
+      # +begin_container+ whose fill failed partway; no-op when none is open. Unlike
+      # {.delete_container} it does NOT remove the published contents.
+      #
+      # @param container_id [String]
+      # @return [void]
+      def self.abort_container(container_id)
+        staged = @@staging_contents.delete(container_id)
+        drop_pending_metadata(staged) if staged
+      end
+
+      # Publishes every open container staging buffer. Called at the +prompt+
+      # that terminates a command burst, the reliable close signal for the
+      # +clearContainer+ ... +inv+ fill sequence (which has no closing tag).
+      # No-op when no container refresh is open.
+      #
+      # A full INV LIST refresh ({.begin_all_containers}) uses its own dedicated
+      # buffer (+@@staging_all_contents+) and is published only through its clean
+      # path ({.commit_all_containers_full}) or discarded on interruption
+      # ({.discard_inv_refresh}) -- never here. While one is open this defers the
+      # ordinary per-container publish until the listing closes, so the two commit
+      # paths never interleave at an interrupting +prompt+.
+      #
+      # @return [void]
+      def self.commit_all_containers
+        return if @@staging_all_containers
+        return if @@staging_contents.empty?
+
+        @@staging_contents.each do |id, staged|
+          apply_pending_metadata(staged)
+          @@contents[id] = staged
+        end
+        @@staging_contents.clear
+      end
+
+      # Opens a full-replacement refresh of ALL container contents, used by DR's
+      # +INV LIST+ (a complete recursive scrape). Staging goes into a dedicated
+      # buffer (+@@staging_all_contents+), separate from the ordinary per-container
+      # +@@staging_contents+, so an unrelated +begin_container+ refresh in flight
+      # at the same time is never clobbered by this refresh's discard/commit. While
+      # open, +new_inv+ stages every not-already-owned container placement (see
+      # {.new_inv}) and the live +@@contents+ is left visible to readers.
+      # {.commit_all_containers_full} then swaps the whole buffer in one reference
+      # assignment, so containers absent from the listing are dropped -- matching
+      # the old clear-then-fill semantics -- while an interrupted listing that
+      # never commits leaves the previous model intact (see {.discard_inv_refresh}).
+      # Pair with {.begin_inv} for worn items.
+      #
+      # @return [void]
+      def self.begin_all_containers
+        # Restarting an already-open full refresh discards the prior buffers, so
+        # drop their deferred metadata rather than orphan it (mirrors begin_inv).
+        @@staging_all_contents.each_value { |buf| drop_pending_metadata(buf) }
+        @@staging_all_contents = {}
+        @@staging_all_containers = true
+      end
+
+      # Publishes a full container refresh opened by {.begin_all_containers} with
+      # a single reference swap and closes it. No-op if no full refresh is open,
+      # so an interrupted listing simply keeps the previous published model.
+      #
+      # @return [void]
+      def self.commit_all_containers_full
+        return unless @@staging_all_containers
+
+        @@staging_all_contents.each_value { |buf| apply_pending_metadata(buf) }
+        @@contents = @@staging_all_contents
+        @@staging_all_contents = {}
+        @@staging_all_containers = false
+      end
+
+      # Discards an in-flight INV LIST refresh (worn + full container staging)
+      # without publishing it, leaving the previously published model visible.
+      # Unlike {.discard_staged_refreshes} this touches only the INV LIST buffers,
+      # so it will not abort an unrelated in-flight room/familiar refresh -- nor an
+      # unrelated per-container +begin_container+ refresh, which lives in the
+      # separate +@@staging_contents+ hash and commits on its own at the next prompt.
+      #
+      # @return [void]
+      def self.discard_inv_refresh
+        drop_pending_metadata(@@staging_inv)
+        @@staging_all_contents.each_value { |buf| drop_pending_metadata(buf) }
+        @@staging_inv = nil
+        @@staging_all_contents = {}
+        @@staging_all_containers = false
+      end
+
+      # Discards every in-flight staged refresh without publishing it.
+      #
+      # Called by +XMLParser#reset+ after a malformed or truncated fragment
+      # forces the parser to resynchronize. Any refresh open at that moment is
+      # known to be incomplete, so its buffer is dropped rather than published:
+      # the previously published snapshot stays visible, which is the same
+      # failure mode as an interrupted stream that never commits.
+      #
+      # Without this, an interrupted container fill would be published as
+      # authoritative by the next +commit_all_containers+ at the following
+      # +prompt+, and objects held only in an abandoned buffer would keep
+      # appearing in +live_registry_objects+ (blocking +prune_index!+) until the
+      # next refresh of that same registry replaced it.
+      #
+      # @return [void]
+      def self.discard_staged_refreshes
+        @@staging_inv           = nil
+        @@staging_reserve       = nil
+        @@staging_loot          = nil
+        @@staging_npcs          = nil
+        @@staging_npc_status    = nil
+        @@staging_pcs           = nil
+        @@staging_pc_status     = nil
+        @@staging_room_desc     = nil
+        @@staging_fam_room_desc = nil
+        @@staging_fam_loot      = nil
+        @@staging_fam_npcs      = nil
+        @@staging_fam_pcs       = nil
+        @@staging_contents.clear
+        @@staging_all_contents.clear
+        @@staging_all_containers = false
+        # Every open buffer is being discarded, so no deferred metadata can still
+        # belong to a refresh that will commit; drop all of it.
+        @@pending_metadata.clear
+      end
+
+      # ---------------------------------------------------------------------------
+      # Lookup
+      # ---------------------------------------------------------------------------
+
+      # Finds a GameObj by ID (numeric string), noun (single word), or name.
+      # Also accepts a +Regexp+ for name-based matching.
+      #
+      # @param val [String, Integer, Regexp]
+      # @return [GameObj, nil]
+      def self.[](val)
+        unless val.is_a?(String) || val.is_a?(Regexp)
+          respond "--- Lich: error: GameObj[] passed with #{val.class} #{val} via caller: #{caller[0]}"
+          respond "--- Lich: error: GameObj[] supports String or Regexp only"
+          Lich.log "--- Lich: error: GameObj[] passed with #{val.class} #{val} via caller: #{caller[0]}\n\t"
+          Lich.log "--- Lich: error: GameObj[] supports String or Regexp only\n\t"
+
+          if val.is_a?(Integer)
+            respond "--- Lich: error: GameObj[] converted Integer #{val} to String to continue"
+            val = val.to_s
+          else
+            return nil
+          end
+        end
+
+        if val.is_a?(Regexp)
+          return search_registries { |o| o.name =~ val }
+        end
+
+        if val =~ /^\-?[0-9]+$/
+          # Numeric ID lookup (room_desc excluded from primary, appended last for completeness)
+          search_registries { |o| o.id == val }
+        elsif val.split(' ').length == 1
+          # Single-word noun lookup
+          search_registries { |o| o.noun == val }
+        else
+          # Name lookup - exact first, then suffix, then fuzzy suffix
+          escaped     = Regexp.escape(val.strip)
+          fuzzy       = Regexp.escape(val).sub(' ', ' .*')
+          search_registries { |o| o.name == val } ||
+            search_registries { |o| o.name =~ /\b#{escaped}$/i } ||
+            search_registries { |o| o.name =~ /\b#{fuzzy}$/i }
+        end
+      end
+
+      # ---------------------------------------------------------------------------
+      # Targeting helpers
+      # ---------------------------------------------------------------------------
+
+      # Returns the list of active (non-dead, non-animated, non-appendage) NPCs
+      # that are currently targeted via +XMLData.current_target_ids+.
+      #
+      # @return [Array<GameObj>]
+      def self.targets
+        XMLData.current_target_ids.filter_map do |id|
+          npc = @@npcs.find { |n| n.id == id }
+          next unless npc
+          next if npc.status.to_s =~ /dead|gone/i
+          next if npc.name =~ /^animated\b/i && npc.name !~ /^animated slush/i
+          next if npc.noun =~ /^(?:arm|appendage|claw|limb|pincer|tentacle)s?$|^(?:palpus|palpi)$/i &&
+                  npc.name !~ /(?:amaranthine|ghostly|grizzled|ancient) kraken tentacle/i
+          npc
+        end
+      end
+
+      # Returns IDs in the current target list that do not correspond to a known NPC.
+      #
+      # @return [Array<String>]
+      def self.hidden_targets
+        XMLData.current_target_ids.reject { |id| @@npcs.any? { |n| n.id == id } }
+      end
+
+      # Returns the single NPC or PC matching +XMLData.current_target_id+.
+      #
+      # @return [GameObj, nil]
+      def self.target
+        (@@npcs + @@pcs).find { |n| n.id == XMLData.current_target_id }
+      end
+
+      # Returns all NPCs with a status of +"dead"+, or +nil+ if none.
+      #
+      # @return [Array<GameObj>, nil]
+      def self.dead
+        dead_list = @@npcs.select { |obj| obj.status == 'dead' }
+        dead_list.empty? ? nil : dead_list
+      end
+
+      # ---------------------------------------------------------------------------
+      # Index lifecycle - pruning & diagnostics
+      # ---------------------------------------------------------------------------
+
+      # Removes entries from the shared identity index whose +last_seen_at+
+      # timestamp is older than +ttl+ seconds ago **and** whose object is not
+      # currently present in any active registry, then GC-hints Ruby.
+      #
+      # The live-registry check is the critical guard: an object that is still
+      # held in +@@npcs+, +@@loot+, +@@inv+, or any other registry must never be
+      # pruned regardless of how long ago it was last re-registered. Pruning a
+      # live entry would cause the next +find_or_create+ call for that object to
+      # allocate a brand-new instance, silently breaking the identity guarantee.
+      #
+      # An entry is only eligible for pruning when *both* conditions are true:
+      #   1. +last_seen_at+ is older than +ttl+ seconds ago
+      #   2. The object's ID is not present in any active registry
+      #
+      # Safe to call at any time and as frequently as desired. Entries that are
+      # live in registries are always skipped. Entries accessed within the TTL
+      # window are always skipped.
+      #
+      # Recommended call sites: after a room transition, in a script's idle loop,
+      # or whenever +index_stats+ shows +:stale_entries+ growing large.
+      #
+      # When +verbose: true+, prints a before/after report to stdout showing:
+      #   - GameObj count and estimated object memory before and after pruning
+      #   - Ruby heap size before and after, with the net change
+      #   - Number of entries pruned, skipped (live), and remaining
+      #   - Time taken
+      #
+      # @example Silent prune (default)
+      #   GameObj.prune_index!
+      #
+      # @example Prune with a 5-minute TTL and printed report
+      #   GameObj.prune_index!(ttl: 300, verbose: true)
+      #
+      # @param ttl     [Integer] seconds since last access before a *stale* entry
+      #   is eligible for eviction (default: 900 - 15 minutes)
+      # @param verbose [Boolean] when +true+, prints a memory report to stdout
+      #   (default: +false+)
+      # @return [Hash] with the following keys:
+      #   - +:pruned+               [Integer] - stale entries removed
+      #   - +:skipped_live+         [Integer] - entries skipped because object is
+      #       still present in at least one active registry
+      #   - +:remaining+            [Integer] - entries still in the index
+      #   - +:gameobj_bytes_before+ [Integer] - estimated GameObj memory before prune
+      #   - +:gameobj_bytes_after+  [Integer] - estimated GameObj memory after prune
+      #   - +:gameobj_bytes_freed+  [Integer] - difference (before - after)
+      #   - +:heap_bytes_before+    [Integer] - Ruby heap size before GC hint
+      #   - +:heap_bytes_after+     [Integer] - Ruby heap size after GC hint
+      #   - +:heap_bytes_freed+     [Integer] - difference (before - after)
+      #   - +:elapsed_ms+           [Float]   - wall time of the prune operation
+      # @api private Operational maintenance hook. No compatibility guarantee across versions.
+      def self.prune_index!(ttl: 900, verbose: false)
+        require 'objspace'
+        t_start   = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        cutoff    = t_start - ttl
+
+        obj_before  = gameobj_memory_bytes
+        heap_before = ruby_heap_bytes
+
+        pruned, skipped_live = sweep_stale!(cutoff)
+
+        GC.start(full_mark: false, immediate_sweep: false) if pruned.positive?
+
+        obj_after  = gameobj_memory_bytes
+        heap_after = ruby_heap_bytes
+        elapsed    = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_start) * 1000
+
+        result = {
+          pruned: pruned,
+          skipped_live: skipped_live,
+          remaining: @@index.size,
+          gameobj_bytes_before: obj_before,
+          gameobj_bytes_after: obj_after,
+          gameobj_bytes_freed: obj_before - obj_after,
+          heap_bytes_before: heap_before,
+          heap_bytes_after: heap_after,
+          heap_bytes_freed: heap_before - heap_after,
+          elapsed_ms: elapsed.round(3)
+        }
+
+        if verbose
+          w = 28
+          puts "=" * 52
+          puts "  GameObj.prune_index! - TTL: #{ttl}s"
+          puts "=" * 52
+          puts format("  %-#{w}s %s -> %s  (%s)",
+                      "GameObj object memory:",
+                      format_bytes(obj_before),
+                      format_bytes(obj_after),
+                      format_delta(result[:gameobj_bytes_freed]))
+          puts format("  %-#{w}s %s -> %s  (%s)",
+                      "Ruby heap size:",
+                      format_bytes(heap_before),
+                      format_bytes(heap_after),
+                      format_delta(result[:heap_bytes_freed]))
+          puts format("  %-#{w}s %d removed, %d skipped (live), %d remaining",
+                      "Index entries:",
+                      pruned,
+                      skipped_live,
+                      @@index.size)
+          puts format("  %-#{w}s %.3f ms", "Elapsed:", elapsed)
+          puts "=" * 52
+        end
+
+        result
+      end
+
+      # Returns a Hash describing the current memory and age state of the index.
+      #
+      # Useful for diagnosing memory growth in long sessions. The +:age_buckets+
+      # breakdown shows how many entries fall into each staleness window so you
+      # can tune the TTL passed to +prune_index!+ accordingly.
+      #
+      # When +verbose: true+, prints a formatted report to stdout.
+      #
+      # @example Silent stats (default)
+      #   stats = GameObj.index_stats
+      #   puts stats[:stale_entries]
+      #
+      # @example Print a full formatted report
+      #   GameObj.index_stats(verbose: true)
+      #
+      # @param verbose [Boolean] when +true+, prints a report to stdout
+      #   (default: +false+)
+      # @return [Hash] with the following keys:
+      #   - +:total_entries+        [Integer] - total keys in +@@index+
+      #   - +:live_in_registries+   [Integer] - objects in at least one registry
+      #   - +:stale_entries+        [Integer] - objects in no active registry
+      #   - +:oldest_entry_seconds+ [Float]   - age of the oldest entry in seconds
+      #   - +:age_buckets+          [Hash{String => Integer}] - entry counts by
+      #       last-seen age: under5m, 5-15m, 15-30m, 30-60m, over60m
+      #   - +:gameobj_bytes+        [Integer] - estimated memory held by all indexed
+      #       GameObj instances (via +ObjectSpace.memsize_of+)
+      #   - +:heap_bytes+           [Integer] - current Ruby heap size
+      # @api private Diagnostics-only surface. No compatibility guarantee across versions.
+      def self.index_stats(verbose: false)
+        require 'objspace'
+        return empty_index_stats if @@index.empty?
+
+        now        = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        live_objs  = live_registry_objects
+        # Snapshot the entries under the mutex so we never iterate the index
+        # while another thread inserts into or prunes it.
+        entries    = @@index_mutex.synchronize { @@index.values }
+        total      = entries.size
+        buckets    = { 'under5m' => 0, '5-15m' => 0,
+                       '15-30m' => 0, '30-60m' => 0, 'over60m' => 0 }
+        stale      = 0
+        oldest_age = 0.0
+
+        entries.each do |obj, last_seen|
+          age        = now - last_seen
+          oldest_age = age if age > oldest_age
+          stale     += 1 unless live_objs.include?(obj)
+
+          buckets[case age
+                  when 0...300    then 'under5m'
+                  when 300...900  then '5-15m'
+                  when 900...1800 then '15-30m'
+                  when 1800...3600 then '30-60m'
+                  else 'over60m'
+                  end] += 1
+        end
+
+        obj_mem  = gameobj_memory_bytes
+        heap_mem = ruby_heap_bytes
+
+        result = {
+          total_entries: total,
+          live_in_registries: total - stale,
+          stale_entries: stale,
+          oldest_entry_seconds: oldest_age.round(1),
+          age_buckets: buckets,
+          gameobj_bytes: obj_mem,
+          heap_bytes: heap_mem
+        }
+
+        if verbose
+          oldest_fmt = if oldest_age < 60
+                         "#{oldest_age.round(1)}s"
+                       elsif oldest_age < 3600
+                         "#{(oldest_age / 60).round(1)}m"
+                       else
+                         "#{(oldest_age / 3600).round(2)}h"
+                       end
+
+          w = 28
+          puts "=" * 52
+          puts "  GameObj.index_stats"
+          puts "=" * 52
+          puts format("  %-#{w}s %d", "Total index entries:",  total)
+          puts format("  %-#{w}s %d", "Live in registries:",   result[:live_in_registries])
+          puts format("  %-#{w}s %d", "Stale (index-only):",   stale)
+          puts format("  %-#{w}s %s", "Oldest entry:",         oldest_fmt)
+          puts "-" * 52
+          puts "  Age distribution:"
+          buckets.each do |label, count|
+            bar = "#" * [count, 30].min
+            puts format("  %-10s %4d  %s", label, count, bar)
+          end
+          puts "-" * 52
+          puts format("  %-#{w}s %s", "GameObj object memory:", format_bytes(obj_mem))
+          puts format("  %-#{w}s %s", "Ruby heap size:", format_bytes(heap_mem))
+          puts "=" * 52
+        end
+
+        result
+      end
+
+      # ---------------------------------------------------------------------------
+      # Data loading
+      # ---------------------------------------------------------------------------
+
+      # Reloads type and sellable data from disk.
+      #
+      # @param filename [String, nil] path to the XML data file, or +nil+ for default
+      # @return [Boolean]
+      def self.reload(filename = nil)
+        load_data(filename)
+      end
+
+      # Merges two Regexp values via +Regexp.union+, or returns the new value
+      # if the existing one is not yet a Regexp.
+      #
+      # @param existing  [Regexp, nil]
+      # @param new_value [Regexp]
+      # @return [Regexp]
+      def self.merge_data(existing, new_value)
+        existing.is_a?(Regexp) ? Regexp.union(existing, new_value) : new_value
+      end
+
+      # Loads type and sellable classification data from XML.
+      # Merges custom overrides from +gameobj-custom/gameobj-data.xml+ if present.
+      #
+      # @param filename [String, nil] path override; defaults to +DATA_DIR/gameobj-data.xml+
+      # @return [Boolean] +true+ on success, +false+ on failure
+      def self.load_data(filename = nil)
+        primary = filename || File.join(DATA_DIR, 'gameobj-data.xml')
+
+        unless File.exist?(primary)
+          @@type_data = @@sellable_data = nil
+          echo "error: GameObj.load_data: file does not exist: #{primary}"
+          return false
+        end
+
+        begin
+          @@type_data     = {}
+          @@sellable_data = {}
+          @@type_cache    = {}
+          parse_data_file(primary)
+        rescue => e
+          @@type_data = @@sellable_data = nil
+          echo "error: GameObj.load_data: #{e}"
+          respond e.backtrace[0..1]
+          return false
+        end
+
+        custom = File.join(DATA_DIR, 'gameobj-custom', 'gameobj-data.xml')
+        if File.exist?(custom)
+          begin
+            parse_data_file(custom, merge: true)
+          rescue => e
+            echo "error: Custom GameObj.load_data: #{e}"
+            respond e.backtrace[0..1]
+            return false
+          end
+        end
+
+        true
+      end
+
+      # @return [Hash] the loaded type classification data
+      def self.type_data     = @@type_data
+
+      # @return [Hash] the memoized type lookup cache
+      def self.type_cache    = @@type_cache
+
+      # @return [Hash] the loaded sellable classification data
+      def self.sellable_data = @@sellable_data
+
+      # ---------------------------------------------------------------------------
+      private
+
+      # ---------------------------------------------------------------------------
+
+      # Normalizes irregular noun values that the game provides inconsistently.
+      #
+      # @param noun [String, nil]
+      # @param name [String, nil]
+      # @return [String, nil]
+      def normalize_noun(noun, name)
+        case noun
+        when 'lapis lazuli'   then 'lapis'
+        when 'Hammer of Kai'  then 'hammer'
+        when 'ball and chain' then 'ball'
+        when 'pearl'
+          (name =~ /mother\-of\-pearl/) ? 'mother-of-pearl' : noun
+        else
+          noun
+        end
+      end
+
+      # Returns the keys from +data_hash+ whose +:name+, +:noun+, or +:full_name+
+      # patterns match this object, subject to optional +:exclude+ filtering.
+      #
+      # +:name+ and +:exclude+ are matched against +name+, +:noun+ against +noun+,
+      # and +:full_name+ against {#full_name} (the composed +before_name+ +
+      # +name+ + +after_name+). Any absent pattern is +nil+ and matches nothing,
+      # so an entry that omits +:full_name+ behaves exactly as before.
+      #
+      # @param data_hash [Hash]
+      # @return [Array<String>]
+      def matching_data_keys(data_hash)
+        obj_full_name = full_name
+        data_hash.keys.select do |t|
+          entry = data_hash[t]
+          matches = (@name =~ entry[:name] || @noun =~ entry[:noun] || obj_full_name =~ entry[:full_name])
+          excluded = entry[:exclude] && @name =~ entry[:exclude]
+          matches && !excluded
+        end
+      end
+
+      # Returns +true+ if this object's ID is found in any active registry.
+      #
+      # @return [Boolean]
+      def present_in_any_registry?
+        all_flat_registries.any? { |obj| obj.id == @id } ||
+          @@contents.values.any? { |list| list.any? { |obj| obj.id == @id } }
+      end
+
+      # Returns all flat (non-container) registries combined with hands as a
+      # single array for iteration.
+      #
+      # @return [Array<GameObj>]
+      def all_flat_registries
+        [*@@loot, *@@inv, *@@reserve, *@@room_desc,
+         *@@fam_loot, *@@fam_npcs, *@@fam_pcs, *@@fam_room_desc,
+         @@right_hand, @@left_hand].compact
+      end
+
+      # ---------------------------------------------------------------------------
+      # Class-level private helpers
+      # ---------------------------------------------------------------------------
+
+      class << self
+        private
+
+        # All ordered search registries for +[]+, hands wrapped in an array to
+        # use the same +#find+ interface.
+        SEARCH_ORDER = proc do
+          [@@inv, Array(@@reserve), @@loot, @@npcs, @@pcs,
+           [@@right_hand, @@left_hand].compact,
+           @@room_desc,
+           @@contents.values.flatten]
+        end
+
+        # Searches all registries in order, returning the first object satisfying
+        # the given block.
+        #
+        # @yieldparam obj [GameObj]
+        # @yieldreturn [Boolean]
+        # @return [GameObj, nil]
+        def search_registries(&block)
+          SEARCH_ORDER.call.each do |registry|
+            result = registry.find(&block)
+            return result if result
+          end
+          nil
+        end
+
+        # Returns a dup of the registry, or +nil+ when empty.
+        #
+        # @param registry [Array<GameObj>]
+        # @return [Array<GameObj>, nil]
+        def registry_or_nil(registry)
+          registry.empty? ? nil : registry.dup
+        end
+
+        # Finds an existing object matching the composite key (id + noun + name)
+        # via an O(1) lookup in the shared +@@index+, or creates and registers
+        # a new one.
+        #
+        # Each index entry stores a two-element array <tt>[GameObj, last_seen_at]</tt>.
+        # +last_seen_at+ is refreshed on every hit using a monotonic clock, giving
+        # +prune_index!+ an accurate staleness signal for garbage collection.
+        #
+        # All registries share a single persistent index. When +clear_*+ is
+        # called, the registry array is emptied but the index is left intact.
+        # If the same entity is encountered again (e.g. re-entering a room),
+        # the existing +GameObj+ instance is returned, its timestamp refreshed,
+        # and it is re-added to the cleared registry - no allocation required.
+        #
+        # When a duplicate is found, +before_name+ and +after_name+ are
+        # refreshed from a differing non-nil observation; a nil observation
+        # never clobbers a known value.
+        #
+        # @param registry [Array<GameObj>]  the target registry array
+        # @param id       [Integer, String]
+        # @param noun     [String, nil]
+        # @param name     [String, nil]
+        # @param before   [String, nil]   sets +before_name+ from a differing non-nil observation
+        # @param after    [String, nil]   sets +after_name+ from a differing non-nil observation
+        # @param defer_to [Array, nil]    the open staging buffer this write targets, or +nil+ for a
+        #                                  live write; when set, the metadata refresh is deferred into
+        #                                  that buffer's +@@pending_metadata+ and applied at commit
+        # @return [GameObj]
+        def find_or_create(registry, id, noun, name, before = nil, after = nil, defer_to: nil)
+          str_id = id.is_a?(Integer) ? id.to_s : id
+          key    = "#{str_id}|#{noun}|#{name}"
+          now    = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+          @@index_mutex.synchronize do
+            if (entry = @@index[key])
+              existing, _ts        = entry
+              @@index[key]         = [existing, now] # refresh last-seen timestamp
+              # Refresh command metadata whenever a differing non-nil observation
+              # arrives -- e.g. a name-preserving move updates +before_name+ from
+              # "get #id in #old" to "get #id in #new". A nil observation never
+              # clobbers a known value (a sighting from a source that carries no
+              # command must not blank it).
+              #
+              # During a staged refresh the shared instance is still published, so
+              # the change is deferred into the buffer's pending map instead of
+              # mutated in place. Each field is merged independently against the
+              # effective pending value (seeded from the currently published one),
+              # so a before-only then after-only observation keeps both, and a
+              # value that returns to the published one supersedes an earlier
+              # intermediate. commit_* applies it; any discard drops it.
+              if defer_to
+                pending      = (@@pending_metadata[defer_to] ||= {}.compare_by_identity)
+                current      = (pending[existing] ||= [existing.before_name, existing.after_name])
+                current[0]   = before unless before.nil?
+                current[1]   = after  unless after.nil?
+              else
+                existing.before_name = before if !before.nil? && existing.before_name != before
+                existing.after_name  = after  if !after.nil?  && existing.after_name  != after
+              end
+              registry.push(existing) unless registry.include?(existing)
+              existing
+            else
+              new_obj      = GameObj.new(id, noun, name, before, after)
+              @@index[key] = [new_obj, now]
+              registry.push(new_obj)
+              new_obj
+            end
+          end
+        end
+
+        # Removes index entries that are both stale (last seen before +cutoff+)
+        # and not currently held in any registry, leaving live and recently-seen
+        # entries intact. Used by +prune_index!+ to keep the live-registry guard
+        # in one place.
+        #
+        # The live set is computed up front (it walks the registries, not the
+        # index), then the delete_if runs under +@@index_mutex+ so it cannot
+        # race a concurrent insert or a second sweep.
+        #
+        # @param cutoff [Float] monotonic timestamp; entries last seen before
+        #   this are eligible for eviction
+        # @return [Array(Integer, Integer)] +[pruned, skipped_live]+ counts
+        def sweep_stale!(cutoff)
+          live_objs    = live_registry_objects
+          pruned       = 0
+          skipped_live = 0
+
+          @@index_mutex.synchronize do
+            @@index.delete_if do |_key, (obj, last_seen)|
+              if live_objs.include?(obj)
+                # This exact instance is still held in a registry - never prune
+                # it regardless of age. Guarding by object identity (not by id)
+                # means a stale noun/name variant that merely shares an id with a
+                # live object is still evicted, so the index cannot accumulate
+                # per-id variants without bound.
+                skipped_live += 1
+                false
+              elsif last_seen < cutoff
+                pruned += 1
+                true
+              else
+                false
+              end
+            end
+          end
+
+          [pruned, skipped_live]
+        end
+
+        # Returns a Set (or Array if Set is unavailable) of all GameObj instances
+        # currently present in any active registry, including the hand slots.
+        # Membership is by object identity (GameObj defines no custom eql?/hash),
+        # which is what lets the sweep keep only the exact instances still in use
+        # rather than every entry sharing a live object's id. Used by
+        # +sweep_stale!+ as the live-guard check and by +index_stats+ to classify
+        # entries as live vs stale.
+        #
+        # @return [Set<GameObj>, Array<GameObj>]
+        def live_registry_objects
+          objs = [
+            *@@loot, *@@npcs, *@@pcs, *@@inv, *@@reserve,
+            *@@room_desc, *@@fam_loot, *@@fam_npcs, *@@fam_pcs, *@@fam_room_desc,
+            *@@contents.values.flatten,
+            *Array(@@staging_inv), *Array(@@staging_reserve), *Array(@@staging_loot),
+            *Array(@@staging_npcs), *Array(@@staging_pcs), *Array(@@staging_room_desc),
+            *Array(@@staging_fam_loot), *Array(@@staging_fam_npcs),
+            *Array(@@staging_fam_pcs), *Array(@@staging_fam_room_desc),
+            *@@staging_contents.values.flatten,
+            *@@staging_all_contents.values.flatten,
+            @@right_hand, @@left_hand
+          ].compact
+          defined?(Set) ? Set.new(objs) : objs
+        end
+
+        # Returns the zero-state stats hash used when +@@index+ is empty.
+        #
+        # @return [Hash]
+        def empty_index_stats
+          {
+            total_entries: 0,
+            live_in_registries: 0,
+            stale_entries: 0,
+            oldest_entry_seconds: 0.0,
+            age_buckets: { 'under5m' => 0, '5-15m' => 0,
+                                    '15-30m' => 0, '30-60m' => 0, 'over60m' => 0 },
+            gameobj_bytes: 0,
+            heap_bytes: ruby_heap_bytes
+          }
+        end
+
+        # Returns the sum of +ObjectSpace.memsize_of+ for every +GameObj+
+        # currently held in +@@index+. This is an estimate of the memory
+        # directly attributed to the GameObj instances themselves (not their
+        # internal string fields, which Ruby may share via frozen literals).
+        #
+        # Requires +objspace+ - caller must +require 'objspace'+ first.
+        #
+        # @return [Integer] bytes
+        def gameobj_memory_bytes
+          @@index_mutex.synchronize do
+            @@index.sum { |_key, (obj, _ts)| ObjectSpace.memsize_of(obj) }
+          end
+        end
+
+        # Returns the current size of the Ruby heap in bytes, measured as
+        # heap slots in use multiplied by the slot size reported by +GC.stat+.
+        #
+        # This is a process-level view - it reflects all live objects, not just
+        # GameObjs - but is useful as a before/after marker around +prune_index!+
+        # to confirm that a GC cycle reclaimed the expected working set.
+        #
+        # @return [Integer] bytes
+        def ruby_heap_bytes
+          stat      = GC.stat
+          slot_size = stat[:heap_slot_size] || 40 # 40 bytes is the MRI default
+          (stat[:heap_live_slots] || 0) * slot_size
+        end
+
+        # Formats +bytes+ as a human-readable string with an appropriate unit
+        # (B, KB, MB, GB). Always shows two decimal places for KB and above.
+        #
+        # @param bytes [Integer]
+        # @return [String]
+        def format_bytes(bytes)
+          abs = bytes.abs
+          return "#{abs} B" if abs < 1024
+          return format("%.2f KB", abs / 1024.0)        if abs < 1_048_576
+          return format("%.2f MB", abs / 1_048_576.0)   if abs < 1_073_741_824
+          format("%.2f GB", abs / 1_073_741_824.0)
+        end
+
+        # Formats a signed byte delta as a human-readable string, labelling
+        # the direction as "freed" (positive) or "allocated" (negative).
+        # Used in verbose output to correctly describe cases where Ruby
+        # allocated slightly more memory during a prune than it reclaimed.
+        #
+        # @param delta [Integer] signed byte count (positive = freed, negative = allocated)
+        # @return [String] e.g. "21.25 KB freed" or "720 B allocated"
+        def format_delta(delta)
+          label = delta >= 0 ? 'freed' : 'allocated'
+          "#{format_bytes(delta.abs)} #{label}"
+        end
+
+        # Parses an XML data file, populating +@@type_data+ and +@@sellable_data+.
+        # When +merge: true+, existing patterns are merged via +Regexp.union+.
+        #
+        # Uses Ox in generic mode. skip: :skip_none keeps the regex text in
+        # +<name>/<noun>/<full_name>/<exclude>+ verbatim. Unlike the permissive SAX parser,
+        # Ox.load is strict and raises Ox::ParseError on malformed XML, so the
+        # caller's rescue still treats a corrupt data file as a load failure.
+        #
+        # @param filename [String]
+        # @param merge    [Boolean]
+        # @return [void]
+        def parse_data_file(filename, merge: false)
+          parsed = Ox.load(File.read(filename), mode: :generic, skip: :skip_none)
+          # Ox.load returns an Ox::Document when the file has an XML prolog and
+          # the bare root Ox::Element otherwise; the root is <data> either way.
+          root = parsed.is_a?(Ox::Document) ? parsed.root : parsed
+          parse_data_section(root, 'type',     @@type_data,     merge: merge)
+          parse_data_section(root, 'sellable', @@sellable_data, merge: merge)
+        end
+
+        # Parses a named child section of the <data> root into the target hash.
+        #
+        # @param root    [Ox::Element] the <data> root element
+        # @param section [String] child element name ('type' or 'sellable')
+        # @param target  [Hash]
+        # @param merge   [Boolean]
+        # @return [void]
+        def parse_data_section(root, section, target, merge: false)
+          root.locate(section).each do |e|
+            key = e['name'] # the name="..." attribute, not the <name> child
+            next unless key
+
+            target[key] ||= {}
+            %i[name noun full_name exclude].each do |field|
+              text = e.locate(field.to_s).first&.text
+              next if text.nil? || text.empty?
+
+              regexp = Regexp.new(text)
+              target[key][field] = merge ? GameObj.merge_data(target[key][field], regexp) : regexp
+            end
+          end
+        end
+      end
+    end
+
+    # @deprecated Use {GameObj} directly.
+    class RoomObj < GameObj; end
+
+    # ---------------------------------------------------------------------------
+    # Lich::Common::LruIndex - optional drop-in replacement for +@@index+
+    #
+    # A size-capped Least Recently Used (LRU) cache that stores the same
+    # <tt>[GameObj, last_seen_at]</tt> tuple format as the default plain Hash,
+    # making it a transparent drop-in replacement.
+    #
+    # Use when profiling shows +@@index+ growing too large in very long or
+    # heavily automated sessions. Combines LRU eviction (by access recency)
+    # with the same TTL-based +prune_older_than+ interface as +prune_index!+.
+    #
+    # Usage - swap the initializer inside GameObj:
+    #
+    #   @@index = Lich::Common::LruIndex.new(2000)
+    #
+    # How it works:
+    #   Ruby Hashes preserve insertion order. On every read (+[]+) the accessed
+    #   entry is moved to the end (most recently used). When the cap is reached
+    #   on a write (+[]=+), the first entry (least recently used) is evicted.
+    #   All operations remain O(1) amortized.
+    #
+    # Choosing a cap:
+    #   A typical Lich session visits at most a few hundred unique room/NPC
+    #   combinations. 2,000 is generous for normal play; raise to 5,000+ for
+    #   marathon scripts that sweep large areas. Memory cost per entry is
+    #   negligible (the key string + a two-element array).
+    #
+    # @api private Optional implementation detail. No compatibility guarantee across versions.
+    # ---------------------------------------------------------------------------
+    class LruIndex
+      # @param capacity [Integer] maximum number of entries before LRU eviction
+      def initialize(capacity = 2000)
+        @capacity = capacity
+        @store    = {}
+      end
+
+      # Returns the +[GameObj, last_seen_at]+ tuple for +key+, promoting it to
+      # most-recently-used position. Returns +nil+ if the key is not present.
+      #
+      # @param key [String]
+      # @return [Array(GameObj, Float), nil]
+      def [](key)
+        return nil unless @store.key?(key)
+
+        # Move to end (most recently used) by delete-and-reinsert
+        value = @store.delete(key)
+        @store[key] = value
+        value
+      end
+
+      # Stores a +[GameObj, last_seen_at]+ tuple under +key+. Evicts the least
+      # recently used entry first if the store is at capacity.
+      #
+      # @param key   [String]
+      # @param value [Array(GameObj, Float)]
+      # @return [Array(GameObj, Float)]
+      def []=(key, value)
+        @store.delete(key) if @store.key?(key)
+        @store.shift if @store.size >= @capacity
+        @store[key] = value
+      end
+
+      # Returns +true+ if +key+ is present without altering LRU order.
+      #
+      # @param key [String]
+      # @return [Boolean]
+      def key?(key)
+        @store.key?(key)
+      end
+
+      # Removes entries whose +last_seen_at+ timestamp is older than +cutoff+
+      # seconds (a monotonic Float). Mirrors the interface expected by
+      # +prune_index!+ when +@@index+ is swapped for an +LruIndex+.
+      #
+      # @param cutoff [Float] monotonic timestamp; entries last seen before this
+      #   time are removed
+      # @return [Integer] the number of entries removed
+      def prune_older_than(cutoff)
+        pruned = 0
+        @store.delete_if do |_key, (_obj, last_seen)|
+          if last_seen < cutoff
+            pruned += 1
+            true
+          else
+            false
+          end
+        end
+        pruned
+      end
+
+      # Iterates over all entries, yielding +[key, [GameObj, last_seen_at]]+ to
+      # the block. Used by +index_stats+ when +@@index+ is an +LruIndex+.
+      #
+      # @yieldparam key   [String]
+      # @yieldparam value [Array(GameObj, Float)]
+      def each_value(&block)
+        @store.each_value(&block)
+      end
+
+      # Removes all entries.
+      #
+      # @return [void]
+      def clear
+        @store.clear
+      end
+
+      # Removes entries using a block predicate, identical to +Hash#delete_if+.
+      #
+      # @yieldparam key   [String]
+      # @yieldparam value [Array(GameObj, Float)]
+      # @return [LruIndex]
+      def delete_if(&block)
+        @store.delete_if(&block)
+        self
+      end
+
+      # Returns the current number of entries.
+      #
+      # @return [Integer]
+      def size
+        @store.size
+      end
+    end
+  end
+end

@@ -1,0 +1,12 @@
+# A script of Hydra's own, for the Ruby runner's map and stores
+# (crates/cena-agent/tests/runner.rs): the room Hydra names, an exit of it
+# walked with Lich's own `move`, and a setting kept from run to run.
+
+start = Room.current
+to = start.wayto.keys.first
+echo "from #{start.id} #{start.title.first} #{start.wayto[to]} to #{to}"
+moved = move start.wayto[to]
+echo "moved #{moved}, now #{Room.current.id} #{Room.current.title.first}"
+CharSettings['seen'] ||= []
+CharSettings['seen'].push(Room.current.id)
+echo "seen #{CharSettings['seen'].inspect}"

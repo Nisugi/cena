@@ -25,12 +25,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use cena_host::{Host, Who, stop_all};
-use cena_session::{Event, SessionHandle, SessionId, SessionObserver, State, StoppedBecause};
+use cena_session::{Event, SessionHandle, SessionId, SessionObserver, StoppedBecause};
 use cena_ui::{HubControl, HubRequest};
 
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
+use crate::proven::Proven;
 use crate::{
     batch, connector, frontend, interrupt, launcher, learn, loot, pages, roster, secrets, setup,
     sorter, travel, triggers, watch,
@@ -93,6 +94,12 @@ struct Table {
     host: Arc<tokio::sync::Mutex<Host>>,
     started: std::sync::Mutex<BTreeMap<SessionId, Started>>,
     web: Option<frontend::Frontend>,
+    /// `--agent`'s MCP listener (`plan/35`), when asked for.
+    agent: Option<crate::agent::Agent>,
+    /// Every character's Lich scripts and their runners (`plan/46`).
+    scripts: crate::scripts::Scripts,
+    /// Every character's own Lich that runs (`plan/51`).
+    lichs: crate::lich::Lichs,
     /// The window's sessions, when this run has a window (`gui.rs`).
     gui: Option<cena_gui::Sessions>,
     /// What every character's hunt shares: the groups' boards and the
@@ -163,6 +170,9 @@ pub(crate) async fn serve(
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
+        agent: crate::agent::Agent::open(&dir).await,
+        scripts: crate::scripts::Scripts::new(&dir, &map),
+        lichs: crate::lich::Lichs::default(),
         party: crate::hunt::Party::new(gui.clone()),
         gui,
         map,
@@ -218,6 +228,11 @@ pub(crate) async fn serve(
     if let Some(web) = &table.web {
         web.shutdown().await;
     }
+    if let Some(agent) = &table.agent {
+        agent.shutdown().await;
+    }
+    table.scripts.shutdown().await;
+    table.lichs.shutdown().await;
     eprintln!("\n[disconnect] quitting every session");
     let (stopped, refused) = Box::pin(table.stop_everything()).await;
     if let Some(gui) = &table.gui {
@@ -280,17 +295,7 @@ impl Table {
             self.changes.clone(),
         );
         batch::open(&hosted.handle, &hosted.observer, &commands);
-        loot::reports(&hosted.handle, &commands, &self.dir, &game, &character);
-        if let Some(web) = &self.web {
-            web.attach(
-                Some(&character),
-                hosted.observer.clone(),
-                hosted.handle.clone(),
-            );
-        }
-        if let Some(gui) = &self.gui {
-            gui.attach(&character, &game, hosted.observer.clone(), &hosted.handle);
-        }
+        self.open_readers(id, &character, &game, hosted, &commands);
         let watcher = tokio::spawn(watch::watch_events(events, format!("[{character}]")));
         tokio::spawn(crate::attention::forward(
             calls,
@@ -308,6 +313,12 @@ impl Table {
             character.clone(),
         ));
         proven.on_ready(&hosted.observer, &self.turn, &self.roster);
+        tokio::spawn(self.lichs.clone().at_login(
+            id,
+            hosted.handle.clone(),
+            hosted.observer.clone(),
+            commands.clone(),
+        ));
         tokio::spawn(after_ready(
             hosted.handle.clone(),
             hosted.observer.clone(),
@@ -331,6 +342,52 @@ impl Table {
                 },
             );
         Ok(id)
+    }
+
+    /// What reads this character once it is on the table: the loot and
+    /// combat reports over its database, the agent, its scripts, its web page
+    /// and its window. Moved
+    /// out of [`Self::start`] when M8's triggers and M7's agent together
+    /// took it past clippy's line limit.
+    fn open_readers(
+        &self,
+        id: SessionId,
+        character: &str,
+        game: &str,
+        hosted: &cena_host::Hosted,
+        commands: &Commands,
+    ) {
+        let database = loot::reports(&hosted.handle, commands, &self.dir, game, character);
+        if let Some(agent) = &self.agent {
+            agent.seat(
+                id,
+                character,
+                &hosted.handle,
+                hosted.observer.clone(),
+                (
+                    database,
+                    setup::recording(&self.dir, game, character).everything(),
+                ),
+            );
+        }
+        self.scripts.open(
+            id,
+            character,
+            game,
+            &hosted.handle,
+            &hosted.observer,
+            commands,
+        );
+        if let Some(web) = &self.web {
+            web.attach(
+                Some(character),
+                hosted.observer.clone(),
+                hosted.handle.clone(),
+            );
+        }
+        if let Some(gui) = &self.gui {
+            gui.attach(character, game, hosted.observer.clone(), &hosted.handle);
+        }
     }
 
     /// Answer a hub (`cena_ui::HubRequest`), Despana's or the window's,
@@ -452,6 +509,11 @@ impl Table {
         if let Some(web) = &self.web {
             web.detach(id);
         }
+        if let Some(agent) = &self.agent {
+            agent.unseat(id);
+        }
+        self.scripts.close(id).await;
+        self.lichs.close(id).await;
         if let Some(gui) = &self.gui {
             gui.detach(id);
         }
@@ -627,96 +689,9 @@ async fn after_ready(
     learn::sync(&handle, &stale, &who).await;
 }
 
-/// What a login leaves behind once it is proven: its roster entry, and --
-/// for a typed password -- the offer to keep it in the keyring. Taken from
-/// the login before it is handed to the connector, started once the session
-/// exists.
-pub(crate) struct Proven {
-    entry: roster::Entry,
-    typed_password: Option<(String, String)>,
-    /// A password typed in the window's launcher with its box ticked: kept
-    /// in the keyring once the login is proven, without a question.
-    kept: Option<(String, String)>,
-}
-
-impl Proven {
-    pub(crate) fn of(typed: &Typed) -> Self {
-        Self {
-            entry: roster::Entry::of(typed),
-            typed_password: (typed.password_from == secrets::Source::Prompt)
-                .then(|| (typed.account.clone(), typed.password.clone())),
-            kept: (typed.password_from == secrets::Source::Window { keep: true })
-                .then(|| (typed.account.clone(), typed.password.clone())),
-        }
-    }
-
-    /// When `observer`'s login reaches `Ready`: record the roster entry, keep
-    /// a password the window's box asked to keep, and offer one typed at the
-    /// terminal to the keyring, one question at a time (`turn`). Each change
-    /// is word to `changed`.
-    pub(crate) fn on_ready(
-        self,
-        observer: &SessionObserver,
-        turn: &Arc<std::sync::Mutex<()>>,
-        changed: &Arc<tokio::sync::Notify>,
-    ) {
-        if let Some((account, password)) = self.typed_password {
-            tokio::spawn(secrets::offer_to_remember(
-                account,
-                password,
-                observer.clone(),
-                Arc::clone(turn),
-                Arc::clone(changed),
-            ));
-        }
-        let observer = observer.clone();
-        let (entry, kept, changed) = (self.entry, self.kept, Arc::clone(changed));
-        tokio::spawn(async move {
-            if until_ready(&observer).await {
-                remember(&cena_session::character_store::data_dir(), entry);
-                if let Some((account, password)) = kept {
-                    match secrets::keep(&account, &password) {
-                        Ok(()) => eprintln!("[login] saved to the OS keyring for {account}"),
-                        Err(e) => eprintln!("[login] the OS keyring would not save it ({e})"),
-                    }
-                }
-                changed.notify_one();
-            }
-        });
-    }
-}
-
-/// Record `entry` in the roster, saying so if it cannot be.
-fn remember(dir: &Path, entry: roster::Entry) {
-    let character = entry.character.clone();
-    if let Err(e) = roster::record(dir, entry) {
-        eprintln!(
-            "[{character}] could not be added to the roster ({e}); `--character {character}` will ask again"
-        );
-    }
-}
-
-/// Resolves `true` once `observer`'s session is `Ready`; `false` if it ended
-/// first.
-async fn until_ready(observer: &SessionObserver) -> bool {
-    let Ok((snapshot, mut events)) = observer.subscribe().await else {
-        return false;
-    };
-    if snapshot.lifecycle == State::Ready {
-        return true;
-    }
-    loop {
-        match events.recv().await {
-            Ok(o) if o.event == Event::StateChanged(State::Ready) => return true,
-            Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => return false,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{Proven, characters_in, headless_in, hub_login};
+    use super::{characters_in, headless_in, hub_login};
 
     fn args(line: &str) -> Vec<String> {
         line.split_whitespace().map(str::to_owned).collect()
@@ -754,24 +729,6 @@ mod tests {
         assert!(!headless_in(args("--character Nisugi --record")));
         assert!(headless_in(args("--character Nisugi --headless")));
         assert!(headless_in(args("--web --character Nisugi")));
-    }
-
-    /// A password typed in the window is kept once proven only when its box
-    /// was ticked, and is never asked about at the terminal.
-    #[test]
-    fn a_window_password_is_kept_only_when_its_box_was_ticked() {
-        let login = |remember| cena_ui::Login {
-            account: "acct".to_owned(),
-            password: cena_ui::Password::new("pw".to_owned()),
-            game: "gst".to_owned(),
-            character: "Ashryn".to_owned(),
-            remember,
-        };
-        let ticked = Proven::of(&crate::ask::from_window(&login(true)));
-        assert_eq!(ticked.kept, Some(("acct".to_owned(), "pw".to_owned())));
-        assert_eq!(ticked.typed_password, None, "never asked at the terminal");
-        let unticked = Proven::of(&crate::ask::from_window(&login(false)));
-        assert_eq!((unticked.kept, unticked.typed_password), (None, None));
     }
 
     #[test]

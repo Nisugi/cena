@@ -31,6 +31,7 @@ use crate::error::BehaviorError;
 use crate::group::{Boards, Place};
 use crate::heal::{self, HealProfile};
 use crate::loot::{self, LootProfile};
+use crate::operation::{Steering, Underway};
 use crate::settings::Stored;
 use crate::travel::{Heard, TravelNotes};
 use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
@@ -141,6 +142,29 @@ impl Desk {
         command: Command,
         place: Place,
     ) -> Option<JoinHandle<HuntEnd>> {
+        self.underway_placed(handle, joined, command, place)
+            .map(|underway| underway.task)
+    }
+
+    /// [`Self::run`], with the controls for what it started, and for
+    /// nothing started after it (`crate::operation`).
+    pub fn underway(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+        command: Command,
+    ) -> Option<Underway<HuntEnd>> {
+        self.underway_placed(handle, joined, command, Place::Read)
+    }
+
+    /// [`Self::run_placed`], with the controls for what it started.
+    pub fn underway_placed(
+        self: &Arc<Self>,
+        handle: &SessionHandle,
+        joined: (Snapshot, impl Into<Heard>),
+        command: Command,
+        place: Place,
+    ) -> Option<Underway<HuntEnd>> {
         let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
         let (command, quick, bounty) = match command {
             Command::Quick(name) => (Command::Run(name), true, false),
@@ -276,7 +300,7 @@ impl Desk {
         handle: SessionHandle,
         joined: (Snapshot, Heard),
         machine: Hunt,
-    ) -> JoinHandle<HuntEnd> {
+    ) -> Underway<HuntEnd> {
         self.start_in(handle, joined, machine, None, what)
     }
 
@@ -321,7 +345,7 @@ impl Desk {
         machine: Hunt,
         place: Option<Place>,
         what: &str,
-    ) -> JoinHandle<HuntEnd> {
+    ) -> Underway<HuntEnd> {
         let what = what.to_owned();
         let running = Running {
             number: self.hunts.fetch_add(1, Ordering::Relaxed),
@@ -337,7 +361,9 @@ impl Desk {
             before.stop.cancel();
         }
         let desk = Arc::clone(self);
-        tokio::spawn(async move {
+        let steering = Steering::new(running.stop.clone());
+        let machine = machine.steered_by(steering.clone());
+        let task = tokio::spawn(async move {
             let Running { number, stop, over } = running;
             if let Some(before) = before {
                 before.over.cancelled().await;
@@ -353,7 +379,8 @@ impl Desk {
             drop(slot);
             over.cancel();
             end
-        })
+        });
+        Underway { task, steering }
     }
 
     /// The character's loot profile (`plan/31` §6), when one has been
@@ -422,7 +449,7 @@ impl Desk {
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
         words: &[String],
-    ) -> Option<JoinHandle<HuntEnd>> {
+    ) -> Option<Underway<HuntEnd>> {
         let state = &joined.0.state;
         let profile = match self.stored(state, crate::spellcaster::path, |text| {
             crate::spellcaster::CasterProfile::parse(text)
@@ -456,7 +483,7 @@ impl Desk {
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
         targets: Vec<String>,
-    ) -> Option<JoinHandle<HuntEnd>> {
+    ) -> Option<Underway<HuntEnd>> {
         let profile = match self.stored(&joined.0.state, crate::waggle::path, |text| {
             crate::waggle::WaggleProfile::parse(text)
         }) {
@@ -487,7 +514,7 @@ impl Desk {
         self: &Arc<Self>,
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
-    ) -> Option<JoinHandle<HuntEnd>> {
+    ) -> Option<Underway<HuntEnd>> {
         let profile = match self.stored(&joined.0.state, crate::keep::path, |text| {
             crate::keep::KeepProfile::parse(text)
         }) {
@@ -526,7 +553,7 @@ impl Desk {
         handle: &SessionHandle,
         joined: (Snapshot, impl Into<Heard>),
         make: impl FnOnce(HealProfile) -> Hunt,
-    ) -> Option<JoinHandle<HuntEnd>> {
+    ) -> Option<Underway<HuntEnd>> {
         let character = &joined.0.state.character;
         let Some(profile) = self.heal_profile(
             handle,
@@ -617,7 +644,8 @@ impl Desk {
                 // Stopped by the player, or preempted as wedged: either way
                 // the hunt was cancelled from outside.
                 watched = watch(handle, stop, &heartbeat, BEHAVIOR_WATCHDOG, "Hunt") => match watched {
-                    Watched::Stopped | Watched::Wedged(_) => HuntEnd::Stopped(BehaviorError::Cancelled),
+                    Watched::Stopped => HuntEnd::Stopped(BehaviorError::Cancelled),
+                    Watched::Wedged(_) => HuntEnd::Stopped(BehaviorError::Wedged),
                 },
             }
         };

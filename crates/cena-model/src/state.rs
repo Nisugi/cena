@@ -16,7 +16,7 @@
 //! The room *description* is genuinely text: it is prose the game wrote, and
 //! there is nothing else it could be. What makes it typed rather than raw is
 //! that it arrives as a [`Frame::Component`] with `id = "room desc"` and a
-//! parsed [`Runs`] body -- the component tells the
+//! parsed [`Runs`](cena_protocol::runs::Runs) body -- the component tells the
 //! consumer what the prose *is*, and the body has already had its markup
 //! resolved. Vellum stores the inner XML string verbatim here
 //! (`reference/VellumFE/src/parser.rs:803-832`); `Runs` is the fix, and it is
@@ -35,7 +35,6 @@
 use crate::effects::Effects;
 use crate::status::StatusInfo;
 use cena_protocol::Frame;
-use cena_protocol::runs::Runs;
 use idle::{IDLE_WARNING, IdleWarning};
 use std::time::Instant;
 
@@ -72,6 +71,7 @@ pub mod inventory_snapshot;
 pub mod kit;
 pub mod known_spells;
 pub mod ledger;
+mod login;
 pub mod maneuvers;
 pub mod menu;
 pub mod message;
@@ -276,18 +276,10 @@ pub struct GameState {
     stream_windows: stream_windows::Windows,
     /// Routed and discarded line tallies; see [`streams::LineTally`].
     tally: streams::LineTally,
-    /// The line being assembled for each stream, not yet terminated.
-    ///
-    /// **A frame boundary is not a line boundary.** The parser emits one run per
-    /// markup boundary, so `  a` + `<a>pebbled grey leather doublet</a>` is two
-    /// frames of one line -- the split that printed the author's worn inventory
-    /// down the screen. `TextFrame`'s `ends_line` is what says where a line really
-    /// ends, and this holds the runs until it does.
-    ///
-    /// Keyed by stream because two streams can be mid-line at once: a
-    /// `pushStream` can interrupt an unterminated run and the enclosing stream
-    /// resumes afterwards.
-    pending: std::collections::BTreeMap<String, Runs>,
+    /// The line being assembled for each stream, not yet terminated
+    /// ([`Unfinished`](crate::line::Unfinished): a frame boundary is not a
+    /// line boundary).
+    pending: crate::line::Unfinished,
     /// The combat state machine (`state/combat/tracker.rs`). Private: its
     /// inputs are the chunk and the clock, both owned here.
     combat: combat::CombatTracker,
@@ -381,29 +373,9 @@ impl GameState {
                 // the one line from the buffer the moment routing arrived.
                 self.route_text(text);
             }
+            // The clock, the lists and the chunk end here (`state/clock.rs`).
             Frame::Prompt { time, text } => {
-                self.prompt = Some(text.clone());
-                // The server's clock, and when it reached us. Together these
-                // are what make `game_time_now()` keep counting between
-                // prompts -- which matters because a prompt is only sent when
-                // something happens, so an idle client gets none at all
-                // (`plan/15` §2a.1, MEASURED §2a.4a).
-                if let Ok(t) = time.parse::<u32>() {
-                    self.game_time = Some(t);
-                    self.game_time_received = Some(Instant::now());
-                    // Effects that arrived with no clock -- the login burst
-                    // precedes its first prompt -- get their end time now
-                    // (`effects.rs`, `Effects::pending`).
-                    self.effects.anchor(t);
-                }
-                // The worn and reserve lists end here, popped or not (`worn.rs`).
-                self.close_lists();
-                // **The chunk closes here**, and this is the only place it
-                // does. See `state/chunks.rs`: Lich closes container fills,
-                // combat chunks and its own parser FSM on the prompt, for the
-                // same reason -- a command's output has no terminator of its
-                // own.
-                self.close_chunk();
+                self.apply_prompt(time, text);
                 return true;
             }
             Frame::StatusIndicator { id, active } => {
@@ -424,7 +396,9 @@ impl GameState {
                     self.effects.clear_category(id);
                 }
             }
-            Frame::AppInfo { .. } | Frame::PlayerId { .. } => self.character.identify(frame),
+            Frame::AppInfo { .. } | Frame::PlayerId { .. } | Frame::SettingsInfo { .. } => {
+                self.character.identify(frame);
+            }
             Frame::LeftHand { item, link } => {
                 self.left_hand = hands::Hand::read(item, link.as_ref());
             }
@@ -479,7 +453,7 @@ impl GameState {
             // measurement that chose this over clearing on push.
             Frame::ClearStream { id } => {
                 self.clear_stream(id);
-                self.pending.remove(id);
+                self.pending.clear_stream(id);
                 if id == known_spells::STREAM {
                     self.known_spells.begin();
                 }

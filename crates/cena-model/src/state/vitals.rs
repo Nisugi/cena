@@ -230,9 +230,7 @@ impl crate::GameState {
         // gauges, stance, encumbrance and advancement, and the enclosing
         // dialog is the only thing that tells them apart.
         if let Some(dialog) = bar.dialog.as_deref()
-            && self
-                .character
-                .apply_bar(dialog, &bar.id, &bar.text, bar.percent)
+            && self.character.apply_bar(dialog, bar)
         {
             return;
         }

@@ -99,6 +99,8 @@ pub enum Ending {
     /// The leader's hunt ended while it led, and so does its followers'
     /// (`plan/39` §8, question 3).
     LeaderStopped,
+    /// Retreated to the resting room, as asked (`hunt/steer.rs`).
+    Retreated,
 }
 
 impl fmt::Display for Ending {
@@ -132,6 +134,7 @@ impl fmt::Display for Ending {
             Self::Bounty => f.write_str("the bounty is done or a new one is ready"),
             Self::MemberDied => f.write_str("a member of the group died"),
             Self::LeaderStopped => f.write_str("the leader's hunt is over"),
+            Self::Retreated => f.write_str("retreated to the resting room, as asked"),
         }
     }
 }
@@ -168,6 +171,9 @@ pub enum Why {
     /// A member waited for past `lost_wait` still could not rejoin
     /// ([`crate::group::Muster::Overdue`]).
     Straggler,
+    /// Asked to retreat: the hunt ends at the resting room
+    /// (`hunt/steer.rs`).
+    Retreat,
 }
 
 impl fmt::Display for Why {
@@ -184,6 +190,7 @@ impl fmt::Display for Why {
             Self::Dropped => "every member's connection dropped",
             Self::Linkdead => "a member is link-dead",
             Self::Straggler => "a member could not rejoin",
+            Self::Retreat => "retreating, as asked",
         })
     }
 }

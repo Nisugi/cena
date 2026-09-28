@@ -20,6 +20,7 @@
 //!
 //! [`verdict`]: super::verdict
 
+use super::farewell::Farewell;
 use super::verdict::{CommandId, Gate, Origin, Outcome, Refusal, Sent};
 
 /// How long to wait for the **actor** to answer a message that it answers in
@@ -146,34 +147,6 @@ pub enum Inbox {
     },
 }
 
-/// How an orderly exit went (`plan/16` §5b.3).
-///
-/// Ports the three-way distinction Lich draws at
-/// `reference/lich-5/lib/common/orderly_shutdown.rb:181-191`, where sending the
-/// command, the reader stopping in time, and the stream actually reaching EOF
-/// are three separate checks that can each fail on their own.
-///
-/// **All three still close the socket.** This reports what happened; it does
-/// not decide whether to clean up.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Farewell {
-    /// The command went out and the server closed the stream. A clean exit.
-    Acknowledged,
-    /// The command went out and the server never closed within the timeout.
-    ///
-    /// Lich raises `ServerExitTimeout` here. The session still ends -- the
-    /// difference is that the game may not have registered the logout, so a
-    /// character can be left in-world for the usual link-dead interval.
-    TimedOut,
-    /// The command could not be written at all: the transport was already
-    /// gone.
-    ///
-    /// **Not a failure of the shutdown** -- there is nothing to say goodbye to.
-    /// Distinguished from [`Self::TimedOut`] because a log that conflates them
-    /// cannot tell a dead socket from an unresponsive server.
-    Unsent,
-}
-
 /// A handle a caller uses to reach the session.
 ///
 /// Cloneable, so a behavior and the manual-input surface hold the same handle
@@ -198,7 +171,13 @@ pub struct SessionHandle {
     /// What a person has done through this handle (`attendance.rs`).
     pub(super) attendance: super::attendance::Attendance,
     /// The session's command authority (`authority.rs`).
-    pub(super) authority: super::authority::Authority,
+    pub(crate) authority: super::authority::Authority,
+    /// What an agent may do, and the acts waiting on the player
+    /// (`crate::agent`).
+    pub(crate) agent: crate::agent::Access,
+    /// Who runs the Hydra commands an agent performs, once the binary has
+    /// registered it (`crate::operation`).
+    pub(crate) performer: crate::operation::Slot,
 }
 
 impl SessionHandle {
@@ -233,6 +212,8 @@ impl SessionHandle {
             desk: super::claimant::Slot::default(),
             attendance: super::attendance::Attendance::default(),
             authority: super::authority::Authority::default(),
+            agent: crate::agent::Access::default(),
+            performer: crate::operation::Slot::default(),
         }
     }
 
@@ -273,6 +254,40 @@ impl SessionHandle {
     #[must_use]
     pub fn sorts_containers(&self) -> bool {
         self.events.sorts_containers()
+    }
+
+    /// Publish each finished line as the game sent it too
+    /// ([`Event::Heard`](crate::Event::Heard)), for a script runner, or
+    /// stop. It holds across a reconnect, as `;sorter` does.
+    pub fn hear_lines(&self, on: bool) {
+        self.events.hear_lines(on);
+    }
+
+    /// Attach the player's Lich (`crate::script::lich`).
+    pub(crate) fn attach_lich(
+        &self,
+        tap: crate::script::lich::Tap,
+        text: crate::script::lich::LichText,
+    ) -> bool {
+        self.events.attach_lich(tap, text)
+    }
+
+    /// Hand a typed line to the player's Lich, if one is attached.
+    pub(crate) fn hand_to_lich(&self, line: &str) -> Option<bool> {
+        self.events.hand_to_lich(line)
+    }
+
+    /// Whether the player's Lich is attached to this character
+    /// (`crate::script::lich`): started and not yet stopped. What a
+    /// frontend's Lich switch shows.
+    #[must_use]
+    pub fn lich_running(&self) -> bool {
+        self.events.lich_attached()
+    }
+
+    /// A script runner's hooks (`crate::script`).
+    pub(crate) fn hooks(&self) -> &crate::script::Hooks {
+        self.events.hooks()
     }
 
     /// This character's triggers (`plan/45`): each finished line is answered
@@ -363,6 +378,18 @@ impl SessionHandle {
             log.notice(self.generation(), &notice);
         }
         let _ = self.events.send(crate::Event::Notice(notice));
+    }
+
+    /// Every event the session publishes from now on, for what inside the
+    /// session watches it (an agent's takeover, `crate::agent`).
+    pub(crate) fn events(&self) -> tokio::sync::broadcast::Receiver<crate::Event> {
+        self.events.subscribe()
+    }
+
+    /// Publish an event that is the session's own doing, not the game's, as
+    /// [`Self::say`] publishes a notice.
+    pub(crate) fn publish(&self, event: crate::Event) {
+        let _ = self.events.send(event);
     }
 
     /// The generation this handle stamps **right now**.

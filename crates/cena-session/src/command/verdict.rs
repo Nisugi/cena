@@ -93,6 +93,26 @@ pub enum Origin {
     /// trigger is not a person, and one that fires on a line the game sends
     /// an idle character would otherwise keep it from ever being idle.
     Trigger,
+    /// An agent sent it, at the Commands level (`plan/35` §3 and §7).
+    ///
+    /// It queues as [`Self::Script`] does -- it jumps the queue and never
+    /// preempts a behavior (author, 2026-09-24: *an agent's single command
+    /// interleaves*) -- and is its own variant for `Script`'s reason: a log
+    /// has to tell "the player typed this" from "the agent sent this". It
+    /// never counts as the player being there, as [`Self::Trigger`] does not.
+    ///
+    /// **Holding the character** (`plan/35` §4, takeover), it carries the
+    /// agent's token and is the holder's: queued as a behavior's is, and
+    /// refused, never sent, once the authority is taken back.
+    Agent(Option<crate::queue::AuthorityToken>),
+    /// The player's own Lich sent it, through the relay (`plan/51`): a line
+    /// one of its scripts put, as Lich's `Game.puts` writes it.
+    ///
+    /// It queues as [`Self::Script`] does, and is its own variant for
+    /// `Script`'s reason: a log has to tell "the player typed this" from
+    /// "Lich sent this". It never counts as the player being there. What
+    /// the player typed and Lich passed on is [`Self::Manual`].
+    Lich,
 }
 
 impl Origin {
@@ -101,8 +121,23 @@ impl Origin {
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
             // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script | Self::Trigger => None,
+            Self::Manual | Self::Script | Self::Trigger | Self::Lich => None,
             Self::Behavior(token) => Some(token),
+            Self::Agent(holding) => holding,
+        }
+    }
+
+    /// Who sent it, in a word: `manual`, `behavior`, `script`, `trigger`,
+    /// `agent`, `lich`.
+    #[must_use]
+    pub const fn word(self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::Behavior(_) => "behavior",
+            Self::Script => "script",
+            Self::Trigger => "trigger",
+            Self::Agent(_) => "agent",
+            Self::Lich => "lich",
         }
     }
 
@@ -202,10 +237,12 @@ pub enum Outcome {
     Disconnected,
     /// Not run, with a reason.
     Refused(Refusal),
-    /// Hydra ran the line itself; nothing went to the game.
+    /// Hydra took the line; nothing went to the game from here.
     ///
     /// A player's own command (`;go2 bank`, `super::claimant`) is taken by
-    /// the desk before the queue, so there is no window and no frame. It was
+    /// the desk before the queue, so there is no window and no frame. A typed
+    /// line with the player's Lich attached (`crate::script::lich`) is taken
+    /// too, and handed to Lich, which sends what it makes of it. It was
     /// answered `Confirmed` with a fabricated `Frame::Prompt`, which put a
     /// frame that never crossed the wire into a value whose meaning is "the
     /// frame that matched" -- the lie [`Sent`] exists to avoid -- and
@@ -213,8 +250,10 @@ pub enum Outcome {
     /// avoid rendering "server output observed" (review finding 8; author,
     /// 2026-09-23: "handled by hydra works").
     ///
-    /// Only [`SessionHandle::send_manual_at`](super::SessionHandle::send_manual_at)
-    /// returns it. A behavior's round trip never can: behaviors send through
+    /// Only the manual path returns it:
+    /// [`SessionHandle::send_manual_at`](super::SessionHandle::send_manual_at)
+    /// and [`SessionHandle::send_typed_at`](super::SessionHandle::send_typed_at).
+    /// A behavior's round trip never can: behaviors send through
     /// `send_and_await`, which does not consult the desk.
     Handled,
 }
@@ -270,6 +309,10 @@ pub enum Sent {
         /// against a fresh one are different events, and without this they are
         /// the same line.
         at: Option<u32>,
+        /// The cursor its [`Event::Sent`](crate::Event::Sent) was published
+        /// at: a reader of the numbered stream knows which lines came after
+        /// it (`plan/46` §3, a script's reply).
+        cursor: u64,
     },
     /// It did not go out, and why.
     Refused(Refusal),

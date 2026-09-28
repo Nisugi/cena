@@ -88,6 +88,17 @@ exactly that and it works.
 layer over the listener that already exists. Choose by what the library pulls into the
 build and whether `cena-web`'s server can host it.
 
+**MEASURED 2026-09-27, and chosen: `rmcp` 3.4.1**, the official Rust SDK, with `server`,
+`macros` and `transport-streamable-http-server`. A throwaway crate's lockfile against the
+workspace's (`cargo generate-lockfile`, then `comm -23` of the two crate lists): **32 crates
+new to Hydra**, chiefly `chrono`, `futures`, `uuid`, `schemars` (tool input schemas) and
+proc-macro helpers; it resolves against the same axum 0.8 `cena-web` uses, with no second copy.
+Its `StreamableHttpService` is a tower `Service` (`transport/streamable_http_server/tower.rs:1075`
+in the crate), so an axum router mounts it with `nest_service`; it also checks the `Host`
+header, localhost by default. Chosen over hand-written JSON-RPC because it tracks the MCP
+specification's revisions, which a hand-written layer would have to follow by hand, and
+because its server-to-client stream is the push `plan/46` §4.1 needs.
+
 ## 3. Control levels
 
 **AUTHOR:** levels, set as a setting; an act above the level gets a notice.
@@ -393,17 +404,237 @@ Each ends in something demonstrable, as `12` §8 asks.
 
 1. **Read-only.** `cena-agent`, the MCP listener, Observe: `characters`, `state`, `wait`,
    `capabilities`, `records`, and the status projection with its every-status test.
+   **BUILT 2026-09-27** (`crates/cena-agent`, contract `CONTRACT.md`, `hydra-agent/1`; the
+   binary's `--agent`, port 47700, the token kept in `<data>/agent.json`). `wait` is the
+   difference between the session's own snapshots after each prompt, as Despana stays
+   current, never a second model. Tests: `crates/cena-agent/tests/agent.rs` (every status
+   passed through; an unstated list is `null`; `changed` rebuilds state; the whole path over
+   MCP behind the token, against a scripted game) and `records.rs` (read-only, capped, no
+   `ATTACH`, the last proved by raising the limit and watching the test fail). *Shown*, live
+   with the author: not yet.
    *Shown:* an MCP client connects and answers "what is my character's status", live,
    author present -- and a question of the author's about the database that no report
    answers yet.
 2. **Levels and notices.** The setting, the check, refusal as a notice with an approve link,
    `because` in the player log, the badge and the level control in Despana.
+   **BUILT 2026-09-27**, on the command line; Despana's part waits (below).
+   - **The level** is `cena_session::agent::Level`, kept in the character's settings file
+     (`{"agent": {"level": "observe"}}`), `off` until the player raises it: `;agent level
+     observe`, read back at every login. **Three levels exist, not six**: `off`, `observe`,
+     `advise`. Each later step adds its level beside the tools it allows, so a player can never
+     set a level today that means more after an update.
+   - **The check is in the session.** An agent acts only through a `Door`
+     (`crates/cena-session/src/agent.rs`), each of whose acts checks the level; `cena-agent`
+     holds a door and never a `SessionHandle`, which
+     `crates/cena-arch-tests/tests/layering.rs` (`the_agent_acts_only_through_the_door`)
+     asserts. A read is checked by the tool that reads, against the same level, because what
+     it reads from is an observer and changes nothing.
+   - **A refusal** is a tool error the model reads: the level, the level needed, and whether
+     the player was asked. At `off` nobody is asked and the agent sees only the character's
+     name and level; a refused read asks nobody either. The player is told either way, at most
+     once every five minutes with a count, so an agent polling at `off` cannot fill the stream.
+   - **An act above the level, and above `off`, waits for the player**: a notice with the
+     request's number (`;agent approve 3`, `;agent deny 3`), saying what the act is (for a
+     message, its length and never its words, which the level has not allowed yet) and the
+     agent's `because`. The yes is that act, once, on the connection it was asked on, within
+     two minutes; at most three wait; a change of level drops them all. The agent reads the
+     answer in `wait` (`approval`), with the level's changes (`level`).
+   - **`tell_player`** is the first act: `advise`, with a required `because`, both shown and
+     kept in the player log (the log's `hydra` tag). Nothing reaches the game.
+   - **What happened while reading was not allowed is not handed over**: once the level
+     allows it again, a `wait` from before answers `lagged`.
+   - **Not built, and why.** Despana's badge, level control and clickable approve link: the
+     page today is a demo of Despana (author, 2026-09-26), and it shows no notices at all
+     (`grep -rn Notice crates/cena-web/src` finds nothing), so a refusal has no way onto it yet;
+     `;agent` typed in its command box works as at the terminal. The request id
+     of issue #19 point 4 waits for step 3's first act that reaches the game: a lost reply to
+     `tell_player` shows a message twice, and nothing worse. `expected_generation` likewise:
+     an approval is already bound to its connection.
+   - Tests: `crates/cena-agent/tests/agent.rs` (`at_off_...`, `an_act_above_the_level_...`,
+     over MCP against a scripted game), `crates/cena/src/agent.rs` (the level kept and read
+     back; approve once, deny), `server.rs` (`every_tool_has_a_level`). Mutations: an unplaced
+     tool, the notice unthrottled, and a `SessionHandle` in `cena-agent` each turn a test red;
+     the first version of the `lagged` rule read the level when the watcher got to an event
+     rather than where it stood in the stream, and its test caught it.
+   *Shown*, live with the author: not yet (with step 1's).
 3. **Behaviors.** `perform`, `operation` and `control` over Hydra commands; behavior endings
    as events. Hold and resume need building in hunt first.
-4. **Commands**, with the denylist.
+
+   **AUTHOR, 2026-09-27**, asked three questions, took the recommendation each time:
+   - *Which Hydra commands at `behaviors`?* **Start and steer only**: `go2 <place>`,
+     `go2 stop`, `hunt <profile>` (and `quick`, `bounty`), `hunt stop`, `heal` (and `stock`,
+     `fill`), `keep`, `waggle`. Not `multi`/`foreach` (any game line), not `sc` (casts at
+     anyone, players included), not a group hunt (it starts other characters, whose levels
+     are theirs), not `agent`, and nothing that writes a setting or a profile: a hunt
+     profile's steps are game commands, so editing one would get round the Commands level.
+   - *Hold?* **Defend, start nothing**: survival, flee and rest still act; no new target, no
+     looting, no buffs, no wandering, until resume or stop.
+   - *Retreat?* **The rest room, then end**: walk to the profile's rest room now and end the
+     hunt there, so the agent decides what is next (LAB's meaning).
+
+   Built in three parts: **3a** operations, **3b** hold, resume and retreat, **3c** progress
+   and its absence (issue #19, point 6).
+
+   **3a BUILT 2026-09-27.**
+   - **The fourth level, `behaviors`.** An agent performs a Hydra command as an **operation**
+     (`crates/cena-session/src/operation.rs`): a ticket read by its number, or waited on
+     (kind `operation`), never a reason to send again. The session holds no command
+     knowledge: the binary registers a `Performer` (`crates/cena/src/perform.rs`, the
+     allowlist above), as it registers the command desk.
+   - **Each request admitted once** (issue #19, point 4): every act carries the caller's
+     `request_id`; the same id and act again answers as the first time and is never done
+     twice, the same id for another act is refused, a duplicate while the first is being
+     admitted is told so, and an approved request's id then names its operation. Kept in
+     memory, the last 256 per character; a restart forgets them, as it ends the operations.
+     `perform` and `control` carry `expected_generation`.
+   - **A result that keeps work, leftovers and release apart** (issue #19, point 3): the
+     behavior's own verdict (`completed`, `failed`, `interrupted`, `no_opportunity`,
+     `unknown`) with its word for why, read off `HuntEnd` and `Travelled`
+     (`crates/cena-behavior/src/operation.rs`); what a walk left undone (an item still
+     stored, one taken out, a stance not restored); and whether the authority was released,
+     as the session sees it. No effect is claimed: a completed hunt is not a count of kills.
+   - **One run's controls.** Each desk now hands back the controls of the run it started
+     (`Underway`, `Steering`), so an agent's stop never stops a hunt the player began since
+     (`crates/cena-behavior/tests/travel_desk.rs`, `an_old_walks_stop_...`, which the desk's
+     own stop fails).
+   - **The approval rechecked at execution** (issue #19, point 5): an approved `control` on an
+     operation that has since ended is not done, and the agent is told so.
+   - Mutations: the request-id lookup forgetting everything turns two tests red; the desk's
+     own stop in place of a run's turns the steering test red. The steering test's first
+     version passed that mutant too, because the second walk had arrived before the stop:
+     rewritten so it is still walking.
+   - **A lowered level stops nothing that runs.** It takes the agent's control away; the
+     player's own stop ends the operation. (Issue #19's hard revocation is step 5's.)
+
+   **3b BUILT 2026-09-27**: `hold`, `resume` and `retreat`, a hunt's alone
+   (`crates/cena-behavior/src/hunt/steer.rs`).
+   - **Hold**, as the author chose it: every arm above the fighting ones acts as always
+     (incidents, survival, the group, a rest the character needs, flee), and **the creature
+     already being fought is fought on**, the author's words being *no new target*; nothing
+     else is begun: no target, loot, buff, wander, return to the hunting rooms, or walk back
+     from a rest. A rest that finishes while held stays in the resting room and is counted
+     once, when resumed. Issue #19 point 5 asks that hold say which survival actions remain
+     active: that list is it.
+   - **Retreat** wins over a hold and over a rest in progress: the target dropped, the walk to
+     the resting room as a rest walks it (fog, waypoints), and `Ending::Retreated` there
+     without resting, selling or healing. Its operation reads `interrupted`, `retreated`: a
+     safe return is not a finished hunt (issue #19, point 3).
+   - **Read once a tick, by the driver.** The run's controls (`Steering`) are shared with the
+     machine; `Hunt::heed`, called by the driver before each tick, takes them in, so
+     `Hunt::tick` still reads only what it is given.
+   - The operation's lifecycle says what was asked (`held`, `retreating`); its result says
+     what happened. A heal, keep, waggle or walk refuses them in words; a hunt asked before
+     its run has begun says so.
+   - Tests: `crates/cena-behavior/tests/hunt_steer.rs` (five, one driven through the real
+     controls and `heed`), the lifecycle in `crates/cena-session/tests/agent_operations.rs`,
+     a walk's refusal over MCP. Mutations: without the hold arm two tests go red; without the
+     held rest, one; without the retreat, one.
+
+   **3c BUILT 2026-09-27**: progress and its absence (issue #19, point 6; §4's third
+   escalation signal, "no progress").
+   - A behavior reports `Progress` through the `Reporter` its operation is started with
+     (`crates/cena-session/src/operation.rs`): what it is doing, what it keeps count of, and
+     `stalled` when nothing is coming of it. The hunt's (`crates/cena-behavior/src/hunt/progress.rs`):
+     its phase (`held: ` when held), creatures engaged, rests, rooms searched; **stalled** when
+     it is in the hunting ground, not held, and has engaged nothing for 300 game seconds,
+     naming the rooms searched since. That is the case the watchdog cannot see: a loop that
+     beats while it wanders empty rooms.
+   - **Heard only when it changes** (the issue's "an unchanged incident does not cause
+     repeated identical model requests"): an operation's `revision` counts its lifecycle,
+     what it is doing and its stall; counts ride along unheard.
+   - The run's `Steering` carries the progress (a `watch`), the driver reports after each tick,
+     and the binary's performer forwards it for as long as the run goes on.
+   - **Not built**: a walk's progress; §4's other two signals (a status Hunt does not react to,
+     which the agent already sees as a `status` happening; a move Hunt did not make); and the
+     issue's recovery states and attribution of an unexpected move. Each is named here so it
+     is found when its case arrives.
+   - Tests: `a_hunt_says_when_it_gets_nowhere` (`crates/cena-behavior/tests/hunt_steer.rs`) and
+     `progress_is_heard_when_it_changes_and_not_otherwise`
+     (`crates/cena-session/tests/agent_operations.rs`). Mutations: every report heard turns the
+     second red; a stall that ignores a hold, the first.
+4. **Commands**, with the denylist. **BUILT 2026-09-27.**
+   - **The fifth level, `commands`**, and `command`: one line to the game through the same
+     queue as the player's typing, as **`Origin::Agent`** -- queued as `Script` and `Trigger`
+     are, never attendance, never preempting (AUTHOR 2026-09-24: an agent's single command
+     interleaves). It was listed under step 5; sending needs it now, so it came now.
+   - **A game command is an operation**: its result is the round trip -- `answered` when the
+     game sent anything before its next prompt (the matcher typed input uses), `no_answer`,
+     the session's refusals (roundtime, stunned...) -- never whether the line did what was
+     meant (LAB: *"Report sent-but-unverified separately from evidence-backed success"*). The
+     tool waits for the answer and hands back the game's text that came meanwhile.
+   - **`text`** (Observe, §6's): the game's lines as viewers see them (`Event::Line`, M8's),
+     the last 500 kept per character, untrusted, and hidden while the level forbids reading
+     as every happening is.
+   - **The denylist** (`crates/cena-session/src/agent/denylist.rs`) is LAB's, at `016bcc9`
+     (`src/lich_agent_bridge/actions.py`: `_FORBIDDEN`, `evaluate`), checked at the door
+     before the level, so a denied line is never asked of the player. **Two holes closed,
+     each on a documented case** (the author's rule: from a real case): `put` with no
+     container drops (`reference/wiki_clean/Verb_DROP.txt`: `>put my topaz` answers *You
+     drop a clear topaz.*), and verbs are abbreviated (`Verb_EXPERIENCE.txt`: *"commonly
+     abbreviated to 'EXP'"*), so a first word that begins a denied verb is denied, save the
+     six directions that do. `;` is denied anywhere, as LAB denies it, though only a leading
+     symbol is Hydra's.
+   - No write-time gate: an agent's line goes as the player's does, and the game answers a
+     line sent in roundtime with its own `...wait`. `Gate::Act` is a behavior's, for actions
+     whose target it chose.
+   - Tests: the denylist's own (LAB's list whole, the two holes, what is not on it), and over
+     MCP a command answered with its text, five denied lines sending nothing, the one line
+     sent as `agent`, and a command approved below the level. Mutations: the denylist
+     skipped at the door lets `drop sword` out; sent as `Manual`, the origin test fails.
 5. **Takeover.** `Origin::Agent`, `take_over`, and the level dropping after a bad run.
+   **BUILT 2026-09-27** (the author approved the rest of the steps: *"I approve the rest of the
+   steps"*). `crates/cena-session/src/agent/takeover.rs`.
+   - **The sixth level, `takeover`**, and `take_over`, an operation: it stops what runs -- the
+     binary's behaviors through its performer's new `halt`, then the session's own preempt,
+     which takes the authority from a holder that does not let go -- and claims the authority
+     under the agent's own token (`AuthorityToken(7)`). While it holds, no behavior can start,
+     and the agent's lines are the holder's: `Origin::Agent` now carries the token it holds,
+     so they queue as a behavior's do and are refused, never sent, once the authority is
+     taken back (issue #19 point 5's *"revoke while an action waits ... no old send occurs
+     afterward"*). The player's typing still goes first.
+   - **Each ending its own** (point 5's *"graceful retreat and hard revocation produce
+     different, explicit results"*): `released` by the agent; `revoked` by the player's new
+     **`;agent stop`**, which also stops every running agent operation and takes the authority
+     back at once, synchronously, before the takeover notices; `level_lowered` the same;
+     `owner_idle` after five minutes without the agent touching the character (point 5's
+     *"bounded owner liveness"* and *"model hangs do not block status or stop"*);
+     `disconnected`, `session_ended`, `dead`. One takeover at a time (*"two clients cannot
+     both own takeover"*). Nothing resumes by itself.
+   - **A run that ends badly drops the level** to Observe: an agent's behavior or takeover
+     ending `dead`, `disconnected`, `wedged` or `trouble`. `wedged` is new:
+     `BehaviorError::Wedged`, the watchdog's preemption, which read as a plain stop until
+     now. The binary keeps every level change in the settings file, so the drop survives a
+     restart.
+   - Not bound to one MCP client: Hydra has one agent token, so "which client" is the token's
+     holder; a second client with the same token is the same caller.
+   - Tests: `crates/cena-session/tests/agent_takeover.rs` (three, against a running scripted
+     game with time paused: held, refused, sent as the holder's, released; revoked at once;
+     a lowered level, five idle minutes, a death that drops the level). Mutations: the
+     player's stop waiting for the takeover to notice turns two red; the holder's line sent
+     without its token, one; no level drop, one.
 6. **Acceptance, live, author present:** a hunt ends on its rest threshold, the agent (not
    the hunt) decides what is next and does it; the player stops the agent mid-act.
+   **READY, not run**: the runbook is [`plan/48-m7-acceptance.md`](48-m7-acceptance.md),
+   which also carries steps 1 and 2's *Shown*. The hunt ends on its rest threshold through the
+   profile's own `rest.stop_after 1`, so the ending is the machine's `Rested`.
+
+### Issue #19: LAB's author's review, 2026-09-27, and where each point lands
+
+`https://github.com/Nisugi/cena/issues/19` (therealatari) reviewed this plan against LAB's
+recent work. Its eight points, as taken:
+
+| # | Point | Taken | Where |
+|---|---|---|---|
+| 1 | observation completeness and replay | yes: a list not stated is `null`; capture time; `changed` rebuilds state between reads; `lagged` forces a resync. Per-fact freshness is model work, later | step 1, BUILT |
+| 7 | records' evidence envelope | yes: schema version, when written, whether recording; `ATTACH` refused (it could open another file); table descriptions later | step 1, BUILT |
+| 2 | current eligibility, apart from the catalogue | yes, but not opaque offers: Hydra re-checks target, profile revision and authority revision at send time (the write-time gate already checks the target) | step 3 |
+| 3 | results that separate work, evidence and recovery | yes | step 3 |
+| 4 | a caller's request id, so a lost reply cannot admit twice | yes | before the first mutating tool |
+| 5 | permission apart from ownership; exact, expiring, single-use approvals; hold, retreat, stop and revoke distinct | yes | steps 2, 4, 5 |
+| 6 | progress, and its absence, as events | yes; §4's third escalation signal made concrete | step 3's acceptance |
+| 8 | one contract for agents and scripts | the core and meanings, yes. Send-and-wait for **scripts** keeps Lich's semantics on purpose (`plan/46` §3: a match after the cursor); an agent's operations report the behavior's typed result instead | throughout |
+
+Its M7a-M7d staging is this section's steps; "M7b" stays the Ruby bridge (`plan/46` §10).
 
 ## 9. Questions
 

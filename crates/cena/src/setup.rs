@@ -207,6 +207,15 @@ pub(crate) struct Record {
     pub(crate) loot: Option<bool>,
 }
 
+impl Record {
+    /// Whether both kinds are recorded: what an agent is told the database
+    /// holds (`cena_agent`'s `recording`). One kind alone is `false`, the
+    /// safe word: an empty answer may only mean nothing was kept.
+    pub(crate) fn everything(self) -> bool {
+        self.combat.unwrap_or(false) && self.loot.unwrap_or(false)
+    }
+}
+
 /// The name of [`Record`]'s section.
 pub(crate) const RECORD: &str = "record";
 
@@ -227,7 +236,7 @@ pub(crate) fn retired(args: impl IntoIterator<Item = String>) -> Option<&'static
 /// write -- the hunt, the loot planner and every behavior read the model --
 /// so a run without them is the same run with no reports afterwards. A file
 /// that cannot be trusted records nothing, and says why.
-fn recording(dir: &std::path::Path, game: &str, character: &str) -> Record {
+pub(crate) fn recording(dir: &std::path::Path, game: &str, character: &str) -> Record {
     let Some(instance) = cena_platform::instance(game) else {
         return Record::default();
     };

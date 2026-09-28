@@ -96,6 +96,11 @@ impl<S: ByteSource> SessionActor<S> {
             self.observations
                 .finish(self.events.snapshot(&self.state, self.lifecycle));
         }
+        // The player's Lich outlives the connection: what it shows waits for
+        // the next one's actor.
+        if let Some(text) = self.lich_text.take() {
+            self.events.lich_text().put_back(text);
+        }
         SessionEnd {
             recorder: self.recorder,
             state: self.state,
@@ -125,6 +130,9 @@ impl<S: ByteSource> SessionActor<S> {
         // This runs on EVERY exit path, so no caller of `quit()` is left
         // waiting on a reply that never comes.
         self.finish_quit(crate::command::Farewell::Unsent);
+        // What waited for a script's display hooks is shown: the connection
+        // that held it is over.
+        self.show_held(true);
         // Idempotent by the trait's contract, which is why this is safe on
         // every one of the three exit paths.
         let _ = self.source.shutdown().await;

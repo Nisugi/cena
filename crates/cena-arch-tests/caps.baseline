@@ -360,6 +360,13 @@ crates/cena-behavior/src/hunt/profile.rs 800
 # set|unset|show|help|setup`, `heal`/`waggle set|unset|show`) are in
 # hunt/settings.rs. 690 lines: the ratchet's suggestion.
 crates/cena/src/hunt.rs 750
+# NEW SPLIT PARENT, 2026-09-27. crates/cena-session/src/agent.rs is an agent's
+# level and the player's side of it (plan/35 section 3, M7 steps 2-3): the
+# levels, the acts, the approvals and the request ids. The door an agent acts
+# through went down into agent/door.rs when step 3's operations took the file
+# past 800, and the operations themselves are crates/cena-session/src/operation.rs.
+# 629 lines: the ratchet's suggestion.
+crates/cena-session/src/agent.rs 700
 # NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/47 §7). crates/cena-gui/src/feed.rs
 # follows one session for the window; its tests are feed/tests.rs. 138 lines,
 # so the rule above: 138 + 50, rounded up to the next 50.
@@ -403,3 +410,22 @@ crates/cena-gui/src/app.rs 550
 # bar/tests.rs, moved down when orbs, rings and their images would have taken it past 800:
 # 431 lines, so 500.
 crates/cena-gui/src/bar.rs 500
+# NEW SPLIT PARENT, 2026-09-27, capped at birth. crates/cena-agent/src/scripts.rs
+# is a script runner's seat and listener (plan/46, M7b step 1); what a runner
+# listens to is scripts/listening.rs, its tools scripts/tools.rs. 255 lines, so
+# 255 + 50, rounded up to the next 50.
+crates/cena-agent/src/scripts.rs 350
+# NEW SPLIT PARENT, 2026-09-27, capped at birth. crates/cena/src/scripts.rs runs a
+# character's Lich scripts on its runner (plan/46, M7b); `;scripts import` is
+# scripts/import.rs, its tests scripts/command_tests.rs. 472 lines, so 472 + 50, rounded
+# up to the next 50.
+crates/cena/src/scripts.rs 550
+# NEW SPLIT PARENT, 2026-09-28, capped at birth. crates/cena-session/src/script.rs
+# is a script runner's door (plan/46, M7b); the player's own Lich has a door of its
+# own, script/lich.rs (plan/51, the relay). 276 lines, so 276 + 50, rounded up to
+# the next 50.
+crates/cena-session/src/script.rs 350
+# NEW SPLIT PARENT, 2026-09-28, capped at birth. crates/cena-session/src/script/lich.rs
+# is the player's Lich's door (plan/51, the relay); what Lich shows is script/lich/text.rs,
+# and what a Lich started late is handed, script/lich/kept.rs. 500 lines, so 500 + 50.
+crates/cena-session/src/script/lich.rs 550

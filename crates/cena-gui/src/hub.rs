@@ -52,6 +52,8 @@ pub enum HubAction {
     Open(u32),
     /// Open the settings menu (`plan/50` §7 step 1).
     Settings,
+    /// Switch this session's own Lich on, or off (`;lich on`, `;lich off`).
+    Lich(u32, bool),
 }
 
 /// What the hub shows this frame, gathered by the window from its sessions.
@@ -73,6 +75,8 @@ pub struct HubView<'a> {
     /// The sessions whose play window is open; a live card without one
     /// offers to open it.
     pub windowed: &'a [u32],
+    /// The sessions whose own Lich runs (`plan/51`).
+    pub lich: &'a [u32],
 }
 
 /// The hub's own state, which outlives a frame.
@@ -230,7 +234,7 @@ fn list(
                 // keeps its widgets' state (a button held, a side dragged)
                 // as others come and go.
                 let id = egui::Id::new(("hub-card", &card.session));
-                let drawn = card_scope(ui, id, |ui| draw(ui, card, view.windowed, *width));
+                let drawn = card_scope(ui, id, |ui| draw(ui, card, view, *width));
                 if let Some(action) = drawn.inner {
                     *asked = Some(action);
                 }
@@ -297,7 +301,7 @@ pub(crate) fn side(ui: &egui::Ui, card: egui::Rect, id: egui::Id, width: &mut Ca
 fn draw(
     ui: &mut egui::Ui,
     card: &SessionCard,
-    windowed: &[u32],
+    view: &HubView<'_>,
     width: CardWidth,
 ) -> Option<HubAction> {
     let mut asked = None;
@@ -347,8 +351,11 @@ fn draw(
                 }
                 return;
             }
-            if !windowed.contains(&number) && ui.button("Open window").clicked() {
+            if !view.windowed.contains(&number) && ui.button("Open window").clicked() {
                 asked = Some(HubAction::Open(number));
+            }
+            if let Some(on) = crate::play::lich_switch(ui, view.lich.contains(&number)) {
+                asked = Some(HubAction::Lich(number, on));
             }
             if ui.button("Quit").clicked() {
                 asked = Some(HubAction::Ask(HubRequest::Remove(number)));

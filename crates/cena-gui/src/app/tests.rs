@@ -331,6 +331,25 @@ fn a_line_before_any_snapshot_is_not_sent_and_says_so() {
     harness.run();
     harness.run();
     assert!(harness.query_by_label(">;stop").is_some());
+    // The Lich switch is the character's own `;lich on`, as if typed:
+    // the window's (the card's lies under the window here), then, with
+    // the window closed, the card's.
+    if let Some(lich) = harness.get_all_by_label("Lich").nth(1) {
+        lich.click();
+    }
+    harness.run();
+    harness.run();
+    assert!(harness.query_by_label(">;lich on").is_some());
+    if let Some(window) = harness.state_mut().plays.get_mut(&0) {
+        window.open = false;
+    }
+    harness.run();
+    harness.get_by_label("Lich").click();
+    harness.run();
+    harness.get_by_label("Open window").click();
+    harness.run();
+    harness.run();
+    assert_eq!(harness.query_all_by_label(">;lich on").count(), 2);
 }
 
 /// A custom window saved as a preset from a play window is kept in the

@@ -28,3 +28,8 @@ crates/cena-mapdb-convert/tests/fixtures/*.json -text
 crates/cena-web/atlas-data/**/*.json -text linguist-generated=true
 crates/cena-web/atlas-data/inventory.json -text linguist-generated=true
 tools/atlas/creature-catalogue.json -text linguist-generated=true
+
+# Lich's engine, vendored for the Ruby script runner (plan/46 section 5): kept
+# byte for byte as upstream wrote it at the commit bridges/ruby/README.md names,
+# so `git hash-object` matches upstream's blob. A CRLF checkout would not.
+bridges/ruby/lich/** -text

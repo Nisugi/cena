@@ -158,7 +158,11 @@ const INERT_EXTENSIONS: &[(&str, &str)] = &[
     ),
     (
         "txt",
-        "cena-web's third-party license notices, served verbatim as plain text, never evaluated",
+        "third-party license notices, cena-web's served and Lich's carried with the Ruby runner, verbatim as plain text, never evaluated",
+    ),
+    (
+        "rb",
+        "the Ruby script runner (bridges/ruby, plan/46): written out and run by Ruby in a process of its own, never compiled as Rust items",
     ),
     (
         "html",

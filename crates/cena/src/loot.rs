@@ -170,20 +170,24 @@ fn singular(word: &str) -> String {
 
 /// Register `;loot` and `;combat` on `character`'s command line, over its
 /// database in `dir`: the reports need only its path, known before the
-/// character logs in.
+/// character logs in. The path, when it has one.
 pub(crate) fn reports(
     handle: &SessionHandle,
     commands: &Commands,
     dir: &Path,
     game: &str,
     character: &str,
-) {
+) -> Option<PathBuf> {
     match cena_session::combat_recorder::worker::database_path(dir, game, character) {
         Ok(database) => {
             open(handle, commands, database.clone());
-            crate::combat::open(handle, commands, database);
+            crate::combat::open(handle, commands, database.clone());
+            Some(database)
         }
-        Err(e) => eprintln!("[{character}] no loot reports: {e}"),
+        Err(e) => {
+            eprintln!("[{character}] no loot reports: {e}");
+            None
+        }
     }
 }
 

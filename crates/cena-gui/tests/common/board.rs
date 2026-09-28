@@ -20,6 +20,7 @@ pub struct Board {
     pub merged: Vec<MergedLine>,
     pub said: Option<String>,
     pub windowed: Vec<u32>,
+    pub lich: Vec<u32>,
     pub asked: Vec<HubAction>,
 }
 
@@ -33,6 +34,7 @@ impl Board {
             merged: &self.merged,
             said: self.said.as_deref(),
             windowed: &self.windowed,
+            lich: &self.lich,
         };
         if let Some(action) = self.hub.show(ui, &view) {
             self.asked.push(action);

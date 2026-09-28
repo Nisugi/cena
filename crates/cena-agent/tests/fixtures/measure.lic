@@ -1,0 +1,25 @@
+# Hydra's side of plan/46 section 9 (crates/cena-agent/tests/measure.rs):
+# `measure look N` sends `look` N times, waiting for its one-line reply each
+# time; `measure next N` sends `next` N times, keeping every line of each
+# reply. Each send and each line heard is kept with when (epoch seconds),
+# in measured-<mode>.json beside the script.
+
+mode = script.vars[1]
+count = script.vars[2].to_i
+silence_me
+sent = []
+heard = []
+count.times do
+  sent << Time.now.to_f
+  put mode
+  line = script.gets(5)
+  heard << [Time.now.to_f, line] if line
+  next if mode == 'look'
+
+  # The rest of the reply: every line until none comes for a moment.
+  while (line = script.gets(0.3))
+    heard << [Time.now.to_f, line]
+  end
+end
+File.write(File.join(SCRIPT_DIR, "measured-#{mode}.json"), JSON.generate({ sent: sent, heard: heard }))
+echo 'measured'
