@@ -9,6 +9,8 @@ use std::collections::{BTreeMap, VecDeque};
 
 use cena_ui::StyledRun;
 
+use super::Stamp;
+
 /// Lines a stream keeps, newest last.
 pub(crate) const MAX_STREAM: usize = 500;
 
@@ -21,8 +23,8 @@ pub(crate) struct Streams {
 /// One stream's lines.
 #[derive(Debug, Default)]
 pub(crate) struct Kept {
-    /// Its lines, oldest first.
-    pub(crate) lines: VecDeque<Vec<StyledRun>>,
+    /// Its lines, oldest first, each with when it arrived.
+    pub(crate) lines: VecDeque<(Stamp, Vec<StyledRun>)>,
     /// Lines heard, ever: a tab not showing counts what came since.
     pub(crate) heard: u64,
 }
@@ -32,7 +34,7 @@ impl Streams {
     pub(crate) fn hear(&mut self, id: &str, lines: impl IntoIterator<Item = Vec<StyledRun>>) {
         let kept = self.by_id.entry(id.to_owned()).or_default();
         for line in lines {
-            kept.lines.push_back(line);
+            kept.lines.push_back((Stamp::now(), line));
             kept.heard += 1;
             while kept.lines.len() > MAX_STREAM {
                 kept.lines.pop_front();
@@ -43,6 +45,16 @@ impl Streams {
     /// Stream `id`'s lines, once it has sent any.
     pub(crate) fn get(&self, id: &str) -> Option<&Kept> {
         self.by_id.get(id)
+    }
+
+    /// Every line of stream `id` said to have arrived `at`, as a test sets
+    /// the clock.
+    #[cfg(test)]
+    pub(crate) fn stamp_all(&mut self, id: &str, at: Stamp) {
+        let kept = self.by_id.entry(id.to_owned()).or_default();
+        for (stamp, _) in &mut kept.lines {
+            *stamp = at;
+        }
     }
 
     /// Every stream heard, by id.

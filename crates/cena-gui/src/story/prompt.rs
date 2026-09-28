@@ -49,7 +49,7 @@ impl Story {
         if state.in_roundtime() != Some(false) {
             return;
         }
-        let Some(Shown::Prompt(text)) = self.lines.back_mut() else {
+        let Some((_, Shown::Prompt(text))) = self.lines.back_mut() else {
             return;
         };
         if !text.contains('R') {

@@ -55,8 +55,8 @@ pub(crate) enum Shown {
 /// What a play window shows of one character, kept by its feed.
 #[derive(Debug, Default)]
 pub(crate) struct Story {
-    /// The story, oldest first.
-    pub(crate) lines: VecDeque<Shown>,
+    /// The story, oldest first, each line with when it arrived.
+    pub(crate) lines: VecDeque<(Stamp, Shown)>,
     /// Hydra's messages, oldest first. Debug ones are not kept: a screen
     /// wants what a log may not (`cena_session::NoticeKind::Debug`).
     pub(crate) said: VecDeque<Notice>,
@@ -143,7 +143,7 @@ impl Story {
 
     /// Lines were lost: mark the place, once.
     pub(crate) fn missed(&mut self) {
-        if self.lines.back() != Some(&Shown::Gap) {
+        if self.lines.back().map(|(_, shown)| shown) != Some(&Shown::Gap) {
             self.push(Shown::Gap);
         }
     }
@@ -169,7 +169,7 @@ impl Story {
     }
 
     pub(super) fn push(&mut self, shown: Shown) {
-        self.lines.push_back(shown);
+        self.lines.push_back((Stamp::now(), shown));
         while self.lines.len() > MAX_STORY {
             self.lines.pop_front();
         }
@@ -183,7 +183,10 @@ fn is_main(stream: &str) -> bool {
 }
 
 mod prompt;
+mod stamp;
 mod streams;
+
+pub(crate) use stamp::{Hours, Stamp};
 
 #[cfg(test)]
 mod tests;

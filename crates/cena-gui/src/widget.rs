@@ -16,6 +16,7 @@ mod character;
 mod described;
 mod draw;
 mod kind;
+mod lines;
 mod lists;
 mod room;
 mod state;
@@ -30,6 +31,7 @@ use egui::Id;
 use crate::story::Story;
 pub(crate) use described::RoomParts;
 pub(crate) use kind::{Group, Widget};
+pub(crate) use lines::{Lines, Stamps};
 pub(crate) use status::{Category, Indicator};
 
 /// What a widget draws from: one character, as its play window has it.
@@ -81,20 +83,32 @@ impl Widget {
     /// direction -- if one was.
     #[cfg(test)]
     pub(crate) fn draw(&self, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) -> Option<String> {
-        draw::draw(self, ui, seen, id, None, None)
+        draw::draw(self, ui, seen, id, &Chosen::default())
     }
 
-    /// [`Self::draw`], a bar drawn as `look` says when the player picked one
-    /// ([`Self::bar_look`] otherwise).
+    /// [`Self::draw`], as the player chose on its own page (each kind's own
+    /// otherwise).
     pub(crate) fn draw_with(
         &self,
         ui: &mut egui::Ui,
         seen: &Seen<'_>,
         id: Id,
-        (look, room): (Option<crate::bar::Look>, Option<RoomParts>),
+        chosen: &Chosen,
     ) -> Option<String> {
-        draw::draw(self, ui, seen, id, look, room)
+        draw::draw(self, ui, seen, id, chosen)
     }
+}
+
+/// What the player chose for one placed widget on its own page, whichever
+/// its kind takes: a bar's look, the Room's parts, how lines are drawn.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Chosen {
+    /// A bar's look.
+    pub(crate) look: Option<crate::bar::Look>,
+    /// The Room widget's parts.
+    pub(crate) room: Option<RoomParts>,
+    /// How the story or a stream draws its lines.
+    pub(crate) lines: Option<Lines>,
 }
 
 /// One line of text, or a bar: what a one-line widget asks for.

@@ -573,14 +573,14 @@ fn removing_forgets_what_followed() {
 }
 
 /// A custom window removed takes what its widgets kept by their ids: a
-/// bar's look, and a Room widget's parts.
+/// bar's look, a Room widget's parts, and how a story draws its lines.
 #[test]
 fn a_window_removed_takes_its_widgets_looks_and_parts() {
     let mut layout = Layout::fitted(Vec2::new(900.0, 600.0));
     let window = layout.custom(
         Rect::from_min_size(pos2(0.0, 0.0), Vec2::splat(300.0)),
         "Around",
-        &[&[Widget::Room], &[Widget::Health]],
+        &[&[Widget::Room], &[Widget::Health], &[Widget::Story]],
     );
     let Some(Holds::Custom(custom)) = layout.holder(window).map(|holder| &holder.holds) else {
         panic!("a custom window");
@@ -593,6 +593,12 @@ fn a_window_removed_takes_its_widgets_looks_and_parts() {
     for one in placed {
         if let Some(look) = one.widget.bar_look() {
             layout.looks.insert(one.id, look);
+        } else if one.widget == Widget::Story {
+            let unwrapped = crate::widget::Lines {
+                wrap: false,
+                ..crate::widget::Lines::default()
+            };
+            layout.lines.insert(one.id, unwrapped);
         } else {
             let apart = crate::widget::RoomParts {
                 apart: true,
@@ -601,10 +607,14 @@ fn a_window_removed_takes_its_widgets_looks_and_parts() {
             layout.rooms.insert(one.id, apart);
         }
     }
-    assert_eq!((layout.rooms.len(), layout.looks.len()), (1, 1));
+    assert_eq!(
+        (layout.rooms.len(), layout.looks.len(), layout.lines.len()),
+        (1, 1, 1)
+    );
     layout.remove_window(window);
     assert!(layout.rooms.is_empty(), "its parts");
     assert!(layout.looks.is_empty(), "its look");
+    assert!(layout.lines.is_empty(), "its lines");
 }
 
 /// A custom window takes a new title, trimmed; following is undone by
@@ -646,9 +656,17 @@ fn a_bars_look_is_kept_with_the_layout() {
         ring: 40,
     };
     layout.looks.insert(7, look.clone());
+    let lines = crate::widget::Lines {
+        stamps: crate::widget::Stamps::End,
+        seconds: true,
+        hours: crate::story::Hours::TwentyFour,
+        ..crate::widget::Lines::default()
+    };
+    layout.lines.insert(8, lines);
     layout.save(&dir, None, "Ashryn").expect("saved");
     let read = Layout::load(&dir, None, "Ashryn").expect("read back");
     assert_eq!(read.looks.get(&7), Some(&look));
+    assert_eq!(read.lines.get(&8), Some(&lines), "a story's times too");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

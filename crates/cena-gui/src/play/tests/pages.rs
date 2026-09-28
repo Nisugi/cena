@@ -333,3 +333,117 @@ fn the_room_shows_the_parts_its_page_picks() {
         "its parts go with it"
     );
 }
+
+/// The id of the first `widget` in the window's layout.
+fn placed(harness: &Harness<'_, Scene>, widget: &Widget) -> u32 {
+    layout(harness)
+        .holders
+        .iter()
+        .find_map(|holder| match &holder.holds {
+            Holds::One(one) if one.widget == *widget => Some(one.id),
+            Holds::One(_) => None,
+            Holds::Custom(custom) => custom
+                .cells
+                .iter()
+                .flat_map(|cell| cell.tabs.iter())
+                .find(|one| one.widget == *widget)
+                .map(|one| one.id),
+        })
+        .unwrap_or_default()
+}
+
+/// The keys of page `page`, in order.
+fn keys(harness: &Harness<'_, Scene>, page: &str) -> Vec<String> {
+    harness
+        .state()
+        .play
+        .widget_pages(&[])
+        .into_iter()
+        .find(|found| found.id == page)
+        .map(|found| found.rows.into_iter().map(|row| row.key).collect())
+        .unwrap_or_default()
+}
+
+/// The story's own page, which its right-click opens, says how it draws its
+/// lines (the author, 2026-09-28: *"timestamp should also offer the
+/// granularity, XX:XX, XX:XX:XX, XX:XX:XX AM/PM, 12/24 hour"*): a change is
+/// drawn at once, a value it does not take is refused, and all back as it
+/// was keeps nothing. A stream's page is the same less the story's own two.
+#[test]
+fn the_story_draws_its_lines_as_its_page_says() {
+    let mut harness = harness();
+    harness.run();
+    let page = format!("widget:{}", placed(&harness, &Widget::Story));
+    harness
+        .get_by_label("You swing a steel broadsword at a kobold!")
+        .click_secondary();
+    harness.run();
+    harness.get_by_label("Settings...").click();
+    harness.run();
+    assert!(
+        matches!(&harness.state().asked[..], [Asked::Settings(Some(opened))] if *opened == page),
+        "{:?}",
+        harness.state().asked
+    );
+    assert_eq!(
+        keys(&harness, &page),
+        ["stamps", "seconds", "hours", "wrap", "prompts", "echo"]
+    );
+
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "stamps", Some("start"))
+        .expect("changed");
+    play.widget_change(&page, "hours", Some("24"))
+        .expect("changed");
+    play.widget_change(&page, "echo", Some("off"))
+        .expect("changed");
+    assert!(play.widget_change(&page, "stamps", Some("middle")).is_err());
+    assert!(play.widget_change(&page, "hours", Some("13")).is_err());
+    harness.run();
+    assert!(
+        harness
+            .query_by_label_contains("] You swing a steel broadsword at a kobold!")
+            .is_some(),
+        "its time before it"
+    );
+    assert!(
+        harness.query_by_label_contains("M] You swing").is_none(),
+        "on a 24-hour clock"
+    );
+    assert!(harness.query_by_label(">look").is_none(), "nothing typed");
+
+    let play = &mut harness.state_mut().play;
+    for key in ["stamps", "hours", "echo"] {
+        play.widget_change(&page, key, None).expect("put back");
+    }
+    assert!(layout(&harness).lines.is_empty(), "as it always was");
+
+    let Some(laid) = &mut harness.state_mut().play.layout else {
+        panic!("laid out");
+    };
+    let thoughts = laid.add_widget(Widget::Stream("thoughts".to_owned()), None);
+    let stream = format!("widget:{thoughts}");
+    harness.run();
+    assert_eq!(
+        keys(&harness, &stream),
+        ["stamps", "seconds", "hours", "wrap"]
+    );
+    let play = &mut harness.state_mut().play;
+    assert!(
+        play.widget_change(&stream, "prompts", Some("off")).is_err(),
+        "a stream has no prompts"
+    );
+    play.widget_change(&stream, "wrap", Some("off"))
+        .expect("changed");
+    assert!(layout(&harness).lines.contains_key(&thoughts), "kept");
+    let window = layout(&harness)
+        .holders
+        .iter()
+        .find(|holder| matches!(&holder.holds, Holds::One(one) if one.id == thoughts))
+        .map(|holder| holder.id)
+        .unwrap_or_default();
+    if let Some(layout) = &mut harness.state_mut().play.layout {
+        layout.remove_widget(window, thoughts);
+    }
+    assert!(layout(&harness).lines.is_empty(), "gone with it");
+}

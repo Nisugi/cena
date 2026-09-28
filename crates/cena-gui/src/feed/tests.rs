@@ -276,7 +276,12 @@ async fn a_feed_that_fell_behind_marks_the_hole() {
             .send(observed(cursor, said("", &format!("line {cursor}"))));
     }
     settle().await;
-    assert!(lock(&seat.story).lines.contains(&crate::story::Shown::Gap));
+    assert!(
+        lock(&seat.story)
+            .lines
+            .iter()
+            .any(|(_, shown)| *shown == crate::story::Shown::Gap)
+    );
 }
 
 #[test]
@@ -329,6 +334,9 @@ async fn the_live_prompt_settles_as_roundtime_ends() {
         .events
         .send(observed(2, Event::Frame(Box::new(prompt))));
     settle().await;
-    let last = lock(&seat.story).lines.back().cloned();
+    let last = lock(&seat.story)
+        .lines
+        .back()
+        .map(|(_, shown)| shown.clone());
     assert_eq!(last, Some(crate::story::Shown::Prompt(">".to_owned())));
 }

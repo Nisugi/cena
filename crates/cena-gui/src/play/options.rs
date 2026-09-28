@@ -12,6 +12,7 @@
 //! it shows ([`RoomParts`]): *"it should take you to pick which streams show
 //! in the room window"*.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use cena_ui::settings::{Page, Row, RowKind, Value};
@@ -19,7 +20,8 @@ use cena_ui::settings::{Page, Row, RowKind, Value};
 use super::Play;
 use crate::bar::{Fills, Look, Place};
 use crate::layout::Holds;
-use crate::widget::{RoomParts, Widget};
+use crate::story::Hours;
+use crate::widget::{Lines, RoomParts, Stamps, Widget};
 
 /// What a widget page's id begins with; the widget's id follows.
 pub(crate) const PREFIX: &str = "widget:";
@@ -31,8 +33,22 @@ pub(crate) fn page_id(placed: u32) -> String {
 
 /// Whether `widget` has a page of its own.
 pub(crate) fn has_page(widget: &Widget) -> bool {
-    widget.bar_look().is_some() || *widget == Widget::Room
+    widget.bar_look().is_some()
+        || matches!(widget, Widget::Room | Widget::Story | Widget::Stream(_))
 }
+
+/// Where a line's time goes, as the page names each.
+const STAMPS: [(Stamps, &str, &str); 3] = [
+    (Stamps::None, "none", "None"),
+    (Stamps::Start, "start", "At the start"),
+    (Stamps::End, "end", "At the end"),
+];
+
+/// The clock a time is said on, as the page names each.
+const HOURS: [(Hours, &str, &str); 2] = [
+    (Hours::Twelve, "12", "12-hour, AM/PM"),
+    (Hours::TwentyFour, "24", "24-hour"),
+];
 
 /// The Room widget's parts, as its page names each: its key, what a player
 /// calls it, and a line of what it is.
@@ -126,10 +142,13 @@ impl Play {
                 ),
             };
             for one in placed {
-                let rows = match one.widget.bar_look() {
-                    Some(default) => bar_rows(layout.looks.get(&one.id), &default, overlays),
-                    None if one.widget == Widget::Room => room_rows(layout.rooms.get(&one.id)),
-                    None => continue,
+                let rows = match (&one.widget, one.widget.bar_look()) {
+                    (_, Some(default)) => bar_rows(layout.looks.get(&one.id), &default, overlays),
+                    (Widget::Room, None) => room_rows(layout.rooms.get(&one.id)),
+                    (Widget::Story | Widget::Stream(_), None) => {
+                        lines_rows(layout.lines.get(&one.id), one.widget == Widget::Story)
+                    }
+                    _ => continue,
                 };
                 let name = one.widget.name();
                 pages.push(Page {
@@ -180,54 +199,104 @@ impl Play {
             .find(|one| one.id == placed)
             .map(|one| one.widget.clone())
             .ok_or_else(|| "That widget is no longer in the window.".to_owned())?;
-        if widget == Widget::Room {
-            let mut parts = layout.rooms.get(&placed).copied().unwrap_or_default();
-            let default = RoomParts::default();
-            let asked = to.map(|to| match to {
-                "on" => Ok(true),
-                "off" => Ok(false),
-                other => Err(format!("`{other}` is not on or off.")),
-            });
-            let now =
-                part(&mut parts, key).ok_or_else(|| format!("The room has no part {key}."))?;
-            *now = match asked {
-                Some(asked) => asked?,
-                None => shows(default, key),
-            };
-            if parts == default {
-                layout.rooms.remove(&placed);
-            } else {
-                layout.rooms.insert(placed, parts);
+        match &widget {
+            Widget::Room => keep(&mut layout.rooms, placed, &RoomParts::default(), |parts| {
+                room_set(parts, key, to)
+            })?,
+            Widget::Story | Widget::Stream(_) => {
+                let story = widget == Widget::Story;
+                keep(&mut layout.lines, placed, &Lines::default(), |lines| {
+                    lines_set(lines, key, to, story)
+                })?;
             }
-            self.save();
-            return Ok("Room: changed.".to_owned());
-        }
-        let default = widget
-            .bar_look()
-            .ok_or_else(|| format!("{} has no settings of its own.", widget.name()))?;
-        let mut look = layout
-            .looks
-            .get(&placed)
-            .cloned()
-            .unwrap_or_else(|| default.clone());
-        set(&mut look, &default, key, to)?;
-        if look == default {
-            layout.looks.remove(&placed);
-        } else {
-            layout.looks.insert(placed, look);
+            _ => {
+                let default = widget
+                    .bar_look()
+                    .ok_or_else(|| format!("{} has no settings of its own.", widget.name()))?;
+                keep(&mut layout.looks, placed, &default, |look| {
+                    set(look, &default, key, to)
+                })?;
+            }
         }
         self.save();
         Ok(format!("{}: changed.", widget.name()))
     }
 }
 
-/// `look`'s `key` set to `to`, or to `default`'s.
-fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(), String> {
-    let on = |to: &str| match to {
+/// Widget `placed`'s entry in `kept` changed by `change`: kept only while it
+/// differs from its kind's own, `default`.
+fn keep<T: Clone + PartialEq>(
+    kept: &mut BTreeMap<u32, T>,
+    placed: u32,
+    default: &T,
+    change: impl FnOnce(&mut T) -> Result<(), String>,
+) -> Result<(), String> {
+    let mut now = kept
+        .get(&placed)
+        .cloned()
+        .unwrap_or_else(|| default.clone());
+    change(&mut now)?;
+    if now == *default {
+        kept.remove(&placed);
+    } else {
+        kept.insert(placed, now);
+    }
+    Ok(())
+}
+
+/// `on` or `off`, as the menu writes a switch.
+fn on_off(to: &str) -> Result<bool, String> {
+    match to {
         "on" => Ok(true),
         "off" => Ok(false),
         other => Err(format!("`{other}` is not on or off.")),
+    }
+}
+
+/// The Room's part `key` set to `to`, or to all shown.
+fn room_set(parts: &mut RoomParts, key: &str, to: Option<&str>) -> Result<(), String> {
+    let shown = match to {
+        Some(to) => on_off(to)?,
+        None => shows(RoomParts::default(), key),
     };
+    *part(parts, key).ok_or_else(|| format!("The room has no part {key}."))? = shown;
+    Ok(())
+}
+
+/// How lines are drawn, `key` set to `to` or to the kind's own; the
+/// prompts and what was typed only on the `story`.
+fn lines_set(lines: &mut Lines, key: &str, to: Option<&str>, story: bool) -> Result<(), String> {
+    let default = Lines::default();
+    let switch = |to: Option<&str>, default: bool| to.map_or(Ok(default), on_off);
+    match (key, to) {
+        ("stamps", Some(to)) => {
+            lines.stamps = STAMPS
+                .iter()
+                .find(|(_, value, _)| *value == to)
+                .map(|(stamps, ..)| *stamps)
+                .ok_or_else(|| format!("A line's time does not go `{to}`."))?;
+        }
+        ("stamps", None) => lines.stamps = default.stamps,
+        ("hours", Some(to)) => {
+            lines.hours = HOURS
+                .iter()
+                .find(|(_, value, _)| *value == to)
+                .map(|(hours, ..)| *hours)
+                .ok_or_else(|| format!("There is no `{to}`-hour clock."))?;
+        }
+        ("hours", None) => lines.hours = default.hours,
+        ("seconds", to) => lines.seconds = switch(to, default.seconds)?,
+        ("wrap", to) => lines.wrap = switch(to, default.wrap)?,
+        ("prompts", to) if story => lines.prompts = switch(to, default.prompts)?,
+        ("echo", to) if story => lines.echo = switch(to, default.echo)?,
+        (key, _) => return Err(format!("It has no setting {key}.")),
+    }
+    Ok(())
+}
+
+/// `look`'s `key` set to `to`, or to `default`'s.
+fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(), String> {
+    let on = on_off;
     match (key, to) {
         ("fills", Some(to)) => {
             look.fills = FILLS
@@ -291,6 +360,89 @@ fn room_rows(parts: Option<&RoomParts>) -> Vec<Row> {
             }
         })
         .collect()
+}
+
+/// A story's or a stream's rows: how it draws its lines, as `lines` says or
+/// as it always has; the prompts and what was typed only on the `story`.
+fn lines_rows(lines: Option<&Lines>, story: bool) -> Vec<Row> {
+    let default = Lines::default();
+    let now = lines.copied().unwrap_or_default();
+    let row = |key: &str, label: &str, help: &str, kind: RowKind, value: Value, here: bool| Row {
+        key: key.to_owned(),
+        label: label.to_owned(),
+        help: help.to_owned(),
+        kind,
+        value,
+        here,
+        from: None,
+    };
+    let switch = |key: &str, label: &str, help: &str, now: bool, was: bool| {
+        row(
+            key,
+            label,
+            help,
+            RowKind::Toggle,
+            Value::On(now),
+            now != was,
+        )
+    };
+    let stamps = STAMPS
+        .iter()
+        .find(|(each, ..)| *each == now.stamps)
+        .map_or("", |(_, value, _)| value);
+    let hours = HOURS
+        .iter()
+        .find(|(each, ..)| *each == now.hours)
+        .map_or("", |(_, value, _)| value);
+    let mut rows = vec![
+        row(
+            "stamps",
+            "Timestamps",
+            "When each line arrived, on your clock: before it, after it, or not at all.",
+            choice(STAMPS.iter().map(|(_, value, called)| (*value, *called))),
+            Value::Text(stamps.to_owned()),
+            now.stamps != default.stamps,
+        ),
+        switch(
+            "seconds",
+            "With seconds",
+            "7:08:05 rather than 7:08.",
+            now.seconds,
+            default.seconds,
+        ),
+        row(
+            "hours",
+            "Clock",
+            "7:08 PM, or 19:08.",
+            choice(HOURS.iter().map(|(_, value, called)| (*value, *called))),
+            Value::Text(hours.to_owned()),
+            now.hours != default.hours,
+        ),
+        switch(
+            "wrap",
+            "Word wrap",
+            "A long line wraps; off, the window scrolls sideways.",
+            now.wrap,
+            default.wrap,
+        ),
+    ];
+    if story {
+        rows.push(switch(
+            "prompts",
+            "Prompts",
+            "The game's prompt, >, after what it says.",
+            now.prompts,
+            default.prompts,
+        ));
+        rows.push(switch(
+            "echo",
+            "What you type",
+            "Each line you send, after the prompt it followed.",
+            now.echo,
+            default.echo,
+        ));
+    }
+    rows
 }
 
 /// A choice among `named`, each its value and what a player calls it.

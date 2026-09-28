@@ -21,6 +21,9 @@ toml.workspace = true
 # and the one format eframe already builds, so nothing new is built.
 image = { version = "0.25", default-features = false, features = ["png"] }
 winit = { version = "0.30", default-features = false }
+# A story's line stamped with the player's clock as it arrives (the author,
+# 2026-09-28): the version cena-platform's log sink already builds.
+jiff = "0.2.37"
 # Each character's feed runs on the binary's runtime, beside its session
 # (plan/47 §4): the window has the main thread, the sessions the workers.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }

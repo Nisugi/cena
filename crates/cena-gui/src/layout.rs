@@ -79,6 +79,10 @@ pub(crate) struct Layout {
     /// player chose on its page; one not here shows them all, joined.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) rooms: BTreeMap<u32, crate::widget::RoomParts>,
+    /// How each story or stream widget draws its lines, by the widget's id,
+    /// when the player chose on its page.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) lines: BTreeMap<u32, crate::widget::Lines>,
 }
 
 /// One window in a play window: a standalone window or a custom window.
@@ -178,6 +182,7 @@ impl Layout {
             looks: BTreeMap::new(),
             locked: false,
             rooms: BTreeMap::new(),
+            lines: BTreeMap::new(),
         };
         let story = layout.place(Widget::Story);
         layout.add(

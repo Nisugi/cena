@@ -7,7 +7,6 @@ use egui::{Color32, Id, RichText};
 
 use super::{Seen, Widget, character, lists, room, status};
 use crate::bar::{self, Amount, Bar};
-use crate::story::Shown;
 use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
 
 /// Draw `widget` for `seen` into `ui`. Following another character, a
@@ -22,11 +21,11 @@ pub(super) fn draw(
     ui: &mut egui::Ui,
     seen: &Seen<'_>,
     id: Id,
-    look: Option<bar::Look>,
-    room: Option<super::RoomParts>,
+    chosen: &super::Chosen,
 ) -> Option<String> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
-    let look = look.or_else(|| widget.bar_look());
+    let look = chosen.look.clone().or_else(|| widget.bar_look());
+    let lines = chosen.lines.unwrap_or_default();
     let look = look.as_ref();
     let named = |label: &str| {
         seen.who
@@ -46,15 +45,15 @@ pub(super) fn draw(
         Widget::Compass => return room::compass(ui, state, seen.who.is_none()),
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
         Widget::Room => scrolled(ui, &mut |ui| {
-            super::described::room(ui, seen.snapshot, room.unwrap_or_default());
+            super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default());
         }),
         Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
         Widget::Containers => scrolled(ui, &mut |ui| lists::containers(ui, state)),
         Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
         Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
-        Widget::Story => story(ui, &seen.story.lines, seen.open, id),
-        Widget::Stream(stream_id) => stream(ui, seen, stream_id, id),
+        Widget::Story => super::lines::story(ui, &seen.story.lines, seen.open, (id, lines)),
+        Widget::Stream(stream_id) => super::lines::stream(ui, seen, stream_id, (id, lines)),
         Widget::Hydra => hydra(ui, &seen.story.said, id),
         Widget::Hunt => scrolled(ui, &mut |ui| hunt(ui, seen.hunt)),
         Widget::GameState => super::state::game_state(ui, state, seen.who, id),
@@ -384,57 +383,4 @@ fn notice_lines(ui: &mut egui::Ui, notice: &Notice) {
             }
         }
     }
-}
-
-/// The story, newest at the bottom, where it stays unless the player
-/// scrolls back; a stream's lines left out while a widget of it is `open`.
-fn story(ui: &mut egui::Ui, lines: &std::collections::VecDeque<Shown>, open: &[String], id: Id) {
-    egui::ScrollArea::vertical()
-        .min_scrolled_height(0.0)
-        .id_salt(id.with("story"))
-        .stick_to_bottom(true)
-        .auto_shrink(false)
-        .show(ui, |ui| {
-            for shown in lines {
-                match shown {
-                    Shown::Game(runs) => {
-                        ui.label(text::job(runs, ui.style()));
-                    }
-                    Shown::From(stream, runs) => {
-                        if !open.contains(stream) {
-                            ui.label(text::job(runs, ui.style()));
-                        }
-                    }
-                    Shown::Typed { prompt, line } => {
-                        ui.weak(format!("{prompt}{line}"));
-                    }
-                    Shown::Prompt(prompt) => {
-                        ui.weak(prompt);
-                    }
-                    Shown::Gap => {
-                        ui.colored_label(WRONG, "Some lines were missed here.");
-                    }
-                }
-            }
-        });
-}
-
-/// One of the game's streams, newest at the bottom, where it stays unless
-/// the player scrolls back.
-fn stream(ui: &mut egui::Ui, seen: &Seen<'_>, stream: &str, id: Id) {
-    egui::ScrollArea::vertical()
-        .min_scrolled_height(0.0)
-        .id_salt(id.with("stream"))
-        .stick_to_bottom(true)
-        .auto_shrink(false)
-        .show(ui, |ui| match seen.story.streams.get(stream) {
-            Some(kept) => {
-                for runs in &kept.lines {
-                    ui.label(text::job(runs, ui.style()));
-                }
-            }
-            None => {
-                ui.weak("Nothing yet.");
-            }
-        });
 }

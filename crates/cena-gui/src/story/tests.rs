@@ -43,7 +43,7 @@ fn texts(story: &Story) -> Vec<String> {
     story
         .lines
         .iter()
-        .map(|shown| match shown {
+        .map(|(_, shown)| match shown {
             Shown::Game(runs) | Shown::From(_, runs) => {
                 runs.iter().map(|run| run.text.as_str()).collect()
             }
@@ -76,7 +76,7 @@ fn a_stream_goes_where_the_game_declared() {
         ],
         "speech is a copy of main, so it is dropped"
     );
-    let Some(Shown::From(stream, thought)) = story.lines.get(1) else {
+    let Some((_, Shown::From(stream, thought))) = story.lines.get(1) else {
         panic!("the thought is a line of its stream");
     };
     assert_eq!(stream, "thoughts");
@@ -288,7 +288,7 @@ fn each_stream_is_kept_for_a_widget_of_it() {
         story.streams.get(id).map_or_else(Vec::new, |kept| {
             kept.lines
                 .iter()
-                .map(|runs| runs.iter().map(|run| run.text.as_str()).collect())
+                .map(|(_, runs)| runs.iter().map(|run| run.text.as_str()).collect())
                 .collect()
         })
     };
@@ -309,7 +309,7 @@ fn each_stream_is_kept_for_a_widget_of_it() {
     let marked: Vec<Option<&str>> = story
         .lines
         .iter()
-        .map(|shown| match shown {
+        .map(|(_, shown)| match shown {
             Shown::From(stream, _) => Some(stream.as_str()),
             _ => None,
         })
@@ -334,6 +334,10 @@ fn a_stream_keeps_its_newest_lines() {
     let kept = story.streams.get("thoughts").expect("kept");
     assert_eq!(kept.lines.len(), super::streams::MAX_STREAM);
     assert_eq!(kept.heard, u64::try_from(over).expect("small"));
-    let first: String = kept.lines[0].iter().map(|run| run.text.as_str()).collect();
+    let first: String = kept.lines[0]
+        .1
+        .iter()
+        .map(|run| run.text.as_str())
+        .collect();
     assert_eq!(first, "thought 5");
 }

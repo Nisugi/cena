@@ -141,6 +141,7 @@ impl Play {
             follows: &layout.follows,
             looks: &layout.looks,
             rooms: &layout.rooms,
+            lines: &layout.lines,
             session,
             read: &mut self.read,
             sent: None,

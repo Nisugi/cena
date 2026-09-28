@@ -90,6 +90,7 @@ impl Layout {
         self.follows.remove(&placed);
         self.looks.remove(&placed);
         self.rooms.remove(&placed);
+        self.lines.remove(&placed);
     }
 
     /// Window `holder` gone, with every widget in it.
@@ -110,6 +111,7 @@ impl Layout {
             self.follows.remove(&id);
             self.looks.remove(&id);
             self.rooms.remove(&id);
+            self.lines.remove(&id);
         }
     }
 

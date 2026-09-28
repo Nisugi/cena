@@ -23,12 +23,26 @@ pub(super) struct Drawing<'a> {
     pub(super) looks: &'a BTreeMap<u32, crate::bar::Look>,
     /// Which parts each Room widget shows, by id (`Layout::rooms`).
     pub(super) rooms: &'a BTreeMap<u32, crate::widget::RoomParts>,
+    /// How each story or stream widget draws its lines, by id
+    /// (`Layout::lines`).
+    pub(super) lines: &'a BTreeMap<u32, crate::widget::Lines>,
     /// Which session: every id in the window is its own.
     pub(super) session: u32,
     /// How far each widget that counts what it says was read, by id.
     pub(super) read: &'a mut HashMap<u32, u64>,
     /// A line a widget asked to send this frame, as if typed.
     pub(super) sent: Option<String>,
+}
+
+impl Drawing<'_> {
+    /// What the player chose for widget `placed` on its own page.
+    fn chosen(&self, placed: u32) -> crate::widget::Chosen {
+        crate::widget::Chosen {
+            look: self.looks.get(&placed).cloned(),
+            room: self.rooms.get(&placed).copied(),
+            lines: self.lines.get(&placed).copied(),
+        }
+    }
 }
 
 /// What the top bar was asked this frame.
@@ -223,11 +237,8 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
         if let Some(count) = placed.widget.count(&drawing.seen) {
             drawing.read.insert(placed.id, count);
         }
-        let options = (
-            drawing.looks.get(&placed.id).cloned(),
-            drawing.rooms.get(&placed.id).copied(),
-        );
-        if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, options) {
+        let chosen = drawing.chosen(placed.id);
+        if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, &chosen) {
             drawing.sent = Some(line);
         }
         return;
@@ -245,11 +256,8 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
                 ..drawing.seen
             };
             // Another character's widget sends nothing on this one's.
-            let options = (
-                drawing.looks.get(&placed.id).cloned(),
-                drawing.rooms.get(&placed.id).copied(),
-            );
-            let _ = placed.widget.draw_with(ui, &seen, id, options);
+            let chosen = drawing.chosen(placed.id);
+            let _ = placed.widget.draw_with(ui, &seen, id, &chosen);
         }
         None => {
             ui.weak(format!("{who} is not running."));
