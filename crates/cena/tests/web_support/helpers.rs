@@ -45,12 +45,23 @@ pub async fn browser_for(pairing: &str, session: Option<&str>) -> TestResult<Bro
     Ok(socket)
 }
 
-/// The next thing the server does with `socket` is close it.
+/// The server closes `socket` within the deadline. What it had already sent
+/// before closing is read past: a page's update for its last command can be
+/// on its way when the close is decided, and on macOS's timing it arrived
+/// first, which read as "never closed" (`web_hub.rs`, failing on main's CI
+/// since 2026-09-27).
 pub async fn closes(socket: &mut Browser) -> bool {
-    matches!(
-        tokio::time::timeout(DEADLINE, socket.next()).await,
-        Ok(Some(Ok(Message::Close(_)) | Err(_)) | None)
-    )
+    let closed = async {
+        loop {
+            match socket.next().await {
+                Some(Ok(Message::Close(_)) | Err(_)) | None => return true,
+                Some(Ok(_)) => {}
+            }
+        }
+    };
+    tokio::time::timeout(DEADLINE, closed)
+        .await
+        .unwrap_or(false)
 }
 
 pub async fn send(socket: &mut Browser, message: &ClientMessage) -> TestResult {
