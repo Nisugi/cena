@@ -21,7 +21,7 @@ pub use merge::{
 pub use projection::{room_description, room_player};
 pub use view::{
     Closed, GroupView, HandView, HuntView, LifecycleView, MapLocationView, RoomItemView, RoomView,
-    RoundtimeView, SessionCard, SessionView, StoryLine, StyledRun, UnknownTagView, VitalView,
-    VitalsView,
+    RoundtimeView, RunLink, SessionCard, SessionView, StoryLine, StyledRun, UnknownTagView,
+    VitalView, VitalsView,
 };
 pub use wire::{ClientMessage, ReceiptStatus, ServerMessage, WIRE_VERSION};

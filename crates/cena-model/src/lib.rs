@@ -78,6 +78,9 @@ pub use state::creatures::{
 };
 pub use state::gameobj::{Classification, ObjectTypes};
 pub use state::menu::{LearnedCommands, MenuCommand, MenuCommands, ResolvedItem, category_path};
+// A run's link, for a projection above the model that carries what a click
+// does (`cena-ui`, whose one edge is here), as `cena-session` passes it on.
+pub use cena_protocol::frame::{Link, LinkKind};
 pub use state::societies::membership::MembershipLine;
 pub use state::societies::{Ability, AbilityKind, AlternateCost, Cost, CostTiming, Target};
 pub use state::streams::{LineTally, MAX_STREAM_LINES};

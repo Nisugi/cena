@@ -22,6 +22,63 @@ pub struct StyledRun {
     /// A trigger's background, `#rrggbb`; as `color`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub background: Option<String>,
+    /// What a click on it does, when the game made it a link (the author,
+    /// 2026-09-28: *"links using the preset highlights, clickable with
+    /// their menus popping up"*). Optional and additive, as `color` is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub link: Option<RunLink>,
+}
+
+/// What a click on a run does: the game's `<a>` and `<d>` links as a
+/// frontend acts on them, `VellumFE`'s `LinkData`
+/// (`parser/links.rs`). The outermost link is the one a click takes.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RunLink {
+    /// `<a exist= noun=>`: a game object. A click asks the game for its
+    /// menu, `_menu #<exist>`; or, when `coord` names a command in the
+    /// dictionary, sends that command.
+    Object {
+        /// Its id.
+        exist: String,
+        /// Its noun, which a menu command's `@` becomes.
+        noun: String,
+        /// `coord=`, when the link names its own command.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        coord: Option<String>,
+    },
+    /// `<d cmd=>`, or a bare `<d>`: a click sends `command`.
+    Command {
+        /// What a click sends.
+        command: String,
+    },
+    /// A web address, which a click opens.
+    Url {
+        /// Where.
+        href: String,
+    },
+}
+
+impl RunLink {
+    /// What a run's `link` does when clicked; `None` for one that does
+    /// nothing (`LinkKind::NotActionable`).
+    #[must_use]
+    pub fn of(link: &cena_model::Link) -> Option<Self> {
+        match &link.kind {
+            cena_model::LinkKind::Exist { id, noun } => Some(Self::Object {
+                exist: id.clone(),
+                noun: noun.clone(),
+                coord: link.coord.clone(),
+            }),
+            cena_model::LinkKind::Url { href } => Some(Self::Url { href: href.clone() }),
+            cena_model::LinkKind::Direct { .. } | cena_model::LinkKind::DirectText => {
+                link.command().map(|command| Self::Command {
+                    command: command.to_owned(),
+                })
+            }
+            cena_model::LinkKind::NotActionable => None,
+        }
+    }
 }
 
 /// A complete display line. Truncation is visible rather than silent.

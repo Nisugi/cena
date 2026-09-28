@@ -154,6 +154,7 @@ pub fn room_description(state: &GameState) -> Option<Vec<StyledRun>> {
                 bold: run.style.bold_depth > 0,
                 monospace: run.style.mono,
                 preset: run.style.preset.clone(),
+                link: run.link.as_ref().and_then(crate::RunLink::of),
                 ..StyledRun::default()
             })
             .collect()
