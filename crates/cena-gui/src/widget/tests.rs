@@ -614,12 +614,13 @@ fn the_lists_say_what_the_character_has() {
                 (
                     "My Cloak".to_owned(),
                     "64863904".to_owned(),
-                    vec!["a gold ring", "a pink pearl"],
+                    vec![("a gold ring", "1"), ("a pink pearl", "2")],
                 ),
                 ("stow".to_owned(), "64863905".to_owned(), vec![]),
             ],
+            true,
         );
-        let _ = containers_listed(ui, &[]);
+        let _ = containers_listed(ui, &[], true);
     });
     harness.run();
     for (label, count) in [

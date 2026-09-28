@@ -53,7 +53,8 @@ pub(super) fn draw(
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
         Widget::Containers => {
             let mut put = None;
-            scrolled(ui, &mut |ui| put = lists::containers(ui, state));
+            let own = seen.who.is_none();
+            scrolled(ui, &mut |ui| put = lists::containers(ui, state, own));
             return put.map(super::Clicked::Quietly);
         }
         Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
@@ -96,12 +97,14 @@ pub(super) fn draw(
             look,
         ),
         Widget::RightHand => {
-            held(ui, &named("Right"), state.map(|state| &state.right_hand));
-            return place(ui, id, "right");
+            let hand = state.map(|state| &state.right_hand);
+            held(ui, &named("Right"), hand, seen.who.is_none());
+            return place(ui, id, "right", hand);
         }
         Widget::LeftHand => {
-            held(ui, &named("Left"), state.map(|state| &state.left_hand));
-            return place(ui, id, "left");
+            let hand = state.map(|state| &state.left_hand);
+            held(ui, &named("Left"), hand, seen.who.is_none());
+            return place(ui, id, "left", hand);
         }
         Widget::Roundtime => clock(
             ui,
@@ -272,20 +275,43 @@ fn read_image(context: &egui::Context, path: &str) -> Option<egui::TextureHandle
 }
 
 /// What a hand holds, after which hand: `?` until the game has said.
-/// An object carried and let go on this widget, put `onto` it
-/// (`carry.rs`). Another character's widget asks nothing of this window:
-/// the play window draws it and sends nothing (`play/draw.rs`).
-fn place(ui: &mut egui::Ui, id: Id, onto: &str) -> Option<super::Clicked> {
-    crate::carry::target(ui, id, onto).map(super::Clicked::Quietly)
+/// An object carried and let go on a hand, put `onto` it (`carry.rs`);
+/// the hand's own item, let go on it, nothing. Another character's widget
+/// asks nothing of this window: the play window draws it and sends nothing
+/// (`play/draw.rs`).
+fn place(ui: &mut egui::Ui, id: Id, onto: &str, hand: Option<&Hand>) -> Option<super::Clicked> {
+    let holding = hand.and_then(Hand::id);
+    crate::carry::target(ui, id, onto, holding).map(super::Clicked::Quietly)
 }
 
-fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>) {
+/// What a hand holds, after which hand; on the window's `own` character's,
+/// the item carried from it with the drag key held (`carry.rs`).
+fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>, own: bool) {
     let holds = match hand {
         None | Some(Hand::Unknown) => "?",
         Some(Hand::Empty) => "empty",
         Some(Hand::Holding { name, .. }) => name,
     };
-    line(ui, format!("{which}: {holds}"));
+    let label = egui::Label::new(format!("{which}: {holds}"))
+        .truncate()
+        .selectable(false);
+    match hand {
+        Some(Hand::Holding {
+            id: Some(id), name, ..
+        }) if own => {
+            let response = ui.add(label.sense(crate::carry::sense(ui)));
+            crate::carry::source(
+                &response,
+                crate::carry::Carried {
+                    exist: id.clone(),
+                    name: name.clone(),
+                },
+            );
+        }
+        _ => {
+            ui.add(label);
+        }
+    }
 }
 
 /// A clock counting down, in whole seconds, or that none runs.

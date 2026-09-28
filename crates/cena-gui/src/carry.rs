@@ -12,6 +12,12 @@
 //! `stash.rb` does (`_drag #item #bag`). Where `VellumFE` drops the item on
 //! the ground when let go anywhere else, here nothing happens: only the
 //! story's blank area is the floor.
+//!
+//! An object is carried from a link in the story or a stream, from a hand,
+//! or from a container's contents (the author: *"Yes drag from hands, drag
+//! from containers. The point of it is to move items around."*), never
+//! from a widget showing another character's, whose ids are not this
+//! character's to send.
 
 use egui::{Id, Modifiers, Order, Sense};
 
@@ -49,18 +55,44 @@ pub(crate) fn held(ui: &egui::Ui) -> bool {
     ui.input(|input| input.modifiers.matches_exact(key))
 }
 
-/// What is let go on `ui`'s whole space this frame, put `onto` there:
-/// `_drag #<item> <onto>`.
-pub(crate) fn target(ui: &mut egui::Ui, id: Id, onto: &str) -> Option<String> {
-    let space = ui.interact(ui.max_rect(), id.with("drop"), Sense::hover());
-    dropped(&space, onto)
+/// `object` carried from `response` once it is dragged, with the drag key
+/// held: a source's widget senses a drag only then (`sense`).
+pub(crate) fn source(response: &egui::Response, object: Carried) {
+    response.dnd_set_drag_payload(object);
 }
 
-/// What is let go on `response` this frame, put `onto` it.
-pub(crate) fn dropped(response: &egui::Response, onto: &str) -> Option<String> {
-    response
-        .dnd_release_payload::<Carried>()
-        .map(|carried| format!("_drag #{} {onto}", carried.exist))
+/// How a widget that carries an object senses: a drag, while the drag key
+/// is held; otherwise nothing, and a drag moves its window as ever.
+pub(crate) fn sense(ui: &egui::Ui) -> Sense {
+    if held(ui) {
+        Sense::drag()
+    } else {
+        Sense::hover()
+    }
+}
+
+/// What is let go on `ui`'s whole space this frame, put `onto` there:
+/// `_drag #<item> <onto>`; the object `holding` there already, let go on
+/// its own place, nothing.
+pub(crate) fn target(
+    ui: &mut egui::Ui,
+    id: Id,
+    onto: &str,
+    holding: Option<&str>,
+) -> Option<String> {
+    let space = ui.interact(ui.max_rect(), id.with("drop"), Sense::hover());
+    dropped(&space, onto, holding)
+}
+
+/// What is let go on `response` this frame, put `onto` it; `itself`, the
+/// object the place is or holds, let go there, nothing.
+pub(crate) fn dropped(
+    response: &egui::Response,
+    onto: &str,
+    itself: Option<&str>,
+) -> Option<String> {
+    let carried = response.dnd_release_payload::<Carried>()?;
+    (itself != Some(carried.exist.as_str())).then(|| format!("_drag #{} {onto}", carried.exist))
 }
 
 /// While an object is carried, what it is, beside the pointer, with the

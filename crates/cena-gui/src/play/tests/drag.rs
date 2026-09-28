@@ -53,15 +53,17 @@ fn with_a_rat<'a>() -> (Harness<'a, Scene>, Pos2) {
     (harness, at)
 }
 
-/// `widget` added in a window of its own over the Hunt window, in the
-/// right-hand column, clear of the story: a window over the story is under
+/// `widget` added in a window of its own over the Hunt and Room windows,
+/// in the right-hand column, clear of the story: a window over the story is under
 /// it once a press on the rat raises the story. Its id.
 fn beside_the_story(
     harness: &mut Harness<'_, Scene>,
     widget: Widget,
     follows: Option<&str>,
 ) -> u32 {
-    let hunt = kept(harness, "Hunt").unwrap_or(egui::Rect::NOTHING);
+    let hunt = kept(harness, "Hunt")
+        .zip(kept(harness, "Room"))
+        .map_or(egui::Rect::NOTHING, |(hunt, room)| hunt.union(room));
     let Some(layout) = &mut harness.state_mut().play.layout else {
         return 0;
     };
@@ -215,4 +217,149 @@ fn another_characters_hand_takes_nothing() {
     let hand = harness.get_by_label("Baelor Right: empty").rect().center();
     carry(&mut harness, Modifiers::CTRL, rat, hand);
     assert!(harness.state().asked.is_empty(), "{theirs}");
+}
+
+/// The broadsword in the left hand, with its id.
+fn armed(scene: &mut Scene) {
+    scene.snapshot.state.left_hand = cena_session::hands::Hand::Holding {
+        id: Some("321".to_owned()),
+        noun: Some("broadsword".to_owned()),
+        name: "a steel broadsword".to_owned(),
+    };
+}
+
+/// From a hand (the author: *"Yes drag from hands"*): to the other hand,
+/// to the story's floor; let go on its own hand, nothing.
+#[test]
+fn from_a_hand_it_goes_to_the_other_or_the_floor() {
+    let from_the_left = |to: &dyn Fn(&Harness<'_, Scene>, Pos2) -> Pos2| {
+        let mut harness = harness();
+        armed(harness.state_mut());
+        harness.run();
+        let left = harness
+            .get_by_label("Left: a steel broadsword")
+            .rect()
+            .center();
+        let at = to(&harness, left);
+        carry(&mut harness, Modifiers::CTRL, left, at);
+        harness.state().asked.clone()
+    };
+    let right = |harness: &Harness<'_, Scene>, _: Pos2| {
+        harness.get_by_label("Right: empty").rect().center()
+    };
+    assert_eq!(from_the_left(&right), quietly("_drag #321 right"));
+    let floor = |harness: &Harness<'_, Scene>, _: Pos2| {
+        let story = harness
+            .get_by_label("You swing a steel broadsword at a kobold!")
+            .rect();
+        story.center() + egui::vec2(0.0, 200.0)
+    };
+    assert_eq!(from_the_left(&floor), quietly("_drag #321 drop"));
+    let itself = |_: &Harness<'_, Scene>, left: Pos2| left + egui::vec2(12.0, 0.0);
+    assert!(from_the_left(&itself).is_empty(), "onto its own hand");
+    let mut harness = harness();
+    armed(harness.state_mut());
+    harness.run();
+    let left = harness
+        .get_by_label("Left: a steel broadsword")
+        .rect()
+        .center();
+    let right = harness.get_by_label("Right: empty").rect().center();
+    carry(&mut harness, Modifiers::NONE, left, right);
+    assert!(harness.state().asked.is_empty(), "no key, no carrying");
+}
+
+/// A container's line as the game sends it: one linked item.
+fn contains(scene: &mut Scene, container: &str, (id, words, noun): (&str, &str, &str)) {
+    let mut line = cena_session::ChunkLine::plain(words).runs;
+    if let Some(run) = line.runs.first_mut() {
+        run.link = Some(cena_session::Link {
+            kind: LinkKind::Exist {
+                id: id.to_owned(),
+                noun: noun.to_owned(),
+            },
+            text: words.to_owned(),
+            coord: None,
+        });
+    }
+    scene
+        .snapshot
+        .state
+        .apply(&cena_session::Frame::ContainerItem {
+            container_id: container.to_owned(),
+            content: line,
+        });
+}
+
+/// From a container's contents (*"drag from containers"*): to another
+/// container, to a hand, onto another item.
+#[test]
+fn from_a_container_it_goes_elsewhere() {
+    let from = |what: &str, to: &str| {
+        let mut harness = harness();
+        let scene = harness.state_mut();
+        scene.snapshot.state.right_hand = cena_session::hands::Hand::Holding {
+            id: Some("200".to_owned()),
+            noun: Some("sack".to_owned()),
+            name: "a patched sack".to_owned(),
+        };
+        for (id, title, target) in [
+            ("stow", "My Cloak", "#100"),
+            ("200", "a patched sack", "#200"),
+        ] {
+            scene.snapshot.state.apply(&cena_session::Frame::Container {
+                id: id.to_owned(),
+                title: Some(title.to_owned()),
+                target: Some(target.to_owned()),
+            });
+        }
+        contains(scene, "stow", ("11", "a gold ring", "ring"));
+        contains(scene, "200", ("22", "a pink pearl", "pearl"));
+        beside_the_story(&mut harness, Widget::Containers, None);
+        for title in ["My Cloak (1)", "a patched sack (1)"] {
+            harness.get_by_label(title).click();
+            harness.run();
+        }
+        let start = harness.get_by_label(what).rect().center();
+        let at = harness.get_by_label(to).rect().center();
+        carry(&mut harness, Modifiers::CTRL, start, at);
+        harness.state().asked.clone()
+    };
+    let ring = "a gold ring";
+    assert_eq!(from(ring, "a patched sack (1)"), quietly("_drag #11 #200"));
+    assert_eq!(from(ring, "a pink pearl"), quietly("_drag #11 #22"));
+    assert_eq!(
+        from(ring, "Left: a steel broadsword"),
+        quietly("_drag #11 left")
+    );
+    assert!(
+        from("Right: a patched sack", "a patched sack (1)").is_empty(),
+        "a container into itself"
+    );
+}
+
+/// Another character's hand, in the Advanced place, is carried from by
+/// nothing: its item's id is that character's.
+#[test]
+fn another_characters_hand_is_no_source() {
+    let mut harness = harness();
+    let mut theirs = crate::fixture::snapshot();
+    theirs.state.left_hand = cena_session::hands::Hand::Holding {
+        id: Some("654".to_owned()),
+        noun: Some("mace".to_owned()),
+        name: "a spiked mace".to_owned(),
+    };
+    harness.state_mut().others = vec![Character {
+        name: "Baelor".to_owned(),
+        snapshot: Some(Arc::new(theirs)),
+        hunt: None,
+    }];
+    beside_the_story(&mut harness, Widget::LeftHand, Some("Baelor"));
+    let mace = harness
+        .get_by_label("Baelor Left: a spiked mace")
+        .rect()
+        .center();
+    let right = harness.get_by_label("Right: empty").rect().center();
+    carry(&mut harness, Modifiers::CTRL, mace, right);
+    assert!(harness.state().asked.is_empty());
 }

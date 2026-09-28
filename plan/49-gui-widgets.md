@@ -827,6 +827,14 @@ Each BUILT the same day, each with its tests:
    - A widget following another character takes nothing: the line goes to this window's.
    - A window over the story goes under it once the story is pressed, as any window does,
      so a drop meant for it lands on the story's floor. Tiled windows do not meet this.
+   - **Carried from a hand and from a container too.** The author: *"Yes drag from hands,
+     drag from containers. The point of it is to move items around. There are a few safe
+     guards. 1) We require a modifier key to enable dragging. 2) The game has flags that
+     can prevent you from dropping things."* A hand holding an item with an id, and each
+     item in the Containers widget, carries it with the drag key held; each item is a place
+     too (`_drag #<item> #<it>`, a bag into a bag). An item let go on its own hand, or a
+     container on itself, sends nothing. Never from a widget showing another character's:
+     its ids are not this character's to send.
 
 ### Stage E — drawers
 
