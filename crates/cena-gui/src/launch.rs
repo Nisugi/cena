@@ -1,11 +1,11 @@
-//! The hub's Not launched tab (`plan/49` Stage C, as the author revised it
-//! on 2026-09-27). It holds three things:
+//! The hub's Not launched and New login tabs (`plan/49` Stage C, as the
+//! author revised it on 2026-09-27, the two tabs apart as the author
+//! corrected it the same day):
 //!
-//! - the roster's characters that are not on the table, as cards in the
-//!   hub's grid, starred ones first;
-//! - a login by account, which lists that account's characters to add, star
-//!   or play;
-//! - the kept passwords.
+//! - *Not launched*: the roster's characters that are not on the table, as
+//!   cards in the hub's grid, starred ones first;
+//! - *New login*: a login by account, which lists that account's characters
+//!   to add, star or play; and the kept passwords.
 //!
 //! Lich's launcher is the reference (`saved_login_tab.rb`,
 //! `manual_login_tab.rb`, `account_manager_ui.rb` and `favorites_manager.rb`
@@ -26,8 +26,8 @@ use cena_ui::{Account, HubRequest, Listing, Login, Password, RosterCard, Saved};
 
 use crate::hub::{CardWidth, HubAction, HubView, card_scope, side, tiled};
 
-/// What the Not launched tab is typing, and the account logged in, which
-/// outlive a frame.
+/// What the Not launched and New login tabs are typing, and the account
+/// logged in, which outlive a frame.
 #[derive(Default)]
 pub(crate) struct Launch {
     /// A password being typed for a roster character whose account keeps
@@ -133,8 +133,8 @@ fn star(ui: &mut egui::Ui, starred: bool) -> egui::Response {
 }
 
 impl Launch {
-    /// Draw the tab over `view`, its cards `width` wide; what the player
-    /// asked for goes in `asked`.
+    /// Draw the Not launched tab over `view`, its cards `width` wide; what
+    /// the player asked for goes in `asked`.
     pub(crate) fn show(
         &mut self,
         ui: &mut egui::Ui,
@@ -158,8 +158,22 @@ impl Launch {
                     }
                     side(ui, drawn.response.rect, id, width);
                 });
-                ui.separator();
-                ui.strong("New login");
+            });
+    }
+
+    /// Draw the New login tab over `view`: the login by account, what it
+    /// lists, and the kept passwords; what the player asked for goes in
+    /// `asked`.
+    pub(crate) fn show_login(
+        &mut self,
+        ui: &mut egui::Ui,
+        view: &HubView<'_>,
+        asked: &mut Option<HubAction>,
+    ) {
+        egui::ScrollArea::vertical()
+            .id_salt("hub-new-login")
+            .auto_shrink(false)
+            .show(ui, |ui| {
                 self.login(ui, asked);
                 if let Some(listing) = self.listing(view) {
                     self.listed(ui, listing, view, asked);

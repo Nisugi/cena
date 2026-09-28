@@ -661,6 +661,13 @@ So Stage C gains four steps:
 6. **Not launched**, the third tab, replacing Launch. It holds the roster's characters that
    are not on the table, as cards in the same grid, starred ones first. Below them are the
    new login and the kept passwords.
+
+   > **CORRECTED by the author after running it, 2026-09-27:** *"There's suppose to be 4
+   > tabs... not launched and whatever we had before, login? are separate tabs."* The new
+   > login, its list of the account's characters, and the kept passwords are a fourth tab,
+   > *New login*; *Not launched* holds only the cards. Claude had read *"then new login
+   > will have the spot..."* as a part of the Not launched tab. The fourth tab's name is the
+   > author's own phrase for it, and can change.
 7. **An account's characters.** The new login asks for the account and password, not a
    character, with the game defaulting to Prime. *Log in* asks the login service for that
    account's characters on that game: `K A M F G P C`, stopping before `L`

@@ -228,15 +228,15 @@ impl Sessions {
         self.shared.window.wake();
     }
 
-    /// Every character on the roster, for the Launch tab (`plan/49` Stage
-    /// C): never a password, only whether one is kept.
+    /// Every character on the roster, for the Not launched and New login
+    /// tabs (`plan/49` Stage C): never a password, only whether one is kept.
     pub fn roster(&self, roster: Vec<RosterCard>) {
         *lock(&self.shared.roster) = roster;
         self.shared.window.wake();
     }
 
     /// The characters an account has on one game, as the login service
-    /// listed them, for the Not launched tab (`plan/49` Stage C step 7).
+    /// listed them, for the New login tab (`plan/49` Stage C step 7).
     pub fn characters(&self, listing: Listing) {
         *lock(&self.shared.listing) = Some(listing);
         self.shared.window.wake();

@@ -34,9 +34,13 @@ pub enum Tab {
     Live,
     /// Characters that ended this run, each with why.
     Closed,
-    /// The roster's characters not on the table, a login by account, and
-    /// the kept passwords (`plan/49` Stage C).
+    /// The roster's characters not on the table (`plan/49` Stage C).
     NotLaunched,
+    /// A login by account, which lists its characters to add, star or
+    /// play; and the kept passwords. Its own tab, apart from the cards
+    /// (the author, 2026-09-27: *"not launched and ... login? are separate
+    /// tabs"*).
+    NewLogin,
 }
 
 /// What the player asked the hub for.
@@ -78,7 +82,8 @@ pub struct Hub {
     pub tab: Tab,
     /// Asking whether to shut Hydra down.
     confirming: bool,
-    /// What the Not launched tab is typing, and the account logged in.
+    /// What the Not launched and New login tabs are typing, and the
+    /// account logged in.
     launch: crate::launch::Launch,
     /// Every card's width, as the player last dragged it.
     pub card_width: CardWidth,
@@ -127,6 +132,7 @@ impl Hub {
                 Tab::NotLaunched,
                 format!("Not launched ({})", crate::launch::waiting(view).len()),
             );
+            ui.selectable_value(&mut self.tab, Tab::NewLogin, "New login");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 // With nothing playing there is nothing to lose, so it does
                 // not ask, as closing the window does not (author, 2026-09-27).
@@ -188,6 +194,7 @@ impl Hub {
                     &mut asked,
                 ),
                 Tab::NotLaunched => self.launch.show(ui, view, width, &mut asked),
+                Tab::NewLogin => self.launch.show_login(ui, view, &mut asked),
             }
         });
         asked

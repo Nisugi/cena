@@ -6,7 +6,7 @@
 mod common;
 
 use cena_ui::{Account, HubRequest, Listing, Login, Password, Saved};
-use common::{Board, ask, board, not_launched, roster_card, type_into};
+use common::{Board, ask, board, new_login, not_launched, roster_card, type_into};
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
@@ -45,7 +45,7 @@ fn the_cards_are_the_roster_off_the_table_starred_first() {
         .roster
         .push(roster_card("Lorwyn", "lorwyn01", "GS3", false));
     waiting.offered.push("Zed".to_owned());
-    let harness = not_launched(waiting);
+    let mut harness = not_launched(waiting);
     assert!(harness.query_by_label("Not launched (3)").is_some());
     assert!(before(&harness, "Zed", "Orsen"), "the star first");
     assert!(before(&harness, "Orsen", "Wyla"), "then by name");
@@ -69,6 +69,13 @@ fn the_cards_are_the_roster_off_the_table_starred_first() {
         "the game by name"
     );
     assert_eq!(harness.query_all_by_label("★").count(), 1);
+    assert!(
+        harness.query_by_label("Account").is_none(),
+        "the login is its own tab"
+    );
+    harness.get_by_label("New login").click();
+    harness.run();
+    assert!(harness.query_by_label("Start Orsen").is_none(), "no cards");
     assert!(harness.query_by_label("Forget wyla01's password").is_none());
     assert!(
         harness
@@ -111,6 +118,8 @@ fn each_card_asks_for_its_own() {
         forget.click();
     }
     harness.run();
+    harness.get_by_label("New login").click();
+    harness.run();
     harness.get_by_label("Forget orsen01's password").click();
     harness.run();
     assert_eq!(
@@ -137,12 +146,7 @@ fn each_card_asks_for_its_own() {
 /// though it is held (never printed) for playing what the account lists.
 #[test]
 fn a_login_by_account_asks_for_its_characters() {
-    let mut harness = not_launched(Board::default());
-    assert!(
-        harness
-            .query_by_label("No saved character is waiting to be launched.")
-            .is_some()
-    );
+    let mut harness = new_login(Board::default());
     assert!(harness.query_by_label("No password is kept.").is_some());
     assert!(
         harness.query_by_label("Character").is_none(),
@@ -221,7 +225,7 @@ fn the_accounts_characters_are_added_starred_and_played() {
         game: "GS3".to_owned(),
         characters: ["Ashryn", "Orsen", "Newt"].map(str::to_owned).to_vec(),
     });
-    let mut harness = not_launched(listed);
+    let mut harness = new_login(listed);
     assert!(
         harness.query_by_label("Play").is_none(),
         "not logged in: no list"
@@ -241,8 +245,8 @@ fn the_accounts_characters_are_added_starred_and_played() {
     harness.run();
     harness.get_by_label("★").click();
     harness.run();
-    // Orsen's and Wyla's cards, then the list's Ashryn and Orsen.
-    if let Some(forget) = harness.get_all_by_label("Forget").nth(3) {
+    // The list's Ashryn and Orsen: the cards are on their own tab.
+    if let Some(forget) = harness.get_all_by_label("Forget").nth(1) {
         forget.click();
     }
     harness.run();
@@ -290,7 +294,7 @@ fn a_listing_is_shown_only_for_the_login_it_answers() {
             game: game.to_owned(),
             characters: vec!["Newt".to_owned()],
         });
-        let mut harness = not_launched(listed);
+        let mut harness = new_login(listed);
         log_in(&mut harness, "orsen01", "hunter2");
         assert!(
             harness.query_by_label("Play").is_none(),
@@ -299,10 +303,10 @@ fn a_listing_is_shown_only_for_the_login_it_answers() {
     }
 }
 
-/// The tab as a player sees it, logged in with the account's characters
-/// listed, rendered and compared with the committed image.
+/// The New login tab as a player sees it, logged in with the account's
+/// characters listed, rendered and compared with the committed image.
 #[test]
-fn the_not_launched_tab_as_drawn() {
+fn the_new_login_tab_as_drawn() {
     let mut listed = board();
     listed.listing = Some(Listing {
         account: "orsen01".to_owned(),
@@ -313,8 +317,8 @@ fn the_not_launched_tab_as_drawn() {
         .with_size((720.0, 720.0))
         .wgpu()
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), listed);
-    harness.get_by_label_contains("Not launched").click();
+    harness.get_by_label("New login").click();
     harness.run();
     log_in(&mut harness, "orsen01", "hunter2");
-    harness.snapshot("hub_not_launched_listed");
+    harness.snapshot("hub_new_login_listed");
 }

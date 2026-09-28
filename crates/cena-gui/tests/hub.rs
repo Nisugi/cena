@@ -211,6 +211,9 @@ fn the_hub_as_drawn() {
     harness.get_by_label("Not launched (2)").click();
     harness.run();
     harness.snapshot("hub_not_launched");
+    harness.get_by_label("New login").click();
+    harness.run();
+    harness.snapshot("hub_new_login");
 }
 
 /// egui's warnings that a widget changed its id in place -- each one a red
@@ -272,7 +275,7 @@ fn renumbered(heard: &Heard) -> Vec<String> {
 #[test]
 fn nothing_below_is_renumbered_when_something_above_changes() {
     let heard = hear().expect("this file's one logger");
-    for tab in ["Live (2)", "Not launched (2)"] {
+    for tab in ["Live (2)", "Not launched (2)", "New login"] {
         let mut quiet = board();
         quiet.merged.clear();
         let mut harness = hub(quiet);

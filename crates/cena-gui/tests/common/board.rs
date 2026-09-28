@@ -160,12 +160,22 @@ pub fn hub<'a>(board: Board) -> Harness<'a, Board> {
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), board)
 }
 
-/// The hub on its Not launched tab, tall enough for its logins and lists.
+/// The hub on its Not launched tab, tall enough for its cards.
 pub fn not_launched<'a>(board: Board) -> Harness<'a, Board> {
+    on_tab(board, "Not launched")
+}
+
+/// The hub on its New login tab, tall enough for its login and its lists.
+pub fn new_login<'a>(board: Board) -> Harness<'a, Board> {
+    on_tab(board, "New login")
+}
+
+/// The hub on the tab whose name starts `tab`.
+fn on_tab<'a>(board: Board, tab: &str) -> Harness<'a, Board> {
     let mut harness = Harness::builder()
         .with_size((720.0, 820.0))
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
-    harness.get_by_label_contains("Not launched").click();
+    harness.get_by_label_contains(tab).click();
     harness.run();
     harness
 }
