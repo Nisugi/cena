@@ -1,0 +1,13 @@
+# A script of Hydra's own, for Lich::Util in the runner (crates/cena-agent/tests/runner.rs):
+# a quiet command's lines read as the script reads the game's, hidden from the
+# player; the silver count from `info`; and a command that reads the markup,
+# which says so.
+
+lines = Lich::Util.quiet_command('flag', /You may also access these settings/, /war in towns with active justice\./)
+echo "quiet: #{lines.size} #{lines.last}"
+echo "silver: #{Lich::Util.silver_count}"
+begin
+  Lich::Util.quiet_command_xml('exp', /Level:/)
+rescue NotImplementedError => e
+  echo "xml: #{e.message[/reads the game's markup/]}"
+end

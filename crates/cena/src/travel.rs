@@ -36,7 +36,7 @@ use std::sync::Arc;
 use crate::commands::{Commands, Took};
 use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command};
 use cena_session::command::claimant;
-use cena_session::{AuthorityToken, Notice, NoticeKind, SessionHandle, SessionObserver};
+use cena_session::{Notice, NoticeKind, SessionHandle, SessionObserver};
 
 /// Where the combined map is. No default: a wrong map is worse than none.
 ///
@@ -108,9 +108,10 @@ fn open_travel(
     {
         eprintln!("  !! [commands] no command line to give the symbol {symbol} to");
     }
+    crate::agent::control(handle, &observer, commands, state);
     let map = load_map(handle, configured);
     // Hunt walks with travel's driver, so it takes the same map, or none.
-    crate::hunt::open(
+    let hunt = crate::hunt::open(
         handle,
         observer.clone(),
         state,
@@ -119,6 +120,7 @@ fn open_travel(
         party,
     );
     let Some(map) = map else {
+        crate::perform::install(handle, &observer, None, hunt);
         // Travel's words are answered with why it cannot travel, and nothing
         // is sent. Every other word is the command line's to route.
         let told = handle.clone();
@@ -140,8 +142,9 @@ fn open_travel(
     let travel = Desk::new(
         map,
         cena_session::character_store::data_dir(),
-        AuthorityToken(2),
+        crate::perform::TRAVEL_TOKEN,
     );
+    crate::perform::install(handle, &observer, Some(Arc::clone(&travel)), hunt);
     let walking = Arc::clone(&travel);
     commands.stops("go2", Arc::new(move || walking.stop()));
     let handler = handle.clone();
@@ -205,7 +208,13 @@ async fn run_fresh(
     command: Command,
 ) {
     match observer.subscribe().await {
-        Ok(joined) => {
+        Ok((snapshot, events)) => {
+            // Rejoinable, so a lag is recovered from, not decided through
+            // (the crate review of 2026-09-28, R1).
+            let joined = (
+                snapshot,
+                cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
+            );
             if let Some(walk) = travel.run(handle, joined, command) {
                 walked(walk.await);
             }

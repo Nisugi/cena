@@ -1,9 +1,9 @@
 //! The `cena` binary: Hydra.
 //!
-//! One run path. `--character A --character B` names the characters to play,
-//! `--record` / `--no-record` says whether combat and loot go to the
-//! character's database (`setup::recording`), which `;loot` and `;combat`
-//! report on. They go on the session table (`play.rs`), shown in the window
+//! One run path. `--character A --character B` names the characters to play.
+//! Whether combat and loot go to a character's database, which `;loot` and
+//! `;combat` report on, is its own setting now, not `--record` (`general`,
+//! `plan/50` §7 step 3). They go on the session table (`play.rs`), shown in the window
 //! (`gui.rs`, `plan/47`) -- or, under `--headless`, in no window, and under
 //! `--web`, in the browser; with no window and none named, Hydra asks for one
 //! at the terminal. With no arguments at all, the window opens with no
@@ -37,6 +37,7 @@
 //! is a full re-login (`LiveConnector`). The wire is written to disk, with
 //! the credential redacted (`Redactions`).
 
+mod agent;
 mod architecture;
 mod ask;
 mod attention;
@@ -45,21 +46,30 @@ mod combat;
 mod commands;
 mod connector;
 mod frontend;
+mod general;
 mod glossary;
 mod gui;
 mod hunt;
+mod hunt_pages;
 mod hunt_setup;
 mod interrupt;
+mod launcher;
 mod learn;
+mod lich;
 mod loot;
 mod map_context;
+mod pages;
+mod perform;
 mod play;
+mod proven;
 mod relay;
 mod roster;
+mod scripts;
 mod secrets;
 mod setup;
 mod sorter;
 mod travel;
+mod travel_page;
 mod triggers;
 mod watch;
 
@@ -96,6 +106,18 @@ const BANNER_NOTE: &str = "The password is never logged, but it IS kept in memor
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     banner();
+    if let Some(retired) = setup::retired(std::env::args().skip(1)) {
+        eprintln!("{retired}");
+    }
+    // Before anything reads the data folder: the old one, where Hydra was
+    // started, copied into Hydra's own once (`plan/50` §7 step 7).
+    match cena_session::character_store::settle() {
+        Ok(Some(done)) => eprintln!("{done}"),
+        Ok(None) => {}
+        Err(why) => eprintln!(
+            "[data] the old data folder could not be copied into Hydra's own ({why}); it is still the one read"
+        ),
+    }
     // Built by hand rather than by `#[tokio::main]`: a window needs the main
     // thread, so the sessions run on the runtime's workers (`plan/47` §4).
     let runtime = tokio::runtime::Builder::new_multi_thread()

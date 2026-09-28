@@ -17,6 +17,7 @@
 //! moves here is the two halves of one turn -- bytes out ([`SessionActor::pump`])
 //! and bytes in ([`SessionActor::ingest`]).
 
+use super::lich_text::QuietWindow;
 use super::{Envelope, Event, SessionActor, WRITE_DEADLINE};
 use crate::command::{Origin, Outcome, Sent};
 use cena_platform::ByteSource;
@@ -267,11 +268,13 @@ impl<S: ByteSource> SessionActor<S> {
     /// what observes the close -- see [`SessionActor::quitting`]. What this
     /// does is put the command on the wire and arm the deadline.
     ///
-    /// A second quit while one is pending is ignored rather than re-sent: the
-    /// server has already been asked, and sending `quit` twice against a
-    /// type-ahead buffer of 2 would spend a slot for nothing (`plan/16` §5.2b).
-    /// The newer caller is answered when the first one resolves, so nobody is
-    /// left waiting on a reply that never comes.
+    /// A second quit while one is pending is not re-sent: the server has
+    /// already been asked, and sending `quit` twice against a type-ahead
+    /// buffer of 2 would spend a slot for nothing (`plan/16` §5.2b). The newer
+    /// caller waits for the first one's verdict and is told the same, so
+    /// `Acknowledged` always means the server closed. It was told
+    /// `Acknowledged` at once, while the server had said nothing
+    /// (the crate review of 2026-09-28, R7).
     /// Returns `false` if the write failed, which means **the connection is
     /// gone** and the caller must end it rather than keep reading.
     pub(super) async fn begin_quit(
@@ -280,14 +283,8 @@ impl<S: ByteSource> SessionActor<S> {
         reply: tokio::sync::oneshot::Sender<crate::command::Farewell>,
     ) -> bool {
         if let Some(pending) = self.quitting.as_mut() {
-            // Already asked. Whoever resolves first answers both -- but only
-            // one sender fits, so the later caller is told the same thing
-            // immediately rather than being dropped silently.
-            let _ = reply.send(if pending.reply.is_some() {
-                crate::command::Farewell::Acknowledged
-            } else {
-                crate::command::Farewell::Unsent
-            });
+            // Already asked: this caller waits for the same verdict.
+            pending.replies.push(reply);
             return true;
         }
 
@@ -331,7 +328,7 @@ impl<S: ByteSource> SessionActor<S> {
                 .unwrap_or_else(|| {
                     tokio::time::Instant::now() + std::time::Duration::from_hours(24)
                 }),
-            reply: Some(reply),
+            replies: vec![reply],
         });
         true
     }
@@ -390,7 +387,7 @@ impl<S: ByteSource> SessionActor<S> {
         if self.quitting.is_some() {
             return Sent::Dead;
         }
-        if origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
+        if origin.waits_for_ready() && !self.lifecycle.behaviors_may_run() {
             return Sent::Refused(Refusal::Transient);
         }
         // The gate (`gate.rs`).
@@ -421,11 +418,11 @@ impl<S: ByteSource> SessionActor<S> {
         self.recorder.outbound(&message);
         self.log_wire(false, &message);
         self.log(&format!("send_now {origin:?} {line}"));
-        let _ = self.events.send(Event::Sent {
+        let cursor = self.events.numbered(Event::Sent {
             line: line.to_owned(),
             origin,
         });
-        Sent::Ok { at }
+        Sent::Ok { at, cursor }
     }
 
     /// Accept a command, or refuse it because the session is not `Ready`.
@@ -448,7 +445,7 @@ impl<S: ByteSource> SessionActor<S> {
             let _ = envelope.reply.send(Outcome::Disconnected);
             return;
         }
-        if envelope.origin.is_behavior() && !self.lifecycle.behaviors_may_run() {
+        if envelope.origin.waits_for_ready() && !self.lifecycle.behaviors_may_run() {
             let _ = envelope
                 .reply
                 .send(Outcome::Refused(crate::command::Refusal::Transient));
@@ -558,8 +555,15 @@ impl<S: ByteSource> SessionActor<S> {
                 envelope.matcher,
             );
             if envelope.quiet {
-                self.quiet_window = true;
-                let _ = self.events.send(Event::Quiet(true));
+                // With the player's Lich showing the text, its copy of the
+                // report comes after the window: kept out of it here instead
+                // (`lich_text.rs`).
+                self.quiet_window = Some(if self.events.lich_attached() {
+                    QuietWindow::Kept
+                } else {
+                    let _ = self.events.send(Event::Quiet(true));
+                    QuietWindow::Told
+                });
             }
         }
         // `take_next` drops a window whose caller stopped waiting, so a quiet
@@ -571,8 +575,10 @@ impl<S: ByteSource> SessionActor<S> {
     /// Say a quiet window is over, once it is. Its report is done, and what
     /// follows is the story again.
     fn end_quiet_window(&mut self) {
-        if self.quiet_window && !self.queue.window_is_open() {
-            self.quiet_window = false;
+        if self.quiet_window.is_some()
+            && !self.queue.window_is_open()
+            && self.quiet_window.take() == Some(QuietWindow::Told)
+        {
             let _ = self.events.send(Event::Quiet(false));
         }
     }
@@ -619,6 +625,11 @@ impl<S: ByteSource> SessionActor<S> {
 
     pub(super) fn ingest(&mut self, chunk: &[u8]) {
         self.recorder.inbound(chunk);
+        // The player's Lich (`plan/51`) takes the game's bytes as they came,
+        // as the recorder does: it forwards them, and reads none here. What
+        // it shows of them is the character's text (`lich_text.rs`).
+        self.take_lich_text();
+        let lich = self.events.wire(chunk);
         self.log_wire(true, chunk);
         self.readiness.bytes_arrived();
         for frame in self.parser.push_bytes(chunk) {
@@ -697,9 +708,16 @@ impl<S: ByteSource> SessionActor<S> {
             }
             // Read before the frame is moved into its event; acted on below.
             let completes_burst = self.completes_burst(&frame);
+            let prompt = match &frame {
+                Frame::Prompt { text, .. } if !lich => Some(text.clone()),
+                _ => None,
+            };
             let _ = self.events.send(Event::Frame(Box::new(frame)));
+            if let Some(prompt) = prompt {
+                let _ = self.events.send(Event::Prompt(prompt));
+            }
             if let Some(line) = line {
-                self.publish_line(line);
+                self.publish_line(line, lich);
             }
             if terminator {
                 // before the `send_now` early-out below: a chunk closed

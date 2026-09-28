@@ -37,6 +37,10 @@ pub(crate) struct Entry {
     pub(crate) account: String,
     /// The game code it logs in to (`GS3` is Prime).
     pub(crate) game_code: String,
+    /// Starred in the window's launcher, which lists it first (`plan/49`
+    /// Stage C). Absent from a roster written before there were favourites.
+    #[serde(default)]
+    pub(crate) favourite: bool,
 }
 
 impl Entry {
@@ -46,6 +50,20 @@ impl Entry {
             character: typed.character.clone(),
             account: typed.account.clone(),
             game_code: typed.game_code.clone(),
+            favourite: false,
+        }
+    }
+
+    /// This character as the window's launcher shows it (`plan/49` Stage
+    /// C), with `kept`, whether its account's password is: never the
+    /// password.
+    pub(crate) fn card(&self, kept: bool) -> cena_ui::RosterCard {
+        cena_ui::RosterCard {
+            character: self.character.clone(),
+            account: self.account.clone(),
+            game: self.game_code.clone(),
+            kept,
+            favourite: self.favourite,
         }
     }
 }
@@ -77,7 +95,11 @@ fn load(dir: &Path) -> io::Result<File> {
 /// The file cannot be read, or the name is on more than one game and did
 /// not say which.
 pub(crate) fn find(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
-    let file = load(dir)?;
+    find_in(&load(dir)?, name)
+}
+
+/// [`find`], in `file` as it was read.
+fn find_in(file: &File, name: &str) -> io::Result<Option<Entry>> {
     if let Some((game, character)) = name.split_once(':') {
         return Ok(file.characters.get(&key(game, character)).cloned());
     }
@@ -112,16 +134,108 @@ pub(crate) fn all(dir: &Path) -> io::Result<Vec<Entry>> {
     Ok(load(dir)?.characters.into_values().collect())
 }
 
-/// Remember `entry`, replacing what was known of that character.
+/// Remember `entry`, replacing what was known of that character -- but for
+/// its star, which a login does not know and must not undo.
 ///
 /// # Errors
 ///
 /// The file cannot be read or written.
-pub(crate) fn record(dir: &Path, entry: Entry) -> io::Result<()> {
-    let mut file = load(dir)?;
+pub(crate) fn record(dir: &Path, mut entry: Entry) -> io::Result<()> {
+    changing(dir, || {
+        let mut file = load(dir)?;
+        let key = key(&entry.game_code, &entry.character);
+        entry.favourite |= file
+            .characters
+            .get(&key)
+            .is_some_and(|known| known.favourite);
+        file.characters.insert(key, entry);
+        save(dir, file)
+    })
+}
+
+/// Take the character `name` means off the roster (`find`'s names): the
+/// entry it had, or `None` when it had none.
+///
+/// # Errors
+///
+/// The file cannot be read or written, or the name is ambiguous.
+pub(crate) fn forget(dir: &Path, name: &str) -> io::Result<Option<Entry>> {
+    changing(dir, || {
+        let mut file = load(dir)?;
+        let Some(entry) = find_in(&file, name)? else {
+            return Ok(None);
+        };
+        file.characters
+            .remove(&key(&entry.game_code, &entry.character));
+        save(dir, file)?;
+        Ok(Some(entry))
+    })
+}
+
+/// Star the character `name` means, or unstar it: its entry as it is now,
+/// or `None` when it has none.
+///
+/// # Errors
+///
+/// The file cannot be read or written, or the name is ambiguous.
+pub(crate) fn favourite(dir: &Path, name: &str, star: bool) -> io::Result<Option<Entry>> {
+    changing(dir, || {
+        let mut file = load(dir)?;
+        let Some(mut entry) = find_in(&file, name)? else {
+            return Ok(None);
+        };
+        entry.favourite = star;
+        file.characters
+            .insert(key(&entry.game_code, &entry.character), entry.clone());
+        save(dir, file)?;
+        Ok(Some(entry))
+    })
+}
+
+/// The characters on `roster` the hub may start: not `running` -- each a
+/// game and a name -- and with a password `saved` for its account. Each by
+/// its name, or as `GAME:Name` when the roster has the name on more than one
+/// game. Running is by game and name: a character of one name on another
+/// game is not this one (the crate review of 2026-09-28, R6: it hid it).
+pub(crate) fn available(
+    roster: &[Entry],
+    running: &[(String, String)],
+    saved: impl Fn(&str) -> bool,
+) -> Vec<String> {
+    roster
+        .iter()
+        .filter(|e| {
+            !running.iter().any(|(game, character)| {
+                game.eq_ignore_ascii_case(&e.game_code)
+                    && character.eq_ignore_ascii_case(&e.character)
+            })
+        })
+        .filter(|e| saved(&e.account))
+        .map(|e| {
+            let twice = roster
+                .iter()
+                .filter(|other| other.character.eq_ignore_ascii_case(&e.character))
+                .count()
+                > 1;
+            if twice {
+                format!("{}:{}", e.game_code, e.character)
+            } else {
+                e.character.clone()
+            }
+        })
+        .collect()
+}
+
+/// Run `change` -- a read of the roster, a change and its write -- with no
+/// other change to the file between: a login records its character while
+/// the launcher stars another, and each keeps its change
+/// (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
+fn changing<T>(dir: &Path, change: impl FnOnce() -> T) -> T {
+    cena_session::store::changing(&dir.join(FILENAME), change)
+}
+
+fn save(dir: &Path, mut file: File) -> io::Result<()> {
     file.schema_version = SCHEMA_VERSION;
-    file.characters
-        .insert(key(&entry.game_code, &entry.character), entry);
     std::fs::create_dir_all(dir)?;
     cena_session::store::save_json(dir, &dir.join(FILENAME), &file)
 }
@@ -135,6 +249,7 @@ mod tests {
             character: character.to_owned(),
             account: account.to_owned(),
             game_code: game.to_owned(),
+            favourite: false,
         }
     }
 
@@ -177,5 +292,120 @@ mod tests {
             Some("ACCT2".to_owned())
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A star outlives the next login, which does not know of it; one
+    /// character of a name shared across games is starred or forgotten
+    /// alone; and a name the roster has not is said to be absent.
+    #[test]
+    fn a_star_outlives_a_login_and_forgetting_takes_one() {
+        let dir = scratch("stars");
+        record(&dir, entry("GS3", "Nisugi", "ACCT1")).expect("recorded");
+        record(&dir, entry("GSX", "Nisugi", "ACCT2")).expect("recorded");
+        let starred = favourite(&dir, "gs3:nisugi", true).expect("starred");
+        assert_eq!(starred.map(|e| e.character), Some("Nisugi".to_owned()));
+        record(&dir, entry("GS3", "Nisugi", "ACCT1")).expect("logged in again");
+        let starred = |name| find(&dir, name).ok().flatten().map(|e| e.favourite);
+        assert_eq!(starred("GS3:Nisugi"), Some(true), "the login kept the star");
+        assert_eq!(
+            starred("GSX:Nisugi"),
+            Some(false),
+            "the other game's is apart"
+        );
+
+        favourite(&dir, "GS3:Nisugi", false).expect("unstarred");
+        assert_eq!(starred("GS3:Nisugi"), Some(false));
+
+        let gone = forget(&dir, "GSX:Nisugi").expect("forgotten");
+        assert_eq!(gone.map(|e| e.account), Some("ACCT2".to_owned()));
+        assert_eq!(all(&dir).map(|all| all.len()).ok(), Some(1));
+        assert_eq!(forget(&dir, "GSX:Nisugi").ok(), Some(None), "not there");
+        assert_eq!(favourite(&dir, "Stranger", true).ok(), Some(None));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A launcher's card says each of the entry's facts, and whether the
+    /// password is kept as it was told.
+    #[test]
+    fn a_card_is_the_entry_and_whether_it_is_kept() {
+        let mut starred = entry("GSX", "Nisugi", "ACCT2");
+        starred.favourite = true;
+        assert_eq!(
+            starred.card(true),
+            cena_ui::RosterCard {
+                character: "Nisugi".to_owned(),
+                account: "ACCT2".to_owned(),
+                game: "GSX".to_owned(),
+                kept: true,
+                favourite: true,
+            }
+        );
+        assert!(!entry("GS3", "Nerten", "ACCT1").card(false).kept);
+    }
+
+    /// Run `meanwhile` on another thread while a change to the roster is
+    /// being made -- the file read, and written 200 ms later with Nisugi
+    /// starred -- and wait for both.
+    fn during_a_star(
+        dir: &Path,
+        meanwhile: impl FnOnce(std::path::PathBuf) -> io::Result<()> + Send + 'static,
+    ) -> io::Result<()> {
+        let other = cena_session::store::changing(&dir.join(FILENAME), || {
+            let mut file = load(dir)?;
+            let other = {
+                let dir = dir.to_owned();
+                std::thread::spawn(move || meanwhile(dir))
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            if let Some(nisugi) = file.characters.get_mut("gs3:nisugi") {
+                nisugi.favourite = true;
+            }
+            save(dir, file)?;
+            Ok::<_, io::Error>(other)
+        })?;
+        other
+            .join()
+            .map_err(|_| io::Error::other("its thread panicked"))?
+    }
+
+    /// A login's entry, a star and a forgetting, each made while another
+    /// change to the roster is being made, wait for it, and every change is
+    /// kept (the crate review of 2026-09-28, R5).
+    #[test]
+    fn a_change_made_meanwhile_waits_and_both_are_kept() -> io::Result<()> {
+        let dir = scratch("meanwhile");
+        record(&dir, entry("GS3", "Nisugi", "ACCT1"))?;
+        record(&dir, entry("GS3", "Nerten", "ACCT2"))?;
+        during_a_star(&dir, |dir| record(&dir, entry("GS3", "Dicate", "ACCT3")))?;
+        assert!(find(&dir, "Dicate")?.is_some(), "the login's entry");
+        during_a_star(&dir, |dir| favourite(&dir, "Nerten", true).map(drop))?;
+        assert!(
+            find(&dir, "Nerten")?.is_some_and(|e| e.favourite),
+            "the star"
+        );
+        during_a_star(&dir, |dir| forget(&dir, "Dicate").map(drop))?;
+        assert_eq!(find(&dir, "Dicate")?, None, "the forgetting");
+        assert!(
+            find(&dir, "Nisugi")?.is_some_and(|e| e.favourite),
+            "and the first"
+        );
+        std::fs::remove_dir_all(&dir)
+    }
+
+    /// A character of one name on two games: the one playing is not
+    /// offered, the other is, by its game (the crate review of 2026-09-28, R6).
+    #[test]
+    fn one_name_on_two_games_is_two_characters() {
+        let roster = [
+            entry("GS3", "Nisugi", "ACCT1"),
+            entry("GSF", "Nisugi", "ACCT2"),
+            entry("GS3", "Nerten", "ACCT3"),
+            entry("GS3", "Dicate", "LOCKED"),
+        ];
+        let running = [("GS3".to_owned(), "nisugi".to_owned())];
+        assert_eq!(
+            available(&roster, &running, |account| account != "LOCKED"),
+            ["GSF:Nisugi", "Nerten"]
+        );
     }
 }

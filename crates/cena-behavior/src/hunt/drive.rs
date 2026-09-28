@@ -246,6 +246,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             if let Err(gone) = self.drain() {
                 return HuntEnd::Stopped(gone);
             }
+            if let Err(gone) = self.caught_up().await {
+                return HuntEnd::Stopped(gone);
+            }
             if self.down {
                 if let Err(end) = self.hold(BEAT).await {
                     return end;
@@ -282,6 +285,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 self.machine.incidents(&incidents);
             }
             let now = self.state.game_time_now();
+            // Held, resumed or retreating, as whoever steers it said last.
+            self.machine.heed();
             let said = self.machine.tick(
                 &self.state,
                 Here {
@@ -293,6 +298,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             );
             self.publish(here, State::Ready);
             self.report(&said);
+            // How it is getting on, for whoever steers it.
+            self.machine.report_progress(now);
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));
@@ -390,7 +397,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             };
             match event {
                 Ok(event) => self.fold(&event).map_err(HuntEnd::Stopped)?,
-                Err(RecvError::Lagged(_)) => {}
+                Err(RecvError::Lagged(_)) => self.caught_up().await.map_err(HuntEnd::Stopped)?,
                 Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
             }
         }

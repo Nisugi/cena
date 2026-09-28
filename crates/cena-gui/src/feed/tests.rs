@@ -1,7 +1,9 @@
 use super::*;
 use cena_session::{GameState, SessionId};
 use std::collections::VecDeque;
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
+
+use cena_ui::{LifecycleView, SessionCard};
 
 fn snapshot(cursor: u64, lifecycle: State, room: Option<&str>) -> Snapshot {
     let mut state = GameState::default();
@@ -61,7 +63,11 @@ fn start_merging(
     script: &Arc<Script>,
     merged: &Arc<Mutex<MergedHistory>>,
 ) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
-    let seat = Arc::new(Seat::new(handle(), "Ashryn"));
+    let seat = Arc::new(Seat::new(
+        handle(),
+        "Ashryn",
+        cena_session::DEFAULT_GAME_CODE,
+    ));
     let answering = Arc::clone(script);
     let ears = Ears {
         seat: Arc::clone(&seat),
@@ -141,6 +147,7 @@ async fn the_card_follows_its_session() {
     let now = card(&seat);
     assert_eq!(now.lifecycle, LifecycleView::Ready);
     assert_eq!(now.room.as_deref(), Some("Rawknuckle's"));
+    assert_eq!(now.game, seat.game, "its game kept: the launcher reads it");
 }
 
 /// A busy owner is asked again; an owner gone ends the feed, and the card
@@ -272,7 +279,12 @@ async fn a_feed_that_fell_behind_marks_the_hole() {
             .send(observed(cursor, said("", &format!("line {cursor}"))));
     }
     settle().await;
-    assert!(lock(&seat.story).lines.contains(&crate::story::Shown::Gap));
+    assert!(
+        lock(&seat.story)
+            .lines
+            .iter()
+            .any(|(_, shown)| *shown == crate::story::Shown::Gap)
+    );
 }
 
 #[test]
@@ -291,4 +303,43 @@ fn a_retry_says_its_attempt_and_delay() {
             detail: Some("timed out".to_owned()),
         }
     );
+}
+
+/// The live `R>` is settled when a later snapshot says roundtime has run
+/// out, with no event to say so: the game sends no prompt for its end
+/// (`plan/15` §2a.1).
+#[tokio::test(start_paused = true)]
+async fn the_live_prompt_settles_as_roundtime_ends() {
+    let ending = |cursor, ends| {
+        let mut shot = snapshot(cursor, State::Ready, None);
+        shot.state.apply(&cena_session::Frame::Prompt {
+            time: "1000".to_owned(),
+            text: "R>".to_owned(),
+        });
+        shot.state.roundtime_ends = Some(ends);
+        shot
+    };
+    // Out of roundtime, so nothing is asked for until the events; then in
+    // it, asked after each tick; then out again.
+    let script = Script::new([
+        Ok(ending(0, 1_000)),
+        Ok(ending(2, 1_003)),
+        Ok(ending(2, 1_000)),
+    ]);
+    let (seat, _task) = start(&script);
+    settle().await;
+    let _ = script.events.send(observed(1, said("", "You swing.")));
+    let prompt = cena_session::Frame::Prompt {
+        time: "1000".to_owned(),
+        text: "R>".to_owned(),
+    };
+    let _ = script
+        .events
+        .send(observed(2, Event::Frame(Box::new(prompt))));
+    settle().await;
+    let last = lock(&seat.story)
+        .lines
+        .back()
+        .map(|(_, shown)| shown.clone());
+    assert_eq!(last, Some(crate::story::Shown::Prompt(">".to_owned())));
 }

@@ -14,7 +14,10 @@ use std::time::{Duration, Instant};
 use cena_session::{
     Notice, NoticeKind, Outcome, SessionHandle, SessionId, SessionObserver, Snapshot,
 };
-use cena_ui::{HubControl, HubRequest, HuntView, MergedHistory, MergedLine, SessionCard};
+use cena_ui::settings::Page;
+use cena_ui::{
+    HubControl, HubRequest, HuntView, Listing, MergedHistory, MergedLine, RosterCard, SessionCard,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::feed;
@@ -46,6 +49,12 @@ struct Shared {
     control: Mutex<Option<HubControl>>,
     /// Characters the hub may start, as the binary last said.
     offered: Mutex<Vec<String>>,
+    /// Every character on the roster, as the binary last said.
+    roster: Mutex<Vec<RosterCard>>,
+    /// The last account whose characters the binary listed.
+    listing: Mutex<Option<Listing>>,
+    /// The settings menu's pages the binary last gave, and for whom.
+    settings: Mutex<Option<(String, Vec<Page>)>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
     /// The binary's answer to the last request, and when it came.
@@ -89,14 +98,20 @@ pub(crate) struct Seat {
     pub(crate) id: SessionId,
     /// The character, as the table named it.
     pub(crate) name: String,
+    /// The game it is on, by its code: its layout is kept by game and name.
+    pub(crate) game: String,
 }
 
 impl Seat {
-    /// A seat for `handle`'s session, named `name`, with nothing seen yet.
-    pub(crate) fn new(handle: SessionHandle, name: &str) -> Self {
+    /// A seat for `handle`'s session, named `name`, on the game `game`
+    /// (its code), with nothing seen yet.
+    pub(crate) fn new(handle: SessionHandle, name: &str, game: &str) -> Self {
         let id = handle.session();
         Self {
-            card: Mutex::new(SessionCard::of(id.0.to_string(), name.to_owned(), None)),
+            card: Mutex::new(SessionCard {
+                game: game.to_owned(),
+                ..SessionCard::of(id.0.to_string(), name.to_owned(), None)
+            }),
             snapshot: Mutex::default(),
             story: Mutex::default(),
             hunt: Mutex::default(),
@@ -104,6 +119,24 @@ impl Seat {
             stop: CancellationToken::new(),
             id,
             name: name.to_owned(),
+            game: game.to_owned(),
+        }
+    }
+
+    /// It, as `from`'s window offers it to follow: by its name on the same
+    /// game, and as `GAME:Name` on another, so one name on two games is two
+    /// characters to follow, and a widget following a name follows the one
+    /// on its own window's game (the crate review of 2026-09-28, R6).
+    pub(crate) fn seen_from(&self, from: &Seat) -> crate::widget::Character {
+        let name = if self.game.eq_ignore_ascii_case(&from.game) {
+            self.name.clone()
+        } else {
+            format!("{}:{}", self.game, self.name)
+        };
+        crate::widget::Character {
+            name,
+            snapshot: lock(&self.snapshot).clone(),
+            hunt: lock(&self.hunt).clone(),
         }
     }
 
@@ -124,6 +157,9 @@ impl Seat {
 pub(crate) struct Glance {
     pub(crate) cards: Vec<SessionCard>,
     pub(crate) offered: Vec<String>,
+    pub(crate) roster: Vec<RosterCard>,
+    pub(crate) listing: Option<Listing>,
+    pub(crate) settings: Option<(String, Vec<Page>)>,
     pub(crate) merged: Vec<MergedLine>,
     /// The binary's last answer, while it is fresh, and how long it has left.
     pub(crate) said: Option<(String, Duration)>,
@@ -141,6 +177,9 @@ impl Sessions {
                 closing: std::sync::atomic::AtomicBool::new(false),
                 control: Mutex::default(),
                 offered: Mutex::default(),
+                roster: Mutex::default(),
+                listing: Mutex::default(),
+                settings: Mutex::default(),
                 merged: Arc::default(),
                 said: Mutex::default(),
             }),
@@ -149,8 +188,14 @@ impl Sessions {
 
     /// Show `handle`'s session as `name`, the character, and start following
     /// it. Replaces an earlier attachment of the same session.
-    pub fn attach(&self, name: &str, observer: SessionObserver, handle: &SessionHandle) {
-        let seat = Arc::new(Seat::new(handle.clone(), name));
+    pub fn attach(
+        &self,
+        name: &str,
+        game: &str,
+        observer: SessionObserver,
+        handle: &SessionHandle,
+    ) {
+        let seat = Arc::new(Seat::new(handle.clone(), name, game));
         {
             let mut seats = self.seats();
             if let Some(old) = seats.iter().position(|old| old.id == seat.id) {
@@ -203,6 +248,27 @@ impl Sessions {
         self.shared.window.wake();
     }
 
+    /// Every character on the roster, for the Not launched and New login
+    /// tabs (`plan/49` Stage C): never a password, only whether one is kept.
+    pub fn roster(&self, roster: Vec<RosterCard>) {
+        *lock(&self.shared.roster) = roster;
+        self.shared.window.wake();
+    }
+
+    /// The characters an account has on one game, as the login service
+    /// listed them, for the New login tab (`plan/49` Stage C step 7).
+    pub fn characters(&self, listing: Listing) {
+        *lock(&self.shared.listing) = Some(listing);
+        self.shared.window.wake();
+    }
+
+    /// The settings menu's pages for `character` (`GAME:Name`), as the
+    /// binary built them from its files (`plan/50` §7 step 1).
+    pub fn settings(&self, character: String, pages: Vec<Page>) {
+        *lock(&self.shared.settings) = Some((character, pages));
+        self.shared.window.wake();
+    }
+
     /// Close the window: the run is over. Called by the binary once every
     /// character has quit, however the ending began.
     pub fn close(&self) {
@@ -243,7 +309,10 @@ impl Sessions {
         let shared = Arc::clone(&self.shared);
         self.shared.runtime.spawn(async move {
             let said = control(request).await;
-            *lock(&shared.said) = Some((said, Instant::now()));
+            // An empty answer says nothing: what was asked for is shown.
+            if !said.is_empty() {
+                *lock(&shared.said) = Some((said, Instant::now()));
+            }
             shared.window.wake();
         });
     }
@@ -264,6 +333,9 @@ impl Sessions {
         Glance {
             cards: self.cards(),
             offered: lock(&self.shared.offered).clone(),
+            roster: lock(&self.shared.roster).clone(),
+            listing: lock(&self.shared.listing).clone(),
+            settings: lock(&self.shared.settings).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
             said,
         }
@@ -278,17 +350,35 @@ impl Sessions {
     /// needs: nothing here can make a live session.
     #[cfg(test)]
     pub(crate) fn seat_for_test(&self, handle: SessionHandle, name: &str) -> Arc<Seat> {
-        let seat = Arc::new(Seat::new(handle, name));
+        let seat = Arc::new(Seat::new(handle, name, cena_session::DEFAULT_GAME_CODE));
         self.seats().push(Arc::clone(&seat));
         seat
     }
 
     /// Send `line` on `seat`'s character as the player typed it, on the
-    /// connection its window last saw: Hydra's command line first, then the
-    /// game (`SessionHandle::send_manual_at`). It is echoed in the story at
+    /// connection its window last saw: a script's input hooks first, then
+    /// Hydra's command line, then the game (`SessionHandle::send_typed_at`).
+    /// It is echoed in the story at
     /// once; a line that may not have gone is said in Hydra's pane.
     pub(crate) fn send(&self, seat: &Arc<Seat>, line: String) {
+        if refused(seat, &line) {
+            return;
+        }
         lock(&seat.story).typed(&line);
+        self.deliver(seat, line);
+    }
+
+    /// Send `line` as [`Self::send`] does, but not echoed in the story: a
+    /// menu asked for on a click, which the player did not type.
+    pub(crate) fn send_quietly(&self, seat: &Arc<Seat>, line: String) {
+        if refused(seat, &line) {
+            return;
+        }
+        self.deliver(seat, line);
+    }
+
+    /// `line`, one command, sent on the connection `seat`'s window last saw.
+    fn deliver(&self, seat: &Arc<Seat>, line: String) {
         let Some(generation) = lock(&seat.snapshot).as_ref().map(|shot| shot.generation) else {
             lock(&seat.story).tell(Notice::line(
                 NoticeKind::Warn,
@@ -300,7 +390,7 @@ impl Sessions {
         self.shared.runtime.spawn(async move {
             let outcome = seat
                 .handle
-                .send_manual_at(generation, &line, SEND_DEADLINE)
+                .send_typed_at(generation, &line, SEND_DEADLINE)
                 .await;
             if let Some(why) = unsent(&outcome) {
                 lock(&seat.story).tell(Notice::line(NoticeKind::Warn, why));
@@ -350,6 +440,17 @@ pub(crate) fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+/// Whether `line` is refused, not one command -- a key bound to two lines,
+/// say -- and said so in Hydra's pane: everything the window sends passes
+/// here (`cena_ui::validate_line`; the crate review of 2026-09-28, R10).
+fn refused(seat: &Seat, line: &str) -> bool {
+    let Err(why) = cena_ui::validate_line(line) else {
+        return false;
+    };
+    lock(&seat.story).tell(Notice::line(NoticeKind::Warn, format!("Not sent: {why}.")));
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,5 +472,35 @@ mod tests {
         // It goes when it said it would: the window's next frame is then.
         assert!(sessions.glance_at(almost + left).said.is_none());
         assert!(sessions.glance_at(after + SAID_FOR).said.is_none());
+    }
+
+    /// A handle with no session behind it.
+    fn handle() -> SessionHandle {
+        SessionHandle::new(
+            tokio::sync::mpsc::channel(1).0,
+            cena_session::GenerationCell::default(),
+            tokio::sync::broadcast::channel(1).0,
+        )
+    }
+
+    /// Another window's character is offered to follow by its name on the
+    /// same game, and with its game on another: one name on two games is
+    /// two characters, and a name alone follows the one on the window's own
+    /// game (the crate review of 2026-09-28, R6).
+    #[test]
+    fn one_name_on_another_game_is_followed_by_its_game() {
+        let seat = |name: &str, game: &str| Seat::new(handle(), name, game);
+        let (mine, same, other) = (
+            seat("Ashryn", "GS3"),
+            seat("Baelor", "GS3"),
+            seat("Baelor", "GSF"),
+        );
+        assert_eq!(same.seen_from(&mine).name, "Baelor");
+        assert_eq!(other.seen_from(&mine).name, "GSF:Baelor");
+        assert_eq!(
+            lock(&other.card).game,
+            "GSF",
+            "its card says its game, for the launcher"
+        );
     }
 }

@@ -17,7 +17,13 @@ serde_json.workspace = true
 # and the triggers are; each key named by winit's code for it, the version
 # eframe already builds (no feature of its own, so nothing new is built).
 toml.workspace = true
+# A bar's overlay, an image the player puts in the data folder: the version
+# and the one format eframe already builds, so nothing new is built.
+image = { version = "0.25", default-features = false, features = ["png"] }
 winit = { version = "0.30", default-features = false }
+# A story's line stamped with the player's clock as it arrives (the author,
+# 2026-09-28): the version cena-platform's log sink already builds.
+jiff = "0.2.37"
 # Each character's feed runs on the binary's runtime, beside its session
 # (plan/47 §4): the window has the main thread, the sessions the workers.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
@@ -31,6 +37,9 @@ egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
 # `test-util` for `start_paused`: a feed's retries and ticks run in virtual
 # time.
 tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread", "test-util", "time"] }
+# To hear egui's own debug warning that a widget changed its id in place,
+# which a debug build draws as a red box (`tests/hub.rs`).
+log = { version = "0.4", features = ["std"] }
 
 [lints]
 workspace = true

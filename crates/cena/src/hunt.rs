@@ -15,25 +15,29 @@
 //! the binary (`CLAUDE.md`, Credentials). What it calls is tested in
 //! `cena-behavior`; what is untested is the wiring here.
 
-use std::collections::BTreeMap;
 use std::io;
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 
+mod caster;
 mod panel;
-mod settings;
+mod party;
+pub(crate) mod settings;
 
 use crate::commands::{Commands, Took};
-use cena_behavior::group::{Boards, Place};
+use cena_behavior::group::Place;
 use cena_behavior::hunt::{self, Command, Desk, LoadError, parse_command};
 use cena_behavior::loot;
-use cena_behavior::spellcaster::{self, CasterProfile};
-use cena_session::{AuthorityToken, GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
+use cena_behavior::spellcaster;
+use cena_session::{GameState, Notice, NoticeKind, SessionHandle, SessionObserver};
+pub(crate) use party::Party;
+use party::{form, take_seat};
 
 /// Register hunt's words. The character's instance and name, when the login
 /// has said them, choose the character level of the chain; `map` is the one
 /// travel loaded, and `None` when travel has none; `party` is what every
-/// character's hunt shares.
+/// character's hunt shares. The desk, when there is a map, for what an agent
+/// runs (`crate::perform`).
 pub(crate) fn open(
     handle: &SessionHandle,
     observer: SessionObserver,
@@ -41,7 +45,7 @@ pub(crate) fn open(
     commands: &Commands,
     map: Option<Arc<crate::map_context::MapContext>>,
     party: &Party,
-) {
+) -> Option<Arc<Desk>> {
     let who = state
         .character
         .instance
@@ -52,7 +56,7 @@ pub(crate) fn open(
         let desk = Desk::with_map_sha256(
             Arc::clone(&context.map),
             dir.clone(),
-            AuthorityToken(3),
+            crate::perform::HUNT_TOKEN,
             context.sha256.clone(),
         );
         desk.group_on(Arc::clone(&party.boards));
@@ -61,23 +65,25 @@ pub(crate) fn open(
     if let Some(desk) = desk.clone() {
         commands.stops("hunt", Arc::new(move || desk.stop()));
     }
-    if let (Some(desk), Some((_, name))) = (&desk, &who) {
-        take_seat(party, name, desk, handle, &observer);
+    if let (Some(desk), Some(who)) = (&desk, &who) {
+        take_seat(party, who, desk, handle, &observer);
     }
     if let Some(desk) = &desk {
         panel::show(desk, handle.session(), party.window.as_ref());
     }
-    let leader = who.as_ref().map(|(_, name)| name.clone());
-    // The spellcaster profile, held so a typed line is judged without a
-    // file read, and read again after `;sc` changes it.
-    let caster = Arc::new(Mutex::new(read_caster(&dir, who.as_ref())));
+    let leader = who.clone();
+    // The spellcaster profile, held so a typed line is judged without
+    // reading the file, and read again when the file has changed: by `;sc`,
+    // the settings menu, or a hand (`plan/50` §2 item 3).
+    let caster = Arc::new(Mutex::new(caster::Caster::read(&dir, who.as_ref())));
     if let Some(desk) = desk.clone() {
         let (handler, observer, caster) = (handle.clone(), observer.clone(), Arc::clone(&caster));
+        let (dir, who) = (dir.clone(), who.clone());
         let took = handle.set_bare(Arc::new(move |line: &str| {
             let words = caster
                 .lock()
                 .ok()
-                .and_then(|profile| spellcaster::typed(&profile, line));
+                .and_then(|mut held| spellcaster::typed(held.current(&dir, who.as_ref()), line));
             words.is_some_and(|words| {
                 // Typed at the prompt: nobody waits for it.
                 drop(start(&desk, &handler, &observer, Command::Sc(words)));
@@ -90,7 +96,7 @@ pub(crate) fn open(
             );
         }
     }
-    let (handler, seats) = (handle.clone(), Arc::clone(&party.seats));
+    let (handler, seats, kept) = (handle.clone(), Arc::clone(&party.seats), desk.clone());
     commands.hunt(Arc::new(move |line: &str| {
         let command = match parse_command(line)? {
             Ok(command) => command,
@@ -135,130 +141,15 @@ pub(crate) fn open(
             // -- so not on the session's own thread; `run` names each.
             command => {
                 let (handle, who, dir) = (handler.clone(), who.clone(), dir.clone());
-                let caster = Arc::clone(&caster);
                 Took::Started(tokio::task::spawn_blocking(move || {
-                    let sc = matches!(command, Command::ScEdit(_));
                     run(&handle, &dir, who.as_ref(), command);
-                    if sc && let Ok(mut held) = caster.lock() {
-                        *held = read_caster(&dir, who.as_ref());
-                    }
                 }))
             }
         };
         Some(took)
     }));
     eprintln!("[hunt] ready: `hunt help` lists the commands and how to change a setting");
-}
-
-/// What every character's hunt in this Hydra shares: each group's board, so
-/// a leader's hunt and its followers' meet (`plan/39` §5), and each
-/// character's seat, so a leader can start its followers' hunts.
-///
-/// **Owned by the session table** (`play.rs`) and handed to each character's
-/// hunt as it opens. It was two process globals, which `plan/05` Rule 5.2
-/// forbids ("No process globals. None.") and `every_static_is_allowlisted`
-/// caught: shared state belongs to what owns the sessions, not to the process.
-#[derive(Clone)]
-pub(crate) struct Party {
-    boards: Arc<Boards>,
-    seats: Arc<Mutex<BTreeMap<String, Seat>>>,
-    /// The window, when there is one: each hunt's reports go to its Hunt
-    /// pane (`plan/47` step 8, `hunt/panel.rs`).
-    window: Option<cena_gui::Sessions>,
-}
-
-impl Party {
-    /// No groups and no seats yet; hunts shown in `window`, when there is one.
-    pub(crate) fn new(window: Option<cena_gui::Sessions>) -> Self {
-        Self {
-            boards: Boards::new(),
-            seats: Arc::default(),
-            window,
-        }
-    }
-
-    /// A character left the table: a leader can no longer start its hunt.
-    /// Without this, a stopped character's seat stayed, and `hunt ... with`
-    /// named it would have started a hunt on a session that was gone.
-    pub(crate) fn unseat(&self, name: &str) {
-        self.seats
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .remove(name);
-    }
-}
-
-/// A character's hunt desk and session: what a leader's `hunt <name> with`
-/// starts a follower's hunt on.
-#[derive(Clone)]
-struct Seat {
-    desk: Arc<Desk>,
-    handle: SessionHandle,
-    observer: SessionObserver,
-}
-
-/// This character's seat, for a leader to start its hunt from.
-fn take_seat(
-    party: &Party,
-    name: &str,
-    desk: &Arc<Desk>,
-    handle: &SessionHandle,
-    observer: &SessionObserver,
-) {
-    let seat = Seat {
-        desk: Arc::clone(desk),
-        handle: handle.clone(),
-        observer: observer.clone(),
-    };
-    party
-        .seats
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .insert(name.to_owned(), seat);
-}
-
-/// `hunt <name> with A B`: each named character's own hunt on the profile
-/// of that name, following `leader`; then the leader's, waiting for them
-/// (`plan/39` §8, question 2). A name this Hydra is not running is said,
-/// and hunted without.
-fn form(
-    seats: &Mutex<BTreeMap<String, Seat>>,
-    desk: &Arc<Desk>,
-    handle: &SessionHandle,
-    observer: &SessionObserver,
-    leader: &str,
-    name: String,
-    with: &[String],
-) -> tokio::task::JoinHandle<()> {
-    let seats = seats.lock().unwrap_or_else(PoisonError::into_inner).clone();
-    let mut followers = Vec::new();
-    for member in with {
-        match seats.get(member).filter(|_| member != leader) {
-            Some(seat) => {
-                drop(start_placed(
-                    &seat.desk,
-                    &seat.handle,
-                    &seat.observer,
-                    Command::Run(name.clone()),
-                    Place::Follow(leader.to_owned()),
-                ));
-                followers.push(member.clone());
-            }
-            None => handle.say(Notice::line(
-                NoticeKind::Warn,
-                format!(
-                    "Hunt: {member} is not a character this Hydra is running; hunting without them."
-                ),
-            )),
-        }
-    }
-    start_placed(
-        desk,
-        handle,
-        observer,
-        Command::Run(name),
-        Place::Lead(followers),
-    )
+    kept
 }
 
 /// Run `command` on the hunt desk, once the session can be read. The task
@@ -283,7 +174,13 @@ fn start_placed(
     let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
     tokio::spawn(async move {
         match observer.subscribe().await {
-            Ok(joined) => {
+            Ok((snapshot, events)) => {
+                // Rejoinable, so a lag is recovered from, not decided
+                // through (the crate review of 2026-09-28, R1).
+                let joined = (
+                    snapshot,
+                    cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
+                );
                 if let Some(run) = desk.run_placed(&handle, joined, command, place) {
                     let _ = run.await;
                 }
@@ -294,15 +191,6 @@ fn start_placed(
             )),
         }
     })
-}
-
-/// The character's spellcaster profile, or the default when there is no
-/// file or it does not read.
-fn read_caster(dir: &Path, who: Option<&(String, String)>) -> CasterProfile {
-    who.and_then(|(i, n)| spellcaster::path(dir, i, n))
-        .and_then(|path| std::fs::read_to_string(path).ok())
-        .and_then(|text| CasterProfile::parse(&text).ok())
-        .unwrap_or_default()
 }
 
 /// What is said to the player.
@@ -591,17 +479,8 @@ fn room(id: Option<u32>) -> String {
 /// The profiles there are.
 fn list(dir: &Path, say: Say<'_>) {
     let profiles = hunt::chain::profiles_dir(dir);
-    let mut names: Vec<String> = match std::fs::read_dir(&profiles) {
-        Ok(entries) => entries
-            .filter_map(Result::ok)
-            .map(|entry| entry.path())
-            .filter(|path| path.extension().is_some_and(|x| x == "toml"))
-            .filter_map(|path| {
-                path.file_stem()
-                    .map(|stem| stem.to_string_lossy().into_owned())
-            })
-            .collect(),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
+    let names = match hunt::chain::profile_names(dir) {
+        Ok(names) => names,
         Err(e) => {
             say(
                 NoticeKind::Error,
@@ -610,7 +489,6 @@ fn list(dir: &Path, say: Say<'_>) {
             return;
         }
     };
-    names.sort();
     if names.is_empty() {
         say(
             NoticeKind::Info,
@@ -633,9 +511,16 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
         );
         return;
     };
+    // Read, changed and written with no other change to the file between
+    // (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
+    cena_session::store::changing(&path, || keep_change(&path, words, say));
+}
+
+/// [`keep_edit`], on the file at `path`, its lock held.
+fn keep_change(path: &Path, words: &[String], say: Say<'_>) {
     // A file that is there and does not read is said, never written over
     // with the defaults (`plan/44` Q05).
-    let mut profile = match settings::stored(&path, cena_behavior::keep::KeepProfile::parse) {
+    let mut profile = match settings::stored(path, cena_behavior::keep::KeepProfile::parse) {
         Ok(profile) => profile,
         Err(why) => {
             return say(
@@ -662,7 +547,7 @@ fn keep_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: 
             let written = profile
                 .to_toml()
                 .map_err(io::Error::other)
-                .and_then(|text| cena_behavior::settings::save(&path, &text));
+                .and_then(|text| cena_behavior::settings::save(path, &text));
             match written {
                 Ok(()) => say(NoticeKind::Info, format!("Keep: {done}.")),
                 Err(e) => say(
@@ -685,11 +570,17 @@ fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Sa
         );
         return;
     };
-    let mut profile =
-        match settings::stored(&path, cena_behavior::spellcaster::CasterProfile::parse) {
-            Ok(profile) => profile,
-            Err(why) => return say(NoticeKind::Error, format!("Sc: nothing was changed: {why}")),
-        };
+    // As `keep_edit`'s.
+    cena_session::store::changing(&path, || sc_change(&path, words, say));
+}
+
+/// [`sc_edit`], on the file at `path`, its lock held.
+fn sc_change(path: &Path, words: &[String], say: Say<'_>) {
+    let mut profile = match settings::stored(path, cena_behavior::spellcaster::CasterProfile::parse)
+    {
+        Ok(profile) => profile,
+        Err(why) => return say(NoticeKind::Error, format!("Sc: nothing was changed: {why}")),
+    };
     let words: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     match cena_behavior::spellcaster::edit(&mut profile, &words) {
@@ -697,7 +588,7 @@ fn sc_edit(dir: &Path, who: Option<&(String, String)>, words: &[String], say: Sa
             let written = profile
                 .to_toml()
                 .map_err(io::Error::other)
-                .and_then(|text| cena_behavior::settings::save(&path, &text));
+                .and_then(|text| cena_behavior::settings::save(path, &text));
             match written {
                 Ok(()) => say(NoticeKind::Info, format!("Sc: {done}.")),
                 Err(e) => say(

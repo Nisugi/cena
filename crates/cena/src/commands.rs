@@ -61,8 +61,11 @@ pub(crate) const HELP: &[&str] = &[
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "multi help, foreach help   run commands several times, or once for each item",
+    "agent help       what an agent (a program such as Claude Code) may do with this character",
+    "lich help        run your own Lich for this character, and keep it on",
     "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
     "to <name> <command>, all <command>   send a command on another character, or on every one",
+    "<script> [args]  run one of your Lich scripts; k, l, p, u as in Lich. scripts: where they are; scripts import, scripts check",
 ];
 
 /// Whether a line, without its symbol, asks for [`HELP`].
@@ -87,7 +90,12 @@ pub(crate) struct Commands {
     sorter: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
+    agent: Arc<OnceLock<Handler>>,
+    /// The player's own Lich (`crate::lich`).
+    lich: Arc<OnceLock<Handler>>,
     relay: Arc<OnceLock<Starter>>,
+    /// The player's own scripts (`crate::scripts`): heard last of all.
+    scripts: Arc<OnceLock<Handler>>,
     /// What `;stop` stops: each family that starts something that goes on,
     /// by the word the player knows it by.
     stoppers: Arc<std::sync::Mutex<Vec<(&'static str, Stopper)>>>,
@@ -126,6 +134,10 @@ impl Commands {
                 Some("Travel")
             } else if cena_behavior::hunt::parse_command(line).is_some() {
                 Some("Hunt")
+            } else if line.split_whitespace().next() == Some("agent") {
+                Some("Agent")
+            } else if line.split_whitespace().next() == Some("lich") {
+                Some("Lich")
             } else {
                 None
             };
@@ -136,6 +148,14 @@ impl Commands {
                         "{family} is still starting; nothing was sent. Try again once logged in."
                     ),
                 ));
+                return Claimed::Done;
+            }
+            // The player's own scripts come last: a word of Hydra's, or of a
+            // family still starting, is never a script's (`plan/46` §10,
+            // question 5).
+            if let Some(scripts) = routes.scripts.get()
+                && scripts(line).is_some()
+            {
                 return Claimed::Done;
             }
             Claimed::Unknown
@@ -158,7 +178,14 @@ impl Commands {
                 return Some(took);
             }
         }
-        for family in [&self.loot, &self.combat, &self.sorter, &self.trigger] {
+        for family in [
+            &self.loot,
+            &self.combat,
+            &self.sorter,
+            &self.trigger,
+            &self.agent,
+            &self.lich,
+        ] {
             if let Some(handler) = family.get()
                 && handler(line).is_some()
             {
@@ -223,6 +250,20 @@ impl Commands {
         }
     }
 
+    /// Route `;agent` to `handler` from now on. Once, as for travel.
+    pub(crate) fn agent(&self, handler: Handler) {
+        if self.agent.set(handler).is_err() {
+            eprintln!("  !! [commands] agent was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;lich` to `handler` from now on. Once, as for travel.
+    pub(crate) fn lich(&self, handler: Handler) {
+        if self.lich.set(handler).is_err() {
+            eprintln!("  !! [commands] lich was registered twice; keeping the first");
+        }
+    }
+
     /// Route `;trigger` to `handler` from now on. Once, as for travel.
     pub(crate) fn trigger(&self, handler: Handler) {
         if self.trigger.set(handler).is_err() {
@@ -234,6 +275,14 @@ impl Commands {
     pub(crate) fn relay(&self, handler: Starter) {
         if self.relay.set(handler).is_err() {
             eprintln!("  !! [commands] relay was registered twice; keeping the first");
+        }
+    }
+
+    /// Route the player's scripts to `handler` from now on, after every
+    /// other word. Once, as for travel.
+    pub(crate) fn scripts(&self, handler: Handler) {
+        if self.scripts.set(handler).is_err() {
+            eprintln!("  !! [commands] scripts were registered twice; keeping the first");
         }
     }
 

@@ -9,7 +9,10 @@ use std::path::{Path, PathBuf};
 use cena_behavior::heal::{self, HealProfile};
 use cena_behavior::hunt::command::{Of, Setting, Topic, help as help_for};
 use cena_behavior::hunt::{self, LoadError};
-use cena_behavior::settings::{self, Stored};
+use cena_behavior::keep::{self, KeepProfile};
+use cena_behavior::loot;
+use cena_behavior::settings::{self, Key, Stored};
+use cena_behavior::spellcaster::{self, CasterProfile};
 use cena_behavior::waggle::{self, WaggleProfile};
 use cena_session::NoticeKind;
 
@@ -44,79 +47,49 @@ pub(super) fn setup(say: Say<'_>) {
 
 /// `;hunt set <profile> <setting> <value>`: changed in the profile's file.
 pub(super) fn set(dir: &Path, who: Who<'_>, profile: &str, key: &str, value: &str, say: Say<'_>) {
-    edit(dir, who, profile, say, |text| {
-        let (text, was) = settings::set(text, key, settings::typed(value))?;
-        let now = settings::text_lines(&text, Some(key))?.join(", ");
-        let was = was.map_or_else(|| "unset".to_owned(), |was| was.to_string());
-        Ok((text, format!("{now} (was {was})")))
-    });
+    tell(
+        profile,
+        edited(dir, split(who), profile, to(key, Some(value))),
+        say,
+    );
 }
 
 /// `;hunt unset <profile> <setting>`: out of the profile's file.
 pub(super) fn unset(dir: &Path, who: Who<'_>, profile: &str, key: &str, say: Say<'_>) {
-    edit(dir, who, profile, say, |text| {
-        let (text, removed) = settings::unset(text, key)?;
-        if !removed {
-            return Err(format!("{profile} does not set {key}"));
-        }
-        Ok((text, format!("{key} unset; the default decides it")))
-    });
+    tell(
+        profile,
+        edited(dir, split(who), profile, to(key, None)),
+        say,
+    );
 }
 
-/// Change the profile's file with `change`, then load it as this character
-/// would: saved when it reads as a profile (its problems said), and put
-/// back when it does not.
-fn edit(
-    dir: &Path,
-    who: Who<'_>,
-    profile: &str,
-    say: Say<'_>,
-    change: impl FnOnce(&str) -> Result<(String, String), String>,
-) {
-    let Some(path) = hunt::chain::profile_path(dir, profile) else {
-        say(
-            NoticeKind::Error,
-            format!("Hunt: {profile:?} is not a name a profile can have."),
-        );
-        return;
-    };
-    let old = match settings::read_text(&path) {
-        Stored::Found(text) => text,
-        Stored::Missing => {
-            say(
-                NoticeKind::Error,
-                format!(
-                    "Hunt: there is no profile {profile}. `hunt list` shows them; `hunt import <bigshot yaml>` brings one in."
-                ),
-            );
-            return;
-        }
-        Stored::Broken(why) => {
-            say(
-                NoticeKind::Error,
-                format!("Hunt: nothing was changed: {why}"),
-            );
-            return;
-        }
-    };
-    let (text, done) = match change(&old) {
-        Ok(changed) => changed,
-        Err(why) => {
-            say(NoticeKind::Error, format!("Hunt: {profile}: {why}"));
-            return;
-        }
-    };
-    if let Err(e) = settings::save(&path, &text) {
-        say(
-            NoticeKind::Error,
-            format!("Hunt: {profile}: not saved: {e}"),
-        );
-        return;
+/// The change `;hunt set` makes to a profile's text, `key` set to `value`,
+/// or `;hunt unset`'s, `key` taken out (`None`) so the level below decides
+/// it; and what was done.
+pub(crate) fn to<'a>(
+    key: &'a str,
+    value: Option<&'a str>,
+) -> impl FnOnce(&str) -> Result<(String, String), String> + 'a {
+    move |text| {
+        let Some(value) = value else {
+            let (text, removed) = settings::unset(text, key)?;
+            if !removed {
+                return Err(format!("the profile does not set {key}"));
+            }
+            return Ok((text, format!("{key} unset; the default decides it")));
+        };
+        let (text, was) = settings::set(text, key, settings::typed(value))?;
+        let now = settings::text_lines(&text, Some(key))?.join(", ");
+        let was = was.map_or_else(|| "unset".to_owned(), |was| was.to_string());
+        Ok((text, format!("{now} (was {was})")))
     }
-    let (instance, character) = split(who);
-    match hunt::load(dir, instance, character, profile) {
-        Ok(_) => say(NoticeKind::Info, format!("Hunt: {profile}: {done}.")),
-        Err(LoadError::Invalid(problems)) => {
+}
+
+/// Say what [`edited`] did, as `;hunt set` does: what was done and each
+/// thing that would stop the hunt running, or why nothing was.
+fn tell(profile: &str, done: Result<(String, Vec<String>), String>, say: Say<'_>) {
+    match done {
+        Ok((done, problems)) => {
             say(NoticeKind::Info, format!("Hunt: {profile}: {done}."));
             for problem in problems {
                 say(
@@ -125,17 +98,47 @@ fn edit(
                 );
             }
         }
-        Err(e) => {
-            let back = settings::save(&path, &old).map_or_else(
-                |e| format!(" (and the old file could not be put back: {e})"),
-                |()| String::new(),
-            );
-            say(
-                NoticeKind::Error,
-                format!("Hunt: {profile}: not saved, it would not read: {e}{back}"),
-            );
-        }
+        Err(why) => say(NoticeKind::Error, format!("Hunt: {why}")),
     }
+}
+
+/// Change the profile's file with `change`, and load the result as this
+/// character would before it is saved: saved when it reads as a profile,
+/// with what would stop it running; never written when it does not. Read,
+/// checked and written with no other change to the file between
+/// (`cena_session::store::changing`; the crate review of 2026-09-28, R5). `;hunt set` and the settings menu's hunt pages
+/// (`crate::hunt_pages`) both change a profile here.
+///
+/// # Errors
+///
+/// Why nothing was changed, after `Hunt: ` in what is said.
+pub(crate) fn edited(
+    dir: &Path,
+    (instance, character): (Option<&str>, Option<&str>),
+    profile: &str,
+    change: impl FnOnce(&str) -> Result<(String, String), String>,
+) -> Result<(String, Vec<String>), String> {
+    let path = hunt::chain::profile_path(dir, profile)
+        .ok_or_else(|| format!("{profile:?} is not a name a profile can have."))?;
+    cena_session::store::changing(&path, || {
+        let old = match settings::read_text(&path) {
+            Stored::Found(text) => text,
+            Stored::Missing => {
+                return Err(format!(
+                    "there is no profile {profile}. `hunt list` shows them; `hunt import <bigshot yaml>` brings one in."
+                ));
+            }
+            Stored::Broken(why) => return Err(format!("nothing was changed: {why}")),
+        };
+        let (text, done) = change(&old).map_err(|why| format!("{profile}: {why}"))?;
+        let problems = match hunt::chain::load_edited(dir, instance, character, profile, &text) {
+            Ok(_) => Vec::new(),
+            Err(LoadError::Invalid(problems)) => problems,
+            Err(e) => return Err(format!("{profile}: not saved, it would not read: {e}")),
+        };
+        settings::save(&path, &text).map_err(|e| format!("{profile}: not saved: {e}"))?;
+        Ok((done, problems))
+    })
 }
 
 /// `;hunt show <profile> [setting]`: every setting as this character runs
@@ -176,93 +179,206 @@ pub(super) fn stored<T: Default>(
     }
 }
 
-/// A character's own profile: what it is called, where it is, and how the
-/// behavior reads it.
-struct Kind {
-    label: &'static str,
-    path: fn(&Path, &str, &str) -> Option<PathBuf>,
+/// A character's own profile: what it is called, where it is, how the
+/// behavior reads it, and its settings. The `;heal` and `;waggle` commands
+/// and the settings menu (`crate::pages`) change it through [`change`], the
+/// one writer, so the two cannot disagree about a value.
+pub(crate) struct Profile {
+    /// What the menu names its page by.
+    pub(crate) id: &'static str,
+    /// What a player calls it.
+    pub(crate) label: &'static str,
+    /// Where the character's file is.
+    pub(crate) path: fn(&Path, &str, &str) -> Option<PathBuf>,
     /// The file's text read as the behavior reads it and written back whole:
     /// every setting, the defaults included.
-    canonical: fn(&str) -> Result<String, String>,
-    keys: &'static [&'static str],
+    pub(crate) canonical: fn(&str) -> Result<String, String>,
+    /// Its settings, in the struct's order.
+    pub(crate) table: &'static [Key],
+    /// When a change takes effect, as the menu says it.
+    pub(crate) takes: &'static str,
 }
 
-fn kind(of: Of) -> Kind {
-    match of {
-        Of::Heal => Kind {
+fn heal_canonical(text: &str) -> Result<String, String> {
+    HealProfile::parse(text)?.to_toml()
+}
+
+fn waggle_canonical(text: &str) -> Result<String, String> {
+    WaggleProfile::parse(text)?.to_toml()
+}
+
+fn keep_canonical(text: &str) -> Result<String, String> {
+    KeepProfile::parse(text)?.to_toml()
+}
+
+fn caster_canonical(text: &str) -> Result<String, String> {
+    CasterProfile::parse(text)?.to_toml()
+}
+
+/// Every character profile the menu shows, in its order.
+pub(crate) fn profiles() -> [Profile; 7] {
+    [
+        Profile {
+            id: "heal",
             label: "Heal",
             path: heal::path,
-            canonical: |text| HealProfile::parse(text)?.to_toml(),
-            keys: heal::profile::KEYS,
+            canonical: heal_canonical,
+            table: heal::profile::TABLE,
+            takes: "the next time Heal runs",
         },
-        Of::Waggle => Kind {
+        Profile {
+            id: "waggle",
             label: "Waggle",
             path: waggle::path,
-            canonical: |text| WaggleProfile::parse(text)?.to_toml(),
-            keys: waggle::KEYS,
+            canonical: waggle_canonical,
+            table: waggle::TABLE,
+            takes: "the next time Waggle runs",
         },
-    }
+        Profile {
+            id: "keep",
+            label: "Keep",
+            path: keep::path,
+            canonical: keep_canonical,
+            table: keep::TABLE,
+            takes: "the next time Keep runs",
+        },
+        Profile {
+            id: "sc",
+            label: "Spellcaster",
+            path: spellcaster::path,
+            canonical: caster_canonical,
+            table: spellcaster::TABLE,
+            takes: "at once",
+        },
+        // The loot profile, as three pages over one file (`plan/50` §7
+        // step 5): its own settings, `[skin]` and `[town]`.
+        Profile {
+            id: "loot",
+            label: "Loot",
+            path: loot::path,
+            canonical: loot_canonical,
+            table: loot::profile::TABLE,
+            takes: "the next time the hunt loots",
+        },
+        Profile {
+            id: "skin",
+            label: "Skinning",
+            path: loot::path,
+            canonical: loot_canonical,
+            table: loot::profile::SKIN_TABLE,
+            takes: "the next time the hunt skins",
+        },
+        Profile {
+            id: "town",
+            label: "Selling",
+            path: loot::path,
+            canonical: loot_canonical,
+            table: cena_behavior::town::settings::TABLE,
+            takes: "at the next selling round",
+        },
+    ]
+}
+
+/// The loot profile with every setting written out, the three pages' values.
+fn loot_canonical(text: &str) -> Result<String, String> {
+    loot::LootProfile::parse(text)?.to_toml_whole()
+}
+
+fn of_profile(of: Of) -> Profile {
+    let id = match of {
+        Of::Heal => "heal",
+        Of::Waggle => "waggle",
+    };
+    let [heal, waggle, ..] = profiles();
+    if id == heal.id { heal } else { waggle }
+}
+
+/// Set `key` in the profile at `path` to `value`, or put it back to its
+/// default when `None`. The result is read back as the behavior will read
+/// it before anything is saved, and a file that is there and does not read
+/// is never written over. Says what was done, or why nothing was.
+///
+/// # Errors
+///
+/// Why nothing was saved, in words for the player.
+pub(crate) fn change(
+    profile: &Profile,
+    path: &Path,
+    key: &str,
+    value: Option<&str>,
+) -> Result<String, String> {
+    // Read, checked and written with no other change to the file between
+    // (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
+    cena_session::store::changing(path, || changed(profile, path, key, value))
+}
+
+/// [`change`], with the file's lock held.
+fn changed(
+    profile: &Profile,
+    path: &Path,
+    key: &str,
+    value: Option<&str>,
+) -> Result<String, String> {
+    let label = profile.label;
+    let old = match settings::read_text(path) {
+        Stored::Found(text) => text,
+        Stored::Missing => String::new(),
+        Stored::Broken(why) => return Err(format!("{label}: nothing was changed: {why}")),
+    };
+    let changed = match value {
+        Some(value) => settings::set(&old, key, settings::typed(value)).and_then(|(text, _)| {
+            let now = settings::text_lines(&text, Some(key))?.join(", ");
+            Ok((text, now))
+        }),
+        None => settings::unset(&old, key)
+            .map(|(text, _)| (text, format!("{key} is back to its default"))),
+    };
+    let (text, done) = changed
+        .and_then(|(text, done)| (profile.canonical)(&text).map(|_| (text, done)))
+        .map_err(|why| {
+            format!(
+                "{label}: not saved: {why}. The settings are {}.",
+                settings::names(profile.table).join(", ")
+            )
+        })?;
+    settings::save(path, &text).map_err(|e| format!("{label}: {done}, but not saved: {e}"))?;
+    Ok(format!("{label}: {done}."))
 }
 
 /// `;heal set|unset|show`, `;waggle set|unset|show`: this character's
 /// profile, changed or listed. The first `set` makes it.
 pub(super) fn profile(dir: &Path, who: Who<'_>, of: Of, setting: &Setting, say: Say<'_>) {
-    let kind = kind(of);
-    let label = kind.label;
-    let Some(path) = who.and_then(|(i, n)| (kind.path)(dir, i, n)) else {
+    let profile = of_profile(of);
+    let label = profile.label;
+    let Some(path) = who.and_then(|(i, n)| (profile.path)(dir, i, n)) else {
         say(
             NoticeKind::Error,
             format!("{label}: the game has not said who this is yet."),
         );
         return;
     };
-    let old = match settings::read_text(&path) {
-        Stored::Found(text) => text,
-        Stored::Missing => String::new(),
-        Stored::Broken(why) => {
-            say(
-                NoticeKind::Error,
-                format!("{label}: nothing was changed: {why}"),
-            );
-            return;
+    let done = match setting {
+        Setting::Show => {
+            return match settings::read_text(&path) {
+                Stored::Found(text) => show_profile(&profile, &text, say),
+                Stored::Missing => show_profile(&profile, "", say),
+                Stored::Broken(why) => say(NoticeKind::Error, format!("{label}: {why}")),
+            };
         }
+        Setting::Set { key, value } => change(&profile, &path, key, Some(value)),
+        Setting::Unset(key) => change(&profile, &path, key, None),
     };
-    let changed = match setting {
-        Setting::Show => return show_profile(&kind, &old, say),
-        Setting::Set { key, value } => {
-            settings::set(&old, key, settings::typed(value)).and_then(|(text, _)| {
-                let now = settings::text_lines(&text, Some(key))?.join(", ");
-                Ok((text, now))
-            })
-        }
-        Setting::Unset(key) => settings::unset(&old, key)
-            .map(|(text, _)| (text, format!("{key} is back to its default"))),
-    };
-    // Read as the behavior will read it before anything is saved.
-    let checked = changed.and_then(|(text, done)| (kind.canonical)(&text).map(|_| (text, done)));
-    match checked {
-        Err(why) => say(
-            NoticeKind::Error,
-            format!(
-                "{label}: not saved: {why}. The settings are {}.",
-                kind.keys.join(", ")
-            ),
-        ),
-        Ok((text, done)) => match settings::save(&path, &text) {
-            Ok(()) => say(NoticeKind::Info, format!("{label}: {done}.")),
-            Err(e) => say(
-                NoticeKind::Error,
-                format!("{label}: {done}, but not saved: {e}"),
-            ),
-        },
+    match done {
+        Ok(done) => say(NoticeKind::Info, done),
+        Err(why) => say(NoticeKind::Error, why),
     }
 }
 
 /// Every setting, the defaults included, and the ones not set.
-fn show_profile(kind: &Kind, text: &str, say: Say<'_>) {
-    let label = kind.label;
-    let shown = (kind.canonical)(text).and_then(|canonical| {
-        let unset = settings::not_set(&canonical, kind.keys)?;
+fn show_profile(profile: &Profile, text: &str, say: Say<'_>) {
+    let label = profile.label;
+    let shown = (profile.canonical)(text).and_then(|canonical| {
+        let unset = settings::not_set(&canonical, &settings::names(profile.table))?;
         settings::text_lines(&canonical, None).map(|lines| (lines, unset))
     });
     match shown {
@@ -461,6 +577,88 @@ start_at = 90
             cena_behavior::waggle::WaggleProfile::parse(&std::fs::read_to_string(&path).unwrap())
                 .unwrap();
         assert_eq!(made.cast_list, [101, 107, 401]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A change that would not read is never written, so it cannot put
+    /// back what another change saved meanwhile; one made while another is
+    /// being made waits for it, and both are kept (the crate review of
+    /// 2026-09-28, R5).
+    #[test]
+    fn a_change_neither_puts_back_nor_loses_another() {
+        let dir = dir("a_change_neither_puts_back_nor_loses_another").unwrap();
+        let path = hunt::chain::profile_path(&dir, "ojandhaart").unwrap();
+        let who = (Some("prime"), Some("Nisugi"));
+
+        let refused = super::edited(&dir, who, "ojandhaart", |old| {
+            // Another change, saved while this one is made.
+            std::fs::write(&path, old.replace("resting = 20", "resting = 29877")).unwrap();
+            Ok((
+                old.replace("hunting = 10", "hunting = \"ten\""),
+                "hunting".to_owned(),
+            ))
+        });
+        assert!(
+            refused
+                .as_ref()
+                .is_err_and(|why| why.contains("would not read")),
+            "{refused:?}"
+        );
+        assert!(file(&dir).contains("resting = 29877"), "{}", file(&dir));
+        assert!(file(&dir).contains("hunting = 10"), "{}", file(&dir));
+
+        let other = cena_session::store::changing(&path, || {
+            let old = file(&dir);
+            let other = {
+                let dir = dir.clone();
+                std::thread::spawn(move || {
+                    super::edited(&dir, who, "ojandhaart", |old| {
+                        Ok((
+                            old.replace("hunting = 10", "hunting = 11"),
+                            "hunting".to_owned(),
+                        ))
+                    })
+                })
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::fs::write(&path, old.replace("resting = 29877", "resting = 21")).unwrap();
+            other
+        });
+        assert!(other.join().unwrap().is_ok());
+        assert!(file(&dir).contains("hunting = 11"), "{}", file(&dir));
+        assert!(file(&dir).contains("resting = 21"), "{}", file(&dir));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A heal or waggle profile's change made while another is being made
+    /// waits for it, and both are kept (R5).
+    #[test]
+    fn a_profile_change_made_meanwhile_waits() {
+        let dir = dir("a_profile_change_made_meanwhile_waits").unwrap();
+        let path = cena_behavior::waggle::path(&dir, "prime", "Nisugi").unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, "start_at = 90\n").unwrap();
+        let other = cena_session::store::changing(&path, || {
+            let old = std::fs::read_to_string(&path).unwrap();
+            let other = {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    super::change(&super::of_profile(Of::Waggle), &path, "bail", Some("on"))
+                })
+            };
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::fs::write(&path, old.replace("start_at = 90", "start_at = 80")).unwrap();
+            other
+        });
+        assert!(other.join().unwrap().is_ok());
+        let made =
+            cena_behavior::waggle::WaggleProfile::parse(&std::fs::read_to_string(&path).unwrap())
+                .unwrap();
+        assert!(made.bail, "the change made meanwhile");
+        assert!(
+            (made.start_at - 80.0).abs() < f64::EPSILON,
+            "the change made first"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

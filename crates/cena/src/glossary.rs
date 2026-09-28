@@ -50,7 +50,9 @@
 //!   one of those numbered on an observer's stream. The combat model's
 //!   *attack event* is a third, inside one [`Event::Combat`]. A trigger's
 //!   `event` is a fourth: what the model reads a finished line as, a
-//!   [`LineEvent`]; call it a **line event**.
+//!   [`LineEvent`]; call it a **line event**. What a script runner is told is
+//!   a fifth, at positions of its own
+//!   ([`listening::Event`](cena_agent::scripts::listening::Event)).
 //! - **flag** is a name a trigger sets, which the guard word `flag "<name>"`
 //!   reads ([`Flags`]), and a creature's `<crtrStatus>` flags, which the
 //!   guard words `ascended`, `mini_boss` and the rest read ([`Fact::Flag`]).
@@ -72,6 +74,10 @@
 //!   ([`Step::held`]). The authority being held by another claimant is
 //!   [`AuthorityHeld`]. A trigger's `held` is what an import kept that Hydra
 //!   does not do yet: a Wrayth sound, until sounds are built ([`wrayth`]).
+//!   An operation an agent **holds** defends itself and starts nothing until
+//!   resumed ([`Control::Hold`](cena_session::operation::Control::Hold), the
+//!   author's and LAB's word); the hunt's claim on a room is a fourth, inside
+//!   the engine and never public.
 //! - **role** is a group member's part, lead, follow or solo
 //!   ([`group::Role`]), and a spell's kind in the spell table
 //!   ([`spells::Role`]). The combat model's message families have a third
@@ -82,10 +88,15 @@
 //! - **category** is the sorter's item type, `gem` or `wand` in a sorted
 //!   container look ([`SessionHandle::sort_containers`]), and a trigger's group in the triggers file,
 //!   the author's word for what the editor sets (`plan/45` §1 row 3).
-//! - **script** is not a Hydra concept (see **Retired**), and survives in
-//!   three places: the Lich scripts Hydra ports from, bigshot's `script` step
-//!   that the importer turns into a sequence, and the **scripted game**, the
-//!   fake server that tests talk to.
+//! - **script** is the player's own program, run by a script runner (see
+//!   **Scripts**), and three older things: the Lich scripts Hydra ports
+//!   from, bigshot's `script` step that the importer turns into a sequence,
+//!   and the **scripted game**, the fake server that tests talk to.
+//! - **runner** is the desk's command function every Hydra command goes to,
+//!   [`Runner`](cena_session::command::claimant::Runner), and a **script
+//!   runner**, the process that runs one character's scripts
+//!   ([`Runners`](cena_agent::scripts::Runners)). Say "script runner" for the
+//!   second.
 //!
 //! # The wire and the model
 //!
@@ -123,7 +134,8 @@
 //! |---|---|---|
 //! | **Snapshot** | an owned, point-in-time copy of the game state, taken at an exact place in the event stream, with the triggers its lines were answered with: [`Snapshot`] | view, handle, ref |
 //! | **Event** | something the session saw or did, published to observers: [`Event`] (a frame, a combat chunk, a command sent, a notice) | signal, trigger, hook |
-//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]) | display line, story line |
+//! | **Line** | a finished line of game text, as the model completed it, published once for every viewer right after the frame that finished it: [`Line`], [`Event::Line`]. What a viewer draws, so it is the line the classifiers and the player log read (`plan/45` §4a); with `;sorter` on, a container look is published as the lines it sorts into, and a character's triggers answer it before it is published ([`Matcher::respond`]). While the player's Lich runs, the lines it showed are published in the game's place, put together the same way (`plan/51` step 3) | display line, story line |
+//! | **Shown prompt** | the prompt a viewer draws after the lines it ends: [`Event::Prompt`](cena_session::Event::Prompt), the game's right after its frame, or, while the player's Lich runs, the one Lich passed on, after Lich's lines | the prompt frame, which is the game's and ends a round trip |
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
@@ -137,6 +149,13 @@
 //! | **Claimant** | whoever may hold the authority (`plan/12` §4.1): a behavior, later an agent, and never manual input | |
 //! | **Preempt** | take the authority from its holder, cooperatively for [`PREEMPT_GRACE`] and then by force: [`SessionHandle::preempt`], [`Preempted`]. Only an explicit stop, or the watchdog, preempts | |
 //! | **Refusal** | why the session would not send a command: [`Refusal`] | |
+//! | **Agent level** | what an agent may do with one character, set only by its player and kept in the character's settings: [`agent::Level`](cena_session::agent::Level), `off` until raised (`plan/35` §3) | |
+//! | **Door** | the only way an agent acts on a session, each act checked against the level: [`agent::Door`](cena_session::agent::Door). The agent crate holds a door and never a [`SessionHandle`] | |
+//! | **Operation** | a behavior an agent started, read and steered by its number to its end: a ticket, not a reply ([`Door::perform`](cena_session::agent::Door::perform), [`operation::Report`](cena_session::operation::Report)). Its result keeps apart what the work came to, what it left undone, and whether its authority was released | |
+//! | **Request id** | the caller's own id for an act: the same id again, for the same act, is answered as the first time and never done twice ([`agent::Call`](cena_session::agent::Call)) | |
+//! | **Takeover** | an agent holding the character: an operation that stopped what ran and holds the authority under the agent's token until it gives it back, the player takes it (`;agent stop`), or it ends ([`agent::TOKEN`](cena_session::agent::TOKEN), [`Door::take_over`](cena_session::agent::Door::take_over)). Nothing resumes by itself afterwards | |
+//! | **Denylist** | what an agent may never send to the game at any level: LAB's list, and a `put` that is a drop and the abbreviations of every denied verb ([`agent::refused`](cena_session::agent::refused)). Not a list of what is safe | |
+//! | **Approval** | the player's yes to one act an agent asked for above its level: that act, once, on that connection, within [`APPROVAL_LIFETIME`](cena_session::agent::APPROVAL_LIFETIME) ([`SessionHandle::approve_agent`](cena_session::SessionHandle::approve_agent)). It grants nothing further | |
 //! | **Quit** | send `quit` and wait for the game to hang up: [`SessionHandle::quit`], told as a [`Farewell`] | |
 //!
 //! # Behaviors
@@ -185,17 +204,30 @@
 //! |---|---|---|
 //! | **Host** | the table of sessions one Hydra runs: add, remove, one per account, stop them all ([`Host`], [`stop_all`]) | |
 //! | **Account** | the login a character is on. The game keeps one character per account online, so the table refuses a second ([`AddError::AccountInUse`]) | session |
-//! | **Roster** | which account and game each character is on, holding no secret: [`roster`](crate::roster) | |
+//! | **Roster** | which account and game each character is on, and whether the player starred it, holding no secret: [`roster`](crate::roster) | |
 //! | **Projection** | a game state turned into the vocabulary a frontend renders, reading no clock and changing nothing: [`SessionView::project`] | snapshot |
 //! | **Frontend wire** | [`ServerMessage`] and [`ClientMessage`], versioned by [`WIRE_VERSION`] and written down in `crates/cena-ui/WIRE.md`. No model or protocol type crosses it | |
 //! | **Despana** | the embedded browser viewer: one loopback listener inside the binary ([`cena_web`], [`WebServer`]) | |
 //! | **Pairing token** | the secret a browser presents before any state is sent; held in memory, for this process only | |
 //! | **Relay** | a line typed on one character and sent on another, `;to <name> <command>`, or on every running one, `;all <command>`: as if typed there, its command line first. The author's `;queen` from the borg scripts, renamed (`relay.rs`, `plan/47` step 5) | broadcast |
-//! | **Hunt panel** | a play window's Hunt pane: what the hunt is doing each turn and why it waits -- *"mana 30%, wants 50%"* -- from the hunt's own [`Status`](cena_behavior::hunt::Status) reports (`plan/47` step 8) | |
+//! | **Hunt panel** | the Hunt widget: what the hunt is doing each turn and why it waits -- *"mana 30%, wants 50%"* -- from the hunt's own [`Status`](cena_behavior::hunt::Status) reports (`plan/47` step 8) | |
 //! | **Keybind** | a key, named by its winit code (`Numpad8`, `F13`), and the line it sends on the character whose play window has the keyboard, as if typed: `keybinds.toml` in the data folder (`plan/47` step 7) | macro |
-//! | **Play window** | one character's own native window in the GUI: its story, one command input that sends on that character, its vitals, room and hands, and Hydra's messages in their own pane. Closing it leaves the character running headless; the hub opens it again ([`App`](cena_gui::App), `plan/47` step 4) | |
+//! | **Play window** | one character's own native window in the GUI: one command input that sends on that character, and its widgets -- the story, the vitals, the hands, the room, Hydra's messages -- in windows inside it. Closing it leaves the character running headless; the hub opens it again ([`App`](cena_gui::App), `plan/47` step 4) | |
+//! | **Widget** | one thing a player reads about one character, drawn bare: a bar per vital, each hand its own, the story, the exits. The author: *"individual things, a bar for health is a widget"* (`plan/49` §1) | pane, the M10 word for a window holding several |
+//! | **Standalone window** | a window in a play window holding one widget, with a title and a frame (`plan/49` §2) | |
+//! | **Custom window** | a window in a play window holding several widgets bare, each in a cell of its own, with one frame for all: the vitals, the loadout and the room come as three (`plan/49` §2, `plan/28` §7d) | container window, `plan/28`'s word for it |
+//! | **Tab stack** | several widgets in one cell of a custom window, one showing, a tab for each; a tab not showing counts what its widget said since (*"Hydra 2"*). Made by letting go over the middle of a widget, or one standalone window on another's title bar (`plan/49` §2, Stage A step 5) | tab group, Vellum's separate mechanism |
+//! | **Follow** (a widget) | show another running character than its window's -- a party's vitals in one window -- chosen only in the Advanced place: the bottom of the Add-a-widget list, or a widget's right-click menu. A story never follows (`plan/49` §1 rows 3, 7, 8) | |
+//! | **Not launched** (the tab) | the hub's third tab: the roster's characters that are not on the table, as cards starred first, each started with a click when its account's password is kept or with the password typed there. Lich's launcher is its reference (`plan/49` Stage C, as the author revised it) | launcher, Lich's separate program; *Launch*, the tab's first name |
+//! | **New login** (the tab) | the hub's fourth tab: a login by account, which lists the account's characters to add, star or play; and the kept passwords, each forgotten (`plan/49` Stage C, the author's correction) | the Not launched tab, which holds only the cards |
+//! | **Kept password** | one Hydra can read without asking: in the OS keyring, or the account's environment variable. The window keeps one only when its box was ticked, once the login proved it ([`secrets`](crate::secrets)) | saved login, which is the roster's |
+//! | **Game state** (the widget) | everything the model holds for a character, as the model prints itself, as a tree with a filter and Copy: for troubleshooting (`plan/49`, the author's addition) | the game's own state, which only the game knows |
+//! | **Settings menu** | the one place a player changes a setting, in a window of its own: Hydra's own pages (*Window*, *Keys*), or a character picked by roster name, running or not, and its pages, each one file's settings drawn from a behavior's key table ([`Page`](cena_ui::settings::Page)). A change goes through the writer that behavior's `;` command uses, so the two cannot disagree. The hub's *Settings* button opens it on Hydra's own, a play window's on its character's; every other way in opens it at its place (`plan/50` §6 item 9, §7) | a second editor, which there never is |
+//! | **Preset** | a custom window already put together: Hydra's four (Vitals, Vitals row, Loadout, Room) and any a player saved, in one library every character adds from. Placing one places the character's own copy (`plan/49` §2, Stage A step 7) | template |
+//! | **Arrange** | the Layout menu's switch that lets a custom window's cells be moved, resized, and dragged out, and lets a standalone window be dropped into one; off, no press rearranges anything (`plan/49` Stage A step 4) | edit mode |
 //! | **Hub** | every character at a glance: a card each, start, quit, reconnect, and the merged streams. Two frontends have one: Despana's hub page, and the window's [`Hub`](cena_gui::Hub), in two tabs, Live and Closed (`plan/47`). Requests reach the binary as [`HubRequest`]s through [`HubControl`] | |
 //! | **Character page** | one character's own page. No window shows two characters' story text (`plan/29` §5a) | |
+//! | **Stream** (a widget) | one of the game's streams in a widget of its own -- thoughts, speech, arrivals, any the character has received -- which the story then leaves out while it is open, so no line is said twice (`plan/49` Stage B step 4) | the merged streams, which are the hub's |
 //! | **Merged streams** | thoughts, speech, logons, deaths and announcements across characters, each line once: [`Merger`] | |
 //! | **Container look** | the main-stream line `In the box you see a, b and c.`; with `;sorter` on, one that is a list end to end is published as one line per category ([`SessionHandle::sort_containers`]); the model and the player log keep it whole | inventory, which is the `inv` window's feed |
 //!
@@ -220,6 +252,22 @@
 //! | **Act** | a trigger's line sent as if the player typed it: through the `;` command table first, then to the game as [`Origin::Trigger`], never counted as a person; at most once in the trigger's cooldown and at the character's pace ([`Act`], [`Pace`]) | action, which `plan/12` §6a.3 keeps for a registry not built |
 //! | **Approved** | the line a trigger from elsewhere may send (`;trigger approve`): only that line, so a changed one is held again | trusted |
 //!
+//! # Scripts
+//!
+//! `plan/46`, M7b: the player's own programs, out of process, in their own
+//! language. A script is not a behavior, which is Hydra's own and curated,
+//! and not an agent, which has a level and a denylist.
+//!
+//! | Term | Means | Not |
+//! |---|---|---|
+//! | **Script** | the player's own program, a Lich `.lic` first, run by a script runner in its own language's runtime: started with `;name`, and doing what a Lich script does ([`script`](cena_session::script)). Back from **Retired**: the author, 2026-09-26 (`CLAUDE.md`, Settled decisions) | behavior; the scripted game |
+//! | **Script runner** | the process that runs one character's scripts, Hydra's own child: Ruby with Lich's engine (`bridges/ruby`), started on the character's first script and stopped when it leaves the table ([`Runners`](cena_agent::scripts::Runners)) | runner alone, which is also the desk's |
+//! | **Local copy** | what a script runner keeps of its character, so a script reads without asking: the agent's projection and what a script needs beyond it, told as `state` events, a chunk's changes before its lines ([`scripts::local`](cena_agent::scripts::local)) | snapshot, which is the session's own |
+//! | **Heard line** | a finished line as the game sent it, before `;sorter` and the triggers, published only while a script runner listens: [`Event::Heard`](cena_session::Event::Heard). What a script reads, as Lich's scripts read before its hooks, and what a runner's display hooks answer | line, which a viewer is given |
+//! | **Hook** | a script's say in what the player is shown of a line (a **display hook**) or what the player's typing becomes (an **input hook**): Lich's `DownstreamHook` and `UpstreamHook`, answered by its script runner within [`HOOK_DEADLINE`](cena_session::script::HOOK_DEADLINE), past which the line goes as it came. Only the showing and the typing wait on one ([`script::Door::hook_lines`](cena_session::script::Door::hook_lines), [`hook_typing`](cena_session::script::Door::hook_typing)) | trigger, which is the player's own; squelch, which a trigger does |
+//! | **Checker** | what reads one of the player's scripts and says which of its lines will not work under Hydra, and why, by Ruby's own parser against the runner's own names: `;scripts check`, [`scripts::checker`](cena_agent::scripts::checker). Run over both script collections, it made `inventory/14-what-runs.md` | census, which measured the collections for `plan/46` from Python |
+//! | **Script door** | the only way a script runner acts on a session: listen, send a line as typed, say, start a built-in, and hook what is shown and typed ([`script::Door`](cena_session::script::Door)); `cena-agent` holds it and never the handle | door alone, which is the agent's and checks a level |
+//!
 //! # Names
 //!
 //! | Term | Means | Not |
@@ -235,7 +283,6 @@
 //!
 //! | Term | Was | Why it went |
 //! |---|---|---|
-//! | **Script** | one Lua program in a session | scripting is deferred, not built, and nothing may be designed around it (`CLAUDE.md`, Settled decisions). A proposal to add it later is a live question; until then the word names nothing of Hydra's |
 //! | **Adapter** | the per-game implementation, `GameAdapter` | refused: the second game is deferred all-or-nothing, and an abstraction for it is not built ahead of it (`plan/12` §9d) |
 //! | **Ladder** | the resend-and-recover protocol around one command | Lich's `fput`. Hydra's counterpart is the **round trip**, and the word is taken by three ladders the code does have |
 //!

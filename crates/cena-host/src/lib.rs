@@ -26,4 +26,4 @@
 
 mod table;
 
-pub use table::{AddError, Host, Hosted, QUIT_TIMEOUT, Who, stop_all};
+pub use table::{AddError, Host, Hosted, QUIT_TIMEOUT, Stopping, Who, stop_all};

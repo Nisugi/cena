@@ -194,16 +194,76 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 /// a needle miss.
 const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
     (
-        "crates/cena/src/hunt.rs",
+        "crates/cena/src/hunt/party.rs",
         "Seat",
         "One character's hunt desk and session, kept in the session table's Party \
      (plan/39 Stage 4) so that a leader's `hunt <profile> with <names>` can start \
      each follower's hunt on the follower's own session. A clone of that \
      session's handle, on the type's own terms (every field shared: see Viewed \
-     below), so it cannot drift; and it goes when its character leaves the table \
-     (`Party::unseat`, called from play.rs's take_off), so it never outlives the \
-     session. Found 2026-09-27, when this test first ran against this tree: its \
-     build had been scanning another checkout.",
+     below), so it cannot drift; and it goes when its session leaves the table \
+     (`Party::unseat`, by SessionId, called from play.rs's take_off), so it \
+     never outlives the session. Found 2026-09-27, when this test first ran \
+     against this tree: its build had been scanning another checkout. Moved \
+     from hunt.rs 2026-09-28, when the seats were keyed by session rather than \
+     by name (the crate review of that day, R6).",
+    ),
+    (
+        "crates/cena/src/relay.rs",
+        "Running",
+        "A character a `;to`/`;all` relay may send on (plan/47 step 5): the \
+     list is built afresh from the session table each time a relay is typed \
+     and dropped when that relay has sent, so it is never kept. It was a \
+     (String, SessionHandle) tuple, which this scan does not see; a struct \
+     since 2026-09-28, to carry the game beside the name (the crate review of \
+     that day, R6). A clone on the type's own terms (see Viewed below), and \
+     its sends are generation-pinned (send_manual_at with the target's \
+     generation), so a session that reconnected refuses rather than takes \
+     them.",
+    ),
+    (
+        "crates/cena-session/src/agent/door.rs",
+        "Door",
+        "The one way an agent acts on a session (plan/35 section 3, M7 step 2): \
+         cena-agent holds a Door and never the handle, so every act it makes \
+         is checked against the character's level inside the session, where \
+         the level lives (`the_agent_acts_only_through_the_door` in \
+         layering.rs holds the other half). A clone of the session's own \
+         handle, on the type's own terms (every field shared: see Viewed \
+         below), so it cannot drift; the binary builds one per character \
+         when it seats it for the agent, and drops it when the character \
+         leaves the table (play.rs's take_off calls Agent::unseat).",
+    ),
+    (
+        "crates/cena-session/src/operation.rs",
+        "Reporter",
+        "How a behavior an agent started reports its progress (plan/35 section 8, \
+         M7 step 3c): bound to one operation, it writes that operation's progress \
+         into the session's own table and publishes the change, which needs the \
+         session's publisher. A clone of the session's handle, on the type's own \
+         terms (every field shared: see Viewed below), so it cannot drift; it is \
+         made by operation::start for one run and dropped when that run's task \
+         ends, so it never outlives the session it reports to.",
+    ),
+    (
+        "crates/cena-session/src/script.rs",
+        "Door",
+        "The one way a script runner acts on a session (plan/46, M7b step 1): \
+         cena-agent's scripts listener holds a script Door and never the handle, \
+         as it holds the agent's (`the_agent_acts_only_through_the_door` in \
+         layering.rs covers both). A clone of the session's own handle, on the \
+         type's own terms (every field shared: see Viewed below), so it cannot \
+         drift; the binary builds one when it starts a character's runner, and \
+         it goes when the runner stops or the character leaves the table.",
+    ),
+    (
+        "crates/cena-session/src/script/lich.rs",
+        "LichDoor",
+        "The one way the player's own Lich acts on a session (plan/51, the \
+         relay): cena-agent's relay holds a LichDoor and never the handle, as \
+         its script runners hold a script Door. A clone of the session's own \
+         handle, on the type's own terms (every field shared: see Viewed \
+         below), so it cannot drift; one is built when a character's Lich \
+         starts, and it goes when the relay ends.",
     ),
     (
         "crates/cena-web/src/server.rs",
@@ -340,6 +400,9 @@ fn the_handle_premise_holds() {
             // An `Arc<Mutex<..>>` (`command/authority.rs`): the session's one
             // authority cell, the same for every clone.
             || ty.ends_with("::Authority")
+            // An `Arc<Mutex<..>>` (`agent.rs`): the agent's level and the
+            // acts waiting on the player, one for every clone.
+            || ty.ends_with("agent::Access")
     };
     let copied: Vec<String> = fields
         .iter()

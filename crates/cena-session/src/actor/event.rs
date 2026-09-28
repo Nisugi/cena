@@ -34,8 +34,48 @@ pub enum Event {
     /// ([`SessionHandle::set_triggers`](crate::SessionHandle::set_triggers)):
     /// it may arrive substituted, painted, on another stream, twice (a
     /// redirected copy), or not at all (a squelch).
+    ///
+    /// **Late, on a character whose script runner has display hooks**
+    /// ([`script::Door::hook_lines`](crate::script::Door::hook_lines)): it
+    /// waits for their answer, up to
+    /// [`HOOK_DEADLINE`](crate::script::HOOK_DEADLINE), and may come after
+    /// events published since, hidden or changed by them. Lines still come
+    /// in the order the game sent them.
     /// `Arc` because every subscriber shares one allocation.
+    ///
+    /// **While the player's Lich runs** (`crate::script::lich`), these are
+    /// Lich's lines, what it would show a frontend, and never the game's: its
+    /// squelches hold, its scripts' messages show, and the game's line is
+    /// still the model's, the log's, a script runner's and what the triggers
+    /// act on. Sorted and painted as the game's would be. A quiet command's
+    /// report is left out of them here, since Lich's copy of it comes after
+    /// the window, and [`Event::Quiet`] is not published.
     Line(std::sync::Arc<cena_model::line::Line>),
+    /// The prompt a viewer shows, ending what was shown before it: the
+    /// game's, `>` or `HR>`, published right after its [`Event::Frame`], or,
+    /// while the player's Lich runs, the one Lich passed on, after Lich's
+    /// lines ([`Event::Line`]). What a story draws its prompt from, so it
+    /// lands after the lines it ends: Lich's come later than the game's frame.
+    ///
+    /// Not held for a script runner's display hooks, as lines are: with lines
+    /// held, it may come before them.
+    Prompt(String),
+    /// A frame finished a line of game text, **as the game sent it**: the
+    /// model's line before `;sorter` and the character's triggers answer it,
+    /// published just before the [`Event::Line`]s it becomes (`plan/46`
+    /// §4.1).
+    ///
+    /// What a script reads. Lich's scripts see each line before its hooks
+    /// change what is shown (`inventory/13` §1.6), and a trigger is Hydra's
+    /// hook: a squelch hides a line from the player, never from a script
+    /// waiting for it. Published only while a script runner listens to the
+    /// character ([`script::Door::listen`](crate::script::Door::listen)), so
+    /// a character nobody scripts publishes each line once.
+    ///
+    /// Also what a runner's display hooks answer, by the cursor it was
+    /// published at ([`script::Door::shown`](crate::script::Door::shown)):
+    /// hooks see the game's line, as Lich's see the game's text.
+    Heard(std::sync::Arc<cena_model::line::Line>),
     /// A trigger set or cleared a flag (`cena_model::state::flags`): the
     /// session has made the change to its state, and whoever folds these
     /// events into a state of its own makes it too, so a hunt's guard reads
@@ -43,6 +83,8 @@ pub enum Event {
     ///
     /// Published after the [`Event::Line`]s of the line that set it, or at
     /// the prompt a condition fired on; only when it changed something.
+    /// Before them while a script's display hooks hold them: a flag never
+    /// waits on a script.
     Flag(cena_model::state::flags::FlagChange),
     /// A trigger called for attention: a sound, an OS notification, a
     /// banner (`cena_model::trigger::Attention`). The session decides it
@@ -59,7 +101,18 @@ pub enum Event {
     /// otherwise to the game as [`Origin::Trigger`](crate::Origin::Trigger).
     /// The session decides and paces it; the binary sends it, holding the
     /// handle a command table is on.
-    Act(std::sync::Arc<cena_model::trigger::Act>),
+    ///
+    /// Only while `Ready`: a send the login burst set off is not made, then
+    /// or later (the crate review of 2026-09-28, R3). And it names the
+    /// connection it answered, since the binary sends it a moment later: one
+    /// decided on a connection since replaced is not sent on the new one,
+    /// neither to the game nor as a `;` command (R2).
+    Act {
+        /// The send.
+        act: std::sync::Arc<cena_model::trigger::Act>,
+        /// The connection whose line or prompt set it off.
+        generation: crate::lifecycle::Generation,
+    },
     /// A prompt closed a chunk that held combat: every attack event and fact
     /// it yielded, whole and in order.
     ///
@@ -106,6 +159,11 @@ pub enum Event {
     /// stopped, what is still stored (`crate::notice`). **Not from the
     /// game**, which is why it is its own event and not a frame.
     Notice(crate::notice::Notice),
+    /// The agent's side of the session changed: the player set its level or
+    /// answered a request, or an operation it started moved on
+    /// (`crate::agent`). Published so an agent learns it in order with
+    /// everything else; the player was told in a notice.
+    Agent(crate::agent::Change),
     /// The session changed lifecycle state.
     StateChanged(State),
     /// A connection attempt failed, and another is coming after `delay`.

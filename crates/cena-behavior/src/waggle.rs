@@ -72,17 +72,69 @@ impl Default for WaggleProfile {
 }
 
 /// Every setting, in the struct's order: what `;waggle set` names when it
-/// refuses one.
-pub const KEYS: &[&str] = &[
-    "cast_list",
-    "start_at",
-    "stop_at",
-    "refreshable_min",
-    "multicast",
-    "reserve_mana",
-    "bail",
-    "skip_not_sharing",
-];
+/// refuses one, and what the settings menu shows.
+pub const TABLE: &[crate::settings::Key] = {
+    use crate::settings::{Key, KeyKind};
+    &[
+        Key {
+            name: "cast_list",
+            label: "Spells to cast",
+            help: "The spells waggle casts, by number.",
+            kind: KeyKind::Numbers,
+        },
+        Key {
+            name: "start_at",
+            label: "Top up under (minutes)",
+            help: "A stackable spell is topped up only when it has less than this left.",
+            kind: KeyKind::Number {
+                min: 0.0,
+                max: 250.0,
+            },
+        },
+        Key {
+            name: "stop_at",
+            label: "Top up to (minutes)",
+            help: "...and up to this much. Ewaggle caps it at 250.",
+            kind: KeyKind::Number {
+                min: 0.0,
+                max: 250.0,
+            },
+        },
+        Key {
+            name: "refreshable_min",
+            label: "Recast refreshable under (minutes)",
+            help: "A refreshable spell is recast when it has less than this left.",
+            kind: KeyKind::Number {
+                min: 0.0,
+                max: 250.0,
+            },
+        },
+        Key {
+            name: "multicast",
+            label: "Multicast",
+            help: "Cast several at once where the ranks allow.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "reserve_mana",
+            label: "Mana kept back",
+            help: "Mana waggle leaves unspent.",
+            kind: KeyKind::Whole { min: 0, max: 1000 },
+        },
+        Key {
+            name: "bail",
+            label: "Stop when mana runs short",
+            help: "End the run when mana runs short, rather than wait for it.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "skip_not_sharing",
+            label: "Skip those not sharing",
+            help: "Skip anyone not sharing what they have up.",
+            kind: KeyKind::Toggle,
+        },
+    ]
+};
 
 /// The character's waggle profile: `<data>/hunt/waggle/<instance>_<character>.toml`.
 #[must_use]
@@ -493,13 +545,14 @@ fn max_multicast(state: &GameState, circle: u16) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{KEYS, WaggleProfile};
+    use super::{TABLE, WaggleProfile};
+    use crate::settings::names;
 
-    /// `KEYS` is every field, in order.
+    /// `TABLE` is every field, in order.
     #[test]
     fn keys_are_every_setting() {
         let table = toml::Table::try_from(WaggleProfile::default()).unwrap();
         let keys: Vec<&str> = table.keys().map(String::as_str).collect();
-        assert_eq!(keys, KEYS);
+        assert_eq!(keys, names(TABLE));
     }
 }

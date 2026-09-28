@@ -1,0 +1,99 @@
+From 93820fc45126e07e8621a0967e94e1578dd8a46f Mon Sep 17 00:00:00 2001
+From: Nisugi <nisugi-gs4@gmail.com>
+Date: Mon, 28 Sep 2026 01:57:38 -0500
+Subject: [PATCH] fix(all): pipe mode keeps an explicit frontend flag
+
+--pipe set Frontend.client to 'unknown' unconditionally, so a frontend
+reading stdout could not name itself. respond escapes and wraps script
+output by the frontend's capabilities, so an XML reader received script
+text as raw markup: `respond '<b>x</b>'` arrived as a tag.
+
+Pipe mode now takes the frontend from the same flags every other launch
+reads (--stormfront, --frontend=saga, ...), and stays 'unknown' without
+one.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+---
+ lib/common/authentication/login_helpers.rb        | 14 ++++++++++++++
+ lib/main/main.rb                                  |  6 ++++--
+ .../common/authentication/login_helpers_spec.rb   | 15 +++++++++++++++
+ 3 files changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/lib/common/authentication/login_helpers.rb b/lib/common/authentication/login_helpers.rb
+index 638a45d..6fbbe2d 100644
+--- a/lib/common/authentication/login_helpers.rb
++++ b/lib/common/authentication/login_helpers.rb
+@@ -560,6 +560,20 @@ module Lich
+           frontend
+         end
+ 
++        # Resolves the frontend identity for a `--pipe` launch.
++        #
++        # Pipe mode starts no frontend and has none to detect, so whatever
++        # reads stdout names itself with a frontend flag. `respond` escapes and
++        # wraps script output by that frontend's capabilities; left `unknown`,
++        # an XML reader receives script text as raw markup.
++        #
++        # @param argv [Array<String>] command line arguments
++        # @return [String] frontend identity for Frontend.client
++        def self.pipe_frontend(argv)
++          requested_frontend = resolve_frontend_arg(argv)
++          requested_frontend == :__unset ? 'unknown' : requested_frontend
++        end
++
+         # Resolves which frontend should be used when matching a saved entry for
+         # CLI login.
+         #
+diff --git a/lib/main/main.rb b/lib/main/main.rb
+index a080d4f..4e4eadf 100644
+--- a/lib/main/main.rb
++++ b/lib/main/main.rb
+@@ -395,7 +395,9 @@ reconnect_if_wanted = proc {
+       # stdin supplies what a front-end would send (including the initial login
+       # key); processed server output is written to stdout. EOF on stdin marks
+       # the client dead (PipeIO#closed?) and triggers the normal shutdown path.
+-      Frontend.client = 'unknown'
++      # An explicit frontend flag (--stormfront, --frontend=saga, ...) names
++      # what reads stdout, so script output is escaped and marked for it.
++      Frontend.client = Lich::Common::Authentication::LoginHelpers.pipe_frontend(ARGV)
+       $_CLIENT_ = SynchronizedSocket.new(Lich::Common::PipeIO.new)
+       Lich.log 'info: --pipe mode: using stdin/stdout as client transport'
+     elsif Frontend.client.eql?('suks')
+@@ -566,7 +568,7 @@ reconnect_if_wanted = proc {
+     # stdin/stdout act as the client transport; connect straight to the game
+     # server named by -g (SGE/eaccess login already bypassed by -g). stdin
+     # supplies the login key + version; processed server output goes to stdout.
+-    Frontend.client = 'unknown'
++    Frontend.client = Lich::Common::Authentication::LoginHelpers.pipe_frontend(ARGV)
+     $_CLIENT_ = SynchronizedSocket.new(Lich::Common::PipeIO.new)
+     Lich.log 'info: --pipe mode: using stdin/stdout as client transport'
+     @argv_options[:game_host], @argv_options[:game_port] = Lich.fix_game_host_port(@argv_options[:game_host], @argv_options[:game_port])
+diff --git a/spec/lib/common/authentication/login_helpers_spec.rb b/spec/lib/common/authentication/login_helpers_spec.rb
+index 82dad91..2fa2e2d 100644
+--- a/spec/lib/common/authentication/login_helpers_spec.rb
++++ b/spec/lib/common/authentication/login_helpers_spec.rb
+@@ -576,6 +576,21 @@ RSpec.describe Lich::Common::Authentication::LoginHelpers do
+     end
+   end
+ 
++  describe '.pipe_frontend' do
++    it 'names the frontend a pipe client asks for' do
++      expect(described_class.pipe_frontend(['--pipe', '-g', '127.0.0.1:4000', '--stormfront'])).to eq('stormfront')
++      expect(described_class.pipe_frontend(['--pipe', '--frontend=saga'])).to eq('saga')
++    end
++
++    it 'canonicalizes an alias' do
++      expect(described_class.pipe_frontend(['--pipe', '--wrayth'])).to eq('stormfront')
++    end
++
++    it 'stays unknown with no frontend flag' do
++      expect(described_class.pipe_frontend(['--pipe', '-g', '127.0.0.1:4000'])).to eq('unknown')
++    end
++  end
++
+   describe '.resolve_headless_frontend' do
+     it 'identifies a Genie client attached to the detachable port' do
+       expect(
+-- 
+2.49.0.windows.1
+

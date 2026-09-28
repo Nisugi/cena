@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+cena-agent.workspace = true
 cena-behavior.workspace = true
 # AMENDED for Milestone 1 Step 2 (author's call, 2026-09-18). The login
 # produces a ByteSource and the session consumes one; the binary is the only
@@ -17,8 +18,13 @@ cena-web.workspace = true
 cena-host.workspace = true
 # The window (plan/47): what the binary opens unless --headless or --web.
 cena-gui.workspace = true
+# `;scripts import` reads a Lich player's lich.db3 (plan/46 step 3).
+rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# A hunt profile's settings, read as the chain lays them, for the settings
+# menu's hunt pages (`hunt_pages.rs`). Already built for cena-behavior.
+toml.workspace = true
 # Fingerprint the exact map shared by travel and the read-only minimap.
 sha2 = "0.10"
 

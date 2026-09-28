@@ -1,0 +1,21 @@
+# A script of Hydra's own, for the Ruby runner's hooks
+# (crates/cena-agent/tests/runner.rs): a display hook that hides one line
+# and changes another, markup and all; the hidden line still heard by the
+# script; then an input hook that turns `tt` into `target`. They last as
+# long as the script, which waits to be killed.
+
+DownstreamHook.add('hooktest_display', proc { |line|
+  if line =~ /breeze/
+    nil
+  else
+    line.sub('quiet room', '<pushBold/>loud room<popBold/>')
+  end
+}, persist: false)
+echo 'hooked'
+waitfor 'A breeze blows'
+echo 'heard the breeze'
+UpstreamHook.add('hooktest_input', proc { |line|
+  line =~ /\A(?:<c>)?tt\z/ ? 'target' : line
+}, persist: false)
+echo 'typing hooked'
+loop { sleep 1 }

@@ -25,15 +25,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use cena_host::{Host, Who, stop_all};
-use cena_session::{Event, SessionHandle, SessionId, SessionObserver, State, StoppedBecause};
+use cena_session::{Event, SessionHandle, SessionId, SessionObserver, StoppedBecause};
 use cena_ui::{HubControl, HubRequest};
 
 use crate::ask::{self, Typed};
 use crate::commands::Commands;
 use crate::connector::LiveConnector;
+use crate::proven::Proven;
 use crate::{
-    batch, combat, connector, frontend, interrupt, learn, loot, roster, secrets, setup, sorter,
-    travel, triggers, watch,
+    batch, connector, frontend, interrupt, launcher, learn, loot, pages, roster, secrets, setup,
+    sorter, travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -93,6 +94,12 @@ struct Table {
     host: Arc<tokio::sync::Mutex<Host>>,
     started: std::sync::Mutex<BTreeMap<SessionId, Started>>,
     web: Option<frontend::Frontend>,
+    /// `--agent`'s MCP listener (`plan/35`), when asked for.
+    agent: Option<crate::agent::Agent>,
+    /// Every character's Lich scripts and their runners (`plan/46`).
+    scripts: crate::scripts::Scripts,
+    /// Every character's own Lich that runs (`plan/51`).
+    lichs: crate::lich::Lichs,
     /// The window's sessions, when this run has a window (`gui.rs`).
     gui: Option<cena_gui::Sessions>,
     /// What every character's hunt shares: the groups' boards and the
@@ -110,6 +117,9 @@ struct Table {
     /// Word of each change to the one triggers file, so every character
     /// reads it again (`triggers::Changes`).
     changes: triggers::Changes,
+    /// Word that the roster or a kept password changed with no request to
+    /// answer -- a login proven `Ready` -- so the hubs are offered it again.
+    roster: Arc<tokio::sync::Notify>,
 }
 
 /// Run every named character, with no window, until Ctrl-C or until all
@@ -160,12 +170,16 @@ pub(crate) async fn serve(
         // One listener for every character, each with its own page; each
         // page's link is printed when its character is `Ready`.
         web: frontend::Frontend::open(&map).await,
+        agent: crate::agent::Agent::open(&dir).await,
+        scripts: crate::scripts::Scripts::new(&dir, &map),
+        lichs: crate::lich::Lichs::default(),
         party: crate::hunt::Party::new(gui.clone()),
         gui,
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         attention: crate::attention::start(&dir),
         changes: triggers::Changes::new(),
+        roster: Arc::default(),
         dir,
         turn: Arc::default(),
         interrupt: interrupt.clone(),
@@ -189,6 +203,13 @@ pub(crate) async fn serve(
         gui.control(control);
     }
     table.offer().await;
+    let offering = Arc::clone(&table);
+    tokio::spawn(async move {
+        loop {
+            offering.roster.notified().await;
+            offering.offer().await;
+        }
+    });
 
     eprintln!("[play] running; Ctrl-C quits every character");
     // With the hub up, no character left running is not the end: the hub can
@@ -207,6 +228,11 @@ pub(crate) async fn serve(
     if let Some(web) = &table.web {
         web.shutdown().await;
     }
+    if let Some(agent) = &table.agent {
+        agent.shutdown().await;
+    }
+    table.scripts.shutdown().await;
+    table.lichs.shutdown().await;
     eprintln!("\n[disconnect] quitting every session");
     let (stopped, refused) = Box::pin(table.stop_everything()).await;
     if let Some(gui) = &table.gui {
@@ -228,6 +254,7 @@ impl Table {
         let who = Who {
             account: account.clone(),
             character: character.clone(),
+            game: game.clone(),
         };
         let connector = LiveConnector::new(typed, connector::login_provider(), self.pin.clone());
         let mut host = self.host.lock().await;
@@ -255,7 +282,8 @@ impl Table {
         };
         let commands = Commands::install(&hosted.handle);
         crate::relay::open(&hosted.handle, &commands, self.characters());
-        sorter::open(&hosted.handle, &commands);
+        let kept = crate::general::Kept::of(&self.dir, &login);
+        sorter::open(&hosted.handle, &commands, kept);
         // Following before the first read, so no change falls between.
         let following = self.changes.follow();
         triggers::open(&hosted.handle, &self.dir, &character);
@@ -267,24 +295,7 @@ impl Table {
             self.changes.clone(),
         );
         batch::open(&hosted.handle, &hosted.observer, &commands);
-        // The ledger's reports need only the database's path, known now.
-        match cena_session::combat_recorder::worker::database_path(&self.dir, &game, &character) {
-            Ok(database) => {
-                loot::open(&hosted.handle, &commands, database.clone());
-                combat::open(&hosted.handle, &commands, database);
-            }
-            Err(e) => eprintln!("[{character}] no loot reports: {e}"),
-        }
-        if let Some(web) = &self.web {
-            web.attach(
-                Some(&character),
-                hosted.observer.clone(),
-                hosted.handle.clone(),
-            );
-        }
-        if let Some(gui) = &self.gui {
-            gui.attach(&character, hosted.observer.clone(), &hosted.handle);
-        }
+        self.open_readers(id, &character, &game, hosted, &commands);
         let watcher = tokio::spawn(watch::watch_events(events, format!("[{character}]")));
         tokio::spawn(crate::attention::forward(
             calls,
@@ -301,7 +312,13 @@ impl Table {
             self.dir.clone(),
             character.clone(),
         ));
-        proven.on_ready(&hosted.observer, &self.turn);
+        proven.on_ready(&hosted.observer, &self.turn, &self.roster);
+        tokio::spawn(self.lichs.clone().at_login(
+            id,
+            hosted.handle.clone(),
+            hosted.observer.clone(),
+            commands.clone(),
+        ));
         tokio::spawn(after_ready(
             hosted.handle.clone(),
             hosted.observer.clone(),
@@ -327,6 +344,52 @@ impl Table {
         Ok(id)
     }
 
+    /// What reads this character once it is on the table: the loot and
+    /// combat reports over its database, the agent, its scripts, its web page
+    /// and its window. Moved
+    /// out of [`Self::start`] when M8's triggers and M7's agent together
+    /// took it past clippy's line limit.
+    fn open_readers(
+        &self,
+        id: SessionId,
+        character: &str,
+        game: &str,
+        hosted: &cena_host::Hosted,
+        commands: &Commands,
+    ) {
+        let database = loot::reports(&hosted.handle, commands, &self.dir, game, character);
+        if let Some(agent) = &self.agent {
+            agent.seat(
+                id,
+                character,
+                &hosted.handle,
+                hosted.observer.clone(),
+                (
+                    database,
+                    setup::recording(&self.dir, game, character).everything(),
+                ),
+            );
+        }
+        self.scripts.open(
+            id,
+            character,
+            game,
+            &hosted.handle,
+            &hosted.observer,
+            commands,
+        );
+        if let Some(web) = &self.web {
+            web.attach(
+                Some(character),
+                hosted.observer.clone(),
+                hosted.handle.clone(),
+            );
+        }
+        if let Some(gui) = &self.gui {
+            gui.attach(character, game, hosted.observer.clone(), &hosted.handle);
+        }
+    }
+
     /// Answer a hub (`cena_ui::HubRequest`), Despana's or the window's,
     /// with one line for it.
     async fn answer(&self, request: HubRequest) -> String {
@@ -339,6 +402,37 @@ impl Table {
                 Err(e) => e,
             },
             HubRequest::Remove(id) => self.remove(SessionId(id)).await,
+            HubRequest::Login(login) => {
+                let name = login.character.trim().to_owned();
+                match self.start(crate::ask::from_window(&login)).await {
+                    Ok(_) => format!("Logging {name} in."),
+                    Err(e) => e,
+                }
+            }
+            HubRequest::Forget(name) => launcher::forget(&self.dir, &name),
+            HubRequest::ForgetPassword(account) => launcher::forget_password(&account),
+            HubRequest::Favourite(name, star) => launcher::favourite(&self.dir, &name, star),
+            HubRequest::Remember(saved) => launcher::remember(&self.dir, &saved),
+            HubRequest::Characters(account) => {
+                launcher::characters(&self.pin, account, self.gui.as_ref()).await
+            }
+            HubRequest::Settings(character) => {
+                let map = crate::map_context::settings(&self.map);
+                pages::send(&self.dir, &map, &character, self.gui.as_ref())
+            }
+            HubRequest::Change(change) => {
+                let map = crate::map_context::settings(&self.map);
+                let said = pages::apply(&self.dir, &map, &change);
+                // The symbol and the sorter reach a running character at once.
+                if crate::general::owns(&change.page)
+                    && let Some(kept) = crate::general::Kept::of(&self.dir, &change.character)
+                    && let Some(handle) = self.handle_of(&change.character).await
+                {
+                    kept.take(&handle);
+                }
+                let problem = pages::send(&self.dir, &map, &change.character, self.gui.as_ref());
+                if problem.is_empty() { said } else { problem }
+            }
             HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {
                 eprintln!("[play] shut down from the hub");
@@ -355,9 +449,23 @@ impl Table {
     /// does not wait on them.
     async fn remove(&self, id: SessionId) -> String {
         match self.take_off(id).await {
-            Some((character, _)) => format!("{character} has quit."),
+            Some((character, ..)) => format!("{character} has quit."),
             None => "That character is no longer on the table.".to_owned(),
         }
+    }
+
+    /// The handle of the character the roster names `login`, while it is
+    /// on the table.
+    async fn handle_of(&self, login: &str) -> Option<cena_session::SessionHandle> {
+        let id = self
+            .started
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .find(|(_, one)| one.login.eq_ignore_ascii_case(login))
+            .map(|(id, _)| *id)?;
+        let host = self.host.lock().await;
+        host.get(id).map(|hosted| hosted.handle.clone())
     }
 
     /// Log a stopped character back in: off the table, then started again
@@ -373,9 +481,11 @@ impl Table {
             None => "That character is no longer on the table.".to_owned(),
             Some(true) => "That character is still connected.".to_owned(),
             Some(false) => {
-                let Some((character, login)) = self.take_off(id).await else {
+                let Some((character, login, closed)) = self.take_off(id).await else {
                     return "That character is no longer on the table.".to_owned();
                 };
+                // Its account is taken until what it left is closed.
+                let _ = closed.await;
                 match hub_login(&self.dir, &login) {
                     Ok(typed) => match self.start(typed).await {
                         Ok(_) => format!("Reconnecting {character}."),
@@ -388,12 +498,22 @@ impl Table {
     }
 
     /// Take session `id` off the table and stop it; its loose ends are closed
-    /// in the background. Its character and roster name, when it was there.
-    async fn take_off(&self, id: SessionId) -> Option<(String, String)> {
-        let hosted = self.host.lock().await.take(id)?;
+    /// in the background, and its account stays taken until they are
+    /// (`cena_host::Stopping`). Its character and roster name, when it was
+    /// there, and the closing.
+    async fn take_off(
+        &self,
+        id: SessionId,
+    ) -> Option<(String, String, tokio::task::JoinHandle<()>)> {
+        let (hosted, stopping) = self.host.lock().await.take(id)?;
         if let Some(web) = &self.web {
             web.detach(id);
         }
+        if let Some(agent) = &self.agent {
+            agent.unseat(id);
+        }
+        self.scripts.close(id).await;
+        self.lichs.close(id).await;
         if let Some(gui) = &self.gui {
             gui.detach(id);
         }
@@ -403,12 +523,15 @@ impl Table {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .remove(&id)?;
-        self.party.unseat(&one.character);
-        let named = (one.character.clone(), one.login.clone());
+        self.party.unseat(id);
+        let (character, login) = (one.character.clone(), one.login.clone());
         // A character still in the process holds its logs open (`setup`'s
         // FLUSH_WAIT has why); the hub is not made to wait for that.
-        tokio::spawn(finish(one, end));
-        Some(named)
+        let closed = tokio::spawn(async move {
+            finish(one, end).await;
+            drop(stopping);
+        });
+        Some((character, login, closed))
     }
 
     /// Tell the hubs which characters they can add: in the roster, with a saved
@@ -418,37 +541,27 @@ impl Table {
         if self.web.is_none() && self.gui.is_none() {
             return;
         }
-        let running: Vec<String> = self
+        let running: Vec<(String, String)> = self
             .host
             .lock()
             .await
             .sessions()
             .filter(|(_, hosted)| hosted.is_running())
-            .map(|(_, hosted)| hosted.who.character.to_lowercase())
+            .map(|(_, hosted)| (hosted.who.game.clone(), hosted.who.character.clone()))
             .collect();
         let roster = roster::all(&self.dir).unwrap_or_default();
-        let available = roster
-            .iter()
-            .filter(|e| !running.contains(&e.character.to_lowercase()))
-            .filter(|e| secrets::saved(&e.account))
-            .map(|e| {
-                let twice = roster
-                    .iter()
-                    .filter(|other| other.character.eq_ignore_ascii_case(&e.character))
-                    .count()
-                    > 1;
-                if twice {
-                    format!("{}:{}", e.game_code, e.character)
-                } else {
-                    e.character.clone()
-                }
-            })
-            .collect::<Vec<String>>();
+        let available = roster::available(&roster, &running, secrets::saved);
         if let Some(web) = &self.web {
             web.sessions().offer(available.clone());
         }
         if let Some(gui) = &self.gui {
             gui.offer(available);
+            gui.roster(
+                roster
+                    .iter()
+                    .map(|entry| entry.card(secrets::saved(&entry.account)))
+                    .collect(),
+            );
         }
     }
 
@@ -466,7 +579,11 @@ impl Table {
                 let host = host.lock().await;
                 host.sessions()
                     .filter(|(_, hosted)| hosted.is_running())
-                    .map(|(_, hosted)| (hosted.who.character.clone(), hosted.handle.clone()))
+                    .map(|(_, hosted)| crate::relay::Running {
+                        game: hosted.who.game.clone(),
+                        name: hosted.who.character.clone(),
+                        handle: hosted.handle.clone(),
+                    })
                     .collect()
             })
         })
@@ -570,73 +687,6 @@ async fn after_ready(
     drop(learning);
     travel::after_login(&handle, observer, &commands, &map, &party).await;
     learn::sync(&handle, &stale, &who).await;
-}
-
-/// What a login leaves behind once it is proven: its roster entry, and --
-/// for a typed password -- the offer to keep it in the keyring. Taken from
-/// the login before it is handed to the connector, started once the session
-/// exists.
-pub(crate) struct Proven {
-    entry: roster::Entry,
-    typed_password: Option<(String, String)>,
-}
-
-impl Proven {
-    pub(crate) fn of(typed: &Typed) -> Self {
-        Self {
-            entry: roster::Entry::of(typed),
-            typed_password: (typed.password_from == secrets::Source::Prompt)
-                .then(|| (typed.account.clone(), typed.password.clone())),
-        }
-    }
-
-    /// When `observer`'s login reaches `Ready`: record the roster entry, and
-    /// offer a typed password to the keyring, one question at a time (`turn`).
-    pub(crate) fn on_ready(self, observer: &SessionObserver, turn: &Arc<std::sync::Mutex<()>>) {
-        if let Some((account, password)) = self.typed_password {
-            tokio::spawn(secrets::offer_to_remember(
-                account,
-                password,
-                observer.clone(),
-                Arc::clone(turn),
-            ));
-        }
-        let observer = observer.clone();
-        let entry = self.entry;
-        tokio::spawn(async move {
-            if until_ready(&observer).await {
-                remember(&cena_session::character_store::data_dir(), entry);
-            }
-        });
-    }
-}
-
-/// Record `entry` in the roster, saying so if it cannot be.
-fn remember(dir: &Path, entry: roster::Entry) {
-    let character = entry.character.clone();
-    if let Err(e) = roster::record(dir, entry) {
-        eprintln!(
-            "[{character}] could not be added to the roster ({e}); `--character {character}` will ask again"
-        );
-    }
-}
-
-/// Resolves `true` once `observer`'s session is `Ready`; `false` if it ended
-/// first.
-async fn until_ready(observer: &SessionObserver) -> bool {
-    let Ok((snapshot, mut events)) = observer.subscribe().await else {
-        return false;
-    };
-    if snapshot.lifecycle == State::Ready {
-        return true;
-    }
-    loop {
-        match events.recv().await {
-            Ok(o) if o.event == Event::StateChanged(State::Ready) => return true,
-            Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => return false,
-        }
-    }
 }
 
 #[cfg(test)]

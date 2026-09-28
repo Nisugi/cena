@@ -96,6 +96,11 @@ impl<S: ByteSource> SessionActor<S> {
             self.observations
                 .finish(self.events.snapshot(&self.state, self.lifecycle));
         }
+        // The player's Lich outlives the connection: what it shows waits for
+        // the next one's actor.
+        if let Some(text) = self.lich_text.take() {
+            self.events.lich_text().put_back(text);
+        }
         SessionEnd {
             recorder: self.recorder,
             state: self.state,
@@ -125,6 +130,9 @@ impl<S: ByteSource> SessionActor<S> {
         // This runs on EVERY exit path, so no caller of `quit()` is left
         // waiting on a reply that never comes.
         self.finish_quit(crate::command::Farewell::Unsent);
+        // What waited for a script's display hooks is shown: the connection
+        // that held it is over.
+        self.show_held(true);
         // Idempotent by the trait's contract, which is why this is safe on
         // every one of the three exit paths.
         let _ = self.source.shutdown().await;
@@ -183,14 +191,18 @@ impl<S: ByteSource> SessionActor<S> {
     /// ambiguous -- an `Ok(0)` that is either the server hanging up or the
     /// server doing exactly what it was asked.
     ///
-    /// Idempotent: the reply is `take`n, so a quit answered by the EOF is not
-    /// answered again by the deadline.
+    /// Idempotent: the callers are taken, so a quit answered by the EOF is
+    /// not answered again by the deadline. Every caller waiting is told the
+    /// one verdict (the crate review of 2026-09-28, R7).
     pub(super) fn finish_quit(&mut self, farewell: crate::command::Farewell) -> bool {
         let Some(pending) = self.quitting.as_mut() else {
             return false;
         };
-        if let Some(reply) = pending.reply.take() {
+        let replies = std::mem::take(&mut pending.replies);
+        if !replies.is_empty() {
             self.log(&format!("quit: {farewell:?}"));
+        }
+        for reply in replies {
             let _ = reply.send(farewell);
         }
         true

@@ -48,7 +48,7 @@
 //! finish a trip at once. So **nothing here writes the file it read**. A save
 //! changes one thing -- one character's spot ([`save`]), or one target
 //! ([`save_target`]) -- by reading the file afresh, changing that, and
-//! writing it back, all under the private `WRITING` lock. A character that holds a stale
+//! writing it back, all under the file's lock ([`crate::store::changing`]). A character that holds a stale
 //! copy of someone else's spot cannot write it back, because it never writes
 //! any spot but its own; and a [`TravelFile`]'s `targets` are a copy to read
 //! -- everyone's and its own together -- which [`save`] does not write.
@@ -70,7 +70,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
 
@@ -79,9 +78,6 @@ use crate::character_store::safe_component;
 /// The version this build writes. Bump it **with a migration**: see the
 /// module docs for why this file is never simply refused.
 pub const TRAVEL_SCHEMA_VERSION: u32 = 3;
-
-/// Held across every read-change-write of the file. See the module docs.
-static WRITING: Mutex<()> = Mutex::new(());
 
 /// A character's targets by name: the room or rooms each means.
 pub type Targets = BTreeMap<String, Vec<u32>>;
@@ -99,7 +95,8 @@ pub struct TravelFile {
     /// this name and `instance`.
     pub character: String,
     /// The travel profile: `ice_mode`, `use_urchins`, the name of the sack a
-    /// house key is kept in.
+    /// house key is kept in. **A copy to read**: [`save`] does not write it,
+    /// [`set_setting`] does.
     pub settings: BTreeMap<String, String>,
     /// What an earlier crossing wrote down -- *entered Duskruin from the
     /// Landing*. They outlive the session and the login.
@@ -347,13 +344,12 @@ impl From<Legacy> for Spot {
 /// Read the file afresh, change it, and write it back, with nobody else in
 /// this process doing the same in between.
 fn change(dir: &Path, with: impl FnOnce(&mut Shared) -> io::Result<()>) -> io::Result<PathBuf> {
-    // A panic elsewhere while holding it left the file whole: the rename is
-    // the only write, and it is atomic.
-    let _held = WRITING.lock().unwrap_or_else(PoisonError::into_inner);
-    let mut shared = read(dir)?;
-    shared.schema_version = TRAVEL_SCHEMA_VERSION;
-    with(&mut shared)?;
-    write(dir, &shared)
+    crate::store::changing(&travel_path(dir), || {
+        let mut shared = read(dir)?;
+        shared.schema_version = TRAVEL_SCHEMA_VERSION;
+        with(&mut shared)?;
+        write(dir, &shared)
+    })
 }
 
 /// This character's spot, to change. **One that does not exist yet is moved
@@ -385,10 +381,15 @@ fn spot_in<'a>(
     Ok(shared.characters.entry(key).or_default())
 }
 
-/// Write this character's settings, memories and last room -- **and no one
-/// else's, and no targets** (module docs): [`TravelFile::targets`] is
-/// everyone's and the character's own read together, so writing it back
-/// would make everyone's the character's. [`save_target`] writes those.
+/// Write this character's memories and last room -- **and no one else's,
+/// no targets, and not its settings** (module docs): [`TravelFile::targets`]
+/// is everyone's and the character's own read together, so writing it back
+/// would make everyone's the character's; [`save_target`] writes those.
+///
+/// **The settings are the player's**, and a trip loads them when it starts
+/// and saves when it ends: writing its copy back would put back what the
+/// settings menu changed in between. [`set_setting`] writes them, one at a
+/// time (`plan/50` §7 step 4).
 ///
 /// # Errors
 ///
@@ -397,9 +398,32 @@ fn spot_in<'a>(
 pub fn save(dir: &Path, file: &TravelFile) -> io::Result<PathBuf> {
     change(dir, |shared| {
         let spot = spot_in(shared, dir, &file.instance, &file.character)?;
-        spot.settings.clone_from(&file.settings);
         spot.memories.clone_from(&file.memories);
         spot.last_room = file.last_room;
+        Ok(())
+    })
+}
+
+/// Set one of this character's travel settings to `value`, or take it out
+/// (`None`), leaving the rest of the file as it is: the settings menu's
+/// writer.
+///
+/// # Errors
+///
+/// As [`save`].
+pub fn set_setting(
+    dir: &Path,
+    instance: &str,
+    character: &str,
+    key: &str,
+    value: Option<&str>,
+) -> io::Result<PathBuf> {
+    change(dir, |shared| {
+        let spot = spot_in(shared, dir, instance, character)?;
+        match value {
+            Some(value) => spot.settings.insert(key.to_owned(), value.to_owned()),
+            None => spot.settings.remove(key),
+        };
         Ok(())
     })
 }

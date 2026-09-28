@@ -46,6 +46,9 @@ impl PartialEq for GameState {
             // thing -- so two states that disagree about what `speech` does
             // when closed are not the same state.
             stream_windows,
+            // **Included**: what the server said of the world, anchored on
+            // its clock, which a replay of the same bytes says again.
+            world,
             // **Excluded from equality, for a different reason than
             // `game_time_received`.** That one is unreproducible; this is a
             // tally of the process's behaviour rather than a fact about the
@@ -96,6 +99,7 @@ impl PartialEq for GameState {
             && idle_warning == &other.idle_warning
             && streams == &other.streams
             && stream_windows == &other.stream_windows
+            && world == &other.world
             && pending == &other.pending
             && chunk == &other.chunk
             && room == &other.room

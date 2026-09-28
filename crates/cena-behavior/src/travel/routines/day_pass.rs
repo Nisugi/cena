@@ -405,10 +405,14 @@ impl DayPass {
             self.at = At::Got;
             return Next::Put(format!("get #{id}"));
         }
-        let buying = seen.walker.settings.get("buy_day_pass").is_some_and(|is| {
-            let is = is.to_lowercase();
-            is == "yes" || is == "true" || is.split([' ', ';']).any(|word| word == self.route)
-        });
+        let buying = seen
+            .walker
+            .settings
+            .get(crate::travel::settings::BUY_DAY_PASS)
+            .is_some_and(|is| {
+                let is = is.to_lowercase();
+                is == "yes" || is == "true" || is.split([' ', ';']).any(|word| word == self.route)
+            });
         match (buying, self.from) {
             (true, Some(from)) => {
                 self.at = At::Clerk;
@@ -516,7 +520,9 @@ impl DayPass {
 
     fn start(&mut self, seen: &Seen<'_>) -> Next {
         let (Some(name), Some(_), Some(_)) = (
-            seen.walker.settings.get("day_pass_sack"),
+            seen.walker
+                .settings
+                .get(crate::travel::settings::DAY_PASS_SACK),
             self.from,
             self.to,
         ) else {

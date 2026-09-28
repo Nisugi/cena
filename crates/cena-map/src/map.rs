@@ -3,7 +3,7 @@
 //! One `Map` is built once and shared by every session in the process; nothing
 //! here is mutable after construction.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 
 use crate::room::{Room, RoomId, Uid};
@@ -162,6 +162,62 @@ impl Map {
     pub fn is_empty(&self) -> bool {
         self.rooms.is_empty()
     }
+
+    /// Every travel profile setting some crossing reads: a guard's
+    /// `setting` or `setting_is_set`, a `wearing_named_by`, a
+    /// `moves_from_setting`, and each `{setting:...}` in what a step sends
+    /// (`crate::step`). The map's own settings, which the settings menu
+    /// lists beside the ones Hydra's code reads (`plan/50` §7 step 4).
+    ///
+    /// Read off each exit as it would be written, so a crossing or cost
+    /// added later is covered without this knowing its shape. A crossing
+    /// the binary loader could not read is not written, and names none.
+    #[must_use]
+    pub fn setting_names(&self) -> BTreeSet<String> {
+        let mut names = BTreeSet::new();
+        let exits = self.rooms.iter().flat_map(|room| &room.exits);
+        for exit in exits {
+            if let Ok(written) = serde_json::to_value(exit) {
+                settings_in(&written, &mut names);
+            }
+        }
+        names
+    }
+}
+
+/// [`Map::setting_names`], over one exit as it is written.
+fn settings_in(written: &serde_json::Value, names: &mut BTreeSet<String>) {
+    use serde_json::Value;
+    match written {
+        Value::String(text) => {
+            let mut rest = text.as_str();
+            while let Some(at) = rest.find("{setting:") {
+                rest = &rest[at + "{setting:".len()..];
+                let Some(end) = rest.find('}') else { break };
+                if end > 0 {
+                    names.insert(rest[..end].to_owned());
+                }
+                rest = &rest[end..];
+            }
+        }
+        Value::Array(items) => items.iter().for_each(|item| settings_in(item, names)),
+        Value::Object(fields) => {
+            for (tag, inner) in fields {
+                let found = match (tag.as_str(), inner) {
+                    ("setting", Value::Array(pair)) => pair.first().and_then(Value::as_str),
+                    ("setting_is_set" | "wearing_named_by" | "moves_from_setting", inner) => {
+                        inner.as_str()
+                    }
+                    _ => None,
+                };
+                if let Some(name) = found {
+                    names.insert(name.to_owned());
+                }
+                settings_in(inner, names);
+            }
+        }
+        _ => {}
+    }
 }
 
 #[cfg(test)]
@@ -197,6 +253,42 @@ mod tests {
         );
         assert_eq!(map.ids_for_uid(Uid(13_010_121)), [RoomId(18011)]);
         assert!(map.ids_for_uid(Uid(1)).is_empty());
+    }
+
+    /// Every way a crossing reads a setting is found, in its steps and its
+    /// cost, and nothing else is taken for one.
+    #[test]
+    fn the_settings_a_map_reads_are_listed() {
+        let rooms: Vec<Room> = serde_json::from_str(
+            r#"[
+            {"id":1,"exits":[
+              {"to":2,"kind":"scripted","steps":[
+                {"pause":4200,"when":{"setting":["ice_mode","wait"]}},
+                {"put":"get my key from my {setting:key_sack}"},
+                {"moves_from_setting":"door_moves"},
+                {"move":"go door","when":{"all":[{"setting_is_set":"key"},{"not":{"wearing_named_by":"cord"}}]}}
+              ],"cost":0.2},
+              {"to":3,"kind":"cardinal","cmd":"north","cost":{"when":{"setting":["use_portmasters","true"]},"then":5.0}}
+            ]},
+            {"id":2,"exits":[{"to":1,"kind":"cardinal","cmd":"south {setting:} {setting:unclosed","cost":0.2}]},
+            {"id":3}
+          ]"#,
+        )
+        .unwrap();
+        let map = Map::from_rooms(rooms).unwrap();
+        let names: Vec<String> = map.setting_names().into_iter().collect();
+        assert_eq!(
+            names,
+            [
+                "cord",
+                "door_moves",
+                "ice_mode",
+                "key",
+                "key_sack",
+                "use_portmasters"
+            ],
+            "an empty or unclosed placeholder names nothing"
+        );
     }
 
     #[test]

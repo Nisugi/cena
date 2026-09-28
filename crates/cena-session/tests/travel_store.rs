@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use cena_session::travel_store::{
     TRAVEL_SCHEMA_VERSION, TravelFile, TravelLoadError, Whose, legacy_path, load, save,
-    save_target, travel_path,
+    save_target, set_setting, travel_path,
 };
 
 /// A directory this test alone owns, named after it.
@@ -29,16 +29,43 @@ fn a_memory_survives_being_written_and_read() {
     let dir = temp_dir("round-trip");
     let mut file = TravelFile::new("GSIV", "Ashryn");
     file.memories.insert("duskruin_origin".into(), "228".into());
-    file.settings.insert("ice_mode".into(), "wait".into());
     file.last_room = Some(228);
     let path = save(&dir, &file).unwrap();
     assert_eq!(path, travel_path(&dir));
     assert!(path.ends_with("travel.json"));
     assert_eq!(load(&dir, "GSIV", "Ashryn").unwrap(), file);
-    assert!(
-        !path.with_extension("json.tmp").exists(),
-        "the temp file became the file"
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
+    file.settings.insert("ice_mode".into(), "wait".into());
+    assert_eq!(load(&dir, "GSIV", "Ashryn").unwrap(), file);
+    let names: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["travel.json"], "the temp file became the file");
+}
+
+/// The settings are the player's: a trip that loaded them before the menu
+/// changed one, and saves its memories after, does not put the old value
+/// back; a setting taken out is gone.
+#[test]
+fn a_trip_does_not_put_back_a_setting_changed_under_it() {
+    let dir = temp_dir("settings");
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
+    let mut trip = load(&dir, "GSIV", "Ashryn").unwrap();
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("run")).unwrap();
+    set_setting(&dir, "GSIV", "Ashryn", "key_sack", Some("cloak")).unwrap();
+    trip.memories.insert("duskruin_origin".into(), "228".into());
+    save(&dir, &trip).unwrap();
+    let now = load(&dir, "GSIV", "Ashryn").unwrap();
+    assert_eq!(
+        now.settings.get("ice_mode").map(String::as_str),
+        Some("run")
     );
+    assert_eq!(now.memories, trip.memories, "the trip's memories kept");
+    set_setting(&dir, "GSIV", "Ashryn", "key_sack", None).unwrap();
+    let now = load(&dir, "GSIV", "Ashryn").unwrap();
+    assert!(!now.settings.contains_key("key_sack"));
+    assert!(now.settings.contains_key("ice_mode"));
 }
 
 /// The author's shape, 2026-09-21: one file, and each character's spot in it.
@@ -52,7 +79,7 @@ fn every_character_has_a_spot_in_the_one_file() {
     let mut nerten = TravelFile::new("GSIV", "Nerten");
     nerten.settings.insert("use_urchins".into(), "true".into());
     save(&dir, &ashryn).unwrap();
-    save(&dir, &nerten).unwrap();
+    set_setting(&dir, "GSIV", "Nerten", "use_urchins", Some("true")).unwrap();
 
     let files: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().collect();
     assert_eq!(files.len(), 1, "one file: {files:?}");
@@ -303,4 +330,29 @@ fn an_old_file_that_cannot_be_trusted_stops_the_move() {
     ));
     assert!(save(&dir, &TravelFile::new("GSIV", "Ashryn")).is_err());
     assert!(!travel_path(&dir).exists());
+}
+
+/// A change made while another is being made waits for it, and both are
+/// kept: the file's lock is the store's (`store::changing`), on its path
+/// (the crate review of 2026-09-28, R5, which moved it there).
+#[test]
+fn a_change_made_meanwhile_waits_and_both_are_kept() {
+    let dir = temp_dir("meanwhile");
+    set_setting(&dir, "GSIV", "Ashryn", "ice_mode", Some("wait")).unwrap();
+    let path = travel_path(&dir);
+    let other = cena_session::store::changing(&path, || {
+        let old = std::fs::read_to_string(&path).unwrap();
+        let other = {
+            let dir = dir.clone();
+            std::thread::spawn(move || set_setting(&dir, "GSIV", "Ashryn", "fog", Some("on")))
+        };
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        std::fs::write(&path, old.replace("\"wait\"", "\"stop\"")).unwrap();
+        other
+    });
+    other.join().unwrap().unwrap();
+    let settings = load(&dir, "GSIV", "Ashryn").unwrap().settings;
+    assert_eq!(settings.get("ice_mode").map(String::as_str), Some("stop"));
+    assert_eq!(settings.get("fog").map(String::as_str), Some("on"));
+    let _ = std::fs::remove_dir_all(&dir);
 }

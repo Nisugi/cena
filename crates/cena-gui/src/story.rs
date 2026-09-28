@@ -1,6 +1,7 @@
 //! One character's story as its play window shows it (`plan/47` step 4):
-//! the game's lines, what the player typed, Hydra's own messages in their
-//! own pane, and a trigger's banners.
+//! the game's lines, its prompts, what the player typed, Hydra's own
+//! messages in their own pane, and a trigger's banners.
+//! How a prompt and an echo are shown is `prompt.rs`'s.
 //!
 //! The session already assembled, sorted and painted each line (`plan/45`
 //! §4a); this only decides whether the story shows it. A line on a stream
@@ -15,7 +16,7 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 use cena_session::stream_windows::{Destination, MAIN};
-use cena_session::{Event, GameState, Generation, Notice, NoticeKind, ObservedEvent};
+use cena_session::{Event, Frame, GameState, Generation, Notice, ObservedEvent};
 use cena_ui::{StyledRun, painted, story_lines};
 
 /// Lines a story keeps, newest last.
@@ -33,24 +34,50 @@ pub(crate) const ALERT_FOR: Duration = Duration::from_secs(10);
 pub(crate) enum Shown {
     /// A line the game sent, as the session painted it.
     Game(Vec<StyledRun>),
-    /// What the player typed here, echoed as sent.
-    Typed(String),
+    /// What the player typed here, echoed as sent after the prompt it
+    /// followed.
+    Typed {
+        /// The last prompt shown before it: `>`, `R>`.
+        prompt: String,
+        /// What was typed.
+        line: String,
+    },
+    /// The game's prompt, `>`: the end of what it said.
+    Prompt(String),
     /// Lines were lost here: the feed fell behind.
     Gap,
+    /// A line of another stream, which the game sends to the story while
+    /// that stream's window is closed: kept apart from the story's own, so
+    /// the story leaves it out while a widget of the stream is open.
+    From(String, Vec<StyledRun>),
 }
 
 /// What a play window shows of one character, kept by its feed.
 #[derive(Debug, Default)]
 pub(crate) struct Story {
-    /// The story, oldest first.
-    pub(crate) lines: VecDeque<Shown>,
+    /// The story, oldest first, each line with when it arrived.
+    pub(crate) lines: VecDeque<(Stamp, Shown)>,
     /// Hydra's messages, oldest first. Debug ones are not kept: a screen
     /// wants what a log may not (`cena_session::NoticeKind::Debug`).
     pub(crate) said: VecDeque<Notice>,
     /// A trigger's banners, with when each arrived.
     pub(crate) alerts: VecDeque<(Instant, String)>,
+    /// Lines of the game's heard, ever: a tab not showing counts how many
+    /// came since it last did (`plan/49` §2).
+    pub(crate) heard: u64,
+    /// Hydra's messages told, ever, for the same.
+    pub(crate) told: u64,
+    /// Each stream's own lines, for a widget of it (`streams.rs`).
+    pub(crate) streams: streams::Streams,
+    /// The game's last answer to a menu asked for on this connection, and
+    /// how many came before it, for a request to know one after it.
+    pub(crate) menu: Option<(u64, cena_session::Menu)>,
     /// Inside a quiet command's window.
     quiet: bool,
+    /// The last prompt shown; `>` before any.
+    prompt: Option<String>,
+    /// The story has had a line since the last prompt.
+    since_prompt: bool,
     /// The connection the last event came on.
     generation: Option<Generation>,
 }
@@ -63,10 +90,17 @@ impl Story {
             // A window never outlives its connection.
             self.generation = Some(event.generation);
             self.quiet = false;
+            self.menu = None;
         }
         match &event.event {
             Event::Quiet(quiet) => self.quiet = *quiet,
             Event::Line(line) => {
+                let main = is_main(&line.stream);
+                let lines = story_lines(&line.stream, painted(line));
+                if !main {
+                    self.streams
+                        .hear(&line.stream, lines.iter().map(|shown| shown.runs.clone()));
+                }
                 let style = match state.map_or(Destination::Main, |state| {
                     state.stream_windows().route(&line.stream, &|_| false)
                 }) {
@@ -74,65 +108,56 @@ impl Story {
                     Destination::MainStyled(style) => Some(style),
                     Destination::Main | Destination::Window(_) => None,
                 };
-                if self.quiet && is_main(&line.stream) {
+                if self.quiet && main {
                     return;
                 }
-                for shown in story_lines(&line.stream, painted(line)) {
+                for shown in lines {
                     let mut runs = shown.runs;
                     if let Some(style) = &style {
                         for run in runs.iter_mut().filter(|run| run.preset.is_none()) {
                             run.preset = Some(style.clone());
                         }
                     }
-                    self.push(Shown::Game(runs));
+                    self.push(if main {
+                        Shown::Game(runs)
+                    } else {
+                        Shown::From(line.stream.clone(), runs)
+                    });
+                    self.heard += 1;
+                    self.since_prompt = true;
                 }
             }
+            Event::Frame(frame) => match frame.as_ref() {
+                Frame::Prompt { text, .. } => self.prompted(text),
+                Frame::MenuResponse(menu) => {
+                    let count = self.menu.as_ref().map_or(0, |(count, _)| count + 1);
+                    self.menu = Some((count, menu.clone()));
+                }
+                _ => {}
+            },
             Event::Notice(notice) => self.tell(notice.clone()),
             Event::Attention(call) => {
                 if let Some(alert) = &call.alert {
-                    self.alerts.push_back((Instant::now(), alert.clone()));
-                    while self.alerts.len() > MAX_ALERTS {
-                        self.alerts.pop_front();
-                    }
+                    self.alert(alert);
                 }
             }
             _ => {}
         }
     }
 
-    /// Lines were lost: mark the place, once.
+    /// Lines were lost: mark the place, once, and show the story again, a
+    /// quiet command's end perhaps among them: the snapshot does not say,
+    /// and a story shown too much beats one silent for good (the crate
+    /// review of 2026-09-28, R8).
     pub(crate) fn missed(&mut self) {
-        if self.lines.back() != Some(&Shown::Gap) {
+        self.quiet = false;
+        if self.lines.back().map(|(_, shown)| shown) != Some(&Shown::Gap) {
             self.push(Shown::Gap);
         }
     }
 
-    /// The player typed `line` here.
-    pub(crate) fn typed(&mut self, line: &str) {
-        self.push(Shown::Typed(line.to_owned()));
-    }
-
-    /// Hydra says `notice` to the player, in the messages pane.
-    pub(crate) fn tell(&mut self, notice: Notice) {
-        if notice.kind == NoticeKind::Debug {
-            return;
-        }
-        self.said.push_back(notice);
-        while self.said.len() > MAX_SAID {
-            self.said.pop_front();
-        }
-    }
-
-    /// The banners still up at `now`, oldest first.
-    pub(crate) fn alerts_at(&self, now: Instant) -> impl Iterator<Item = &str> {
-        self.alerts
-            .iter()
-            .filter(move |(at, _)| now.saturating_duration_since(*at) < ALERT_FOR)
-            .map(|(_, text)| text.as_str())
-    }
-
-    fn push(&mut self, shown: Shown) {
-        self.lines.push_back(shown);
+    pub(super) fn push(&mut self, shown: Shown) {
+        self.lines.push_back((Stamp::now(), shown));
         while self.lines.len() > MAX_STORY {
             self.lines.pop_front();
         }
@@ -144,6 +169,13 @@ impl Story {
 fn is_main(stream: &str) -> bool {
     stream.is_empty() || stream == MAIN
 }
+
+mod prompt;
+mod said;
+mod stamp;
+mod streams;
+
+pub(crate) use stamp::{Hours, Stamp};
 
 #[cfg(test)]
 mod tests;

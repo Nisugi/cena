@@ -93,6 +93,21 @@ impl Chord {
         Ok(chord)
     }
 
+    /// The chord as the file and the Keys page write it: its modifiers in
+    /// one order, then its key, `Ctrl+Shift+F1`. [`Chord::parse`] reads it
+    /// back.
+    pub(crate) fn written(&self) -> String {
+        let mut written = String::new();
+        for (bit, name) in [(CTRL, "Ctrl"), (SHIFT, "Shift"), (ALT, "Alt"), (CMD, "Cmd")] {
+            if self.held & bit != 0 {
+                written.push_str(name);
+                written.push('+');
+            }
+        }
+        written.push_str(&self.key);
+        written
+    }
+
     /// Whether this chord types something rather than commanding: a letter,
     /// a digit, a mark or the space, with no Ctrl, Alt or Cmd held.
     fn types(&self) -> bool {
@@ -284,9 +299,14 @@ impl Keybinds {
                 Ok(chord) if chord.types() => problems.push(format!(
                     "`{written}` types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
                 )),
-                Ok(chord) => {
-                    keybinds.binds.insert(chord, line);
-                }
+                // One command, or it is said, not bound: a line with a newline
+                // would send two (the crate review of 2026-09-28, R10).
+                Ok(chord) => match cena_ui::validate_line(&line) {
+                    Ok(()) => {
+                        keybinds.binds.insert(chord, line);
+                    }
+                    Err(why) => problems.push(format!("`{written}`: {why}.")),
+                },
                 Err(why) => problems.push(why),
             }
         }
@@ -305,6 +325,15 @@ impl Keybinds {
     /// How many keys are bound.
     pub(crate) fn len(&self) -> usize {
         self.binds.len()
+    }
+
+    /// Every key bound and the line it sends, the key as [`Chord::written`]
+    /// writes it: what the Keys page lists.
+    pub(crate) fn listed(&self) -> Vec<(String, String)> {
+        self.binds
+            .iter()
+            .map(|(chord, line)| (chord.written(), line.clone()))
+            .collect()
     }
 
     /// What `chord` sends, if it is bound.
@@ -361,20 +390,27 @@ pub(crate) fn path(data: &Path) -> PathBuf {
     data.join(FILE)
 }
 
-/// The line a numpad press sends, when it is bound: the fork's event, its
-/// key named as winit names it.
-pub(crate) fn numpad_line(keybinds: &Keybinds, event: &eframe::NumpadKeyEvent) -> Option<String> {
-    if !event.pressed || !event.consumed {
+/// The chord a numpad press is, its key named as winit names it; `None` for
+/// a release, or a key with no code.
+pub(crate) fn numpad_chord(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
+    if !event.pressed {
         return None;
     }
     let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
         return None;
     };
-    let name = format!("{code:?}");
-    keybinds
-        .line(&Chord::of(&name, event.modifiers))
-        .map(str::to_owned)
+    Some(Chord::of(&format!("{code:?}"), event.modifiers))
 }
 
+/// The line a numpad press sends, when it is bound and the fork caught it.
+pub(crate) fn numpad_line(keybinds: &Keybinds, event: &eframe::NumpadKeyEvent) -> Option<String> {
+    if !event.consumed {
+        return None;
+    }
+    keybinds.line(&numpad_chord(event)?).map(str::to_owned)
+}
+
+pub(crate) mod page;
 #[cfg(test)]
 mod tests;
+pub(crate) mod write;

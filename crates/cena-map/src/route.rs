@@ -131,6 +131,28 @@ impl Routes<'_> {
         self.settled.get(at).copied()?.then_some(at)
     }
 
+    /// Every room the search settled, in the map's order: its id, the seconds
+    /// to it, and the room it was reached from, `None` for the start. What
+    /// Lich's `dijkstra` answers as two tables (`map_base.rb:777`).
+    pub fn settled(&self) -> impl Iterator<Item = (RoomId, f64, Option<RoomId>)> + '_ {
+        let rooms = self.map.rooms();
+        self.settled
+            .iter()
+            .enumerate()
+            .filter(|(_, settled)| **settled)
+            .filter_map(move |(at, _)| {
+                let seconds = self.seconds.get(at).copied().flatten()?;
+                let from = self
+                    .came_from
+                    .get(at)
+                    .copied()
+                    .flatten()
+                    .and_then(|(previous, _)| rooms.get(previous))
+                    .map(|room| room.id);
+                Some((rooms.get(at)?.id, seconds, from))
+            })
+    }
+
     /// The target the search reached: the room asked for, or the nearest of
     /// several. `None` when none can be reached, or none was asked for.
     #[must_use]

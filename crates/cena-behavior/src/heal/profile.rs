@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::hunt::chain;
+use crate::settings::{Key, KeyKind};
 
 /// How a character heals with herbs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,18 +73,68 @@ impl HealProfile {
 }
 
 /// Every setting, in the struct's order: what `;heal show` lists, the ones
-/// not set among them.
-pub const KEYS: &[&str] = &[
-    "container",
-    "skip_scars",
-    "potions",
-    "yabathilium",
-    "blood_only",
-    "buy_missing",
-    "stock",
-    "split_blood",
-    "deposit_coins",
-    "distiller",
+/// not set among them, and what the settings menu shows.
+pub const TABLE: &[Key] = &[
+    Key {
+        name: "container",
+        label: "Herb container",
+        help: "The container the herbs are kept in, by a word of its name. Healing waits for it.",
+        kind: KeyKind::Text,
+    },
+    Key {
+        name: "skip_scars",
+        label: "Leave minor scars",
+        help: "Treat wounds, and leave the minor scars.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "potions",
+        label: "Prefer potions",
+        help: "Drink rather than eat where there is a choice.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "yabathilium",
+        label: "Yabathilium first for blood",
+        help: "Use yabathilium before anything else for lost blood.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "blood_only",
+        label: "Only treat blood",
+        help: "Treat lost blood and nothing else.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "buy_missing",
+        label: "Buy missing herbs",
+        help: "Buy a herb the container lacks, at the herbalist.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "stock",
+        label: "Stock to (percent)",
+        help: "When stocking, fill each herb to this percent of its minimum doses.",
+        kind: KeyKind::Whole { min: 0, max: 1000 },
+    },
+    Key {
+        name: "split_blood",
+        label: "Split blood",
+        help: "Count and stock major blood apart from minor.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "deposit_coins",
+        label: "Deposit coins",
+        help: "Deposit what is left at the bank after buying.",
+        kind: KeyKind::Toggle,
+    },
+    Key {
+        name: "distiller",
+        label: "Kit has a distiller",
+        help: "A Survivalist's Kit with the Liquid Extractor. Learned by analyze when unset.",
+        kind: KeyKind::Toggle,
+    },
 ];
 
 /// The character's heal profile: `<data>/hunt/heal/<instance>_<character>.toml`.
@@ -96,10 +147,11 @@ pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::{HealProfile, KEYS};
+    use super::{HealProfile, TABLE};
+    use crate::settings::names;
 
-    /// `KEYS` is every field, in order: a field added to the struct and not
-    /// here would never be listed by `;heal show`.
+    /// `TABLE` is every field, in order: a field added to the struct and not
+    /// here would never be listed by `;heal show`, nor shown in the menu.
     #[test]
     fn keys_are_every_setting() {
         let every = HealProfile {
@@ -109,6 +161,6 @@ mod tests {
         };
         let table = toml::Table::try_from(&every).unwrap();
         let keys: Vec<&str> = table.keys().map(String::as_str).collect();
-        assert_eq!(keys, KEYS);
+        assert_eq!(keys, names(TABLE));
     }
 }

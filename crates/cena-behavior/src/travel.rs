@@ -63,6 +63,7 @@ mod preflight;
 mod recovery;
 mod replies;
 mod routines;
+pub mod settings;
 mod standing;
 mod steps;
 

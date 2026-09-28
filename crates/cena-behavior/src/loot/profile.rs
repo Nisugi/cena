@@ -143,6 +143,24 @@ impl LootProfile {
         toml::to_string_pretty(self).map_err(|e| e.to_string())
     }
 
+    /// The profile with every setting written out: skinning's even when it
+    /// is off, and selling's as the selling round reads them, beside the
+    /// `[town]` keys it carries and does not read. What the settings menu
+    /// shows (`plan/50` §7 step 5); never saved.
+    ///
+    /// # Errors
+    ///
+    /// A value TOML cannot hold, which no field here produces.
+    pub fn to_toml_whole(&self) -> Result<String, String> {
+        let mut table = toml::Table::try_from(self).map_err(|e| e.to_string())?;
+        let skin = toml::Value::try_from(&self.skin).map_err(|e| e.to_string())?;
+        table.insert("skin".to_owned(), skin);
+        let mut town = self.town.clone();
+        town.extend(crate::town::Town::from_table(&self.town).to_table());
+        table.insert("town".to_owned(), toml::Value::Table(town));
+        toml::to_string(&table).map_err(|e| e.to_string())
+    }
+
     /// What is wrong with it: a `take` word that names no category the
     /// object-type table or eloot knows. Empty when nothing is.
     #[must_use]
@@ -192,4 +210,176 @@ pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<Strin
 pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
     let file = chain::file_name(&format!("{instance}_{character}"))?;
     Some(dir.join("hunt").join("loot").join(format!("{file}.toml")))
+}
+
+/// The loot profile's own settings as the settings menu shows them
+/// (`plan/50` §7 step 5), in the struct's order; skinning's are
+/// [`SKIN_TABLE`], selling's `crate::town::settings::TABLE`.
+pub const TABLE: &[crate::settings::Key] = {
+    use crate::settings::{Key, KeyKind};
+    &[
+        Key {
+            name: "take",
+            label: "Take these kinds",
+            help: "Object categories worth taking; a thing of no known category is taken too.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "leave",
+            label: "Never take",
+            help: "Names, or words in names, never taken.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "defensive",
+            label: "Go defensive to loot",
+            help: "Change to defensive stance before searching.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "disk",
+            label: "Use the disk",
+            help: "The disk holds what the bags cannot, and its boxes go to the pool.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "sigil_on_fail",
+            label: "Sigil of Determination on a failed search",
+            help: "Cast it when a corpse is not in any condition to be searched.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "phase_boxes",
+            label: "Phase boxes",
+            help: "Phase (704) a box before stowing it.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "overflow",
+            label: "Overflow containers",
+            help: "Tried in order when the stow bag and the default are full.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "crumbly",
+            label: "Crumbles when stowed",
+            help: "Names learned to crumble when stowed, left where they lie.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "unlootable",
+            label: "Cannot be held",
+            help: "Names the game refused to let this character hold, left.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "autoclose",
+            label: "Containers that close themselves",
+            help: "Opened before something is put in.",
+            kind: KeyKind::Words,
+        },
+    ]
+};
+
+/// Skinning's settings as the settings menu shows them, under `[skin]`.
+pub const SKIN_TABLE: &[crate::settings::Key] = {
+    use crate::settings::{Key, KeyKind};
+    &[
+        Key {
+            name: "skin.enable",
+            label: "Skin",
+            help: "Skin what is killed.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "skin.kneel",
+            label: "Kneel to skin",
+            help: "Kneel before skinning.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "skin.spell_604",
+            label: "Bravery while skinning",
+            help: "Keep Bravery (604) up while skinning.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "skin.resolve",
+            label: "Sigil of Resolve",
+            help: "Cast Sigil of Resolve before skinning.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "skin.bounty_only",
+            label: "Only for a bounty",
+            help: "Skin only the creature a skinning bounty names, and nothing without one.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "skin.weapon",
+            label: "Skinning weapon",
+            help: "The edged weapon, by a word of its name. Empty: whatever is in the right hand.",
+            kind: KeyKind::Text,
+        },
+        Key {
+            name: "skin.sheath",
+            label: "Its sheath",
+            help: "Where the edged weapon goes back. Empty: the default bag.",
+            kind: KeyKind::Text,
+        },
+        Key {
+            name: "skin.weapon_blunt",
+            label: "Blunt skinning weapon",
+            help: "For what is skinned blunt. Empty: those creatures are left.",
+            kind: KeyKind::Text,
+        },
+        Key {
+            name: "skin.sheath_blunt",
+            label: "Its sheath",
+            help: "Where the blunt weapon goes back.",
+            kind: KeyKind::Text,
+        },
+        Key {
+            name: "skin.exclude",
+            label: "Never skin",
+            help: "Names, or words in names, never skinned.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "skin.unskinnable",
+            label: "Cannot be skinned",
+            help: "Creatures the game said cannot be skinned, learned as the hunt goes.",
+            kind: KeyKind::Words,
+        },
+    ]
+};
+
+#[cfg(test)]
+mod tests {
+    use super::{LootProfile, SKIN_TABLE, Skin, TABLE};
+    use crate::settings::names;
+
+    /// `TABLE` is every field but the `[skin]` and `[town]` tables, in
+    /// order, and `SKIN_TABLE` every skinning field: a field added and not
+    /// listed would never be shown in the menu.
+    #[test]
+    fn the_tables_are_every_setting() {
+        let every = LootProfile {
+            skin: Skin {
+                enable: true,
+                ..Skin::default()
+            },
+            ..LootProfile::default()
+        };
+        let table = toml::Table::try_from(&every).unwrap();
+        let keys: Vec<&str> = table
+            .keys()
+            .map(String::as_str)
+            .filter(|key| *key != "skin" && *key != "town")
+            .collect();
+        assert_eq!(keys, names(TABLE));
+        let skin = toml::Table::try_from(Skin::default()).unwrap();
+        let keys: Vec<String> = skin.keys().map(|key| format!("skin.{key}")).collect();
+        assert_eq!(keys, names(SKIN_TABLE));
+    }
 }

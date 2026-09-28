@@ -1,115 +1,11 @@
 //! The play window through `egui_kittest`, as a screen reader finds it; the
 //! last test renders it and compares it with `tests/snapshots/play.png`.
 
-use std::sync::Arc;
-
 use super::*;
-use cena_session::{
-    Amount as Numbers, ChunkLine, Event, Frame, GameState, Generation, Notice, NoticeKind,
-    ObservedEvent, ProgressBar, RoomItem, SessionId, State,
-};
+use crate::fixture::{snapshot, story};
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
-
-fn bar(id: &str, percent: u32, current: i32, max: i32) -> Frame {
-    Frame::ProgressBar(ProgressBar {
-        id: id.to_owned(),
-        dialog: Some("minivitals".to_owned()),
-        percent,
-        text: format!("{id} {current}/{max}"),
-        amount: Some(Numbers { current, max }),
-        time_remaining_secs: None,
-        attrs: Vec::new(),
-    })
-}
-
-fn item(noun: &str, text: &str) -> RoomItem {
-    RoomItem {
-        id: format!("-{}", noun.len()),
-        noun: noun.to_owned(),
-        text: text.to_owned(),
-        before: None,
-        after: None,
-        status: None,
-    }
-}
-
-/// Ashryn mid-hunt: hurt, holding a sword, a kobold and a player in the
-/// room, in roundtime.
-fn snapshot() -> Snapshot {
-    let mut state = GameState::default();
-    state.apply(&bar("health", 87, 348, 400));
-    state.apply(&bar("mana", 40, 48, 120));
-    state.apply(&Frame::LeftHand {
-        item: "a steel broadsword".to_owned(),
-        link: None,
-    });
-    state.apply(&Frame::RightHand {
-        item: "Empty".to_owned(),
-        link: None,
-    });
-    state.apply(&Frame::Prompt {
-        time: "1000".to_owned(),
-        text: ">".to_owned(),
-    });
-    state.roundtime_ends = Some(1_030);
-    for id in ["room objs", "room players"] {
-        state.apply(&Frame::Component {
-            id: id.to_owned(),
-            body: ChunkLine::plain("").runs,
-        });
-    }
-    state.room.title = Some("[Rawknuckle's, Watering Hole]".to_owned());
-    state.room.exits = Some(vec!["north".to_owned(), "out".to_owned()]);
-    state.room.creatures = vec![item("kobold", "a kobold")];
-    state.room.players = vec![item("Maravel", "Maravel")];
-    Snapshot {
-        session: SessionId::FIRST,
-        generation: Generation::FIRST,
-        cursor: 0,
-        state,
-        lifecycle: State::Ready,
-        retry: None,
-        stopped: None,
-        triggers: Arc::default(),
-    }
-}
-
-fn story() -> Story {
-    let mut story = Story::default();
-    let observed = |event| ObservedEvent {
-        session: SessionId::FIRST,
-        generation: Generation::FIRST,
-        cursor: 1,
-        event,
-    };
-    story.hear(
-        &observed(Event::Line(Arc::new(cena_session::Line::new(
-            "",
-            ChunkLine::plain("You swing a steel broadsword at a kobold!").runs,
-        )))),
-        None,
-    );
-    story.typed("look");
-    story.tell(Notice::line(
-        NoticeKind::Info,
-        "Hunt: resting until mana is 50%.",
-    ));
-    story.hear(
-        &observed(Event::Attention(Arc::new(
-            cena_session::trigger::Attention {
-                trigger: "kobold".to_owned(),
-                sound: None,
-                notify: None,
-                alert: Some("A kobold is here!".to_owned()),
-                cooldown: 0,
-            },
-        ))),
-        None,
-    );
-    story
-}
 
 /// A play window over Ashryn, and what it asked for.
 struct Scene {
@@ -117,13 +13,20 @@ struct Scene {
     snapshot: Snapshot,
     story: Story,
     hunt: Option<cena_ui::HuntView>,
+    /// The other characters running, which a widget may follow.
+    others: Vec<crate::widget::Character>,
+    /// The presets a player saved.
+    presets: crate::layout::Library,
     asked: Vec<Asked>,
 }
 
 impl Scene {
     fn new() -> Self {
         Self {
-            play: Play::new(0, "Ashryn", None),
+            play: Play {
+                room_parts: true,
+                ..Play::new(0, "Ashryn", None, None)
+            },
             snapshot: snapshot(),
             story: story(),
             hunt: Some(cena_ui::HuntView {
@@ -133,6 +36,8 @@ impl Scene {
                 target: None,
                 waiting: Some("mana 30%, wants 50%".to_owned()),
             }),
+            others: Vec::new(),
+            presets: crate::layout::Library::default(),
             asked: Vec::new(),
         }
     }
@@ -147,6 +52,9 @@ impl Scene {
             hunt: self.hunt.as_ref(),
             numlock: None,
             keys: &[],
+            others: &self.others,
+            presets: &self.presets,
+            lich: false,
         };
         if let Some(asked) = self.play.show(ui, &view) {
             self.asked.push(asked);
@@ -154,9 +62,20 @@ impl Scene {
     }
 }
 
+/// Where the window titled `title` sits, as the layout keeps it.
+fn kept(harness: &Harness<'_, Scene>, title: &str) -> Option<egui::Rect> {
+    harness
+        .state()
+        .play
+        .layout
+        .as_ref()
+        .and_then(|layout| layout.titled(title))
+        .map(crate::layout::Holder::rect)
+}
+
 fn harness<'a>() -> Harness<'a, Scene> {
     Harness::builder()
-        .with_size((900.0, 520.0))
+        .with_size((1000.0, 700.0))
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), Scene::new())
 }
 
@@ -166,16 +85,17 @@ fn the_window_shows_what_a_player_glances_at() {
     for label in [
         "Ashryn",
         "Ready",
-        "Left: a steel broadsword · Right: empty",
+        "Left: a steel broadsword",
+        "Right: empty",
         "HP 348/400 87%",
         "MP 48/120 40%",
         "SP ?",
-        "[Rawknuckle's, Watering Hole]",
+        "Rawknuckle's, Watering Hole",
         "a kobold",
         "Maravel",
         "Obvious exits: north, out",
         "You swing a steel broadsword at a kobold!",
-        "> look",
+        ">look",
         "Hunt: resting until mana is 50%.",
         "A kobold is here!",
         "ojandhaart",
@@ -184,8 +104,12 @@ fn the_window_shows_what_a_player_glances_at() {
     ] {
         assert!(harness.query_by_label(label).is_some(), "{label}");
     }
+    // "RT 30s" or near it, counted on the wall clock: never "RT —".
     assert!(
-        harness.query_by_label_contains("RT ").is_some(),
+        harness
+            .query_all_by_label_contains("RT ")
+            .filter_map(|node| node.value())
+            .any(|label| label.ends_with('s')),
         "the roundtime counts"
     );
 }
@@ -232,6 +156,47 @@ fn stop_asks_to_stop() {
     assert_eq!(harness.state().asked, [Asked::Stop]);
 }
 
+/// A bar's right-click opens its own page in the settings menu (the
+/// author, 2026-09-28: *"It should take you to settings to edit that
+/// bar"*); a widget with no settings of its own offers none. The Keys menu
+/// opens Hydra's Keys page.
+#[test]
+fn a_widget_opens_its_own_settings() {
+    let mut harness = harness();
+    harness
+        .get_by_label("Waiting: mana 30%, wants 50%")
+        .click_secondary();
+    harness.run();
+    assert!(
+        harness.query_by_label("Settings...").is_none(),
+        "the hunt panel has none"
+    );
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    harness.get_by_label_contains("HP ").click_secondary();
+    harness.run();
+    harness.get_by_label("Settings...").click();
+    harness.run();
+    harness.get_by_label("Keys").click();
+    harness.run();
+    harness.get_by_label("Change the keys...").click();
+    harness.run();
+    let asked = &harness.state().asked;
+    assert!(
+        matches!(&asked[..], [Asked::Settings(Some(page)), Asked::Keys] if page.starts_with("widget:")),
+        "{asked:?}"
+    );
+}
+
+/// The Lich switch asks for the character's own Lich (`plan/51`).
+#[test]
+fn the_lich_switch_asks_for_lich() {
+    let mut harness = harness();
+    harness.get_by_label("Lich").click();
+    harness.run();
+    assert_eq!(harness.state().asked, [Asked::Lich(true)]);
+}
+
 /// The author's complaint about Despana, and `VellumFE`'s answer: a click
 /// that nothing else took puts the keyboard back in the command input.
 #[test]
@@ -257,25 +222,17 @@ fn a_dragged_pane_snaps_and_is_kept_by_name() {
     let dir = std::env::temp_dir().join(format!("cena-play-layout-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let mut scene = Scene::new();
-    scene.play = Play::new(0, "Ashryn", Some(dir.clone()));
+    scene.play = Play::new(0, "Ashryn", None, Some(dir.clone()));
     let mut harness = Harness::builder()
-        .with_size((900.0, 520.0))
+        .with_size((1000.0, 700.0))
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
     harness.run();
-    let room = |harness: &Harness<'_, Scene>| {
-        harness
-            .state()
-            .play
-            .layout
-            .as_ref()
-            .map(|layout| layout.rect(crate::layout::Pane::Room))
-    };
     // No grid: a pane is rarely a whole number of cells wide, so one edge or
     // the other is always on a grid line, and here the edge is the target.
     if let Some(layout) = harness.state_mut().play.layout.as_mut() {
         layout.grid = 0.0;
     }
-    let before = room(&harness).expect("fitted");
+    let before = kept(&harness, "Room").expect("fitted");
     // By its title bar, as a player moves a pane.
     let window = harness.get_by_label("Room").rect();
     let grip = egui::pos2(window.center().x, window.min.y + 12.0);
@@ -293,19 +250,63 @@ fn a_dragged_pane_snaps_and_is_kept_by_name() {
     harness.drop_at(to);
     harness.step();
     harness.step();
-    let after = room(&harness).expect("still laid out");
+    let after = kept(&harness, "Room").expect("still laid out");
     assert!(after.min.x.abs() < 0.01, "snapped to the edge: {after:?}");
     assert_eq!(after.size(), before.size(), "a move keeps the size");
     assert!(harness.state().play.engaged.is_empty(), "the gesture ended");
 
-    let reopened = Play::new(0, "Ashryn", Some(dir.clone()));
+    let reopened = Play::new(0, "Ashryn", None, Some(dir.clone()));
     assert_eq!(
         reopened
             .layout
-            .map(|layout| layout.rect(crate::layout::Pane::Room)),
+            .as_ref()
+            .and_then(|layout| layout.titled("Room"))
+            .map(crate::layout::Holder::rect),
         Some(after)
     );
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A small move in open space stays where it was put: a window's own
+/// edges, where it started, are no target for it, or every nudge would
+/// snap back.
+#[test]
+fn a_small_move_is_not_undone_by_the_windows_own_edges() {
+    let mut harness = harness();
+    harness.run();
+    let room = harness
+        .state()
+        .play
+        .layout
+        .as_ref()
+        .and_then(|layout| layout.titled("Room"))
+        .map(|holder| holder.id)
+        .expect("a room");
+    let open = egui::Rect::from_min_size(egui::pos2(100.0, 100.0), egui::vec2(240.0, 160.0));
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        layout.grid = 0.0;
+        layout.set(room, open);
+    }
+    harness.run();
+    let window = harness.get_by_label("Room").rect();
+    let grip = egui::pos2(window.center().x, window.min.y + 12.0);
+    let to = grip + egui::vec2(4.0, 3.0);
+    harness.hover_at(grip);
+    harness.step();
+    harness.drag_at(grip);
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(grip + (to - grip) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.drop_at(to);
+    harness.step();
+    harness.step();
+    let after = kept(&harness, "Room").expect("still laid out");
+    assert!(
+        (after.min.x - 104.0).abs() < 0.01 && (after.min.y - 103.0).abs() < 0.01,
+        "moved by the nudge: {after:?}"
+    );
 }
 
 /// A pane resized by its edge moves only that edge, which lands on the
@@ -316,15 +317,7 @@ fn a_dragged_pane_snaps_and_is_kept_by_name() {
 fn a_resized_pane_lands_on_the_grid() {
     let mut harness = harness();
     harness.run();
-    let story = |harness: &Harness<'_, Scene>| {
-        harness
-            .state()
-            .play
-            .layout
-            .as_ref()
-            .map(|layout| layout.rect(crate::layout::Pane::Story))
-    };
-    let before = story(&harness).expect("fitted");
+    let before = kept(&harness, "Story").expect("fitted");
     let window = harness.get_by_label("Story").rect();
     let edge = egui::pos2(window.center().x, window.max.y - 2.0);
     let to = edge - egui::vec2(0.0, 37.0);
@@ -339,7 +332,7 @@ fn a_resized_pane_lands_on_the_grid() {
     harness.drop_at(to);
     harness.step();
     harness.step();
-    let after = story(&harness).expect("still laid out");
+    let after = kept(&harness, "Story").expect("still laid out");
     assert!(
         after.height() < before.height() - 20.0,
         "{before:?} -> {after:?}"
@@ -358,13 +351,7 @@ fn a_resized_pane_lands_on_the_grid() {
 fn a_shared_edge_resizes() {
     let mut harness = harness();
     harness.run();
-    let rects = |harness: &Harness<'_, Scene>| {
-        let layout = harness.state().play.layout.clone().expect("fitted");
-        (
-            layout.rect(crate::layout::Pane::Room),
-            layout.rect(crate::layout::Pane::Hydra),
-        )
-    };
+    let rects = |harness: &Harness<'_, Scene>| (kept(harness, "Room"), kept(harness, "Hydra"));
     let (room, hydra) = rects(&harness);
     // Two points inside Room, where Room's window is on top but Hydra's
     // handle, drawn later, also reaches: egui resizes Hydra.
@@ -389,29 +376,39 @@ fn a_shared_edge_resizes() {
     );
 }
 
-/// The Layout menu fits the panes afresh, however they were moved.
+/// The Layout menu lays the windows out afresh, however they were moved.
 #[test]
 fn the_layout_can_be_fitted_afresh() {
     let mut harness = harness();
     harness.run();
-    let fitted = harness.state().play.layout.clone().expect("fitted");
+    let fitted = [kept(&harness, "Vitals"), kept(&harness, "Room")];
+    let room = harness
+        .state()
+        .play
+        .layout
+        .as_ref()
+        .and_then(|layout| layout.titled("Room"))
+        .map(|holder| holder.id)
+        .expect("a room");
     if let Some(layout) = harness.state_mut().play.layout.as_mut() {
         layout.set(
-            crate::layout::Pane::Room,
+            room,
             egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(200.0, 100.0)),
         );
     }
     harness.run();
     harness.get_by_label("Layout").click();
     harness.run();
-    harness.get_by_label("Fit the panes afresh").click();
+    harness.get_by_label("Lay out afresh").click();
     harness.run();
-    let now = harness.state().play.layout.clone().expect("fitted again");
-    // The pane area can settle by a point between frames, which moves the
-    // bottom edges; the panes the menu sat over are exactly as fitted.
-    for pane in [crate::layout::Pane::Vitals, crate::layout::Pane::Room] {
-        assert_eq!(now.rect(pane), fitted.rect(pane), "{pane:?}");
-    }
+    // The play area can settle by a point between frames, which moves the
+    // bottom edges; the windows the menu sat over are exactly as fitted.
+    assert_eq!([kept(&harness, "Vitals"), kept(&harness, "Room")], fitted);
+    // And on the screen, not only in the layout: shrunk back from the size
+    // it had, a frame after it was asked.
+    let shown = harness.get_by_label("Room").rect().size();
+    let wanted = fitted[1].expect("fitted").size();
+    assert!((shown - wanted).length() < 0.5, "{shown:?} for {wanted:?}");
 }
 
 /// Drawn with no roundtime: its seconds come from the wall clock, and an
@@ -421,9 +418,21 @@ fn the_window_as_drawn() {
     let mut scene = Scene::new();
     scene.snapshot.state.roundtime_ends = None;
     let mut harness = Harness::builder()
-        .with_size((900.0, 520.0))
+        .with_size((1000.0, 700.0))
         .wgpu()
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
     harness.run();
     harness.snapshot("play");
 }
+
+/// The window's layout, once it has one.
+fn layout<'a>(harness: &'a Harness<'_, Scene>) -> &'a crate::layout::Layout {
+    harness.state().play.layout.as_ref().expect("laid out")
+}
+
+mod arrange;
+mod drag;
+mod links;
+mod menus;
+mod pages;
+mod tabs;

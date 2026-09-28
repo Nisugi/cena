@@ -471,6 +471,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 return Err(Ended::Stopped(BehaviorError::Cancelled));
             }
             self.drain(trip).map_err(Ended::Stopped)?;
+            self.caught_up().await.map_err(Ended::Stopped)?;
             let before = self.was;
             let here = self.locate(map);
             if before.is_some() && before != self.was {
@@ -582,13 +583,35 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         Some(here)
     }
 
+    /// Events were lost ([`Heard::behind`]): the state is taken afresh from
+    /// the session, where it was once said to be "a little old, and the
+    /// game's next word mends it" -- the next word need not; a stream that
+    /// cannot be taken afresh stops the walk (the crate review of
+    /// 2026-09-28, R1).
+    async fn caught_up(&mut self) -> Result<(), BehaviorError> {
+        if !self.events.behind() {
+            return Ok(());
+        }
+        let snapshot = self.events.again().await.ok_or(BehaviorError::FellBehind)?;
+        match snapshot.lifecycle {
+            State::Reconnecting => return Err(BehaviorError::Disconnected),
+            State::Closed => return Err(BehaviorError::Dead),
+            _ => {}
+        }
+        self.state = snapshot.state;
+        self.was = None;
+        let chunk = self.state.open_chunk();
+        self.heard = chunk.dropped() + chunk.lines().len();
+        Ok(())
+    }
+
     /// Fold every event already waiting, without waiting for more.
     fn drain(&mut self, trip: &mut Trip) -> Result<(), BehaviorError> {
         loop {
             match self.events.try_recv() {
                 Ok(event) => self.fold(trip, &event)?,
-                // Events were dropped: what is known is a little old, and the
-                // game's next word mends it.
+                // Events were lost: `Heard` says so, and the turn takes the
+                // state afresh before it decides (`caught_up`).
                 Err(TryRecvError::Lagged(_)) => {}
                 Err(TryRecvError::Empty) => return Ok(()),
                 Err(TryRecvError::Closed) => return Err(BehaviorError::Dead),
@@ -668,7 +691,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         };
         match event {
             Ok(event) => self.fold(trip, &event).map_err(Ended::Stopped),
-            Err(RecvError::Lagged(_)) => Ok(()),
+            Err(RecvError::Lagged(_)) => self.caught_up().await.map_err(Ended::Stopped),
             Err(RecvError::Closed) => Err(Ended::Stopped(BehaviorError::Dead)),
         }
     }

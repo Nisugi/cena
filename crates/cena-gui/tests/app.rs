@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use cena_gui::{App, Sessions};
-use cena_ui::HubRequest;
+use cena_ui::{HubRequest, RosterCard};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 
@@ -30,6 +30,18 @@ fn until_shown(harness: &mut Harness<'_, App>, label: &str) -> bool {
     false
 }
 
+/// Orsen on the roster, its password kept, and so offered.
+fn orsen(sessions: &Sessions) {
+    sessions.offer(vec!["Orsen".to_owned()]);
+    sessions.roster(vec![RosterCard {
+        character: "Orsen".to_owned(),
+        account: "orsen01".to_owned(),
+        game: "GS3".to_owned(),
+        kept: true,
+        favourite: false,
+    }]);
+}
+
 #[test]
 fn a_start_reaches_the_binary_and_its_answer_is_shown() {
     let runtime = runtime().expect("a runtime");
@@ -43,11 +55,13 @@ fn a_start_reaches_the_binary_and_its_answer_is_shown() {
             .push(request.clone());
         Box::pin(async move { format!("handled {request:?}") })
     }));
-    sessions.offer(vec!["Orsen".to_owned()]);
+    orsen(&sessions);
     let mut harness = Harness::builder()
         .with_size((560.0, 400.0))
         .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
 
+    harness.get_by_label_contains("Not launched").click();
+    harness.run();
     harness.get_by_label("Start Orsen").click();
     assert!(until_shown(&mut harness, "handled Add(\"Orsen\")"));
     assert_eq!(
@@ -60,10 +74,12 @@ fn a_start_reaches_the_binary_and_its_answer_is_shown() {
 fn with_nobody_to_answer_the_hub_says_so() {
     let runtime = runtime().expect("a runtime");
     let sessions = Sessions::new(runtime.handle().clone());
-    sessions.offer(vec!["Orsen".to_owned()]);
+    orsen(&sessions);
     let mut harness = Harness::builder()
         .with_size((560.0, 400.0))
         .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
+    harness.get_by_label_contains("Not launched").click();
+    harness.run();
     harness.get_by_label("Start Orsen").click();
     assert!(until_shown(
         &mut harness,

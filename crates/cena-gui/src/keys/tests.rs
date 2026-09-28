@@ -17,6 +17,22 @@ fn a_chord_is_its_modifiers_and_its_winit_key() {
     assert_eq!(Chord::parse("F13").map(|c| c.key), Ok("F13".to_owned()));
 }
 
+/// A chord is written with each modifier by its own name, in one order,
+/// and reads back as the same chord: what the Keys page saves.
+#[test]
+fn a_chord_is_written_as_it_reads() {
+    for (typed, written) in [
+        ("shift+F2", "Shift+F2"),
+        ("alt+F3", "Alt+F3"),
+        ("cmd+F4", "Cmd+F4"),
+        ("alt+cmd+shift+ctrl+num_8", "Ctrl+Shift+Alt+Cmd+Numpad8"),
+    ] {
+        let chord = Chord::parse(typed).expect("parses");
+        assert_eq!(chord.written(), written);
+        assert_eq!(Chord::parse(written), Ok(chord));
+    }
+}
+
 /// A key this build cannot see is told why; a name nobody knows, and a
 /// modifier nobody has, are told so.
 #[test]
@@ -110,4 +126,27 @@ fn a_caught_numpad_press_sends_its_line() {
         Some("north")
     );
     assert_eq!(numpad_line(&keybinds, &event(false)), None, "typed instead");
+}
+
+/// A binding that is not one command -- a newline, a carriage return, a
+/// NUL -- is said, not bound: it would send more than one (the crate review
+/// of 2026-09-28, R10); the rest still bind.
+#[test]
+fn a_binding_of_more_than_one_command_is_said() {
+    let (keybinds, problems) = Keybinds::read(
+        r#"
+[keys]
+F5 = "look"
+F6 = "look\nkill"
+F7 = "stand\r"
+F8 = "x\u0000"
+"#,
+    );
+    assert_eq!(keybinds.len(), 1, "{problems:?}");
+    assert_eq!(problems.len(), 3, "{problems:?}");
+    assert!(
+        problems
+            .iter()
+            .all(|problem| problem.contains("CR, LF or NUL"))
+    );
 }

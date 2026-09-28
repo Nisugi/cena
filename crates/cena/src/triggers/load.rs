@@ -61,13 +61,29 @@ pub(super) fn reload(
     })
 }
 
+/// What stays on when the file cannot be read: the triggers read before,
+/// which `handle`'s session still answers with. A file that will not read
+/// changes nothing (the crate review of 2026-09-28, R4: this said "None are
+/// on" while they, sending ones too, answered on).
+pub(super) fn still_on(handle: &SessionHandle) -> String {
+    match handle.triggers().triggers().len() {
+        0 => "None are on.".to_owned(),
+        1 => "The 1 trigger read before stays on.".to_owned(),
+        count => format!("The {count} triggers read before stay on."),
+    }
+}
+
 /// What to say of a reload: each refusal, each send held, the sounds not
 /// found, and how many are on -- always when `asked`, otherwise only when
-/// any are.
-pub(super) fn loaded(reloaded: Result<Reload, String>, asked: bool) -> Said {
+/// any are. A file that will not read says what stays on (`still_on`).
+pub(super) fn loaded(
+    handle: &SessionHandle,
+    reloaded: Result<Reload, String>,
+    asked: bool,
+) -> Said {
     let reload = match reloaded {
         Ok(reload) => reload,
-        Err(why) => return vec![(NoticeKind::Warn, format!("{why}. None are on."))],
+        Err(why) => return vec![(NoticeKind::Warn, format!("{why}. {}", still_on(handle)))],
     };
     let mut said: Said = reload
         .refused

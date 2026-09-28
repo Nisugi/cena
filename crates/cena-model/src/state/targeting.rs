@@ -183,6 +183,11 @@ impl crate::GameState {
     /// the dispatcher in `apply` calls it and the work lives beside the state
     /// it maintains. `state.rs` had been sitting at exactly its 550 cap.
     pub(super) fn read_widgets(&mut self, widgets: &cena_protocol::frame::DialogWidgets) {
+        // The injury window's mode is the character's (`character::body`).
+        if widgets.kind == "radio" {
+            super::character::body::read_radios(&mut self.character, widgets);
+            return;
+        }
         if widgets.kind != "dropDownBox" {
             return;
         }

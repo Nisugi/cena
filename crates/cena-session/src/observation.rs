@@ -170,11 +170,30 @@ pub(crate) struct EventPublisher {
     /// given, and because every connection's actor shares this publisher, so
     /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
     sorting: Arc<AtomicBool>,
+    /// Whether each finished line is also published as the game sent it
+    /// ([`Event::Heard`]), for a script runner. Here for `sorting`'s reasons.
+    hearing: Arc<AtomicBool>,
+    /// A script runner's hooks (`crate::script`): whether each line shown
+    /// waits for its display hooks, their answers, and its input hooks. Here
+    /// for `sorting`'s reasons.
+    hooks: Arc<crate::script::Hooks>,
     /// This character's triggers, compiled (`plan/45`): what each finished
     /// line is answered with before it is published, and what its conditions
     /// last read. Here for `sorting`'s reasons, which is also why a reconnect
     /// keeps the conditions' memory. None until the binary reads the file.
     triggers: Arc<Mutex<Answering>>,
+    /// The player's Lich (`crate::script::lich`): where the game's bytes are
+    /// copied and the player's typing handed while one is attached, and
+    /// what one started late is handed first. Here for `sorting`'s reasons:
+    /// Lich stays up through a reconnect, and sees the new login as more of
+    /// the stream.
+    lich: Arc<Mutex<crate::script::lich::Slot>>,
+    /// What that Lich shows, waiting for the actor that shows it: a new
+    /// Lich's until the actor's next turn, and between connections.
+    lich_text: Arc<crate::script::lich::Parked>,
+    /// A Lich attached since the actor's last turn waits to be handed its
+    /// login (`Self::lich_waits`).
+    lich_waits: Arc<AtomicBool>,
 }
 
 /// A character's triggers and their memory, replaced together: new
@@ -210,8 +229,91 @@ impl EventPublisher {
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
             sorting: Arc::new(AtomicBool::new(false)),
+            hearing: Arc::new(AtomicBool::new(false)),
+            hooks: Arc::default(),
             triggers: Arc::default(),
+            lich: Arc::default(),
+            lich_text: Arc::default(),
+            lich_waits: Arc::default(),
         }
+    }
+
+    /// The player's Lich, as the session holds it.
+    fn lich(&self) -> std::sync::MutexGuard<'_, crate::script::lich::Slot> {
+        self.lich.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Attach the player's Lich, and what it shows, to be handed its login
+    /// at the actor's next turn: within `READ_DEADLINE` (half a second) on a
+    /// quiet game, since the actor turns at least that often. False, and both unused, while another is
+    /// still attached: one Lich per character.
+    ///
+    /// The text is parked while the Lich is held, so an actor that finds the
+    /// Lich waiting finds its text too.
+    pub(crate) fn attach_lich(
+        &self,
+        tap: crate::script::lich::Tap,
+        text: crate::script::lich::LichText,
+    ) -> bool {
+        let mut lich = self.lich();
+        if !lich.attach(tap) {
+            return false;
+        }
+        self.lich_text.park(text);
+        self.lich_waits.store(true, Ordering::Release);
+        true
+    }
+
+    /// Whether a Lich attached since the actor's last turn waits to be
+    /// handed its login. Read on the actor's every turn, so it takes no lock.
+    pub(crate) fn lich_waits(&self) -> bool {
+        self.lich_waits.load(Ordering::Acquire)
+    }
+
+    /// Hand the Lich waiting `login`, and copy the game's bytes to it from
+    /// now on.
+    pub(crate) fn begin_lich(&self, login: &[u8]) {
+        let mut lich = self.lich();
+        self.lich_waits.store(false, Ordering::Release);
+        lich.begin(login);
+    }
+
+    /// Where what the attached Lich shows waits for an actor.
+    pub(crate) fn lich_text(&self) -> &crate::script::lich::Parked {
+        &self.lich_text
+    }
+
+    /// Whether a Lich is attached, and so shows the character's text.
+    pub(crate) fn lich_attached(&self) -> bool {
+        self.lich().attached()
+    }
+
+    /// Copy a chunk of the game's bytes, as it arrived, to the Lich attached,
+    /// if one is: whether one took it, and so shows what it says. A Lich that
+    /// stopped, or fell behind, is let go here.
+    pub(crate) fn wire(&self, chunk: &[u8]) -> bool {
+        self.lich().wire(chunk)
+    }
+
+    /// Hand a line the player typed to the Lich attached: `None` with none
+    /// attached, and `Some(false)` when it has too many waiting.
+    pub(crate) fn hand_to_lich(&self, line: &str) -> Option<bool> {
+        self.lich().hand(line)
+    }
+
+    /// A script runner's hooks.
+    pub(crate) fn hooks(&self) -> &crate::script::Hooks {
+        &self.hooks
+    }
+
+    /// Publish each finished line as the game sent it too, or stop.
+    pub(crate) fn hear_lines(&self, on: bool) {
+        self.hearing.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether each finished line is published as the game sent it too.
+    pub(crate) fn hears_lines(&self) -> bool {
+        self.hearing.load(Ordering::Relaxed)
     }
 
     /// Publish container looks sorted, or as the game sent them.
@@ -320,6 +422,17 @@ impl EventPublisher {
     }
 
     pub(crate) fn send(&self, event: Event) -> Result<usize, broadcast::error::SendError<Event>> {
+        self.publish(event).1
+    }
+
+    /// Publish `event`, and say the cursor it was published at: where a
+    /// reader of the numbered stream finds it (a sent line's, for a script
+    /// that reads what came after it, `plan/46` §3).
+    pub(crate) fn numbered(&self, event: Event) -> u64 {
+        self.publish(event).0
+    }
+
+    fn publish(&self, event: Event) -> (u64, Result<usize, broadcast::error::SendError<Event>>) {
         // Only control events touch this lock, never incoming frames. The
         // owner publishes the fact once and snapshots read that same fact.
         match &event {
@@ -358,7 +471,7 @@ impl EventPublisher {
                 event: event.clone(),
             });
         }
-        self.legacy.send(event)
+        (cursor, self.legacy.send(event))
     }
 
     /// The session every event and snapshot from this publisher names.

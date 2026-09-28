@@ -142,15 +142,65 @@ impl SessionHandle {
         self.submit_and_await(envelope, answer, deadline).await
     }
 
+    /// The player's own line, typed at a frontend: asked of a script
+    /// runner's input hooks first (`crate::script`, Lich's `UpstreamHook`),
+    /// then sent as [`Self::send_manual_at`] sends it. A line the hooks
+    /// swallow is [`Outcome::Handled`]; one they have not answered by
+    /// [`HOOK_DEADLINE`](crate::script::HOOK_DEADLINE) goes as typed.
+    ///
+    /// Hydra's own lines on the manual path -- `;multi`'s, a relayed `;to`,
+    /// the sorter's look -- go by `send_manual_at`, past the hooks, as a
+    /// Lich script's `put` never meets them: a hook turning a line into a
+    /// `;multi` of itself would otherwise never end.
+    ///
+    /// **With the player's Lich running** (`crate::script::lich`), what the
+    /// player types that Hydra does not take is Lich's, so its aliases and
+    /// hooks have it, and Lich sends what it makes of it. Hydra's own lines
+    /// reach Lich only with Lich's symbol, for the hooks' reason.
+    pub async fn send_typed_at(
+        &self,
+        generation: Generation,
+        line: &str,
+        deadline: std::time::Duration,
+    ) -> Outcome {
+        let Some(ask) = self.hooks().typing() else {
+            return self.manual_at(generation, line, deadline, true).await;
+        };
+        match tokio::time::timeout(crate::script::HOOK_DEADLINE, ask(line)).await {
+            Ok(Ok(None)) => {
+                // A person typed it, whatever the hooks made of it.
+                self.attendance.mark();
+                Outcome::Handled
+            }
+            Ok(Ok(Some(changed))) => self.manual_at(generation, &changed, deadline, true).await,
+            Ok(Err(_)) | Err(_) => self.manual_at(generation, line, deadline, true).await,
+        }
+    }
+
     /// Queue manual input for the connection the frontend actually observed.
     /// The generation is checked before any command, including a typed quit
     /// or one of Hydra's own, can act. This uses the ordinary manual queue and
     /// never claims or cancels behavior authority.
+    ///
+    /// A line with Lich's symbol is the player's Lich's, and goes to it rather
+    /// than the game (`crate::script::lich`).
     pub async fn send_manual_at(
         &self,
         generation: Generation,
         line: &str,
         deadline: std::time::Duration,
+    ) -> Outcome {
+        self.manual_at(generation, line, deadline, false).await
+    }
+
+    /// [`Self::send_manual_at`]; `typed` when the player typed it at a
+    /// frontend, which a running Lich has before the game.
+    async fn manual_at(
+        &self,
+        generation: Generation,
+        line: &str,
+        deadline: std::time::Duration,
+        typed: bool,
     ) -> Outcome {
         // A person typed this, whatever becomes of it -- stale, claimed by
         // Hydra's command line, or sent (`attendance.rs`).
@@ -185,6 +235,26 @@ impl SessionHandle {
                 ));
             }
             return Outcome::Handled;
+        }
+        // Past Hydra: a line with Lich's symbol is the player's Lich's, and
+        // never the game's, as one with Hydra's is never the game's. What the
+        // player typed is Lich's too while one runs (`crate::script::lich`).
+        let lichs = line
+            .trim_start()
+            .starts_with(crate::script::lich::LICH_SYMBOL);
+        if lichs || typed {
+            match self.hand_to_lich(line) {
+                Some(true) => return Outcome::Handled,
+                Some(false) => return Outcome::Refused(Refusal::Transient),
+                None if lichs => {
+                    self.say(crate::notice::Notice::line(
+                        crate::notice::NoticeKind::Error,
+                        format!("Lich is not running for this character: {}", line.trim()),
+                    ));
+                    return Outcome::Handled;
+                }
+                None => {}
+            }
         }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {

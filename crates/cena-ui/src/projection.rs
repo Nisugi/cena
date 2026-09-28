@@ -36,18 +36,7 @@ impl SessionView {
             room: RoomView {
                 id: room.id.clone(),
                 title: room.title.clone(),
-                description: room.description.as_ref().map(|body| {
-                    body.runs
-                        .iter()
-                        .map(|run| StyledRun {
-                            text: run.text.clone(),
-                            bold: run.style.bold_depth > 0,
-                            monospace: run.style.mono,
-                            preset: run.style.preset.clone(),
-                            ..StyledRun::default()
-                        })
-                        .collect()
-                }),
+                description: room_description(state),
                 exits: room.exits.clone(),
                 creatures: contents_known.then(|| items(&room.creatures)),
                 objects: contents_known.then(|| items(&room.objects)),
@@ -151,6 +140,25 @@ fn players(values: &[RoomItem], triggers: &Matcher, state: &GameState) -> Vec<Ro
         view.painted = room_player(&view.text, triggers, state);
     }
     views
+}
+
+/// The room's description as styled runs, as the game styled it; `None`
+/// until one is observed. Despana's room window and the GUI's both draw it.
+#[must_use]
+pub fn room_description(state: &GameState) -> Option<Vec<StyledRun>> {
+    state.room.description.as_ref().map(|body| {
+        body.runs
+            .iter()
+            .map(|run| StyledRun {
+                text: run.text.clone(),
+                bold: run.style.bold_depth > 0,
+                monospace: run.style.mono,
+                preset: run.style.preset.clone(),
+                link: run.link.as_ref().and_then(crate::RunLink::of),
+                ..StyledRun::default()
+            })
+            .collect()
+    })
 }
 
 /// A room player's name as the character's triggers paint it, as an entry

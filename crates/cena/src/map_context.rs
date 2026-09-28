@@ -3,7 +3,8 @@
 
 use cena_behavior::travel::{Map, Whence, read_map, room_of};
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
+use std::collections::BTreeSet;
+use std::sync::{Arc, OnceLock};
 
 /// Owned by the application/session table, never a process global.
 pub(crate) type ConfiguredMap = Result<Arc<MapContext>, String>;
@@ -11,6 +12,9 @@ pub(crate) type ConfiguredMap = Result<Arc<MapContext>, String>;
 pub(crate) struct MapContext {
     pub(crate) map: Arc<Map>,
     pub(crate) sha256: String,
+    /// The settings the map's crossings read, found the first time the
+    /// settings menu asks (`Map::setting_names`).
+    pub(crate) settings: OnceLock<BTreeSet<String>>,
 }
 
 impl MapContext {
@@ -19,6 +23,7 @@ impl MapContext {
         Ok(Self {
             map: Arc::new(map),
             sha256: format!("{:x}", Sha256::digest(bytes)),
+            settings: OnceLock::new(),
         })
     }
 
@@ -39,6 +44,19 @@ pub(crate) fn load() -> ConfiguredMap {
         .ok_or_else(|| "No map. Set CENA_MAP to a combined map file and restart.".to_owned())?;
     let bytes = std::fs::read(path).map_err(|error| format!("Cannot read CENA_MAP: {error}"))?;
     MapContext::decode(&bytes).map(Arc::new)
+}
+
+/// The settings the configured map's crossings read; none without a map.
+pub(crate) fn settings(configured: &ConfiguredMap) -> BTreeSet<String> {
+    configured.as_ref().map_or_else(
+        |_| BTreeSet::new(),
+        |context| {
+            context
+                .settings
+                .get_or_init(|| context.map.setting_names())
+                .clone()
+        },
+    )
 }
 
 pub(crate) fn projection(configured: &ConfiguredMap) -> Option<cena_web::MapProjection> {
@@ -70,6 +88,7 @@ mod tests {
         let context = MapContext {
             map: Arc::new(Map::from_rooms(rooms).unwrap()),
             sha256: "a".repeat(64),
+            settings: OnceLock::new(),
         };
         let mut state = cena_session::GameState::default();
         state.room.id = Some("7000".into());

@@ -13,12 +13,12 @@
 //! on.` `status` is Hydra's own, because there is no settings window to look
 //! in; `VellumFE`'s `edit` opens its GUI editor, which Hydra has not got.
 //!
-//! **Off until asked, for the session's life, not saved.** Off is
-//! `VellumFE`'s default (`src/config/settings.rs:860`, `enabled: false`).
-//! `VellumFE` saves the toggle to its config file; Hydra does not yet,
-//! because nothing writes a character's settings file
-//! (`cena_session::settings_store`) and the first thing to do so is the
-//! author's call.
+//! **Off until asked, and saved.** Off is `VellumFE`'s default
+//! (`src/config/settings.rs:860`, `enabled: false`), and `VellumFE` saves the
+//! toggle to its config file. So does Hydra now, in the character's settings
+//! file, the `sorter` section (author, 2026-09-27: *"sure and persistent"*,
+//! `plan/50` §6 item 4), through the settings menu's own writer
+//! ([`crate::general`]); a character starts as it was left.
 
 use std::sync::Arc;
 
@@ -26,6 +26,18 @@ use cena_session::command::claimant::Claimed;
 use cena_session::{Notice, NoticeKind, SessionHandle};
 
 use crate::commands::Commands;
+use crate::general::{GENERAL, Kept};
+
+/// The `sorter` section of a character's settings file.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct Saved {
+    /// Whether container looks are sorted; off when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) enabled: Option<bool>,
+}
+
+/// The name of [`Saved`]'s section.
+pub(crate) const SECTION: &str = "sorter";
 
 /// The words `;sorter` knows.
 const USAGE: &str = "sorter [on|off|status]";
@@ -60,8 +72,9 @@ pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
     Some(command)
 }
 
-/// Do `parsed` to `handle`'s session, and say what became of it.
-fn answer(parsed: Result<Command, String>, handle: &SessionHandle) -> Notice {
+/// Do `parsed` to `handle`'s session, save it in `kept` when there is
+/// somewhere to keep it, and say what became of it.
+fn answer(parsed: Result<Command, String>, handle: &SessionHandle, kept: Option<&Kept>) -> Notice {
     let now = handle.sorts_containers();
     let state = |on: bool| if on { "on" } else { "off" };
     let on = match parsed {
@@ -79,18 +92,35 @@ fn answer(parsed: Result<Command, String>, handle: &SessionHandle) -> Notice {
         }
     };
     handle.sort_containers(on);
-    Notice::line(
-        NoticeKind::Info,
-        format!("Container-look sorting {}.", state(on)),
-    )
+    let saved = match (parsed, kept) {
+        (Ok(Command::Status), _) | (_, None) => Ok(String::new()),
+        (_, Some(kept)) => kept.change(GENERAL, "sorter", Some(state(on))),
+    };
+    match saved {
+        Ok(_) => Notice::line(
+            NoticeKind::Info,
+            format!("Container-look sorting {}.", state(on)),
+        ),
+        Err(why) => Notice::line(
+            NoticeKind::Warn,
+            format!(
+                "Container-look sorting {}, for this session: {why}",
+                state(on)
+            ),
+        ),
+    }
 }
 
-/// Register `;sorter` on `handle`'s command line.
-pub(crate) fn open(handle: &SessionHandle, commands: &Commands) {
+/// Register `;sorter` on `handle`'s command line, the session sorting as
+/// `kept`, the character's settings file, was left.
+pub(crate) fn open(handle: &SessionHandle, commands: &Commands, kept: Option<Kept>) {
+    if let Some(kept) = &kept {
+        kept.take(handle);
+    }
     let told = handle.clone();
     commands.sorter(Arc::new(move |line: &str| {
         let parsed = parse(line)?;
-        told.say(answer(parsed, &told));
+        told.say(answer(parsed, &told, kept.as_ref()));
         Some(Claimed::Done)
     }));
 }
@@ -137,7 +167,7 @@ mod tests {
         let (_, mut events) = session.subscribe();
         let generation = handle.generation();
         let commands = Commands::install(&handle);
-        open(&handle, &commands);
+        open(&handle, &commands, None);
         tokio::spawn(session.into_actor().run());
 
         let mut typed = async |line: &str| {
@@ -164,5 +194,39 @@ mod tests {
         );
         assert!(!handle.sorts_containers());
         assert!(transcript.lines().is_empty(), "{:?}", transcript.lines());
+    }
+
+    /// Saved: `;sorter on` is kept in the character's settings file, and
+    /// the character starts sorting the next time, as it was left.
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn the_sorter_is_saved_and_started_as_it_was_left() {
+        let dir = std::env::temp_dir().join(format!("cena-sorter-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let roster_name = format!("{}:Nisugi", cena_platform::DEFAULT_GAME_CODE);
+        let kept = || Kept::of(&dir, &roster_name);
+
+        let (source, _) = AnsweringSource::new(
+            b"<prompt time=\"1\">&gt;</prompt>
+",
+        );
+        let session = Session::new(source);
+        let handle = session.handle();
+        let (_, mut events) = session.subscribe();
+        let generation = handle.generation();
+        let commands = Commands::install(&handle);
+        open(&handle, &commands, kept());
+        assert!(!handle.sorts_containers(), "off until asked");
+        tokio::spawn(session.into_actor().run());
+        let outcome = handle
+            .send_manual_at(generation, ";sorter on", DEADLINE)
+            .await;
+        assert_eq!(outcome, Outcome::Handled);
+        assert_eq!(told(&mut events), ["Container-look sorting on."]);
+
+        let (source, _) = AnsweringSource::new(b"");
+        let again = Session::new(source).handle();
+        open(&again, &Commands::install(&again), kept());
+        assert!(again.sorts_containers(), "as it was left");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

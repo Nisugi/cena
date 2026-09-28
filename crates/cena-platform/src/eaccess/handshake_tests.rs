@@ -23,7 +23,7 @@
 //! untouched: nothing here opens a socket, and `authenticate` itself is still
 //! never called.
 
-use super::converse;
+use super::{converse, list};
 use crate::answering::{AnsweringSource, TranscriptHandle};
 use crate::eaccess::wire::{Credentials, EaccessError, LaunchPayload, hash_password};
 
@@ -63,6 +63,11 @@ fn key_with_leading_space() -> Vec<u8> {
 /// which is itself an assertion: if the handshake sends `F\tgs3`, nothing
 /// answers it and the read times out naming the stage.
 fn scripted_server(key: &[u8], l_reply: &str) -> (AnsweringSource, TranscriptHandle) {
+    listing_server(key, "C\t1\t1\t0\t0\tW_TESTACCT_000\tTestchar", l_reply)
+}
+
+/// [`scripted_server`], with `c_reply` as the account's characters.
+fn listing_server(key: &[u8], c_reply: &str, l_reply: &str) -> (AnsweringSource, TranscriptHandle) {
     let (source, script) =
         AnsweringSource::new(b"A\tTESTACCT\tKEY\t0123456789abcdef0123456789abcdef\tTest Holder");
     script.answer("K", key);
@@ -72,7 +77,7 @@ fn scripted_server(key: &[u8], l_reply: &str) -> (AnsweringSource, TranscriptHan
     script.answer("F\tGS3", b"F\tNORMAL");
     script.answer("G\tGS3", b"G\tPrime\t0\t");
     script.answer("P\tGS3", b"P\tGS3\t1495\tGS3.P\t2500");
-    script.answer("C", b"C\t1\t1\t0\t0\tW_TESTACCT_000\tTestchar");
+    script.answer("C", c_reply.as_bytes());
     script.answer("L\tW_TESTACCT_000\tSTORM", l_reply.as_bytes());
     (source, script)
 }
@@ -181,4 +186,38 @@ async fn an_unrecognised_l_reply_is_redacted_before_it_is_quoted() {
             .all(|line| !line.contains("SECRET-LAUNCH-KEY")),
         "{printed:?}"
     );
+}
+
+/// An account's characters are listed in the server's order, the password
+/// proven by `A` on the way, and nothing is launched: `K A M F G P C`, and no
+/// `L` (`plan/49` Stage C step 7).
+#[tokio::test(start_paused = true)]
+async fn an_accounts_characters_are_listed_and_nothing_launched() {
+    let (mut source, script) = listing_server(
+        &key_with_leading_space(),
+        "C\t2\t2\t0\t0\tW_TESTACCT_000\tTestchar\tW_TESTACCT_001\tOther",
+        L_OK,
+    );
+    let listed = list(&mut source, creds("GS3"), &mut |_: &str| {}).await;
+    assert_eq!(
+        listed.expect("the scripted account lists"),
+        ["Testchar", "Other"]
+    );
+    let lines = script.lines();
+    assert_eq!(lines.len(), 7, "{lines:?}");
+    assert_eq!(lines.last().map(String::as_str), Some("C"));
+    assert!(lines.iter().all(|line| !line.starts_with('L')), "{lines:?}");
+}
+
+/// A game the server does not offer is refused at `M`, as a login's is, and
+/// an account with none on that game lists none.
+#[tokio::test(start_paused = true)]
+async fn a_listing_is_refused_as_a_login_is_and_may_be_empty() {
+    let (mut source, _script) = scripted_server(&key_with_leading_space(), L_OK);
+    let refused = list(&mut source, creds("GSQ"), &mut |_: &str| {}).await;
+    assert_eq!(refused.map_err(|e| e.stage), Err("m_response"));
+
+    let (mut source, _script) = listing_server(&key_with_leading_space(), "C\t0\t2\t0\t0", L_OK);
+    let none = list(&mut source, creds("GS3"), &mut |_: &str| {}).await;
+    assert_eq!(none.ok(), Some(Vec::new()));
 }

@@ -55,6 +55,7 @@ pub fn painted(line: &Line) -> Vec<StyledRun> {
                 background: paint
                     .and_then(|paint| paint.background)
                     .map(|c| c.to_string()),
+                link: run.link.as_ref().and_then(crate::RunLink::of),
             });
         }
     }
@@ -139,6 +140,7 @@ impl Building {
             && last.preset == preset
             && last.color == style.color
             && last.background == style.background
+            && last.link == style.link
         {
             last.text.push_str(piece);
         } else if self.runs.len() < MAX_LINE_RUNS {
@@ -149,6 +151,7 @@ impl Building {
                 preset,
                 color: style.color.clone(),
                 background: style.background.clone(),
+                link: style.link.clone(),
             });
         } else {
             self.truncated = true;
@@ -224,6 +227,72 @@ mod tests {
             background: None,
             bold,
         }
+    }
+
+    fn link(kind: cena_model::LinkKind, text: &str) -> cena_model::Link {
+        cena_model::Link {
+            kind,
+            text: text.to_owned(),
+            coord: None,
+        }
+    }
+
+    /// A link reaches the runs the story draws as what a click on it does,
+    /// and is never merged into the plain text beside it.
+    #[test]
+    fn a_link_is_kept_and_kept_apart() {
+        let mut line = published(&["You see ", "a kobold", "."], Vec::new());
+        let kobold = cena_model::LinkKind::Exist {
+            id: "123".to_owned(),
+            noun: "kobold".to_owned(),
+        };
+        if let Some(run) = line.runs.runs.get_mut(1) {
+            run.link = Some(link(kobold, "a kobold"));
+        }
+        let lines = story_lines("", painted(&line));
+        let runs = &lines[0].runs;
+        let texts: Vec<&str> = runs.iter().map(|run| run.text.as_str()).collect();
+        assert_eq!(texts, ["You see ", "a kobold", "."], "kept apart");
+        assert_eq!(
+            runs[1].link,
+            Some(crate::RunLink::Object {
+                exist: "123".to_owned(),
+                noun: "kobold".to_owned(),
+                coord: None,
+            })
+        );
+        assert_eq!((runs[0].link.as_ref(), runs[2].link.as_ref()), (None, None));
+    }
+
+    /// Each kind of link as a click acts on it: a command written in the
+    /// link or its own text, a web address; one that does nothing is none.
+    #[test]
+    fn each_link_does_what_a_click_on_it_should() {
+        use crate::RunLink;
+        use cena_model::LinkKind;
+        let command = |command: &str| {
+            Some(RunLink::Command {
+                command: command.to_owned(),
+            })
+        };
+        let direct = LinkKind::Direct {
+            cmd: "go north".to_owned(),
+        };
+        assert_eq!(RunLink::of(&link(direct, "north")), command("go north"));
+        assert_eq!(
+            RunLink::of(&link(LinkKind::DirectText, "look")),
+            command("look")
+        );
+        let url = LinkKind::Url {
+            href: "https://play.net".to_owned(),
+        };
+        assert_eq!(
+            RunLink::of(&link(url, "play.net")),
+            Some(RunLink::Url {
+                href: "https://play.net".to_owned()
+            })
+        );
+        assert_eq!(RunLink::of(&link(LinkKind::NotActionable, "Maravel")), None);
     }
 
     #[test]

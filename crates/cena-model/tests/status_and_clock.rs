@@ -357,3 +357,38 @@ fn a_reconnect_keeps_the_indicators_the_burst_will_re_declare() {
         "and a reported-false indicator stays reported-false, not Unknown"
     );
 }
+
+/// A roundtime the game stated is not ended by a timer tag that cannot be
+/// read -- words, a negative, a number too large, or no value at all -- and
+/// the tag is kept, typed; a zero is a real zero (the crate review of 2026-09-28, R9).
+#[test]
+fn a_timer_that_cannot_be_read_leaves_the_roundtime_as_it_was() {
+    let apply = |state: &mut GameState, wire: &str| -> Vec<Frame> {
+        let frames = cena_protocol::Parser::new().push_bytes(wire.as_bytes());
+        for frame in &frames {
+            state.apply(frame);
+        }
+        frames
+    };
+    let mut state = GameState::default();
+    apply(&mut state, "<roundTime value='1789775824'/>\n");
+    for broken in [
+        "<roundTime value='broken'/>",
+        "<roundTime value='-1'/>",
+        "<roundTime value='99999999999'/>",
+        "<roundTime/>",
+        "<castTime value='soon'/>",
+        "<timer value=''/>",
+    ] {
+        let frames = apply(&mut state, &format!("{broken}\n"));
+        assert!(
+            frames
+                .iter()
+                .any(|frame| matches!(frame, Frame::MalformedTag { raw } if raw == broken)),
+            "{broken}: {frames:?}"
+        );
+        assert_eq!(state.roundtime_ends, Some(1_789_775_824), "{broken}");
+    }
+    apply(&mut state, "<roundTime value='0'/>\n");
+    assert_eq!(state.roundtime_ends, Some(0), "a zero is the game's own");
+}

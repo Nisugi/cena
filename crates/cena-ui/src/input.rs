@@ -69,6 +69,18 @@ pub fn validate_command(
     {
         return Err(InputError::InvalidRequestId);
     }
+    validate_line(line)
+}
+
+/// Validate one command line, as any frontend sends it: no longer than
+/// [`MAX_COMMAND_BYTES`], one line (no CR, LF or NUL, which could send more
+/// than one command), and not blank. The wire's check above, and the native
+/// window's for everything it sends -- typed, bound to a key, chosen from a
+/// menu, or carried and let go (the crate review of 2026-09-28, R10).
+///
+/// # Errors
+/// Returns why it is not one command.
+pub fn validate_line(line: &str) -> Result<(), InputError> {
     if line.len() > MAX_COMMAND_BYTES {
         return Err(InputError::CommandTooLong);
     }
@@ -91,6 +103,23 @@ fn decimal_id(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One line's rules, as the native window keeps them too: CR, LF and
+    /// NUL, too long, and blank are each refused.
+    #[test]
+    fn a_line_is_one_command() {
+        assert_eq!(validate_line("look"), Ok(()));
+        for two in ["look\nkill", "stand\r", "x\0"] {
+            assert_eq!(
+                validate_line(two),
+                Err(InputError::MultipleLines),
+                "{two:?}"
+            );
+        }
+        let long = "x".repeat(MAX_COMMAND_BYTES + 1);
+        assert_eq!(validate_line(&long), Err(InputError::CommandTooLong));
+        assert_eq!(validate_line("  "), Err(InputError::EmptyCommand));
+    }
 
     #[test]
     fn valid_commands_preserve_unicode_spaces_and_large_ids() {

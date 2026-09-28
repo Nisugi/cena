@@ -27,6 +27,10 @@ group nobody has stated yet. When supplied it contains `leader` (the leader's
 name, or null when this character leads) and `members` (the other members'
 names, the leader not among them). A hub card carries the same `group`.
 
+A hub card's `game` is optional and additive (added within version 1,
+2026-09-28): the code of the game the character is on (`GS3`), since one name
+can be on two games. Absent from a server that does not say.
+
 | Kind | Other fields | Meaning |
 | --- | --- | --- |
 | `authenticate` | `token`, optional `session` | First client message; no state before authentication. `session` names the character this page is for; absent, the hub is served -- except by a server built for one session (`WebServer::bind`), which serves that session. |
@@ -90,7 +94,13 @@ When present each is exactly `#rrggbb`, lowercase; a viewer refuses a message
 carrying anything else, and applies the value only as a colour. The paint was
 resolved natively, once, for every viewer; a viewer lays it on and decides
 nothing. A trigger's bold is folded into `bold`. All text, including unknown-tag diagnostics, is rendered through
-text nodes. Clickable links and full markup fidelity are outside this slice.
+text nodes. Full markup fidelity is outside this slice.
+
+A run may also carry `link`, what a click on it does (added within version 1,
+2026-09-28, optional and additive as `color` is): `{kind: "object", exist, noun,
+coord?}` for the game's `<a exist= noun=>`, whose menu a click asks for;
+`{kind: "command", command}` for `<d>`, which a click sends; `{kind: "url",
+href}`. A viewer that does not act on links ignores it. Despana does not yet.
 Diagnostics are `{name, raw, truncated}`, capped at 32 entries, 128 name bytes
 and 1024 raw bytes each; the native model retains its own full diagnostic ring.
 

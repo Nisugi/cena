@@ -14,16 +14,25 @@
 
 mod app;
 pub mod bar;
+mod carry;
 mod feed;
+#[cfg(test)]
+mod fixture;
 mod hub;
 mod keys;
+mod launch;
 mod layout;
+mod menu;
+mod own;
 mod play;
 mod sessions;
 mod snap;
 mod story;
 mod text;
+mod widget;
 
 pub use app::{App, TITLE, run};
-pub use hub::{Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
+pub use hub::{CardWidth, Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
+pub use keys::page::{KeyChange, KeysView};
+pub use menu::{Menu, MenuAsked, MenuView, roster_name, typed};
 pub use sessions::Sessions;

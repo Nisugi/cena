@@ -1,0 +1,14 @@
+# A script of Hydra's own, for the runner's map (crates/cena-agent/tests/runner.rs):
+# Lich's Map and Room questions, answered from Hydra's map and priced as the
+# character's own walk.
+
+put 'look'
+waitfor 'quiet glade'
+here = Room.current
+previous, seconds = Map.dijkstra(here.id, 4)
+echo "dijkstra: #{previous[4]} #{seconds[4]}"
+echo "path: #{here.path_to(4).inspect} nowhere: #{here.path_to(5).inspect}"
+echo "banks: #{here.find_nearest_by_tag('bank')} #{here.find_all_nearest_by_tag('bank').inspect} nearest: #{here.find_nearest([3, 4])}"
+towns = Map.list.find_all { |room| room.tags.include?('town') }
+echo "list: #{Map.list.compact.size} towns=#{towns.map(&:id).inspect} desc=#{towns.first.desc.inspect} ways=#{Map.list[2].wayto.inspect}"
+echo "time: #{Map.estimate_time([1, 2, 3])} uid: #{Map.ids_from_uid(7002).inspect} tags: #{Map.tags.inspect}"

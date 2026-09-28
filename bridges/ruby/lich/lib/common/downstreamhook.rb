@@ -1,0 +1,62 @@
+# Carve out from lich.rbw
+# class DownstreamHook 2024-06-13
+
+require_relative 'hook_registry'
+require_relative 'script_death'
+
+module Lich
+  module Common
+    class DownstreamHook
+      extend HookRegistry
+
+      @@downstream_hooks ||= Hash.new
+      @@downstream_hook_sources ||= Hash.new
+      @@downstream_hook_owners ||= Hash.new
+      @@downstream_hook_persist ||= Hash.new
+      @@downstream_hook_priorities ||= Hash.new
+
+      # Per-class storage for the shared HookRegistry methods.
+      def self._hooks
+        @@downstream_hooks
+      end
+
+      def self._hook_sources
+        @@downstream_hook_sources
+      end
+
+      def self._hook_owners
+        @@downstream_hook_owners
+      end
+
+      def self._hook_persist
+        @@downstream_hook_persist
+      end
+
+      def self._hook_priorities
+        @@downstream_hook_priorities
+      end
+
+      def DownstreamHook.run(server_string)
+        for key in ordered_hook_names
+          return nil if server_string.nil?
+          begin
+            action = hook_action(key)
+            next unless action
+
+            server_string = action.call(server_string.dup) if server_string.is_a?(String)
+          rescue
+            remove(key)
+            respond "--- Lich: DownstreamHook: #{$!}"
+            respond $!.backtrace.first
+          end
+        end
+        return server_string
+      end
+
+      # Apply this registry's per-script-death policy (remove script-scoped
+      # hooks, keep persistent ones, warn on undeclared) so the kill path does
+      # not need to know about DownstreamHook by name.
+      ScriptDeath.on_death { |script| cleanup_on_death(script.object_id) }
+    end
+  end
+end

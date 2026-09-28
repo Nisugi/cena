@@ -77,11 +77,12 @@ mod wire;
 pub use crate::gemstone::endpoint::other_spelling;
 pub use fallback::{Prefer, Provider, authenticate_via};
 pub use game::connect_game;
-pub use handshake::authenticate;
+pub use handshake::{authenticate, list_characters};
 pub use pin::PIN_FILENAME;
 pub use refusal::{describe_launch_refusal, launch_refusal_is_fatal};
 pub use reject::{Rejection, classify_a_rejection};
 pub use wire::{
-    CLIENT_BANNER, Credentials, EaccessError, LaunchPayload, expect_echo, hash_password,
-    is_launch_ok, offered_game_codes, parse_launch, redact, redact_char_code, resolve_char_code,
+    CLIENT_BANNER, Credentials, EaccessError, LaunchPayload, character_names, expect_echo,
+    hash_password, is_launch_ok, offered_game_codes, parse_launch, redact, redact_char_code,
+    resolve_char_code,
 };

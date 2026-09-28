@@ -76,7 +76,9 @@ pub(crate) async fn run(
     loop {
         tokio::select! {
             event = events.recv() => match event {
-                Ok(Event::Act(act)) => send(&handle, &act.trigger, &act.line).await,
+                Ok(Event::Act { act, generation }) => {
+                    send(&handle, generation, &act.trigger, &act.line).await;
+                }
                 Ok(_) | Err(RecvError::Lagged(_)) => {}
                 Err(RecvError::Closed) => return,
             },
@@ -107,7 +109,10 @@ fn read_again(
             NoticeKind::Info,
             format!("{why}. {} on.", counted(reloaded.count)),
         ),
-        Err(e) => (NoticeKind::Warn, format!("{why}; {e}. None are on.")),
+        Err(e) => (
+            NoticeKind::Warn,
+            format!("{why}; {e}. {}", super::load::still_on(handle)),
+        ),
     };
     handle.say(Notice::line(kind, format!("Triggers: {said}")));
 }

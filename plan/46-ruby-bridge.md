@@ -1,7 +1,10 @@
 # 46 — The Ruby bridge: how a Lich script runs against Hydra
 
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
-(§10).** Nothing here is built or scheduled. It
+(§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
+run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
+**steps 7 to 10 BUILT**; 11 NOT PURSUED (2026-09-28: scripts updated for the bridge rather
+than every one-off answered; unchanged Lich scripts get the relay, `plan/51`). It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -114,6 +117,11 @@ main copy; **never the prompt**; not the inventory, bounty, society, spellfront,
 speech-window copies. Hydra's line assembler already builds per-stream lines for the web page
 (`crates/cena-ui/src/lines.rs`); the stream uses it with Lich's selection.
 
+> **BUILT OTHERWISE** (step 1): the stream carries the model's own line
+> (`crates/cena-model/src/line.rs`) on every stream, as the game sent it, before the sorter and
+> the triggers, and the runner makes Lich's selection (`bridges/ruby/hydra/listener.rb`): which
+> lines a script sees is its language's business, and a second bridge may want them all.
+
 ### 4.2 The local copy (reads that never leave Ruby)
 
 The script projection: room (id, uid, title, exits, description with its links, the objects,
@@ -223,8 +231,10 @@ are read-only and hiding is M8's squelch. That leaves 52 of A's scripts (22%) an
 needing a rewrite. Three ways:
 
 - **(a) Read-only.** As `plan/38` has it; those scripts move their hiding to M8.
-- **(b) Hooks through the runner** (PROPOSED). When a script on a character adds a display hook,
-  each display line for that character passes through the runner, whose hooks answer keep,
+- **(b) Hooks through the runner** (ANSWERED, §10 question 2; **BUILT**, §11 step 4, with the
+  showing held after `;sorter` and the triggers, not before them). When a script on a character
+  adds a display hook, each display line for that character passes through the runner, whose
+  hooks answer keep,
   replace or hide within a deadline; past it, the line shows as it came. Typed lines likewise,
   for input hooks. Lich's rule is kept where it matters: hooks change only what is shown, after
   the model has the line (VERIFIED, `inventory/13` §1.6), so nothing a behavior or the model sees
@@ -288,19 +298,99 @@ is an input hook, §6.1), sloot, step2, tpick, poolparty, stand and the rest of 
   level for scripts, per character, apart from the agent's.
 - **Stopping a character stops its scripts.** The page lists them, beside the running behavior.
 
-## 9. Measurements owed
+## 9. Measurements: MEASURED 2026-09-27 (§11 step 6)
 
-None of these is measured; each is a guess until it is.
+**How.** `crates/cena-agent/tests/measure.rs`, three ignored tests that print rather than assert:
+`cargo test -p cena-agent --test measure -- --ignored --nocapture --test-threads 1`. The combat
+is a real hunt's, `crates/cena-behavior/tests/fixtures/smithy_kill.xml` (a pegasus fought and
+killed: 28 chunks, 278 lines, 70 KB in 11 game seconds), each chunk the scripted game's answer to
+a script's `next`, so it arrives as the game sends it: a chunk at a time, closed by its prompt. A
+Ruby script (`tests/fixtures/measure.lic`) keeps when it sent and when each line reached it; the
+test keeps when the session published each line, each line shown and each prompt, on the same
+clock. Ruby 4.0.3, Windows 11, the author's machine. The ranges are over five runs of **a debug
+build**, as every build here is (`CLAUDE.md`); one machine, not quiet, and the spread is its own
+finding. **Then once in a release build**, the author asking for it (2026-09-27: *"yea do a
+release build"*): `cargo test ... --release`, the same tests. Where the two differ, both are
+given; the runner's Ruby is the same either way.
 
-- A runner's memory per character: Ruby, the bridge, and N scripts.
-- **A runner's start time.** The author, 2026-09-27: *"I'm not sure waiting until you try to run
-  a script and taking 30-90 seconds for ruby to boot up is a good idea, but let's at least try
-  it."* Most of Lich's start is loading its 100 MB map (`plan/38` §2a), which a runner never
-  does; unmeasured. If starting on the first script is slow, the runner starts at login.
-- The local copy's update size and rate in combat.
-- A send to its first reply line, against Lich's in-process path.
-- A hooked line's display delay (§6.1), and the deadline to set.
-- MCP notification delivery under load (`plan/38` §5 keeps a plain-JSON layer in reserve).
+**What the release build settles**: the debug build's long tails were Hydra's model reading a
+chunk. In release the session reads the heaviest combat chunk in **16 ms** (debug: 177-787 ms),
+and a line reaches a script in combat in **15 ms median, 32 ms at the 95th percentile**, most of
+it the bridge. The bridge's own cost, **13-16 ms for a command and its reply**, is the same in
+both, so it is Ruby's and HTTP's, not Rust's: each call a fresh connection (`connection.rb`), a
+thing to measure before changing if it ever matters.
+
+- **A runner's start**: **0.94-0.95 s** median from starting Ruby to its first `listen`
+  reaching a socket (two sets of six starts, run alone), the method of the first measurement
+  below; 0.96-1.46 s in three sets run straight after the combat measurement, on a machine still
+  busy with it. Step 5 had taken it to 1.6 s by loading what Lich loads before any script; those
+  libraries now load when a script first names one (Ruby's autoload,
+  `bridges/ruby/hydra/engine.rb`), and step 2's runner and today's, timed alike from a Ruby
+  script in two rounds, start alike (step 2's 0.93 and 1.01 s, today's 0.93 and 1.06 s). So
+  **the runner stays started on the first script** (§10, question 9). Of the second, Ruby itself
+  is 0.25 s, then Sequel 0.21-0.23 s, Lich's `gameobj.rb` 0.18 s, `sqlite3` 0.13 s and `net/http`
+  0.10 s.
+  - *Before, kept*: 338 ms at step 1 (Lich's engine, no script: 313-370 ms over six runs), 885 ms
+    at step 2 (`GameObj`, `ox`, `lich.rb`, the stores and `sequel` too), timed from a separate
+    script the same way.
+  - **After step 7** (the character's sheet): **1.06 s** median over six, and 39.5 MiB working
+    set, 75.5 MiB private, as before within this machine's spread that day. Loaded at start,
+    Lich's sheet classes took it to 1.21 s and 80.0 MiB private, some 100 ms of it their load
+    (half `ostruct`, which `stats.rb` requires); they now load when a script first names one
+    (`bridges/ruby/hydra/gemstone.rb`), as the libraries do.
+  - **With windows** (the gtk3 gem loaded, §10 question 12): **5.0-5.5 s** median (the release
+    run's six, 4.3-6.3 s; the debug run's, up to 14 s on a busy machine). Gtk alone is 1.6 s
+    warm in a bare Ruby and 8 s the first time after the machine starts, reading its libraries
+    from disk. Release: 0.97 s without windows.
+- **A runner's memory** (`Get-Process`): **39.3-39.7 MiB working set, 73.1-75.5 MiB private**
+  with no script; **with windows, 159-192 MiB working set and 201-230 MiB private**, Gtk's own; 42.2-42.5 and 78.9-79.3 after the combat; 42.5-42.6 and 80.2-82.5 with a
+  display-hook script running; **42.8-43.0 and 90.7-91.0 with twelve scripts running**, about 1
+  MiB private a script. Against Lich's 466 MB committed a character (`plan/38` §2a): 25
+  characters' runners are some 2 GB private, 25 Lichs some 11.6 GB committed (not the same
+  measure, so an order, not a ratio). With windows, 25 runners are some 5-6 GB private.
+  - *Before, kept*: 27.0 and 58.8 MiB at step 1; 38.8 and 72.8 at step 2; 47.6 and 79.6 when
+    step 5 loaded Lich's libraries at start, which autoload undid.
+- **`Map.list` over the real map** (step 8; 36,838 rooms, `E:\Gemstone\data\cena_data\gs.map`;
+  `measure.rs`, `a_runners_map_list`, Hydra a debug build): the first `Map.list` **2.8 s**,
+  eight pages; a tag search over every room 21 ms; a `Map.dijkstra` to every room 0.34 s
+  (20,454 reached by a walker with nothing known). The runner holding the list: **130.3 MiB
+  private, 77.6 MiB working set**, from 75.9 and 39.6: some 54 MiB, and only once a script has
+  asked. Lich holds its whole map in every process (`plan/38` §2a: 100 MB of its 466).
+- **The local copy's update size and rate in combat**: **12-13 `state` events over the 28
+  chunks, 19.3 KB, about 690 bytes a chunk and 1.75 KB a game second**; the median event 0.6-1.7
+  KB, the largest 3.3 KB. What changes most is the room (7 events: its creatures and objects go
+  whole) and the effects (6). The lines themselves are 188 events and 21 KB. Negligible.
+- **A send to its first reply line, against Lich's in-process path**: a script's `look`, answered
+  with one line, **12.9-17.1 ms median under Hydra, 0.23-0.54 ms under Lich's own path**
+  (`tests/fixtures/lichpath.rb`: Lich's engine in one process, a socket for the game, a reader
+  thread handing each line to the scripts, without Lich's XML parse, so a little quicker than
+  Lich). The difference is the bridge: an HTTP call for the send, then the line waiting for its
+  prompt, the copy, `listen`'s answer and Ruby's reading of it. A script's command costs some
+  15 ms more than under Lich, in a debug build.
+- **A line's time from the session to a script, in combat** (what "MCP notification delivery
+  under load" came to, since a runner long-polls): **median 18-202 ms, 95th percentile 180-623
+  ms**, of which:
+  - **the session reading the rest of the line's chunk** (a chunk's lines wait for its prompt,
+    so its state goes first, §3): median 0.1-133 ms, 95th percentile 177-543 ms; the slowest
+    chunk 177-787 ms from its first line to its prompt.
+    This is Hydra's model reading 2.5 KB of combat in a debug build, and every viewer waits on
+    it as a script does. **It is most of the time, and not the bridge's**;
+  - **the bridge, from the prompt to the script: median 8.0-23.5 ms, 95th percentile 15.7-35.5
+    ms** (one run 359 ms).
+  So a `next` to its reply's first line is 42-120 ms median.
+  - **Release**: a line **15.1 ms median, 31.7 ms at the 95th percentile**; its chunk's prompt
+    1.0 ms median (16.5 ms at the 95th), the bridge 13.4 ms median (19.8 ms); a `next` to its
+    reply's first line 17.1 ms median.
+- **A hooked line's display delay, and the deadline to set**: with a display hook that changes
+  nothing, **median 12.3-18.5 ms, 95th percentile 51-529 ms, the longest 330-564 ms**; with none,
+  a line is shown 0.00 ms after the session publishes it (the longest 0.05 ms). A hooked line
+  waits for its chunk's prompt as a script's does, then for the runner's answer (8-40 ms of it);
+  what is long is the session reading the chunk. **The deadline stays 500 ms**: the runner's own
+  answer is well inside it, and it was passed by 64 ms at most, while the session was still
+  reading the chunk that held the line, since the deadline is kept by the session between frames.
+  **Release**: median 14.6 ms, 95th percentile 16.3 ms, one line of 183 at 333 ms.
+- **Not measured, and why**: the game's own round trip over the network, which a script pays
+  under Lich too.
 
 ## 10. Questions for the author: ANSWERED 2026-09-27
 
@@ -316,24 +406,423 @@ None of these is measured; each is a guess until it is.
    AUTHOR: *"yep."*
 6. **Stores.** AUTHOR: *"lich script settings? would be saved in lich no? so data folder?"*
    Answered in §5: yes, `lich.db3` as Lich writes it, in Hydra's data folder, copied once from
-   Lich's. (Confirm.)
+   Lich's. (Confirm.) **BUILT otherwise in one respect** (step 3): not the file but its three
+   script tables, merged row by row, so Lich's login cache (`simu_game_entry`) never reaches
+   Hydra's folder and a runner holding the file need not stop.
 7. **`$frontend` is `'stormfront'`, `LICH_VERSION` the engine's (5.21.0), `XMLData.game`
    Lich's codes** (§5). AUTHOR: *"yep."*
 8. **A script level apart from the agent's**, allowing what a Lich script may do (§8). AUTHOR:
    *"yep."*
 9. **Hydra starts the runner on a character's first script**, with the player's Ruby found as
-   Saga finds it. AUTHOR: try it, measure it (§9); at login if it is slow.
-10. **Ship the checker** (§1). AUTHOR: *"yes."*
+   Saga finds it. AUTHOR: try it, measure it (§9); at login if it is slow. **MEASURED**: under a
+   second (§9), so on the first script.
+10. **Ship the checker** (§1). AUTHOR: *"yes."* **BUILT otherwise in one respect** (step 5):
+    not from the census's lexer but from Ruby's own parser, against the runner itself, since a
+    player has Ruby and not Python, and a checker that reads the runner cannot drift from it.
 11. **M7b, after the agent's connection** and after M6's live run. AUTHOR: *"got it."*
+    **MOVED 2026-09-27**: the author asked *"So M7 is done ... that means we can work on the
+    scripting bridge in a worktree no?"*, was told this answer put it after M6's live run and
+    that M7's is not run either, and answered *"go"*. Branch `m7b-ruby`, worktree
+    `G:\dev\Cena-m7b`, from `m7-agent`.
+12. **Load Gtk in the runner?** (§6: Gtk runs in ordinary Ruby given the gem; step 5 found 16
+    scripts of elanthia-online's and 55 of the old repository's stop only at a window.) AUTHOR,
+    2026-09-27: *"sure for now we will load gtk, but we will probably not use gtk on release."*
+    **BUILT**: Hydra says whether a runner may open windows (`HYDRA_WINDOWS`,
+    `runner::Start::windows`; the binary says yes, `crates/cena/src/scripts.rs`), and a runner
+    that may loads the gtk3 gem when the player has it, as Lich does, giving its main thread to
+    Gtk's loop (`bridges/ruby/hydra/engine.rb`, `runner.rb`; Lich's `gtk.rb` and
+    `gtk_compaction.rb` vendored). It costs a runner some 4 s more to start and 120-150 MiB more (§9), so
+    a release that says no is a one-line change.
 
 ## 11. Steps, when scheduled
 
 0. The decisions above.
 1. The contract document; the stream's `line`, `sent`, `prompt` and `lagged`; `send` and `say`; a
    runner with Lich's engine; **the first script end to end: `trollspeak`** (`plan/38` §10).
+   **BUILT 2026-09-27** (the author: *"go"*), in three commits:
+   - **Hydra's half** (`crates/cena-session/src/script.rs`, `crates/cena-agent/src/scripts.rs`).
+     The contract is `crates/cena-agent/SCRIPTS.md`, `hydra-script/1`. A runner has a listener of
+     its own on loopback, a port the system chooses, opened with the first runner, and a token
+     per runner kept only in memory and handed to it in its environment; the agent's listener
+     is untouched. MCP without a session: each call a `tools/call` on its own. **The stream is
+     long-polled, not pushed**: `listen` from a position, which lets go of what is before it, so
+     a lost reply is answered again; simpler than notifications, and it batches under load. Its
+     positions are its own, beside the session's cursor, because a line the player types for the
+     runner (`typed`) has no cursor and must still arrive in order; a typed line is never let go
+     for room. **What a script reads is the game's line** (`Event::Heard`, published only while a
+     runner listens, before `;sorter` and the triggers): Lich's scripts read before its hooks, so
+     a squelch hides a line from the player and never from a script waiting for it. `send` is a
+     line as typed, as a trigger's is: Hydra's command when it starts with the symbol, else to
+     the game at once as `Origin::Script`, ungated and unqueued, as Lich's `put`; it answers the
+     cursor its `sent` carries (`Sent::Ok` now carries it). `say` is a notice, mono for
+     `respond`. **No script level yet** (question 8): a runner acts on its own character only,
+     which its player started it on; the level comes with the first request that names another.
+   - **The runner** (`bridges/ruby`, README there): Lich's engine, sixteen files **byte for byte**
+     as upstream's `236a9a2`, loaded by an edge of Hydra's that answers `Game.puts`, `respond`,
+     `_respond` (its markup shown as text), a script's `$stdout`, `Lich.log` and the little of
+     `XMLData` the engine reads; the player's typed commands go to Lich's own `ClientCommands`,
+     then `Script.start`, as `do_client` does. Hydra carries the files in the binary and writes
+     them out where they differ; the player's Ruby is found on the `PATH`, then under Lich's
+     Windows install.
+   - **The binary** (`crates/cena/src/scripts.rs`): `;name args` runs a script from `scripts` in
+     Hydra's data folder (and its `custom` folders), found as Lich finds one; Lich's own words
+     (`;k`, `;l`, `;p`, `;u`, `;force`, `;e`...) go to the runner, and those that act only on
+     running scripts are answered while none runs. **Hydra's words come first**, after the check
+     that tells a family still starting to wait, so `;go2` during the login is never `go2.lic`
+     (question 5). A character leaving the table stops its runner. The runner's standard error
+     goes to the terminal, and its last words to the player when it stops by itself.
+   - **Tests**: the session's door (`crates/cena-session/tests/script_door.rs`), the listener
+     over MCP (`crates/cena-agent/tests/scripts.rs`), a Lich script of Hydra's own end to end
+     spawning Ruby (`crates/cena-agent/tests/runner.rs`), and the command line
+     (`crates/cena/src/scripts.rs`). **Tillmen's `trollspeak.lic` runs unchanged** from the old
+     repository's mirror: `say`, `echo` and its usage (the same file's Tier 2 test,
+     `CENA_LICH_SCRIPTS`). Mutations: the runner reading viewer lines, a typed line dropped for
+     room, a wrong sent cursor, main-window lines dropped by the runner, scripts heard before
+     Hydra's starting words, and a runner left running at `close`: each turns a test red.
+   - **Not yet**: the line's links, bold and preset as data (§4.1; with the raw-XML scripts);
+     `fput` matching its replies by cursor (the cursor is answered, the engine does not use it
+     yet); `XMLData` beyond the game and the name (step 2); stores (step 3); hooks (step 4); a
+     runner stopped gently, its scripts killed as Lich kills them so their `before_dying` runs
+     (today leaving the table ends the process). CI installs Ruby 4.0 for the runner's tests.
+     Measured: §9.
 2. The local copy and the reads (GameObj, Char, XMLData, `Room.current`, Spell, the check*
    family); **`wander`** (`plan/38` §10).
-3. Stores and the import; `Script.run` of a built-in, **go2 first** (512 callers).
+   **BUILT 2026-09-27** (the author: *"step 2!"*), in four commits:
+   - **The local copy** (`crates/cena-agent/src/scripts/local.rs`, `watch.rs`): the agent's
+     projection as its core, as this plan says, in Hydra's own names, so a second language's
+     bridge is not bound to Lich's; plus the room count (what Lich's `move` watches), the
+     room's description and exits line, the map's room, the target, and each player's noun.
+     A copy is taken at each prompt and its changed fields told as a `state` event, the first
+     whole. **The lines of a chunk are held until its prompt**, so the copy's changes go
+     first: §3's *"delivering the state's change ahead of the line"*, kept. A chunk with no
+     prompt goes after 250 ms.
+   - **The reads** (`bridges/ruby/hydra/copy.rb`): Lich's own `GameObj`, `Char`,
+     `constants.rb` and the check family, unchanged, over an `XMLData` answered from the copy by
+     Lich's reader names. The Lich shapes are made in one place: the title bracketed, exits
+     spelled out, statuses as `IconSTUNNED => y`, every body part present, effects as Lich's
+     dialogs. What Hydra does not send yet is not answered, so a script reading it fails
+     naming it.
+   - **The map** (`bridges/ruby/hydra/map.rb`): the binary hands its map and travel's own
+     `room_of` to the runners, so `Room.current` is the room travel would name, never a
+     guess, and nil where Lich's map would pick the first that fits; `Room[id]` asks Hydra's
+     map once per room (`room`). `wayto` is the command, or a callable that asks travel to walk
+     a crossing Hydra ports; `timeto` is seconds for a constant or a Haste roundtime at full
+     price, and a proc answering nil for a cost only travel can answer for the walker (a
+     gate, a ladder, a price table), as Hydra takes a cost it cannot answer as impassable.
+     `cena-agent` gains the edge to `cena-map`.
+   - **The stores, from step 3** (`wander`'s first line is `CharSettings`): Lich's own
+     `lich.rb`, settings, `CharSettings`, `GameSettings`, `Vars` and `UserVars`, unchanged,
+     writing `lich.db3` in `HYDRA_DATA` (`lich` in Hydra's data folder). Found in building
+     it: Lich makes its tables before loading its settings, or the settings' adapter makes
+     `script_auto_settings` without the key its saves need, and every save fails. The import
+     from the player's Lich folder stays in step 3. `Lich::Messaging` is answered in its
+     colour's notice kind, beside a `Frontend` saying Hydra is Wrayth's family with no GSL.
+   - **`Spell`, its reads** (`bridges/ruby/hydra/spell.rb`): the table's row asked of Hydra
+     once (`spell`, by number or name), what a cast lasts and costs asked each time, evaluated
+     for the character by Hydra's own evaluator (`GameState::spell_minutes`, `spell_cost`), so
+     the runner carries neither Lich's effect list nor its Ruby formulas; `known?` from the
+     spell list in the copy (`known_spells`), `active?`, `timeleft` and `Spell.active` from its
+     effects. `affordable?` checks mana, spirit and stamina, not Lich's Monk and overexertion
+     rules. **Not `cast`**, which acts: it says it is not answered yet.
+   - **Tests** (`crates/cena-agent/tests/scripts_local.rs`, `runner.rs`): a stun's `state`
+     before the line that stunned; a mapped room named and answered; a script reading a room
+     the scripted game describes whole through Lich's own classes, Heroism known, up and priced
+     among it; a script walking an exit
+     of `Room.current` with Lich's `move` and keeping a setting that a **second runner
+     process** finds in `lich.db3`. **Tillmen's `wander.lic` runs unchanged** over two scripted
+     rooms: out of the Quiet Glade by the map, the kobold found, `target random`, stopped
+     (Tier 2, `CENA_LICH_SCRIPTS`), five runs in a row. Mutations: a chunk's lines before its
+     state; a runner ignoring `state`; the stores without `init_db` first (which a second run
+     in the same process passed, Lich's settings cache hiding the file: hence the second
+     process); every spell read as known.
+   - **Not yet**: `Spell#cast`; Lich's `Effects`; `Stats`, `Skills` and Lich's `Infomon`; `GameObj`'s type data (`gameobj-data.xml`, which Hydra has only as
+     its own TSV); the familiar's room; `Room#path_to` and `find_nearest`; a crossing's walk
+     waits on the copy naming the room, which step 3's operation replaces. CI installs `ox`,
+     `sqlite3` and `sequel`, as Lich's installer does.
+3. ~~Stores~~ (built in step 2, for `wander`) and the import; `Script.run` of a built-in,
+   **go2 first** (512 callers).
+   **BUILT 2026-09-27** (the author: *"step 3!"*), in three commits:
+   - **Hydra's half** (`crates/cena-session/src/script.rs`, `crates/cena-agent/src/scripts/`):
+     the script door's `perform` starts a line through the binary's performer, exactly as an
+     agent's `perform` does, but **not among the agent's operations**: an agent neither reads
+     nor steers a walk a script began, and a bad end drops no agent level. The listener's
+     `perform` answers a run's number, `stop` steers it, and the runner hears `ended`,
+     **after a fresh copy** (the watcher takes one first), so a script that waited for a
+     walk reads the room it arrived in. Its progress goes nowhere yet.
+   - **The runner** (`bridges/ruby/hydra/builtins.rb`): `Script.start`, `Script.run`,
+     `start_script` and a `;go2` a script has Lich run all start Hydra's travel when they
+     name `go2`, whatever `go2.lic` the player has (question 5). It runs as a Lich exec
+     script named `go2`, so `Script.run` waits for it, `running?` and `Script.exists?` see it,
+     and `;k go2` or `stop_script` stop it and Hydra's walk with it (an `ensure` around the
+     wait). Lich's go2 settings (`_disable_confirm_`, `--delay=`, `typeahead=`) are left
+     behind; travel takes the destination alone. The map's crossings walk the same way.
+   - **The import** (`crates/cena/src/scripts/import.rs`): `;scripts import <Lich folder>`
+     merges Lich's `script_setting`, `script_auto_settings` and `uservars` rows into Hydra's
+     `lich.db3` as they are (Lich's replacing a row Hydra has under the same key), copies
+     the `.lic` and `.rb` scripts of `scripts` and its `custom` folders **never over one Hydra
+     has**, and Lich's `gameobj-data.xml` when Hydra has none, so `GameObj#type` works.
+     `;scripts` says where they are. A script already running keeps what it read.
+   - **Tests**: a built-in started and ended over MCP with a stand-in performer, stopped
+     mid-way, refused, and before the behaviors are ready; in the session, absent from the
+     agent's operations; in Ruby, `Script.run('go2', '229 _disable_confirm_')` walks by a
+     stand-in travel and reads the new room, `start_script('go2')` runs and exists, and
+     `stop_script` stops the walk; the import's tables, scripts and item types, a login's
+     cache left behind and Hydra's own script kept, and through the command line. **Tier 2:
+     the author's own install imported** (`CENA_LICH_FOLDER=C:\Gemstone\lich-5`): 45
+     settings rows, 32 scripts and the item types, into a folder the test then removes.
+     Mutations: killing the script leaving travel walking; the import writing over Hydra's
+     own script.
+   - **Not yet**: the other built-ins of §7 (bigshot, eherbs, waggle, eloot, foreach,
+     sorter, multi, infomon, spellactive); a run's progress read by a script; the performer's
+     refusals are worded for an agent, which a script meets only on a line it never
+     builds.
 4. Hooks, as decided.
+   **BUILT 2026-09-27** (the author: *"step 4"*), in three commits:
+   - **Hydra's half** (`crates/cena-session/src/script.rs`, `crates/cena-session/src/actor/hooked.rs`;
+     `crates/cena-agent/src/scripts/hooks.rs`). While a runner has **display hooks**, what a
+     viewer is shown of each line -- after `;sorter` and the triggers, as it would have been
+     published -- waits for the runner to answer the line it heard (`shown`, by the `line`
+     event's cursor): kept as it came, links and colours and all; hidden; or text in its place,
+     which the player's triggers answer again (painted, substituted, squelched), as a
+     frontend's highlights answer what Lich's hooks let through. A line the triggers squelched
+     stays squelched. **Only the showing waits**: the model, the log, the triggers' flags,
+     attention and sends, and every script have the line on time, so nothing a behavior sees
+     depends on a script (§6.1, Lich's rule). Lines are shown in the game's order; one not
+     answered in 500 ms goes as it came, and everything held goes when the hooks go or the
+     connection ends. While a runner has **input hooks**, each line the player types at a
+     frontend (`SessionHandle::send_typed_at`, which the window and Despana now call) is asked
+     first (`input`), before Hydra's commands or the game see it: kept, replaced or swallowed,
+     and as typed past the deadline. Hydra's own lines on the manual path (`;multi`'s, a
+     relayed `;to`, the sorter's) never meet them, as Lich's `put` never does: a hook turning a
+     line into a `;multi` of itself would never end. A runner says which hooks it has
+     (`hooks`); its dismissal takes them.
+   - **The runner** (`bridges/ruby/hydra/hooks.rb`). Lich's own `DownstreamHook`,
+     `UpstreamHook` and their `HookRegistry`, vendored byte for byte, so names, priorities, a
+     raising hook removed, and `persist:` at a script's death are Lich's. Hydra is told as the
+     first hook of a kind comes and the last goes: added, removed, or taken with a script's
+     death, which Lich does before it says the script was killed. Each game line goes to the
+     scripts, then through the display hooks as `text\r\n`, as a line of Lich's chunks ends; a
+     batch's answers go back together before the next `listen`. The player's typing goes
+     through the input hooks as `<c>line`, as a Wrayth frontend sends it. Markup a hook adds is
+     not drawn (tags only, so a line's own `<3` stays).
+   - **Tests**: in the session (`crates/cena-session/tests/script_hooks.rs`), a hooked line kept
+     with its link, hidden, changed, and shown when answered rather than at the deadline; one
+     unanswered shown as it came at the deadline, with an answered one behind it waiting; the
+     hooks' going showing what they held at once; a trigger's flag set while its line waits, a
+     changed line painted and squelched by the triggers, a squelched one staying squelched; the
+     player's typing swallowed, replaced, or sent as typed after the deadline, and Hydra's own
+     line never asked. Over MCP (`crates/cena-agent/tests/scripts.rs`), the same through
+     `hooks`, `shown` and `input`, and nothing asked once dismissed. In Ruby
+     (`crates/cena-agent/tests/runner.rs`), a Lich script's display hook hiding one line and
+     changing another, its markup not drawn, its input hook sending `tt` as `target`, and both
+     gone when it is killed. Mutations: the deadline ignored (the actor spins and the test
+     hangs), lines never held, a change ignored, a squelch undone, typing not asked, the hooks'
+     going or an answer not waking the actor, input hooks never installed, a dismissed runner's
+     hooks kept; in Ruby, answers never sent, display hooks never told, input not asked, markup
+     drawn. Each turns a test red.
+   - **Not yet**: a hook's markup drawn (the `<pushBold/>` it adds, a `<pushStream>` that moves
+     a line to a window); a hook matching across a chunk's lines, or on markup (`<prompt`),
+     which sees text a line at a time (the checker, step 5, is to point at them); the
+     deadline measured (§9); Lich's `quiet_command`, a hook of its own (`util.rb` is not
+     loaded).
 5. The checker over both collections, and the list of what runs published.
+   **BUILT 2026-09-27** (the author: *"step 5"*), in three commits:
+   - **The checker** (`bridges/ruby/hydra/check.rb`; `crates/cena-agent/src/scripts/checker.rs`
+     runs it). Ruby reads the script with its own parser (Prism) as Lich runs it -- cut at each
+     line that is a label alone, `script` in scope -- and every name it uses is judged against
+     the runner itself: the runner split in two, `bridges/ruby/hydra/engine.rb` loading Lich's
+     engine and Hydra's edges for both the runner and the checker, so what the checker finds
+     defined is what a script finds. Listed by hand is only what the runner defines and does
+     not answer as Lich does: the game's markup, and each method registered as not answered yet
+     (`Hydra.unanswered`: `Spell#cast`). A finding's kind is `stops`, `markup`, `windows` or
+     `differs` (a script's verdict is its worst), and it says whether it is Hydra's to answer
+     or the script's own. What it cannot see into it does not judge: a method of an unknown
+     receiver; names from a gem, a mixin, a script started or a script beside it named like
+     the name; a use behind `defined?` or `respond_to?`, under a `rescue` modifier, or in a
+     DSL's block.
+   - **Found in building it, and changed in the runner**: scripts lean on what Lich loads
+     before any script (`OpenStruct`, `YAML`, `Time.parse`, `Terminal::Table`...), which the
+     runner now loads, each as it is found; and `HAVE_GTK`, now false, as a Lich started
+     `--no-gtk`, so a script that asks goes its way without a window.
+   - **`;scripts check <script>`** (`crates/cena/src/scripts/check.rs`): the script found as
+     Lich finds one (now in Lich's order: `custom` first, a whole name before a prefix), and
+     its verdict and findings said, each thing once at its first line.
+   - **The list** (`inventory/14-what-runs.md`, a TSV a collection): **35% of elanthia-online's
+     scripts and 59% of the old repository's run today**, against `inventory/13`'s ceilings of
+     76% and 87%. The difference is the runner's to-do list, ordered there by how many scripts
+     each answer lets run: the game's markup (§6.2), Lich's windows, `Spell#cast`,
+     `Lich::Util`, then `Stats`, `Skills`, `Spells`, `Wounds`, `Scars`, `Effects`, `Society`
+     and `XMLData`'s fields, which Hydra's model holds and the runner does not name yet. 23 and
+     212 scripts stop on something of their own: a name defined nowhere, `File.exists?`
+     (dropped in Ruby 3.2), a file Ruby cannot read.
+   - **Tests**: the checker over a fixture with one line of each kind and lines it must not
+     find; what a check says, grouped and capped; `;scripts check` through the command line;
+     finding in Lich's order. Mutations, each red: no label cut, no `script` local, no guards,
+     no rescue modifier, the script's own constants judged, `<c>` taken as markup, the not-yet
+     registry unread, Lich's classes taken as the script's, a sibling script's names judged, a
+     prefix before a whole name. Hand check: 30 random stop findings in the old repository all
+     real; of the 1,254 that run, 18 mention a blocking name, each explained.
+   - **Not yet**: a spell held in a variable (`sign.cast`), which the checker misses. Lich's
+     windows, raised here as a question, were answered: loaded for now (§10, question 12).
 6. §9's measurements, written here.
+   **BUILT 2026-09-27** (the author: *"step 6"*): §9 has each, measured over a real hunt's combat
+   replayed through the scripted game, by `crates/cena-agent/tests/measure.rs` (ignored; it
+   prints). What it found beyond the numbers: loading Lich's libraries at start (step 5) had
+   taken a runner's start from 0.9 to 1.6 s and its memory up 9 MiB, so they now load when a
+   script first names one (`bridges/ruby/hydra/engine.rb`; `REXML` with its stream listener,
+   `bridges/ruby/hydra/rexml.rb`); and most of a line's time to a script, in combat, is the
+   session reading the rest of its chunk in a debug build, not the bridge.
+   **And a bug, found by a test that failed now and then while measuring**: a script killed
+   while it was starting one of Hydra's built-ins -- before the run's number came back -- left
+   Hydra's walk going, and a stop sent from the killed script's own thread took seconds, and
+   twice in some forty runs never came. Lich stops a script by killing its threads, so both
+   calls are now made by a thread of the runner's own (`bridges/ruby/hydra/builtins.rb`,
+   `Errands`), which stops a run whose script is gone as soon as its number comes. The test
+   (`crates/cena-agent/tests/runner.rs`) kills a walk while it is still starting (`go2 slow`)
+   and counts every walk started and stopped: red six times in six on the old code.
+
+**Steps 7 to 11, the runner's gaps** (the author, 2026-09-27: *"Yeah let's fill those gaps"*).
+`inventory/14`'s to-do list, grouped by the work each group is and ordered cheapest first: the
+first four give Lich's names to what Hydra already holds or does, the fifth is a design of its
+own. The counts are scripts running once the group and those above it are answered (MEASURED
+over the two lists in `inventory/14-what-runs/`, each script's gaps put in a group; today 82 of
+elanthia-online's 236 and 1,254 of the old repository's 2,130):
+
+7. **The character's sheet, under Lich's names**: `Stats`, `Skills`, `Spells` (the circles),
+   `Society`, `Experience`, `Resources`, the PSMs (`CMan`, `Feat`, `Shield`, `Weapon`, `Warcry`,
+   `Armor`), `Wounds`, `Scars`, `Effects`, and the `XMLData` fields scripts read. Lich's own files
+   read them from `Infomon`, its store the game's text fills; **Hydra's model already reads the
+   same text** (`crates/cena-model/src/state/character/`), so the runner answers `Infomon` from
+   the copy and loads Lich's files unchanged. 94 and 1,377.
+   **BUILT 2026-09-27** (the author: *"Yeah let's fill those gaps"*), in three commits:
+   - **Hydra's half** (`crates/cena-agent/src/scripts/sheet.rs`): the copy carries the
+     character's sheet in Hydra's names: identity, stats by `info`'s three columns, skills,
+     circles, PSM ranks by category, warcries, society, citizenship, resources, currency and
+     experience (`SCRIPTS.md`). A table never read is absent, a value never stated `null`.
+   - **Two things the model did not read, found on the way** (Rule 2.2a): the mind bar's
+     experience (`field_exp`, `max_field_exp`, `exp`, `ascension_exp`, `until_next`, `lumnis`,
+     `rpa`, `fashlonae`; `crates/cena-model/src/state/character/mind_bar.rs`), which the frame
+     kept and the model dropped; and the injury window's mode, from its three radios
+     (`crates/cena-model/src/state/character/body.rs`, `InjuryMode`; the copy's `injury_mode`),
+     which Lich's `Wounds` and `Scars` read before they set it to both (`_injury 2`).
+   - **The runner** (`bridges/ruby/hydra/infomon.rb`, `bridges/ruby/hydra/gemstone.rb`): Lich's
+     own `Stats`, `Skills`, `Spells`, `Society`, `Experience`, `Resources`, `Currency`, the PSMs,
+     `Effects`, `Injured`, `Wounds` and `Scars`, byte for byte, over an `Infomon` answered from
+     the sheet by Lich's keys, each loaded when a script first names it; `Lich::Gemstone`
+     includes `Lich` and is included at the top level, as Lich's are. `CharacterStatus`, their
+     base, is copied from Lich's `games.rb`, which the runner does not load. `XMLData` answers
+     the level and the experience. `Lich::Util` loads for the PSMs' name helpers, its
+     `issue_command` family registered not yet answered (step 10), as is `Infomon.sync`. The
+     game's files of the runner are the agent's game module's
+     (`crates/cena-agent/src/gemstone/runner.rs`, `plan/05` Rule 3.4).
+   - **The checker**: a module's own method can be not yet answered (`Hydra.unanswered`); a
+     method a Lich class the runner loads does not have is an older Lich's, the script's own
+     (Lich 4's `Society.rank=`, `Skills.trading=`); and a constant under a Lich class is Lich's
+     (`Effects::Buffs`), which step 5 had counted as the script's own in 7 and 30 scripts
+     (`inventory/14`, corrected).
+   - **The list** (`inventory/14`): **40% of elanthia-online's scripts and 64% of the old
+     repository's run** (from 35% and 59%): 94 and 1,358, against the forecast 94 and 1,377.
+   - **Tests**: the mind bar and the radios in the model (`character_dialogs.rs`); the sheet over
+     MCP (`scripts_local.rs`), unknown before the game says it and each table after; in Ruby
+     (`crates/cena-agent/tests/runner.rs`, `sheettest.lic`), Lich's classes reading the
+     identity, the three stat columns, a skill's ranks and bonus, a circle, the society, the
+     field experience, a maneuver's ranks, a warcry not known, a wound and a scar, and
+     `db_refresh_needed?` before and after; the checker's three new findings, the path under a
+     Lich class red on the old checker. Measured: §9.
+   - **Not yet**: `Infomon.sync`, and these classes' methods that ask the game themselves
+     through `issue_command` (step 10); `Status`, `Enhancive`, `Spellsong`, `Bounty`, `Group`,
+     `StowList`, `ReadyList`, `Gift`, `CritRanks`, and `XMLData`'s `bounty_task`,
+     `society_task` and `stow_container_id`. The injury window's radios are read as Lich reads
+     them and are in no capture here, and whether the game answers `_injury 2` with a prompt,
+     where the copy updates, is not measured: without one, a first read of `Wounds` waits Lich's
+     7.5 s. A warcry cannot be unknown: Hydra keeps the warcries as a set, so an unread list
+     reads as none known.
+8. **The map's queries**: `Map.dijkstra`, `Room#find_nearest`, `Map.list`, `Room#path_to`, by
+   travel's own map and costs, as `Room.current` already is. 100 and 1,418.
+   **BUILT 2026-09-27**, in two commits:
+   - **Hydra's half** (`crates/cena-agent/src/scripts/map_tools.rs`, `SCRIPTS.md`): `route` (the
+     shortest ways out of a room: to one, the nearest of several, or everywhere, as Lich's
+     `dijkstra` tables), `seconds` (a path's time, Lich's 0.2 for a step it cannot price),
+     `rooms` (every room a page at a time, short), `find` (by tag or the game's number) and
+     `tags`. **A way is priced for the character as its own walk is**: the runners' map carries
+     travel's walker, which the binary makes from the character's travel file
+     (`crates/cena/src/scripts.rs`, `walker_of`; `TravelNotes::of`), so an exit the character's
+     profession, society or a remembered crossing opens is open to its scripts' routes too.
+     `cena-map`'s search names every room it settled and where each came from
+     (`Routes::settled`).
+   - **The runner** (`bridges/ruby/hydra/map.rb`): `Map.dijkstra` and `Room#dijkstra` answer
+     Lich's `[previous, seconds]`; `path_to`, `find_nearest`, `find_nearest_by_tag` and
+     `find_all_nearest_by_tag` are Lich's own methods over it; `estimate_time`, `ids_from_uid`,
+     `tags` and `rooms_by_tag` ask Hydra. **`Map.list`** is Lich's array by room number, asked
+     the first time a script asks and kept, each room short (number, title, location, tags, the
+     game's numbers, the strings shared) and completing itself from `room` when a script reads
+     its description or exits: a search by tag or title never asks for the rest. Measured: §9.
+   - **The list** (`inventory/14`): **42% of elanthia-online's scripts and 65% of the old
+     repository's run** (98 and 1,391, against the forecast 100 and 1,418: the rest got past the
+     map to wait on the markup or a window).
+   - **Tests**: `Routes::settled` (`crates/cena-map/tests/route.rs`); the five tools over MCP
+     (`scripts_local.rs`), a Bard's shortcut taken by a Bard's route and not by another's, the
+     nearest of two, an island, a path's time and an unpriced step, pages, tags and a game's
+     number; the binary's walker from a travel file (`command_tests.rs`); in Ruby
+     (`crates/cena-agent/tests/runner.rs`, `maptest.lic`), a Lich script asking each, a listed
+     room completing itself.
+   - **Not yet**: `Map.reload`, `Map.get_location` and `Map.save` (Lich's map files, which
+     Hydra's is not), a room's tags or exits changed by a script (`Room#tags=`); a nearest-of-
+     several search answers only as far as the nearest, where Lich's may search on; a script's
+     walk is priced without what a walk finds on the way (a trip's own flags).
+9. **`Spell#cast`**, through the casting step (`plan/37` Stage 3). 105 and 1,522.
+   **BUILT 2026-09-27, otherwise in one respect**, in two commits: not through the casting step,
+   which is the behaviors' pure pieces (the lines, the answers, readiness) with no driver a
+   script could call, but **Lich's own `Spell#cast`** in the runner (`bridges/ruby/hydra/spell.rb`),
+   line for line as `lib/common/spell.rb` writes it, sending and waiting as a script does, over
+   each spell's way to cast from Hydra's table (`incant`, `stance`, `channel`, `cast_proc`: the
+   `spell` and `spells` tools). So a script's contract is whole: what it passes
+   (`results_of_interest`, `channel` or `evoke`, `force_stance`) and what it is answered (the
+   game's line). Two changes, marked in the file: a spell the table lacks is not up rather than
+   an error, and Mental Acuity is not known while the feat list is unread.
+   - **With it**: `force_cast`, `force_channel`, `force_evoke`, `force_incant`, `lock_cast` and
+     `unlock_cast`, `results_regex`, `after_stance`, `available?`, `incant?`, `circle_name`,
+     `remaining`, `last_cast`, and `Spell.list` from one answer; Lich's `Stance`, which a cast
+     restores after a stance spell. `putup`, `putdown` and `timeleft=` are registered not
+     answered: what is up is the game's to say (the copy's effects).
+   - **And Lich's extensions of Ruby's classes** (`common/class_exts/`, loaded by Lich before any
+     script, `lich.rbw:93-100`): `StringProc` (7 and 29 scripts), `5.minutes`, `90.as_time`,
+     `with_commas`, `Hash.put`, `MatchData#to_struct`. Not its synchronized client socket.
+   - **The list** (`inventory/14`): **47% of elanthia-online's scripts and 71% of the old
+     repository's run**: 112 and 1,506, against the forecast 105 and 1,522.
+   - **Tests** (`crates/cena-agent/tests/runner.rs`, `casttest.lic`): an incant with no target,
+     prepare and cast at one, a spell the character cannot afford (`cast: not enough mana`,
+     false), a spell's stance and channel from the table, the cast lock, `Spell.list`; the
+     class extensions (`readstest.lic`); the checker finding `putup`.
+   - **Not yet**: `stackable?`, `refreshable?`, `multicastable?` and `max_duration` (the table's
+     durations by cast type, which the `spell` tool does not send); `Spell.upmsgs` and
+     `dnmsgs`; the Monk and overexertion rules of `affordable?`.
+10. **`Lich::Util`**: `issue_command` and `quiet_command`, over step 4's hooks. 121 and 1,570.
+    **BUILT 2026-09-27**, in two commits (`bridges/ruby/hydra/gemstone.rb`):
+    - **Lich's own commands, unchanged**: `quiet_command`, `silver_count`, and `issue_command`
+      with `usexml: false` run as Lich's code, the command sent and its text read as a script
+      reads the game's, with `quiet` hidden from the player by a display hook (step 4). Step 7
+      had marked them unanswered without trying them; they needed nothing more, since Lich's text
+      stream carries no prompt line either (`markup.rb`, `DATA_ELEMENTS`), so a text end pattern
+      is what a script already passes.
+    - **Those that read the markup say so**: `issue_command`'s default (`usexml`) and
+      `quiet_command_xml` raise, naming the markup, rather than wait out their timeout for lines
+      that never come; the checker counts them as markup unless a call passes `usexml: false`.
+      MEASURED over both collections, 426 calls: `quiet_command_xml` 188, `issue_command` 136
+      (most with its default), `quiet_command` 67, `silver_count` 35.
+    - **The list** (`inventory/14`): **50% of elanthia-online's scripts and 71% of the old
+      repository's run** (118 and 1,511, against the forecast 121 and 1,570): the markup gap
+      grew to 57 and 256 scripts, as the `quiet_command_xml` callers moved into it.
+    - **Tests** (`crates/cena-agent/tests/runner.rs`, `utiltest.lic`): a quiet command's lines,
+      the silver count from `info` (nine runs in a row: the hook and the script race for its
+      last line under Lich too), `quiet_command_xml` saying why; the checker's default and
+      text-only `issue_command`.
+11. **The game's markup as labelled data** (§6.2): first measured, what markup the scripts read,
+    then answered. 148 and 1,734; with Lich's windows, 178 and 1,845.
+
+    **NOT PURSUED 2026-09-28.** The author, of the bridge: *"I just think I was going about it
+    the wrong way. Would be better to do some rewriting/updating of the scripts themselves
+    instead of trying to support every one off."* Read as: the bridge stays, and grows by
+    scripts updated to run on it rather than by answering each call an unmodified script
+    makes. The scripts that need Lich unchanged get real Lich, through the relay
+    ([`plan/51-lich-relay.md`](51-lich-relay.md)).

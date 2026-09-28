@@ -41,7 +41,8 @@
 //! architecture rather than a floor under it. This is the graph it asserts:
 //!
 //! ```text
-//! cena              the binary: Hydra                  behavior, gui, host, platform, session, ui, web
+//! cena              the binary: Hydra                  agent, behavior, gui, host, platform, session, ui, web
+//! cena-agent        MCP for an outside program         map, session, platform*
 //! cena-gui          the window (egui)                  session, ui
 //! cena-web          the embedded browser viewer        session, ui
 //! cena-ui           projection and wire vocabulary     model
@@ -69,6 +70,7 @@
 //! | [`cena_ui`] | [`SessionView`](cena_ui::SessionView), and `crates/cena-ui/WIRE.md` for the contract |
 //! | [`cena_gui`] | [`Sessions`](cena_gui::Sessions), and [`run`](cena_gui::run) for the window |
 //! | [`cena_web`] | [`WebServer`](cena_web::WebServer) |
+//! | [`cena_agent`] | [`Characters`](cena_agent::Characters), and `crates/cena-agent/CONTRACT.md` for the contract; a script runner's [`scripts`](cena_agent::scripts), `SCRIPTS.md` |
 //! | [`cena_host`] | [`Host`](cena_host::Host) |
 //! | `cena-arch-tests` | `crates/cena-arch-tests/tests/layering.rs` |
 //!
@@ -342,6 +344,7 @@
 //! |---|---|---|
 //! | dependencies point one way, and the graph equals the table | `crate_dependency_edges_match_the_plan` | `layering.rs` |
 //! | the projection knows no toolkit; the model and the map do no file I/O | `cena_ui_depends_on_no_ui_toolkit`, `model_does_no_file_io`, `map_does_no_file_io` | `layering.rs` |
+//! | an agent acts only through the session's door, which checks its level, and a script runner only through its own | `the_agent_acts_only_through_the_door` | `layering.rs` |
 //! | no process globals: every `static` is allowlisted with a reason | `every_static_is_allowlisted`, `no_static_mut_anywhere` | `architecture.rs` |
 //! | one owning field each for the roundtime, the server clock and the session handle | `roundtime_has_a_single_owning_field` and its two siblings | `single_owner.rs` |
 //! | nothing above the protocol sees raw text | `wire_text_reaches_the_public_api_only_through_rule_2_2` | `raw_text_escapes.rs` |
@@ -366,7 +369,7 @@
 //! |---|---|---|
 //! | workspace members | 11 | `sed -n '/^members/,/^\]/p' Cargo.toml \| grep -c '"crates/'` |
 //! | known wire tags | 126 | `grep -cE '^    "[^"]+",$' crates/cena-protocol/src/tags.rs` |
-//! | `Frame` variants | 55 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
+//! | `Frame` variants | 56 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
 //! | files under `cena-model`'s `state/` | 110 | `find crates/cena-model/src/state -name '*.rs' \| wc -l` |
 //! | architecture test files | 10 | `ls crates/cena-arch-tests/tests/*.rs \| wc -l` |
 //!

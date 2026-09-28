@@ -45,6 +45,15 @@ pub enum BehaviorError {
     /// how you get an attack that fires four seconds after the fight ended."
     /// So this is returned immediately, never after a wait.
     AuthorityHeld,
+    /// Events were lost, and the state could not be taken afresh from the
+    /// session: the behavior stops rather than decide from a state with
+    /// holes in it (`travel/heard.rs`; the crate review of 2026-09-28, R1).
+    FellBehind,
+    /// The watchdog found the behavior's loop stopped, and preempted it
+    /// (`crate::watch`). Not [`Self::Cancelled`]: nobody said stop, and a
+    /// run that ends this way ended badly (`plan/35` §4: it drops an agent's
+    /// level).
+    Wedged,
 }
 
 impl BehaviorError {

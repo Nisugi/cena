@@ -46,7 +46,7 @@ type Edit<'a> = &'a dyn Fn(&str) -> Result<(String, String), String>;
 /// Give `character`'s session its triggers from the file under `dir`, and
 /// say what was left out. No file is no triggers, and nothing is said.
 pub(crate) fn open(handle: &SessionHandle, dir: &Path, character: &str) {
-    for (kind, text) in loaded(reload(handle, dir, character), false) {
+    for (kind, text) in loaded(handle, reload(handle, dir, character), false) {
         handle.say(Notice::line(kind, format!("Triggers: {text}")));
     }
 }
@@ -99,7 +99,7 @@ fn answer(
         Command::Test(words) => info(explain::explain(&handle.triggers(), &words)),
         Command::Reload => {
             others.tell(character, "reloaded");
-            loaded(reload(handle, dir, character), true)
+            loaded(handle, reload(handle, dir, character), true)
         }
         Command::Approve(name) => change(&|text| {
             let (text, line) = edit::approve(text, &name)?;
@@ -142,7 +142,9 @@ fn answer(
 
 /// Make `edit` to the file, write it, give this character the result, and
 /// tell `others`. A change the file cannot use is refused by `edit`, and
-/// nothing is written.
+/// nothing is written. Read, changed and written with no other change to
+/// the file between, so two characters changing it at once each keep
+/// theirs (`cena_session::store::changing`; the crate review of 2026-09-28, R5).
 fn change(
     handle: &SessionHandle,
     dir: &Path,
@@ -150,14 +152,17 @@ fn change(
     others: &Changes,
     edit: Edit<'_>,
 ) -> Said {
-    let changed = file(dir).and_then(|old| edit(&old));
-    let (text, done) = match changed {
-        Ok(changed) => changed,
-        Err(why) => return vec![(NoticeKind::Error, format!("not changed: {why}"))],
+    let changed = cena_session::store::changing(&triggers::path(dir), || {
+        let (text, done) = file(dir)
+            .and_then(|old| edit(&old))
+            .map_err(|why| (NoticeKind::Error, format!("not changed: {why}")))?;
+        write(dir, &text).map_err(|why| (NoticeKind::Error, format!("not saved: {why}")))?;
+        Ok(done)
+    });
+    let done = match changed {
+        Ok(done) => done,
+        Err(said) => return vec![said],
     };
-    if let Err(why) = write(dir, &text) {
-        return vec![(NoticeKind::Error, format!("not saved: {why}"))];
-    }
     others.tell(character, &done);
     match reload(handle, dir, character) {
         Ok(load::Reload { count, unfound, .. }) => {
@@ -173,7 +178,10 @@ fn change(
         }
         Err(why) => vec![
             (NoticeKind::Info, format!("{done}.")),
-            (NoticeKind::Warn, format!("{why}. None are on.")),
+            (
+                NoticeKind::Warn,
+                format!("{why}. {}", load::still_on(handle)),
+            ),
         ],
     }
 }
@@ -224,15 +232,10 @@ fn file(dir: &Path) -> Result<String, String> {
     }
 }
 
-/// Write `text` whole or not at all: to a file beside the triggers file,
-/// then over it.
+/// Write `text` whole or not at all, through the store's one atomic write.
 fn write(dir: &Path, text: &str) -> Result<(), String> {
     let path = triggers::path(dir);
-    let beside = path.with_extension("toml.new");
-    fs::create_dir_all(dir)
-        .and_then(|()| fs::write(&beside, text))
-        .and_then(|()| fs::rename(&beside, &path))
-        .map_err(|e| format!("{}: {e}", path.display()))
+    cena_session::store::save_text(dir, &path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 #[cfg(test)]

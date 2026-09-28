@@ -449,7 +449,7 @@ Recorded here so they cannot bite the way they bit Vellum.
 - **Clamp game hints.** The game itself sends viewport-busting sizes —
   `espMasterDialog height='2100'`.
 - **Wrayth settings exports exist on this machine** at
-  `E:\Saved Files From Latest Reinstall Yay\Gemstone\SIMU\Wrayth\` (`Nisugi3.xml`,
+  `E:\misc\Saved Files From Latest Reinstall Yay\Gemstone\SIMU\Wrayth\` (`Nisugi3.xml`,
   `NewLayoutWrayth.xml`, `Mnstr.xml`, `YepCock.xml`): full `<settings client=>` blobs
   with 61 `<w>` entries plus highlights, presets and palette. **Test fixtures**, and the
   source for a future "import Wrayth settings" feature.

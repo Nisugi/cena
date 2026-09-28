@@ -106,10 +106,12 @@ async fn a_claimed_line_from_a_stale_generation_does_not_run() {
     assert!(transcript.lines().is_empty());
 }
 
-/// With nothing registered, a session behaves exactly as it did before: the
-/// symbol means nothing and every line is the game's.
+/// With nothing registered, Hydra's symbol means nothing and every line is
+/// the game's, but for Lich's: a line with `;` is the player's Lich's, never
+/// the game's (`plan/51` §6, question 3, the author: *"command starting with
+/// the lich command character ; get sent to lich"*).
 #[tokio::test(flavor = "current_thread", start_paused = true)]
-async fn a_session_with_no_desk_sends_everything_as_it_always_did() {
+async fn a_session_with_no_desk_sends_everything_but_lichs() {
     let (source, transcript) = AnsweringSource::new(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
@@ -117,17 +119,21 @@ async fn a_session_with_no_desk_sends_everything_as_it_always_did() {
     tokio::spawn(session.into_actor().run());
 
     assert_eq!(handle.command_symbol(), None);
-    assert_eq!(handle.typed(";go2 bank"), None);
+    assert_eq!(handle.typed("/go2 bank"), None);
     let sent = handle
-        .send_manual_at(generation, ";go2 bank", DEADLINE)
+        .send_manual_at(generation, "/go2 bank", DEADLINE)
         .await;
     assert_ne!(sent, cena_session::Outcome::Handled);
-    assert_eq!(transcript.lines(), [";go2 bank"]);
+    let lichs = handle
+        .send_manual_at(generation, ";go2 bank", DEADLINE)
+        .await;
+    assert_eq!(lichs, cena_session::Outcome::Handled, "no Lich: told so");
+    assert_eq!(transcript.lines(), ["/go2 bank"]);
 }
 
 /// **The desk goes in at startup and learns the character's symbol later.**
 /// A character whose settings choose `/` gets `/` from then on, and `;` goes
-/// back to being the game's -- without a second desk, which `set_desk` refuses.
+/// back to being Lich's -- without a second desk, which `set_desk` refuses.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn the_symbol_can_change_after_the_desk_is_installed() {
     let (source, transcript) = AnsweringSource::new(PROMPT);
@@ -148,12 +154,17 @@ async fn the_symbol_can_change_after_the_desk_is_installed() {
             .await,
         cena_session::Outcome::Handled
     );
-    handle
-        .send_manual_at(generation, ";go2 bank", DEADLINE)
-        .await;
+    let mut lich = handle.lich_door().attach().expect("a Lich");
     assert_eq!(
-        transcript.lines(),
-        [";go2 bank"],
-        "once the symbol is `/`, `;` is the game's"
+        handle
+            .send_manual_at(generation, ";go2 bank", DEADLINE)
+            .await,
+        cena_session::Outcome::Handled
     );
+    assert_eq!(
+        lich.typing.next().await.as_deref(),
+        Some(";go2 bank"),
+        "once the symbol is `/`, `;` is Lich's"
+    );
+    assert!(transcript.lines().is_empty());
 }
