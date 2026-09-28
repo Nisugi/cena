@@ -539,6 +539,21 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    **Stage B is BUILT**, but for those four: 66 kinds of widget (36 plain, 7 named streams
    and any other received, 4 effect lists, 19 indicators), and eight presets.
 
+   **Added by the author 2026-09-27: the Game state widget** (*"a GameState panel. Where you
+   can see in real time everything in GameState?"* ... *"Talk about troubleshooting!!"*).
+   BUILT the same day (`crates/cena-gui/src/widget/state.rs`), in the Hydra group; 67 kinds
+   now, 37 of them plain.
+   - *Everything, with nothing to keep up to date.* It shows the model as the model prints
+     itself (`GameState`'s `Debug`, `crates/cena-model/src/state.rs:131`). No field is left
+     off, and a field added to the model appears with no change here.
+   - *A tree.* It is closed below the model's 34 top fields. A branch holding one value is
+     one line: `id: Some("8213304")`.
+   - *A filter* finds any line, whatever its case, and shows the path to it.
+   - *Copy* takes the whole print, for a report.
+   - *Cost.* MEASURED: the committed fixtures folded together print 592 KB, 15,676 lines, in
+     6 ms in a debug build. So it is printed at most twice a second, not every frame.
+   - *Mutants:* six, all caught.
+
 ### Stage C — the launcher tab
 
 The hub's third tab, *"incorporate the things lich's launcher can do"* (`plan/47` §1 row 6):

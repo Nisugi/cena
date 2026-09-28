@@ -95,6 +95,9 @@ pub(crate) enum Widget {
     Pulse,
     /// The world events under way.
     WorldEvents,
+    /// Everything the model holds for the character, as it prints itself:
+    /// for troubleshooting (the author, 2026-09-27).
+    GameState,
 }
 
 /// A group of the Add-a-widget list, as `plan/49` §3 sorts Saga's panels.
@@ -153,7 +156,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 36] = [
+    const PLAIN: [Widget; 37] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -171,6 +174,7 @@ impl Widget {
         Widget::Exits,
         Widget::Hydra,
         Widget::Hunt,
+        Widget::GameState,
         Widget::Stance,
         Widget::Encumbrance,
         Widget::EncumbranceDetail,
@@ -213,6 +217,7 @@ impl Widget {
             Widget::Exits => "Exits",
             Widget::Hydra => "Hydra",
             Widget::Hunt => "Hunt",
+            Widget::GameState => "Game state",
             Widget::Stance => "Stance",
             Widget::Encumbrance => "Encumbrance",
             Widget::EncumbranceDetail => "Encumbrance, in words",
@@ -278,7 +283,8 @@ impl Widget {
             | Widget::Players
             | Widget::Exits
             | Widget::Hydra
-            | Widget::Hunt => Group::Hydra,
+            | Widget::Hunt
+            | Widget::GameState => Group::Hydra,
         }
     }
 
@@ -298,6 +304,7 @@ impl Widget {
             Widget::Story => (480.0, 320.0),
             Widget::Hydra | Widget::Stream(_) => (320.0, 120.0),
             Widget::Hunt => (260.0, 90.0),
+            Widget::GameState => (380.0, 420.0),
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
             Widget::ExperienceTotals | Widget::Resources | Widget::Reserve => (260.0, 60.0),

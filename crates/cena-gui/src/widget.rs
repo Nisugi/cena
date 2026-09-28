@@ -17,6 +17,7 @@ mod draw;
 mod kind;
 mod lists;
 mod room;
+mod state;
 mod status;
 
 use std::sync::Arc;

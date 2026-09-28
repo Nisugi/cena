@@ -45,6 +45,7 @@ pub(super) fn draw(widget: &Widget, ui: &mut egui::Ui, seen: &Seen<'_>, id: Id) 
         Widget::Stream(stream_id) => stream(ui, seen, stream_id, id),
         Widget::Hydra => hydra(ui, &seen.story.said, id),
         Widget::Hunt => scrolled(ui, &mut |ui| hunt(ui, seen.hunt)),
+        Widget::GameState => super::state::game_state(ui, state, seen.who, id),
         Widget::Health => vital(
             ui,
             &named("HP"),
