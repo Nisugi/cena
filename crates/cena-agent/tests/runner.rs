@@ -269,6 +269,58 @@ async fn a_script_asks_the_map_as_lichs_scripts_do() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// **Casting** (`plan/46` §11 step 9): Lich's own `Spell#cast` over Hydra's
+/// spell table: an incant with no target, prepare and cast at one, and a
+/// spell the character cannot afford; the table's stance and channel read.
+#[tokio::test(flavor = "current_thread")]
+async fn a_script_casts_as_lichs_scripts_do() {
+    assert!(find_ruby().is_some(), "no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("cast");
+    let scripts = scripts_with(&dir, "casttest.lic").unwrap();
+    let mut running = Running::start(
+        &scripts,
+        &dir,
+        World {
+            answers: &[
+                ("look", DESCRIBED_ROOM),
+                (
+                    "incant 215",
+                    b"You recite a series of mystical phrases.\nCast Roundtime 3 Seconds.\n<prompt time=\"1002\">&gt;</prompt>\n",
+                ),
+                (
+                    "prepare 215",
+                    b"Your spell is ready.\n<prompt time=\"1003\">&gt;</prompt>\n",
+                ),
+                (
+                    "cast Kiyna",
+                    b"You gesture at Kiyna.\nCast Roundtime 3 Seconds.\n<prompt time=\"1004\">&gt;</prompt>\n",
+                ),
+            ],
+            ..World::default()
+        },
+    )
+    .await
+    .unwrap();
+    let heard = running.run("casttest", "casttest").await.unwrap();
+    let errors = running.errors();
+    for expected in [
+        "[casttest: incant: Cast Roundtime 3 Seconds.]",
+        "[casttest: at: Cast Roundtime 3 Seconds.]",
+        "[casttest: cast: not enough mana]",
+        "[casttest: poor: false]",
+        "[casttest: 901: stance=true channel=true incant=true circle=Wizard]",
+        "[casttest: list: true true]",
+    ] {
+        assert!(
+            heard.told.iter().any(|line| line == expected),
+            "{expected:?} not told: {:#?}\nrunner's errors: {errors:#?}",
+            heard.told
+        );
+    }
+    running.end().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// **The map and the stores** (`plan/46` §11 step 2): `Room.current` named
 /// by Hydra, its `wayto` walked with Lich's own `move`, and `CharSettings`
 /// kept in `lich.db3` from one runner to the next: the second runner is a

@@ -145,7 +145,16 @@ A spell of Hydra's spell table, by number or by name (ignoring case). Answers `{
 `availability` (`all`, `self-cast`, `group`...), `costs` (`mana`, `spirit`, `stamina`, `renew`)
 and `minutes` (`self`, `target`), **evaluated for the character now**: a cost the table gives
 as a formula is worked out from the character's skills and stats, and `null` when what it
-needs is not known. A cost the spell does not have is `0`.
+needs is not known. A cost the spell does not have is `0`. And how it is cast, as the table
+says: `incant` (`false` for a spell that must be prepared first), `stance` (it wants an
+offensive stance), `channel` (it is channeled) and `cast_proc` (Lich's own casting code for it,
+Ruby, when it has one; `null` otherwise).
+
+## `spells`
+
+Every spell of the table, in order of number: `{"spells": [{number, name, type,
+availability, incant, stance, channel, cast_proc}, ...]}`. What a cast costs and lasts is
+`spell`'s.
 
 ## `perform` `{ line }`
 

@@ -36,7 +36,7 @@ async fn the_checker_finds_each_kind_and_nothing_else() {
         found,
         [
             (3, Verdict::Stops, "Bounty", true),
-            (4, Verdict::Stops, "Spell#cast", true),
+            (4, Verdict::Stops, "Spell#putup", true),
             (5, Verdict::Stops, "XMLData.bounty_task", true),
             (6, Verdict::Stops, "File.exists?", false),
             (7, Verdict::Stops, "undefined_helper", false),
@@ -57,7 +57,7 @@ async fn the_checker_finds_each_kind_and_nothing_else() {
         script.findings
     );
     assert!(
-        script.findings[1].why.contains("cast with fput"),
+        script.findings[1].why.contains("the game's own list"),
         "a method not answered yet says what to use instead"
     );
 }

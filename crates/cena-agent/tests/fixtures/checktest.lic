@@ -1,7 +1,7 @@
 # A script of Hydra's own for the checker (crates/cena-agent/tests/checker.rs):
 # a line of each kind it finds, then lines it must not find. Never run.
 level = Bounty.task
-Spell[401].cast
+Spell[401].putup
 task = XMLData.bounty_task
 there = File.exists?('x')
 undefined_helper

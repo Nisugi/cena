@@ -301,7 +301,7 @@ impl Scripting {
     }
 
     #[tool(
-        description = "A spell of the spell table, by number or name: its name, type, who it can be cast on, its costs, and how long it lasts, both evaluated for the character now. `spell` null when the table has no such spell."
+        description = "A spell of the spell table, by number or name: its name, type, who it can be cast on, its costs, and how long it lasts, both evaluated for the character now; and how it is cast: `incant` (false when it must be prepared first), `stance` (wants an offensive stance), `channel` (channeled), `cast_proc` (Lich's own casting code, when it has one). `spell` null when the table has no such spell."
     )]
     async fn spell(
         &self,
@@ -341,7 +341,32 @@ impl Scripting {
                 "self": minutes(cena_session::spells::CastType::SelfCast),
                 "target": minutes(cena_session::spells::CastType::Target),
             },
+            "incant": spell.extras.incant,
+            "stance": spell.extras.stance,
+            "channel": spell.extras.channel,
+            "cast_proc": spell.extras.cast_proc,
         }}))
+    }
+
+    #[tool(
+        description = "Every spell of the spell table, in order of number: each one's number, name, type, who it can be cast on, and how it is cast (`incant`, `stance`, `channel`, `cast_proc`, as `spell` answers them). What a cast costs and lasts is `spell`'s."
+    )]
+    async fn spells(&self) -> Result<CallToolResult, ErrorData> {
+        let spells: Vec<serde_json::Value> = cena_session::spells::all()
+            .map(|spell| {
+                serde_json::json!({
+                    "number": spell.number,
+                    "name": spell.name,
+                    "type": spell.kind,
+                    "availability": spell.availability,
+                    "incant": spell.extras.incant,
+                    "stance": spell.extras.stance,
+                    "channel": spell.extras.channel,
+                    "cast_proc": spell.extras.cast_proc,
+                })
+            })
+            .collect();
+        json(&serde_json::json!({ "spells": spells }))
     }
 
     #[tool(

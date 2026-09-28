@@ -77,7 +77,8 @@ require File.join(LIB_DIR, 'util', 'util.rb')
     'gemstone/currency.rb' => %i[Currency],
     'gemstone/injured.rb' => %i[Injured],
     'gemstone/wounds.rb' => %i[Wounds],
-    'gemstone/scars.rb' => %i[Scars]
+    'gemstone/scars.rb' => %i[Scars],
+    'gemstone/stance.rb' => %i[Stance]
   },
   Lich => { 'attributes/resources.rb' => %i[Resources] }
 }.each do |scope, files|

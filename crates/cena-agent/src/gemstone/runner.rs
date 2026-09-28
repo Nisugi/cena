@@ -88,4 +88,8 @@ pub const FILES: &[(&str, &str)] = &[
         "lich/lib/gemstone/currency.rb",
         include_str!("../../../../bridges/ruby/lich/lib/gemstone/currency.rb"),
     ),
+    (
+        "lich/lib/gemstone/stance.rb",
+        include_str!("../../../../bridges/ruby/lich/lib/gemstone/stance.rb"),
+    ),
 ];

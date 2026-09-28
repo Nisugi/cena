@@ -20,7 +20,7 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | `edge.rb` | where Lich's engine meets the world, answered by Hydra: `Game.puts`, `respond`, `_respond`, a script's `$stdout`, `Lich.log`, `Lich::Messaging`, and a `Frontend` saying Hydra is Wrayth's family |
 | `copy.rb` | the local copy of the character from Hydra's `state` events, `XMLData` answered from it by Lich's names, and Lich's `GameObj` filled from it |
 | `map.rb` | `Room.current` and `Room[id]` from Hydra's map, with `wayto` and `timeto` as Lich's; `Map.dijkstra`, `path_to`, the `find_nearest` family and `estimate_time` answered by Hydra, priced as the character's walk; `Map.list`, every room, asked once and completed as read |
-| `spell.rb` | `Spell[n]` from Hydra's spell table, evaluated for the character; known and up from the copy |
+| `spell.rb` | `Spell[n]` from Hydra's spell table, evaluated for the character; known and up from the copy; Lich's own `cast` and the `force_` family, over the table's way to cast each |
 | `infomon.rb` | Lich's `Infomon` answered from the copy's sheet: the stats, skills, circles, PSMs, society, resources, currency and experience by Lich's keys |
 | `gemstone.rb` | the game's own classes, loaded once `XMLData` is made as Lich's game loader loads them: `Stats`, `Skills`, `Spells`, `Society`, `Experience`, `Resources`, `Currency`, the PSMs, `Effects`, `Wounds`, `Scars`, `Injured`, over `infomon.rb`; and Lich's `CharacterStatus` from `games.rb`, which the runner does not load |
 | `builtins.rb` | Lich scripts Hydra has built in (`go2`), started by name as Lich's are, as an exec script named after them that waits on Hydra's run |
@@ -49,7 +49,8 @@ through (`constants.rb`, `common/gameobj.rb`, `attributes/char.rb`), the stores 
 (`common/downstreamhook.rb`, `common/upstreamhook.rb` and the `common/hook_registry.rb` they
 share), the character's sheet (`attributes/stats.rb`, `skills.rb`, `spells.rb`, `resources.rb`;
 `gemstone/society.rb` and its `societies/`, `experience.rb`, `psms.rb` and its `psms/`,
-`currency.rb`, `effects.rb`, `injured.rb`, `wounds.rb`, `scars.rb`; `util/util.rb` and the
+`currency.rb`, `effects.rb`, `injured.rb`, `wounds.rb`, `scars.rb`, and `stance.rb`, which a cast
+uses; `util/util.rb` and the
 `util/deep_freeze.rb` it requires), and Lich's Gtk support (`common/gtk.rb`, `util/gtk_compaction.rb`), loaded only when Hydra
 lets the runner open windows (`HYDRA_WINDOWS`) and the player has the `gtk3` gem. The gems are
 Lich's installer's: `ox`, `sqlite3`, `sequel`. To take a newer Lich, copy the same
