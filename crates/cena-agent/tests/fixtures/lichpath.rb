@@ -8,14 +8,16 @@
 # XML parse, so a little quicker than Lich.
 #
 #   ruby lichpath.rb RUNNER_DIR OUT COUNT
+#
+# Its folders are made beside OUT, for whoever asked to remove.
 
+require 'fileutils'
 require 'json'
 require 'socket'
-require 'tmpdir'
 
 runner_dir, out, count = ARGV
-SCRIPT_DIR = Dir.mktmpdir('lichpath')
-DATA_DIR = Dir.mktmpdir('lichpath')
+SCRIPT_DIR = DATA_DIR = File.join(File.dirname(out), 'lichpath')
+FileUtils.mkdir_p(DATA_DIR)
 $lich_char = ';'
 require File.join(runner_dir, 'hydra', 'engine.rb')
 XMLData = Hydra::Data.new('GS3', 'Bench', Hydra::Copy.new)
