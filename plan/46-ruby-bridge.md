@@ -3,7 +3,8 @@
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
-**steps 7 to 10 BUILT**, 11 not yet. It
+**steps 7 to 10 BUILT**; 11 NOT PURSUED (2026-09-28: scripts updated for the bridge rather
+than every one-off answered; unchanged Lich scripts get the relay, `plan/51`). It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -818,3 +819,10 @@ elanthia-online's 236 and 1,254 of the old repository's 2,130):
       text-only `issue_command`.
 11. **The game's markup as labelled data** (§6.2): first measured, what markup the scripts read,
     then answered. 148 and 1,734; with Lich's windows, 178 and 1,845.
+
+    **NOT PURSUED 2026-09-28.** The author, of the bridge: *"I just think I was going about it
+    the wrong way. Would be better to do some rewriting/updating of the scripts themselves
+    instead of trying to support every one off."* Read as: the bridge stays, and grows by
+    scripts updated to run on it rather than by answering each call an unmodified script
+    makes. The scripts that need Lich unchanged get real Lich, through the relay
+    ([`plan/51-lich-relay.md`](51-lich-relay.md)).

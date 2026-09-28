@@ -9,7 +9,10 @@
 //! Nothing here reaches the game. The "game" is committed recordings, and
 //! Lich runs from a fresh folder: no one's install, and no login cache.
 //!
-//! cargo run -- <lich dir> <work dir> <effect-list.xml> <fixture>... [--saga]
+//! cargo run -- <lich dir> <work dir> <effect-list.xml> <fixture>... [--fe=<frontend>]
+//!
+//! `--fe=stormfront` starts Lich as `--stormfront`: the frontend it names
+//! reaches Lich only with pipe mode keeping it (`lich-pipe-frontend.patch`).
 
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -137,10 +140,10 @@ fn verdict(ok: bool, what: &str) {
 
 fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
-    let saga = args.iter().any(|a| a == "--saga");
-    args.retain(|a| a != "--saga");
+    let frontend = args.iter().find_map(|a| a.strip_prefix("--fe=")).map(str::to_string);
+    args.retain(|a| !a.starts_with("--fe="));
     let [lich, work, effects, fixtures @ ..] = args.as_slice() else {
-        eprintln!("usage: <lich dir> <work dir> <effect-list.xml> <fixture>... [--saga]");
+        eprintln!("usage: <lich dir> <work dir> <effect-list.xml> <fixture>... [--fe=<frontend>]");
         std::process::exit(2);
     };
     let lich = PathBuf::from(lich);
@@ -158,7 +161,7 @@ fn main() {
     let port = listener.local_addr().expect("port").port();
     let flag = |name: &str, path: &Path| format!("--{name}={}", path.display());
 
-    step(&format!("start Lich, pointed at 127.0.0.1:{port} (sentinel frontend: {saga})"));
+    step(&format!("start Lich, pointed at 127.0.0.1:{port}, frontend flag {frontend:?}"));
     let started = Instant::now();
     let mut command = Command::new("ruby");
     command
@@ -182,8 +185,8 @@ fn main() {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if saga {
-        command.arg("--saga");
+    if let Some(frontend) = &frontend {
+        command.arg(format!("--{frontend}"));
     }
     let mut child = command.spawn().expect("start ruby");
     let pid = child.id();
@@ -278,21 +281,17 @@ fn main() {
     let said = expect(&from_lich, "->game", Duration::from_secs(15), |l| l.contains("say"));
     verdict(said.is_some_and(|(_, l)| l.contains("goodbye")), "the rewritten line is what Hydra gets");
 
-    step("script text with angle brackets, as the frontend 'unknown'");
-    type_line(";e respond '<b>not a tag</b> 5 < 6'");
+    step("script text with angle brackets");
+    type_line(";e respond \"frontend=#{$frontend} <b>not a tag</b> 5 < 6\"");
     let raw = expect(&out, "lich", Duration::from_secs(15), |l| l.contains("not a tag"));
-    println!("     escaped for an XML frontend: {}", raw.is_some_and(|(_, l)| l.contains("&lt;")));
+    verdict(raw.is_some_and(|(_, l)| l.contains("&lt;b&gt;")), "script text is escaped for an XML frontend");
 
-    step("the frontend switched after start (pipe mode sets 'unknown', lib/main/main.rb:569)");
-    type_line(";e Frontend.client = 'saga'; respond 'switched to ' + $frontend.to_s + ' xml=' + Frontend.supports_xml?.to_s + ' sentinel=' + Frontend.supports_sentinel?.to_s");
-    expect(&out, "lich", Duration::from_secs(15), |l| l.contains("switched to"));
-    game.write_all(b"a game line after the switch\r\n<prompt time=\"1790000002\">&gt;</prompt>\r\n").expect("write");
-    let after = expect(&out, "lich", Duration::from_secs(15), |l| l.contains("after the switch"));
-    verdict(after.is_some_and(|(_, l)| l.starts_with('\x1f')), "game lines now carry the origin mark");
-    type_line(";e respond '<b>not a tag</b> 5 < 6'");
-    let raw = expect(&out, "lich", Duration::from_secs(15), |l| l.contains("not a tag"));
-    verdict(raw.as_ref().is_some_and(|(_, l)| l.contains("&lt;")), "script text is escaped now");
-    verdict(raw.is_some_and(|(_, l)| !l.starts_with('\x1f')), "Lich's own line is unmarked");
+    step("a game line after login, marked or not");
+    game.write_all(b"a game line after login
+<prompt time=\"1790000002\">&gt;</prompt>
+").expect("write");
+    let line = expect(&out, "lich", Duration::from_secs(15), |l| l.contains("after login"));
+    println!("     marked with the origin sentinel: {}", line.is_some_and(|(_, l)| l.starts_with('')));
 
     step("memory, settled");
     thread::sleep(Duration::from_secs(2));

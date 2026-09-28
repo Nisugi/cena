@@ -1,8 +1,9 @@
 # 51 — The Lich relay: real Lich, with Hydra holding the connection
 
-**Status: SPIKED 2026-09-28, the questions in §6 open.** The spike
+**Status: SPIKED 2026-09-28; §6's five questions ANSWERED the same day.** The spike
 (`spike/lich-relay/`) ran real Lich against a recorded login, offline, and every hop worked.
-Nothing here is built into Hydra yet.
+Pipe mode's frontend fix was tried locally and works (§4, item 1). Nothing here is built into
+Hydra yet; §7's steps are next.
 
 ## 1. The author's position
 
@@ -89,6 +90,20 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
    `&lt;b&gt;not a tag&lt;/b&gt; 5 &lt; 6`, and game lines carried the mark. MEASURED.
    The fix belongs in Lich: pipe mode keeping an explicit frontend flag. Until then Hydra can
    set it after start, which shows `--- Lich: exec1 active.` lines on the character's screen.
+
+   **Tried locally 2026-09-28** (the author: *"sure we can try it locally"*):
+   `spike/lich-relay/lich-pipe-frontend.patch`, one helper beside `resolve_headless_frontend`
+   that both pipe branches call, with three specs. It was committed in a scratch clone of
+   236a9a2 with no remote. `login_helpers_spec.rb` passes 94 of 94 examples, and rubocop
+   finds nothing in the three files. The spike with `--fe=stormfront` against both:
+
+   | Lich | `$frontend` | `respond '<b>not a tag</b> 5 < 6'` reaches stdout as |
+   |---|---|---|
+   | 236a9a2 | `unknown` | `<b>not a tag</b> 5 < 6`: FAIL |
+   | 236a9a2 + the patch | `stormfront` | `&lt;b&gt;not a tag&lt;/b&gt; 5 &lt; 6`: PASS |
+
+   A PR to Lich is the author's to send. Players' own installs won't have the fix until Lich
+   releases it, so Hydra keeps the set-after-start fallback for an older Lich.
 2. **Which frontend Hydra says it is.** Hydra speaks the protocol Lich registers as
    `stormfront`, alias `wrayth`. Scripts test the name: in `reference/scripts` and
    `reference/lich_repo_mirror`, `$frontend == 'stormfront'` appears 331 times and
@@ -128,38 +143,57 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
   sees raw text. Hydra's model keeps coming from its own parse of the game.
 - **Lich's commands go through the gate** as a new `Origin::Lich`. `<c>` lines are Lich's;
   lines without it are the player's typing, and count as attendance.
-- **The player's typing**: Hydra's own `;` commands first, then everything else to Lich's
-  stdin, so Lich's `;` commands, aliases and upstream hooks see it (question 3).
+- **Lich is told it serves `stormfront`** (question 2): `--stormfront` with a Lich that has
+  §4 item 1's fix, and set after start on one that doesn't.
+- **The player's typing** (question 3): the command symbol decides, as it does today
+  (`crates/cena-session/src/command/claimant.rs`, `commands.symbol` in the character's
+  settings). A line starting with Hydra's symbol is Hydra's, and so is one a `Bare` behavior
+  takes. Everything else goes to Lich's stdin instead of the game, so Lich's commands,
+  aliases and upstream hooks see it. A player running Lich moves Hydra's symbol off `;`, to
+  `.` say, and `;` reaches Lich. Switching Lich on while both are `;` says so once.
 - **The display** (question 1): for a character with Lich on, the play window's text comes
   from Lich's stdout, parsed by the same parser, so squelches and script output show as they
   would in any frontend. The panels (vitals, room, hands, compass) stay on Hydra's model.
-- **A reconnect**: Lich stays up. Hydra's session re-logs in, and Lich sees the new login
-  burst as more stream. Stock Lich restarts its process on a reconnect. Here its scripts
-  would survive the drop (question 4).
+- **A reconnect** (question 4): Lich stays up, and sees the new login as more stream. While
+  the connection is down, its commands aren't sent, and the character's window says so. What
+  survives is the Lich process: its settings, and scripts that only wait on lines. A script
+  that was in the middle of something may stall, as it would anywhere, and the player kills
+  it. Lich's autostart doesn't run again, since it runs once per process.
 
-## 6. Questions for the author
+## 6. Questions for the author: ANSWERED 2026-09-28
 
 1. **The display.** Show Lich's stdout for a Lich character's text, so squelches work
    (recommended)? Or show Hydra's own stream plus Lich's own lines, told apart by the mark,
    so squelches don't apply in Hydra's window?
+   AUTHOR: *"yes"*. Lich's stdout.
 2. **Which frontend Hydra claims to be**: `stormfront`, which 331 script lines test for
    (recommended), or `saga`, for the mark? And may I draft the small Lich change (pipe mode
-   keeping an explicit frontend) as a PR for you to look at? It would go to an
-   elanthia-online repository, so nothing is pushed without your word.
+   keeping an explicit frontend) as a PR for you to look at?
+   AUTHOR: *"stormfront, sure we can try it locally"*. Tried: §4, item 1. No PR is sent.
 3. **Command names both have**, such as `;sorter`: Hydra's first, with a prefix to reach Lich's
    (e.g. `;lich sorter`)? Or Lich's first while Lich is on?
+   AUTHOR: *"if they're running lich would probably change hydra's command character to .
+   or something"*. The symbol already is a setting (§5, the player's typing).
 4. **On a reconnect**: keep Lich running (recommended), or restart it the way stock Lich
    does?
+   AUTHOR: *"we can keep lich running sure, but it's scripts aren't gonna magically keep
+   working with no game connection."* This corrects §5 as first written, which said Lich's
+   scripts would survive the drop. Lich survives; a script mid-action may not.
 5. **The M7b bridge** (`plan/46`, steps 0-10 built): keep it beside the relay, for scripts
    written against Hydra and for characters without Lich? Or stop it where it is?
+   AUTHOR: *"the relay is still going to be developed, I just think I was going about it the
+   wrong way. Would be better to do some rewriting/updating of the scripts themselves instead
+   of trying to support every one off."* Read as: both go on. The bridge grows by scripts
+   updated to run on it, and its step 11 (the markup) is not pursued (`plan/46` §11).
 
-## 7. Steps, once §6 is answered
+## 7. Steps
 
-1. The relay in the session: the port, Lich's process, the game's bytes tee'd to it, its
-   commands through the gate as `Origin::Lich`, stopped with its stdin. Tested with a
-   scripted game and the spike's Lich, offline.
-2. Typing routed: Hydra's `;` commands, then Lich's stdin.
-3. The display from Lich's stdout, per question 1.
+1. The relay in the session: the port, Lich's process as `stormfront` (the flag, or set
+   after start), the game's bytes tee'd to it, its commands through the gate as
+   `Origin::Lich`, held while disconnected, stopped with its stdin. Tested with a scripted
+   game and the spike's Lich, offline.
+2. Typing routed: Hydra's symbol and `Bare` takers, then Lich's stdin.
+3. The display from Lich's stdout.
 4. Starting late: the login kept and replayed, then the latest room.
 5. The switch: settings for Lich's path, and a *Lich* switch on the card and the play window.
 6. A live run, with the author.
