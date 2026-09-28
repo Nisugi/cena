@@ -1,0 +1,15 @@
+# A script of Hydra's own for plan/46 section 9 (crates/cena-agent/tests/measure.rs):
+# a runner asking for every room of the real map, then searching it and routing
+# over it, and staying so the runner's memory can be read with the list held.
+
+started = Time.now
+list = Map.list
+listed = Time.now
+banks = list.compact.count { |room| room.tags.include?('bank') }
+searched = Time.now
+_, seconds = Map.dijkstra(228)
+routed = Time.now
+File.write(File.join(SCRIPT_DIR, 'measured-map.json'),
+           JSON.generate({ rooms: list.compact.size, banks: banks, reached: seconds.size,
+                           list: listed - started, search: searched - listed, route: routed - searched }))
+loop { sleep 1 }

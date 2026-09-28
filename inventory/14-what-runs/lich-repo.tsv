@@ -2,7 +2,7 @@ script	lines	verdict	builtin	hydra_answers	its_own
 1030_loop	1	runs			
 10deeds	21	runs			
 1140solace	106	runs			
-116locate	87	stops		the game's markup; Map.list	
+116locate	87	markup		the game's markup	
 1202check	37	stops		Spell#asg	
 125	221	runs			
 15lnet	15	runs			
@@ -61,8 +61,8 @@ aim	104	markup		the game's markup
 alastirlib	489	stops		Spell#cast	
 alch_buy	148	runs			
 alchemy-recipes	3821	runs			
-alchemy_NewMeasure	3077	stops		the game's markup; Room#find_nearest_by_tag; Map.estimate_time; Room#path_to; Map.list	
-alchemy_noalchemy	3086	stops		the game's markup; Room#find_nearest_by_tag; Map.estimate_time; Room#path_to; Map.list	
+alchemy_NewMeasure	3077	markup		the game's markup	
+alchemy_noalchemy	3086	markup		the game's markup	
 alchemydistill	67	runs			
 alfred-chrism	32	runs			
 alfred-deserves-gems	57	runs			
@@ -111,7 +111,7 @@ as_audit	2343	windows		Lich's windows (Gtk)
 AscCalc	203	stops		Lich::Util	
 ascinfo	169	stops		Lich::Util	
 asclearn	106	stops		Lich::Util	
-Ashborne	32527	stops		Spell#cast; Map.list; Room#dijkstra; Room#path_to; Spell.list; Map.reload; Room#find_nearest; Map.previous; Lich::Util	
+Ashborne	32527	stops		Spell#cast; Spell.list; Map.reload; Map.previous; Lich::Util	
 ashlam	54	runs			
 askgenie	14	runs			
 askhunt	15	runs			
@@ -125,7 +125,7 @@ attack	71	stops		Spell#cast
 attendance	332	stops			a name defined nowhere
 auction	10	runs			
 aura	38	runs			
-auto-level	1801	stops		Lich's windows (Gtk); Spell#cast; Room#find_nearest	
+auto-level	1801	stops		Lich's windows (Gtk); Spell#cast	
 auto_containers	62	runs			
 auto_follow	52	stops			a name defined nowhere
 auto_look	44	runs			
@@ -135,7 +135,7 @@ autoaccept	126	stops			a library not installed here
 autoacceptfromfriends	28	stops			a name defined nowhere
 autobot	31	runs			
 Autobundle	573	markup		the game's markup	
-autoforage	190	stops		Spell#cast; Map.list; Room#path_to; Map.estimate_time	
+autoforage	190	stops		Spell#cast	
 autoinvite	16	runs			
 autoinvitefriends	33	stops			a name defined nowhere
 autolockranges	55	runs			
@@ -154,7 +154,7 @@ autovote	145	runs
 avalanche	40	runs			
 avalon-speak	70	markup		the game's markup	
 avalon_monsterbold_links	16	runs			
-azbandit	454	stops		Room#find_nearest; Map.list; Spell#cast; Map.dijkstra	
+azbandit	454	stops		Spell#cast	
 azburst	182	runs			
 babytime	8	runs			
 back-in-black	359	windows		Lich's windows (Gtk)	
@@ -168,7 +168,7 @@ badgezero	7	runs
 badjuju	153	stops		Spell#cast	
 bagofholding	46	runs			
 ball	10	runs			
-bandit	63	stops		Map.list; Room#find_nearest; Room#path_to	
+bandit	63	runs			
 bandit_grouping_support	145	stops			a name defined nowhere
 bandit_hunter_attack	407	stops		Spell#cast	
 bandit_hunter_follower	145	runs			
@@ -196,19 +196,19 @@ berserk	15	runs
 beseech	58	stops		Spell#available?; Lich::Util	a name defined nowhere
 bestbeast	166	runs			
 bestiary	3064	runs			
-betazzherb2	794	stops		Lich's windows (Gtk); Map.tags; Room#path_to; Map.list; Map.dijkstra; Spell#cast	a name defined nowhere
+betazzherb2	794	stops		Lich's windows (Gtk); Spell#cast	a name defined nowhere
 better_pull	26	runs			
 biggus	81	runs			
 bigquick	15	runs			
 bigshit	63	runs			
-bigshit2	7494	stops		the game's markup; Map.ids_from_uid; Spell#cast; Spell#force_cast; Spell#force_evoke; Spell.after_stance=; Spell#force_incant; Spell#force_channel	
+bigshit2	7494	stops		the game's markup; Spell#cast; Spell#force_cast; Spell#force_evoke; Spell.after_stance=; Spell#force_incant; Spell#force_channel	
 bigshot-bless	15	runs			
 bigshot-child	54	runs			
 bigtap	54	stops		Spell#stance=; Spell#cast	
 bingo	18	runs			
 binom	59	runs			
 bird_fieldguide	556	runs			
-birdwatching	762	stops		Map.list; Room#find_nearest	
+birdwatching	762	runs			
 birdwatchingwindow	142	runs			
 blacklist	19	runs			
 BlackRose	566	runs			
@@ -234,7 +234,7 @@ borg	117	runs
 bounty	152	stops		Bounty; Log; Group	a library not installed here
 bounty-bitch	108	stops		Lich::Util	
 bounty_instant	42	runs			
-bountyhunter	2562	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Map.list; Map.dijkstra; Map.tags; Room#find_nearest; Room#find_nearest_by_tag; Room#path_to; Spell#cast	
+bountyhunter	2562	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Spell#cast	
 bountyhunter-bandits	181	stops		Spell#cast	
 bountyhunter-explorer	58	runs			
 bountyhunter-support	203	stops		Spell#cast	
@@ -286,7 +286,7 @@ cannibal	7	runs
 cannon	13	runs			
 cannonfirehighlighter	56	runs			
 cannons	37	runs			
-cantrips	533	stops		StringProc; Map.dijkstra; Spell#cast; the game's markup	
+cantrips	533	stops		StringProc; Spell#cast; the game's markup	
 capacity	57	runs			
 capacityall	107	runs			
 carousel	189	runs			
@@ -306,7 +306,7 @@ chanterguide	306	runs
 character	282	stops		Spell#cast	
 character-planner	20240	stops		Lich's windows (Gtk); Lich::Util	
 chargeimbed	132	markup		the game's markup	
-chargeitem	306	stops		Map.list; the game's markup; Room#find_nearest	a name defined nowhere
+chargeitem	306	stops		the game's markup	a name defined nowhere
 charm	130	stops		Lich::Util	
 charsnapshot	135	differs		a hook matching markup	
 chatfail	31	runs			
@@ -318,8 +318,8 @@ checkstaff	56	runs
 chia_pet	127	runs			
 chiaglug	15	runs			
 child-bigshot	62	runs			
-child2	262	stops		the game's markup; Watchfor; Room#find_all_nearest_by_tag; Room#find_nearest	
-child2_maaghara	301	stops		the game's markup; Watchfor; Room#find_all_nearest_by_tag; Room#find_nearest	
+child2	262	stops		the game's markup; Watchfor	
+child2_maaghara	301	stops		the game's markup; Watchfor	
 childtower	77	runs			
 chiseled	102	runs			
 chrism	87	runs			
@@ -354,21 +354,21 @@ cman_calc	78	runs
 cobble	991	runs			
 coin4deed_z	145	markup		the game's markup	
 coinpouch	42	runs			
-col	282	stops		Room#find_nearest	
+col	282	runs			
 collect_buy	225	markup		the game's markup	
 collectcheck	42	runs			
 collectible	94	runs			
 collectible_type_data	39	stops			File.exists? (Ruby 4.0)
 collectibles	137	stops		the game's markup; Log	a name defined nowhere
-colmaster	1440	stops		Lich's windows (Gtk); Room#find_nearest; Spell#cast	
+colmaster	1440	stops		Lich's windows (Gtk); Spell#cast	
 COLnobleed	11	runs			
-coltv	429	stops		Map.dijkstra	
+coltv	429	runs			
 combat-window	762	windows		Lich's windows (Gtk)	
 Combatical	4624	markup		the game's markup; Lich's windows (Gtk); a hook matching markup	
 CombatWindow	139	markup		the game's markup; Lich's windows (Gtk)	
 combo_fury	319	stops		Spell#cast; the game's markup	
 come	3	runs			
-comp2	56	stops		Map.dijkstra	
+comp2	56	runs			
 companion-mana-tracking	185	runs			
 companionwatch	167	runs			
 compass_and_wings	1134	stops		Claim; Spell#available?; Lich's windows (Gtk)	
@@ -427,7 +427,7 @@ dead_keepalive	37	runs
 DeadMansSwitch	396	windows		Lich's windows (Gtk)	
 deadpool	257	runs			
 deadstop	57	runs			
-death_potions	230	stops		Map.dijkstra; the game's markup	
+death_potions	230	markup		the game's markup	
 death_potions_2	328	markup		the game's markup	
 deathbot_ignore	184	stops			a name defined nowhere
 deathlocation	39	runs			
@@ -437,7 +437,7 @@ deathvambraces	28	runs
 debugroomid	17	runs			
 dechanter	315	runs			
 decryption	63	runs			
-deed	217	stops		the game's markup; Map.dijkstra	
+deed	217	markup		the game's markup	
 deedcalc	328	stops		StowList	
 deedgemappraise	102	runs			
 deedgetincash_landing	26	runs			
@@ -553,14 +553,14 @@ ebsteinnosuicide	40	runs
 echeck	60	markup		the game's markup	
 edit	14	stops			Process.fork (Ruby 4.0)
 effectsbar_sagapanel	1557	runs			
-eforage	259	stops		Bounty; Room#find_nearest; Room#find_all_nearest_by_tag	a name defined nowhere
+eforage	259	stops		Bounty	a name defined nowhere
 eg	67	runs			
 egdig	203	runs			
 egdig2	365	runs			
 EgDigForOldLich	87	runs			
 egdigger	137	runs			
 eget	94	runs			
-ego2	1853	stops		the game's markup; Map.dijkstra; Map.list; Room#find_nearest_by_tag	
+ego2	1853	markup		the game's markup	
 egquest	74	stops			a name defined nowhere
 egsell	119	runs			
 electrocute	33	stops		Spell#active	
@@ -584,7 +584,7 @@ enhcontainer	152	stops		Lich::Util
 enhrecalls	298	runs			
 enhsaver	517	windows		Lich's windows (Gtk)	
 enhwearing	208	stops		Lich::Util	
-enlake	55	stops		Room#find_nearest	
+enlake	55	runs			
 enotsmeg	174	stops			a name defined nowhere
 enotsmeg_phrases	129	stops			does not parse
 ensorcell_calc	253	markup		the game's markup	
@@ -592,7 +592,7 @@ ensorcell_tracker	33	runs
 epop	343	stops		Spell#cast	
 errand	64	runs			
 escape_voln_hermit	23	runs			
-escapestom	89	stops		Room#desc	
+escapestom	89	runs			
 esp_timestamp	37	runs			
 espansweringmachine	58	runs			
 esplocate	25	runs			
@@ -620,7 +620,7 @@ ezstart	10	runs
 facehugger	11	runs			
 failsafe	17	runs			
 famecheck	89	runs			
-famgo2	98	stops		Map.list; XMLData.familiar_room_exits; XMLData.familiar_room_title; XMLData.familiar_room_description; Map.dijkstra	
+famgo2	98	stops		XMLData.familiar_room_exits; XMLData.familiar_room_title; XMLData.familiar_room_description	
 familiarkeeper	35	runs			
 fastcc	92	runs			
 fastkill	22	runs			
@@ -630,7 +630,7 @@ fatty	81	runs
 fe_test	60	markup		the game's markup	
 feeder	128	runs			
 feint_calc	54	runs			
-findcreature	8094	stops		Lich's windows (Gtk); Room#find_nearest_by_tag; Spell#cast; Room#find_nearest	
+findcreature	8094	stops		Lich's windows (Gtk); Spell#cast	
 findme	390	windows		Lich's windows (Gtk)	
 findmog	114	stops		Lich::Util	
 findnpc	170	runs			
@@ -645,8 +645,8 @@ firerepeatedly	4	runs
 fisticuffs	1005	markup		the game's markup	
 fistoffury	418	runs			
 fix	86	stops			a name defined nowhere
-fixdb	72	stops		Map.list; Room#check_location=; Room#check_location	
-fixed-forge-perfects	1214	stops		Lich's windows (Gtk); Map.dijkstra	
+fixdb	72	stops		Room#check_location=; Room#check_location	
+fixed-forge-perfects	1214	windows		Lich's windows (Gtk)	
 fixit	128	markup		the game's markup	
 fizzfuse	475	stops		Spell#cast	
 flag-simulator	382	stops		Lich::Util	
@@ -666,14 +666,14 @@ focusvsspells	66	runs
 fofgames	56	runs			
 foliod	74	runs			
 follow	94	stops			does not parse
-follow2	65	stops		Map.list	a name defined nowhere
+follow2	65	stops			a name defined nowhere
 foodshopper	250	runs			
 forage	253	stops		Spell#cast	
 foragewindow	63	runs			
 foreachlich4	2236	stops		Map.get_location; a hook matching markup; the game's markup	
 forge	366	runs			
 forge-perfects	1215	stops			does not parse
-forge-perfects-fixed	1218	stops		Lich's windows (Gtk); Map.dijkstra	
+forge-perfects-fixed	1218	windows		Lich's windows (Gtk)	
 forge_loop	12	runs			
 formatfix	229	runs			
 fox	104	runs			
@@ -697,13 +697,13 @@ fun-with-dreaven-video-1	247	stops		Spell#cast
 fun-with-dreaven-video-2	237	stops		Spell#cast	
 funexp	139	markup		the game's markup	
 fyreim	582	stops		XMLData.reset	
-g2n	33	stops		Map.list	a name defined nowhere
+g2n	33	stops			a name defined nowhere
 GameObjAdd	108	runs			
 GameObjAddMore	66	runs			
-gangplank	371	stops		the game's markup; StringProc; Map.list	
+gangplank	371	stops		the game's markup; StringProc	
 gardener	445	stops		Spell#cast	a name defined nowhere
 garrote	337	runs			
-gateway	57	stops		Map.ids_from_uid	
+gateway	57	runs			
 gaze	53	stops			does not parse
 gbank	43	runs			
 gboost	86	runs			
@@ -713,8 +713,8 @@ gearinfo	407	markup		the game's markup
 gem-jars	509	stops		XMLData.stow_container_id	
 gem_loadouts	258	stops		Lich::Util; Lich's windows (Gtk)	
 gembuyer	298	stops		the game's markup; XMLData.bounty_task	
-gemdeeds	391	stops		Room#find_nearest	
-gemguard	7725	stops		Room#find_nearest_by_tag	
+gemdeeds	391	runs			
+gemguard	7725	runs			
 gemhoarder	744	stops		the game's markup	a name defined nowhere
 gemhoarder2	749	stops		the game's markup	a name defined nowhere
 gemologist	660	runs			
@@ -729,7 +729,7 @@ gemseller	31	runs
 gemsort	79	runs			
 gemstone	41	runs			
 gemstone-tracker	1517	windows		Lich's windows (Gtk)	
-gemstones	304	stops		Map.ids_from_uid	a name defined nowhere
+gemstones	304	stops			a name defined nowhere
 gemstonev	1980	windows		Lich's windows (Gtk)	
 gemvalue	23	runs			
 gemvaluestracker	78	runs			
@@ -769,14 +769,14 @@ gizmo	76	stops		Lich::Util
 glampy	72	runs			
 GlavesAI	28	runs			
 gloot	96	runs			
-go2bandits	151	stops		Map.list; Map.dijkstra; Room#find_nearest; XMLData.bounty_task	a name defined nowhere
-go2enhanced	1324	stops		Map.list; StringProc; Room#find_nearest; Map.reload; Room#path_to; Map.estimate_time; the game's markup; Map.dijkstra; Room#find_all_nearest_by_tag; Spell#cast	
+go2bandits	151	stops		XMLData.bounty_task	a name defined nowhere
+go2enhanced	1324	stops		StringProc; Map.reload; the game's markup; Spell#cast	
 go2esp	19	runs			
-go2fam	25	stops		Map.list; XMLData.familiar_room_exits; XMLData.familiar_room_title; XMLData.familiar_room_description	
-go2locate	58	stops		the game's markup; Map.list	
-go2name	16	stops		Map.list	a name defined nowhere
-go2name-2	33	stops		Map.list	a name defined nowhere
-go2shop	218	stops		Map.list; Room#find_nearest; Room#path_to; the game's markup	
+go2fam	25	stops		XMLData.familiar_room_exits; XMLData.familiar_room_title; XMLData.familiar_room_description	
+go2locate	58	markup		the game's markup	
+go2name	16	stops			a name defined nowhere
+go2name-2	33	stops			a name defined nowhere
+go2shop	218	markup		the game's markup	
 go2table	46	runs			
 goals	26	markup		the game's markup	
 goalstracker	1931	stops		Lich::Util	
@@ -791,8 +791,8 @@ gpick	935	stops		Spell#cast
 gpriches	125	runs			
 grabgbb	6	runs			
 gracemon	23	runs			
-graveyard_fix	51	stops		Map.ids_from_uid; StringProc	
-grguild	3024	stops		Map.dijkstra; Spell#cast; the game's markup	
+graveyard_fix	51	stops		StringProc	
+grguild	3024	stops		Spell#cast; the game's markup	
 grgvars	105	runs			
 grids	4482	windows		Lich's windows (Gtk)	
 grimcount	79	stops			a name defined nowhere
@@ -802,7 +802,7 @@ grit	73	runs
 gritapply	563	stops		Lich::Util	
 grofl-auto	102	runs			
 grofl-cleanup	19	runs			
-group2	126	stops		Map.dijkstra; the game's markup	
+group2	126	markup		the game's markup	
 group_ajar	153	markup		the game's markup	
 groupdisk	31	stops		Spell#cast	
 growfish	265	runs			
@@ -851,9 +851,9 @@ herb	46	runs
 herball	53	runs			
 herball2	109	runs			
 herbheal	476	runs			
-herbhealHURSHALFIX	481	stops		Map.dijkstra	File.exists? (Ruby 4.0)
+herbhealHURSHALFIX	481	stops			File.exists? (Ruby 4.0)
 Herbhigh	87	runs			
-herbmaster	1357	stops		Map.list; Room#find_nearest; the game's markup	a name defined nowhere
+herbmaster	1357	stops		the game's markup	a name defined nowhere
 herbs	37	runs			
 herbs2	84	runs			
 hexmal	64	runs			
@@ -870,7 +870,7 @@ homefix	72	runs
 honor_among_thieves	68	runs			
 honoramongthieves	629	stops		Lich::Util	
 hotpot	128	runs			
-houselocker	213	stops		Room#map_name	
+houselocker	213	runs			
 hp	18	markup		the game's markup	
 hps	15	runs			
 htsorter	334	markup		the game's markup	
@@ -880,7 +880,7 @@ hunt_begin	161	runs
 hunt_end	79	runs			
 huntingareas	49	runs			
 huntmaster	18	runs			
-huntplan	3789	stops		StringProc; Bounty; Room#find_nearest; Lich::Util; Spell#active	
+huntplan	3789	stops		StringProc; Bounty; Lich::Util; Spell#active	
 huntpro	19160	stops		Spell#cast; Lich::Util	
 huntsuggest	2899	markup		the game's markup; Lich's windows (Gtk)	
 hw_hunter_attack	654	stops		Spell#cast	
@@ -934,8 +934,8 @@ Intel_Ashborne	12	runs
 intel_gentle	71	runs			
 intel_huntpro	13265	stops		Spell#cast	
 intown	578	stops		XMLData.send_fake_tags	a name defined nowhere
-invdb	5009	stops		the game's markup; Room#find_nearest_by_tag; XMLData.room_window_disabled	
-invdb-beta	6841	stops		the game's markup; Room#find_nearest_by_tag; XMLData.room_window_disabled; XMLData.bounty_task; Room#find_nearest; Map.uids	
+invdb	5009	stops		the game's markup; XMLData.room_window_disabled	
+invdb-beta	6841	stops		the game's markup; XMLData.room_window_disabled; XMLData.bounty_task; Map.uids	
 inventory-buddy	734	markup		Lich's windows (Gtk); the game's markup	
 invite	16	runs			
 invloc	48	runs			
@@ -963,7 +963,7 @@ itemmagic	156	runs
 itemnote	141	runs			
 itemnotes	236	runs			
 itemprop	53	runs			
-iza	29	stops		Map.list	a name defined nowhere
+iza	29	stops			a name defined nowhere
 jailbox	44	runs			
 jailboxthatworks	91	runs			
 jarcatch	417	runs			
@@ -1056,7 +1056,7 @@ listcapacity	30	runs
 Live_Market	439	windows		Lich's windows (Gtk)	
 lk	39	runs			
 lmapp	71	runs			
-lnet2	1667	stops		the game's markup; Spell#circlename; Map.list	an older Lich's API
+lnet2	1667	stops		the game's markup; Spell#circlename	an older Lich's API
 load	18	runs			
 loadcannons	183	runs			
 loadidol	42	runs			
@@ -1064,8 +1064,8 @@ loadout	210	runs
 loca	185	stops		Log	a library not installed here
 lockdown	95	runs			
 locker	52	runs			
-locker-get	159	stops		Room#find_nearest_by_tag; Lich::Util; the game's markup	
-locker2	109	stops		Map.dijkstra	
+locker-get	159	stops		Lich::Util; the game's markup	
+locker2	109	runs			
 lockerswap	89	markup		the game's markup	
 lockformulae	97	runs			
 lockmaster	322	stops			a name defined nowhere
@@ -1076,7 +1076,7 @@ lockranges	223	stops			does not parse
 locks	42	runs			
 locksmehrquest	102	runs			
 locksmith	7	runs			
-locksmithpool	181	stops		the game's markup; Room#find_nearest_by_tag	
+locksmithpool	181	markup		the game's markup	
 log_search_no_time	143	runs			
 login-documentation	11	runs			
 loglore	731	stops		the game's markup	File.exists? (Ruby 4.0); a name defined nowhere
@@ -1084,7 +1084,7 @@ look	108	markup		the game's markup
 lookall	25	runs			
 loop	14	runs			
 loot	1195	markup		the game's markup	
-loot-be-gone2	1797	stops		the game's markup; Lich's windows (Gtk); Room#find_nearest_by_tag; Room#find_nearest	
+loot-be-gone2	1797	markup		the game's markup; Lich's windows (Gtk)	
 lootbox2	82	runs			
 lootcap	36	runs			
 lootpackage	172	differs		a hook matching markup	
@@ -1138,13 +1138,13 @@ mania	35	runs
 manifest	37	runs			
 manna	6	runs			
 manna203	71	runs			
-map-search	31	stops		Map.list	
+map-search	31	runs			
 mapcopy	14	stops			File.exists? (Ruby 4.0)
-mapdiff	352	stops		Map.load_dat; Map.load_json; Map.load_xml; Map.list	
+mapdiff	352	stops		Map.load_dat; Map.load_json; Map.load_xml	
 MapEnemyShip	303	runs			
-mapmap	954	stops		Map.list; StringProc; Room#find_nearest; Map.dijkstra; Map.save; Map.current_or_new; the game's markup	
-mapnav	380	stops		Map.list; StringProc; Map.load_uids; Map.current_or_new; Map.save; Map.get_free_id	
-mapresize	69	stops		Map.list	
+mapmap	954	stops		StringProc; Map.save; Map.current_or_new; the game's markup	
+mapnav	380	stops		StringProc; Map.load_uids; Map.current_or_new; Map.save; Map.get_free_id	
+mapresize	69	runs			
 markchargable	75	runs			
 masscolors	17	stops		Spell#cast	
 masscomm	343	stops		Spell#cast	a name defined nowhere
@@ -1166,7 +1166,7 @@ memo	194	windows		Lich's windows (Gtk)
 menuid	108	runs			
 merchantical	8397	windows		Lich's windows (Gtk); a hook matching markup	
 metal	52	runs			
-metamap	695	stops		Map.list; the game's markup	
+metamap	695	markup		the game's markup	
 mg	81	runs			
 microbar	78	stops		Lich::Util; XMLData.last_pulse	
 midnightarena	75	runs			
@@ -1206,21 +1206,21 @@ nairreim	579	stops		XMLData.reset
 name	12	runs			
 namehighlights	141	runs			
 namehighlights-debug	1007	runs			
-narost	644	stops		Map.list; Lich's windows (Gtk)	a name defined nowhere; File.exists? (Ruby 4.0)
-narost2	683	stops		Map.list; Lich's windows (Gtk)	a name defined nowhere; File.exists? (Ruby 4.0)
+narost	644	stops		Lich's windows (Gtk)	a name defined nowhere; File.exists? (Ruby 4.0)
+narost2	683	stops		Lich's windows (Gtk)	a name defined nowhere; File.exists? (Ruby 4.0)
 nautical-charts	1420	stops		Lich's windows (Gtk); the game's markup; Lich::Util	
 nautical-charts-update	116	runs			
 ndaily	110	runs			
 necrojuice	92	runs			
-needhalp	33	stops		Room#map_name	a name defined nowhere
-needhelp	33	stops		Room#map_name	a name defined nowhere
+needhalp	33	stops			a name defined nowhere
+needhelp	33	stops			a name defined nowhere
 nelemarfix	11	runs			
 nerve	114	runs			
 nesatlas	413	runs			
-nesbounty	2062	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Map.list; Map.dijkstra; Map.tags; Room#find_nearest; Room#find_nearest_by_tag; Room#path_to; Spell#cast	
+nesbounty	2062	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Spell#cast	
 nesbounty-bigshot	61	runs			
 nesherbalist	252	runs			
-nesmapper	583	stops		Map.dijkstra	File.exists? (Ruby 4.0)
+nesmapper	583	stops			File.exists? (Ruby 4.0)
 nesstats	559	markup		the game's markup	
 newenemy	345	stops		Room#tags=; StringProc	
 newfavortracker	518	stops		the game's markup	a name defined nowhere
@@ -1249,10 +1249,10 @@ oc_heist	338	stops		Spell#cast
 oc_timer	93	stops			does not parse
 ocean-go2	37482	runs			
 offercheck	48	runs			
-official2	49	stops		Room#find_nearest_by_tag	
+official2	49	runs			
 officialescort	17	stops			does not parse
 old-service-cost	1635	windows		Lich's windows (Gtk)	
-old-tpick	6447	stops		Spell#cast; Lich's windows (Gtk); the game's markup; Lich::Util; Room#find_nearest_by_tag; Room#find_nearest	
+old-tpick	6447	stops		Spell#cast; Lich's windows (Gtk); the game's markup; Lich::Util	
 oldredux	86	runs			
 oneshot	1	runs			
 onstart	3	runs			
@@ -1264,7 +1264,7 @@ order	20	runs
 organize	34	runs			
 origami	302	runs			
 origami_master	114	runs			
-osa-commands	1460	stops		Map.dijkstra; Spell#cast; Map.list	
+osa-commands	1460	stops		Spell#cast	
 osa-map-plugin	9299	stops			a name defined nowhere
 osa_attack	77	runs			
 osa_migrate	400	runs			
@@ -1275,7 +1275,7 @@ osacombat_avalon_wizard	3350	stops		Lich's windows (Gtk); Spell#cast; Spell#avai
 osacombatv2	961	stops		Spell#cast	
 osacommander	4649	stops		StringProc; Lich::Util; Spell#cast; Group; Lich's windows (Gtk)	
 osacrew	4428	stops		StringProc; Lich::Util; Spell#cast; Group; Lich's windows (Gtk)	
-osacrew_avalon_wizard	4017	stops		Lich's windows (Gtk); StringProc; Spell#cast; the game's markup; Map.list	
+osacrew_avalon_wizard	4017	stops		Lich's windows (Gtk); StringProc; Spell#cast; the game's markup	
 osacrewlite	197	runs			
 osacrewv2	731	stops		Lich's windows (Gtk)	File.exists? (Ruby 4.0)
 osacrewv3	2150	stops		Lich's windows (Gtk); Spell#cast	File.exists? (Ruby 4.0)
@@ -1307,7 +1307,7 @@ partner4	199	stops		Spell#active; Spell#cast
 party-buddy	426	windows		Lich's windows (Gtk)	
 passcoinsto	14	runs			
 passive-spellbot	324	stops		SpellRanks; Spell#stackable?	a name defined nowhere
-path	107	stops		Room#find_nearest_by_tag; Map.dijkstra	
+path	107	runs			
 paths	66	runs			
 pauseforspells	10	runs			
 pawn_inspect	12	runs			
@@ -1341,7 +1341,7 @@ pixiepixie	28	runs
 plat_to_prime_copy	259	runs			
 plat_updater	235	stops		Map.reload	File.exists? (Ruby 4.0)
 platebox	13	runs			
-play	2275	stops		XMLData.stow_container_id; Spell#cast; Room#find_nearest_by_tag; Spell#stackable?; Room#dijkstra; Map.list; Spell#putdown; Spell#duration	
+play	2275	stops		XMLData.stow_container_id; Spell#cast; Spell#stackable?; Spell#putdown; Spell#duration	
 playcount	279	stops			a name defined nowhere; File.exists? (Ruby 4.0)
 playerwindow	2220	windows		Lich's windows (Gtk)	
 plist	108	runs			
@@ -1463,15 +1463,15 @@ relocate	8	runs
 remember	168	runs			
 reorder-spellbook	1473	runs			
 rep	38	runs			
-repair-lockpicks	167	stops		Room#find_nearest	
+repair-lockpicks	167	runs			
 repeat	43	runs			
 rephase	99	markup		the game's markup	
 ReplaceLinksWithMyName	23	markup		the game's markup	
 reprep	35	runs			
 resay	783	markup		the game's markup	
 rescue-me	26	runs			
-rescue-sunfist	46	stops		Watchfor; Map.list; Spell#cast	
-rescue-watch	75	stops		Map.dijkstra; Map.list	
+rescue-sunfist	46	stops		Watchfor; Spell#cast	
+rescue-watch	75	runs			
 reserve	1135	windows		Lich's windows (Gtk)	
 reset_vaalor_timeto	11	runs			
 resourcealias	127	runs			
@@ -1484,7 +1484,7 @@ retrieve	50	runs
 reverb	531	markup		the game's markup	
 reverse_locate	21	runs			
 rgem	42	runs			
-ride2	1233	stops		Map.list; StringProc; Room#find_nearest; Map.reload; Room#path_to; Map.estimate_time; the game's markup; Map.dijkstra; Room#find_all_nearest_by_tag; Spell#cast	
+ride2	1233	stops		StringProc; Map.reload; the game's markup; Spell#cast	
 rift-entry-timer	79	runs			
 riftboxes	47	runs			
 rifted	83	runs			
@@ -1492,22 +1492,22 @@ ring	46	runs
 ringleader	49	runs			
 rnum	19	runs			
 rnum2	40	runs			
-rnum3	108	stops		Map.list	
+rnum3	108	runs			
 rocks	54	runs			
 rofl-trivia	577	runs			
-rogue	2384	stops		Lich's windows (Gtk); Room#find_nearest	a name defined nowhere
+rogue	2384	stops		Lich's windows (Gtk)	a name defined nowhere
 rogue-gambits	277	runs			
 rogue-lmas-appraise	120	runs			
 rogue-lmas-calibrate	32	runs			
 rogue-lmas-clasp	106	runs			
 rogue-lmas-contest	69	stops		Spell#cast	
-rogue-lmas-makekey	69	stops		Room#find_nearest	
-rogue-lmas-makelock	105	stops		Room#find_nearest	
-rogue-lmas-makepick	114	stops		Room#find_nearest	
+rogue-lmas-makekey	69	runs			
+rogue-lmas-makelock	105	runs			
+rogue-lmas-makepick	114	runs			
 rogue-lmas-measure	21	runs			
-rogue-lmas-repair	133	stops		Room#find_nearest	
+rogue-lmas-repair	133	runs			
 rogue-lmas-sense	72	runs			
-rogues	3785	stops		Lich's windows (Gtk); Map.list; Room#find_nearest; Room#path_to	
+rogues	3785	windows		Lich's windows (Gtk)	
 rol_new	350	runs			
 roll-tracker	72	runs			
 room-buddy	351	stops		Lich's windows (Gtk)	a library not installed here
@@ -1527,7 +1527,7 @@ rrbundle	189	stops		XMLData.stow_container_id; the game's markup
 rrclean	46	markup		the game's markup	
 rrdeed	33	runs			
 rrherbs	327	markup		the game's markup	
-rrshellsdeeds	206	stops		Room#find_nearest	
+rrshellsdeeds	206	runs			
 rubmeforabless	18	runs			
 ruby-deed	91	runs			
 rum	18	stops			does not parse
@@ -1548,18 +1548,18 @@ saimtest	59	runs
 saladbar	975	stops		the game's markup	a name defined nowhere
 salert	421	stops		the game's markup	a library not installed here
 sammo	807	markup		the game's markup	
-sammu2	1298	stops		the game's markup; Map.dijkstra; Lich's windows (Gtk); Spell#cast	File.exists? (Ruby 4.0); a name defined nowhere
+sammu2	1298	stops		the game's markup; Lich's windows (Gtk); Spell#cast	File.exists? (Ruby 4.0); a name defined nowhere
 sanctum	193	runs			
-sanctum-mapdb-patch	90	stops		Map.list; StringProc	
+sanctum-mapdb-patch	90	stops		StringProc	
 sanctumwatch	67	stops			a name defined nowhere
 sancup	17	stops		Spell#cast	
 SaveBountyGems	25	runs			
 saveloc	25	runs			
 sbinnacombo	221	markup		the game's markup	
-sbounty-2017	1835	stops		StringProc; Lich's windows (Gtk); Map.list; Map.dijkstra; Map.tags; Room#find_nearest; Room#find_nearest_by_tag; Room#path_to; Spell#putup; Spell#timeleft=; Room#find_all_nearest_by_tag; Spell#cast	
+sbounty-2017	1835	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Spell#cast	
 sbounty-bandit-example	102	runs			
 sbounty-shunt	53	runs			
-sbountybeta	1568	stops		Map.tags; Room#find_nearest; Room#find_nearest_by_tag; Map.dijkstra; StringProc; Map.list; Spell#cast; the game's markup; Spell#putup; Spell#timeleft=	
+sbountybeta	1568	stops		StringProc; Spell#cast; the game's markup; Spell#putup; Spell#timeleft=	
 sbox	2104	stops		Spell#cast; the game's markup	a name defined nowhere
 sc	50	runs			
 scalcflares	114	markup		the game's markup	
@@ -1614,7 +1614,7 @@ sfillherbs	129	runs
 sfire	173	runs			
 sfog	533	stops		a hook matching markup	a name defined nowhere
 sgrip	50	runs			
-sguild	3745	stops		StringProc; Room#find_nearest_by_tag; Room#dijkstra; Map.list; Map.dijkstra; the game's markup; Room#find_nearest	
+sguild	3745	stops		StringProc; the game's markup	
 shadowdeath	14	runs			
 shake	99	runs			
 share	893	stops		Lich's windows (Gtk); Spell#cast	
@@ -1633,17 +1633,17 @@ ship	123	runs
 shlooter	2162	stops		Lich's windows (Gtk); the game's markup; Spell#cast	
 sholler	17	runs			
 shoot	43	stops		Spell#cast	
-shopgo	323	stops		Map.list; Room#find_nearest; Room#path_to; the game's markup	
+shopgo	323	markup		the game's markup	
 shopnotes	500	runs			
 shoppin	414	stops		Lich::Util	
 shopscribe	26	runs			
 shopsearch	60	runs			
 short-haste-message	50	runs			
-show	29	stops		Room#find_nearest_by_tag	
+show	29	runs			
 showids	29	runs			
 showxml	223	markup		the game's markup	
 shroud	43	stops		Spell#cast	
-shroud_sell	56	stops		Room#find_nearest_by_tag	
+shroud_sell	56	runs			
 shunt	1014	stops		Spell#putup; Spell#timeleft=; the game's markup; a hook matching markup	
 shunt-loop	27	runs			
 shutup	226	runs			
@@ -1668,7 +1668,7 @@ slats	493	stops			a name defined nowhere
 slavepen	22	runs			
 slich	597	stops		the game's markup; $fill_hands_actions; $fill_left_hand_actions; $fill_right_hand_actions; Spell#cast	a name defined nowhere
 slocation	19	runs			
-slootbeta	1901	stops		the game's markup; Spell#putup; Spell#timeleft=; Spell#cast; Map.list; Room#find_nearest	
+slootbeta	1901	stops		the game's markup; Spell#putup; Spell#timeleft=; Spell#cast	
 slootM	2068	stops		Lich's windows (Gtk); the game's markup; Spell#cast	
 slurplocker	5	runs			
 smart	46	runs			
@@ -1703,7 +1703,7 @@ sortwho	94	markup		the game's markup
 sos	225	runs			
 Sounds	34	stops			a library not installed here
 spa_analytics	85	runs			
-spamfilter	573	stops		Map.list; Infomon; CritRanks	
+spamfilter	573	stops		Infomon; CritRanks	
 sparklies	264	stops		XMLData.bounty_task	
 speak	64	runs			
 speaklikeacat	4	runs			
@@ -1775,11 +1775,11 @@ status_report	388	runs
 staymounted	952	windows		Lich's windows (Gtk)	
 staystanding	12	runs			
 steam	12	stops		Spell#active	
-step2	52	stops		Map.dijkstra	
+step2	52	runs			
 step24	187	runs			
-step2bandits	102	stops		Map.dijkstra; the game's markup	
+step2bandits	102	markup		the game's markup	
 stepcost	17	runs			
-stingpotions	227	stops		Map.dijkstra; the game's markup	
+stingpotions	227	markup		the game's markup	
 stockade	76	runs			
 stolenvalor	1466	stops			a name defined nowhere
 stomp	29	runs			
@@ -1796,7 +1796,7 @@ stunning	46	stops			does not parse
 stunningog	16	runs			
 stunshout	16	runs			
 stunzerk	15	runs			
-stupid-deed	640	stops		Map.list	a name defined nowhere
+stupid-deed	640	stops			a name defined nowhere
 stupidglobe	48	runs			
 stupidrocks	11	runs			
 stylebold	25	runs			
@@ -1815,18 +1815,18 @@ swapbounty2	290	runs
 swaysout	19	runs			
 sweep	13	runs			
 swho	24	runs			
-switch_target	183	stops		Map.list; Room#find_nearest	
+switch_target	183	runs			
 swordmaster	50	runs			
 swordshieldmaster	39	runs			
 SymbolsMonitor	170	stops		Lich's windows (Gtk); Spell#cast	
 symbolz2	180	stops		Spell#cast; Lich's windows (Gtk)	
 symmanaloop	8	runs			
-t	612	stops		Map.list	
-table	30	stops		Map.dijkstra	
+t	612	runs			
+table	30	runs			
 tablewatch	353	runs			
 tag	28	runs			
-tago2	98	stops		Room#find_all_nearest_by_tag; Room#image	
-tagsearch	82	stops		Room#find_all_nearest_by_tag; Map.list; Map.dijkstra; Room#path_to	
+tago2	98	runs			
+tagsearch	82	runs			
 talisman	15	stops		Spell#force_incant	
 talisman_sleep	11	runs			
 tambourineman	43	runs			
@@ -1857,7 +1857,7 @@ tdig2021	572	runs
 tears2	363	runs			
 teartracker	377	runs			
 teleport	378	stops		the game's markup; StringProc	
-temp_jfloo	200	stops		Room#find_nearest_by_tag; the game's markup	
+temp_jfloo	200	markup		the game's markup	
 Temple_Drop	63	runs			
 temporal	769	windows		Lich's windows (Gtk)	
 tend	25	runs			
@@ -1867,7 +1867,7 @@ terasrest	24	runs
 terror_watch	372	differs		a hook matching markup	
 test	35	runs			
 test-tickle	4	runs			
-test-tpick	5938	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Map.list; Room#find_nearest; Room#find_nearest_by_tag; Spell#cast	
+test-tpick	5938	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast	
 test_server_copy	259	runs			
 testme	1692	markup		the game's markup	
 tethereal	33	runs			
@@ -1902,12 +1902,12 @@ totbundle	53	runs
 totcandy	670	runs			
 Totemgemsort	142	windows		Lich's windows (Gtk)	
 touchme	63	runs			
-tour	404	stops		StringProc; XMLData.send_fake_tags; the game's markup; a hook matching markup; Map.list	a name defined nowhere
+tour	404	stops		StringProc; XMLData.send_fake_tags; the game's markup; a hook matching markup	a name defined nowhere
 towncrier_window	74	stops			a name defined nowhere
 townsmith	248	stops		XMLData.stow_container_id	
 toxicologist	850	stops		Lich::Util	
-tpick	6831	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast; Map.list; Room#find_nearest; Room#find_nearest_by_tag	
-tpick2	6361	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Map.list; Room#find_nearest; Room#find_nearest_by_tag; Spell#cast	
+tpick	6831	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast	
+tpick2	6361	stops		Lich::Util; Lich's windows (Gtk); the game's markup; Spell#cast	
 trackbless	251	runs			
 tracker	345	runs			
 tracking	541	markup		the game's markup	
@@ -1920,7 +1920,7 @@ transfer	32	runs
 transmog_inventory	1556	stops		Lich::Util; Lich's windows (Gtk)	
 trashtag	157	runs			
 trawl	185	runs			
-treasure	564	stops		Room#find_nearest; Map.list; the game's markup	
+treasure	564	markup		the game's markup	
 treasurewindow	985	windows		Lich's windows (Gtk); a hook matching markup	
 tremor	43	runs			
 tremors	39	runs			
@@ -1934,7 +1934,7 @@ turnbrooch	100	runs
 turnin	50	runs			
 turnkey	96	runs			
 tutelog	3214	markup		the game's markup	
-twarrior	3518	stops		Lich's windows (Gtk); Map.list; Room#find_nearest; Room#path_to; the game's markup	
+twarrior	3518	markup		Lich's windows (Gtk); the game's markup	
 twitternfl	169	runs			
 Tysong-duskattack	78	stops		Spell#cast	
 uacswap	68	runs			
@@ -1944,7 +1944,7 @@ uberbarmagic2	355	runs
 uberbarv	264	runs			
 uberbarv_d	309	stops		Lich::Util	
 UberBarWiz	822	stops		Lich's windows (Gtk); XMLData.last_pulse; Lich::Util	
-uberbounty	328	stops		XMLData.bounty_task; Room#find_all_nearest_by_tag	
+uberbounty	328	stops		XMLData.bounty_task	
 uberspells	159	stops		Gift; Spell.list	
 uberspells_no_lumnis	142	stops		Spell.list	
 ubw	462	runs			
@@ -1953,9 +1953,9 @@ UBW-Theme-Sexy	71	stops			File.exists? (Ruby 4.0)
 UBW-Theme-SF	70	stops			File.exists? (Ruby 4.0)
 UBW-Theme-Wrayth	71	stops			File.exists? (Ruby 4.0)
 ucharge	590	runs			
-uid	18	stops		Map.list	
+uid	18	runs			
 umadbro	255	stops		the game's markup; Spell#cast	
-undead_bounty	703	stops		Bounty; Map.list; Room#path_to	
+undead_bounty	703	stops		Bounty	
 unendingaspect	42	runs			
 unfubarmap	26	runs			
 unified-effects	227	stops		Spell#remaining	
@@ -1976,15 +1976,15 @@ unstunner	54	runs
 unstunwand	41	runs			
 untrammel	127	runs			
 update	27	runs			
-update-playershops	1294	stops		Room#find_nearest; the game's markup; Spell.lock_cast; Spell.unlock_cast; Spell#cast	
-update-playershops_commas	1327	stops		Room#find_nearest; the game's markup; Spell.lock_cast; Spell.unlock_cast; Spell#cast	
+update-playershops	1294	stops		the game's markup; Spell.lock_cast; Spell.unlock_cast; Spell#cast	
+update-playershops_commas	1327	stops		the game's markup; Spell.lock_cast; Spell.unlock_cast; Spell#cast	
 updater_huntpro	144	runs			
-upickbot4	688	stops		Map.dijkstra; Spell#cast; the game's markup	
+upickbot4	688	stops		Spell#cast; the game's markup	
 use_urchins	82	markup		the game's markup	
-useherbs	1430	stops		Map.list; Room#find_nearest; the game's markup; Room#find_nearest_by_tag	a name defined nowhere
-useherbs_kf	1447	stops		Map.list; Room#find_nearest; the game's markup; Room#find_nearest_by_tag	a name defined nowhere
-useherbsk	1432	stops		Map.list; Room#find_nearest; the game's markup; Room#find_nearest_by_tag	a name defined nowhere
-useherbskf	1451	stops		Map.list; Room#find_nearest; the game's markup; Room#find_nearest_by_tag	a name defined nowhere
+useherbs	1430	stops		the game's markup	a name defined nowhere
+useherbs_kf	1447	stops		the game's markup	a name defined nowhere
+useherbsk	1432	stops		the game's markup	a name defined nowhere
+useherbskf	1451	stops		the game's markup	a name defined nowhere
 useimbed	214	runs			
 utilitybeltx	1205	stops		Claim	
 utils	201	runs			
@@ -2007,7 +2007,7 @@ volnfavor_sagapanel	94	runs
 volnrestore	7	runs			
 volnrestore2	150	runs			
 volnspeech	37	runs			
-volnstep	1295	stops		Map.uids; Room#find_nearest; XMLData.society_task	
+volnstep	1295	stops		Map.uids; XMLData.society_task	
 VolnStep24-RuneSolver	142	runs			
 voodoo	190	runs			
 vote_reminder	56	runs			
@@ -2038,7 +2038,7 @@ warlogin	305	runs
 warmonger	355	runs			
 warning	42	runs			
 warp	121	stops		StringProc; Map.save	
-warrior	3811	stops		Lich's windows (Gtk); Map.list; Room#find_nearest; Room#path_to; the game's markup	
+warrior	3811	markup		Lich's windows (Gtk); the game's markup	
 warservice	17	runs			
 watch-locker	163	markup		the game's markup	
 watchdog	47	runs			
@@ -2108,8 +2108,8 @@ xp_commas	382	runs
 XPMonitor	32	runs			
 xraffle	777	markup		the game's markup	
 xready	68	stops		XMLData.bounty_task	
-xrogue_alpha	3526	stops		Lich's windows (Gtk); Room#find_nearest_by_tag; Room#find_nearest; Spell#cast	
-xrogue_teach	3423	stops		Lich's windows (Gtk); Room#find_nearest; Spell#cast	
+xrogue_alpha	3526	stops		Lich's windows (Gtk); Spell#cast	
+xrogue_teach	3423	stops		Lich's windows (Gtk); Spell#cast	
 xtask	148	runs			
 xteplay	14	runs			
 xtonis	47	runs			
@@ -2123,9 +2123,9 @@ zalood	161	runs
 zap	46	stops		Spell#cast; Spell#active	
 zesttest	206	runs			
 zesty	38	runs			
-zombie	441	stops		Room#find_nearest; Room#find_all_nearest_by_tag; Spell#cast	
+zombie	441	stops		Spell#cast	
 zToT	106	runs			
 zulrest	20	runs			
-zzherb	267	stops		Map.tags; Map.list; Map.dijkstra; Spell#cast	
-zzherb2	277	stops		Map.tags; Map.list; Map.dijkstra; Spell#cast	
-zzherb3	277	stops		Map.tags; Map.list; Map.dijkstra; Spell#cast	
+zzherb	267	stops		Spell#cast	
+zzherb2	277	stops		Spell#cast	
+zzherb3	277	stops		Spell#cast	

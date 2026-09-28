@@ -15,6 +15,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use axum::body::Body;
 use axum::http::Request;
+use cena_agent::scripts::local::Atlas;
 use cena_agent::scripts::runner::{Start, find_ruby, start, unpack};
 use cena_agent::scripts::{Runners, router, serve};
 use cena_platform::AnsweringSource;
@@ -567,6 +568,80 @@ async fn a_runner_in_combat() {
     }
     tokio::time::sleep(Duration::from_secs(3)).await;
     println!("the runner, 12 scripts running: {}", memory(pid));
+
+    let _ = child.kill().await;
+    runners.dismiss(&token);
+    stop.cancel();
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A runner asking for every room of the real map (§9, step 8: `Map.list`),
+/// searching it and routing over it, and its memory before and with the list
+/// held. Needs the converted map `CENA_MAP` names.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "Tier 2: plan/46 §9's measurements; needs Ruby 4.0 and CENA_MAP; prints"]
+async fn a_runners_map_list() {
+    let ruby = find_ruby().expect("no Ruby");
+    let path = std::env::var_os("CENA_MAP").expect("CENA_MAP names no map");
+    let map = cena_map::binary::decode(&std::fs::read(path).unwrap()).unwrap();
+    let dir = scratch("maplist");
+    let scripts = dir.join("scripts");
+    std::fs::create_dir_all(&scripts).unwrap();
+    std::fs::create_dir_all(dir.join("data")).unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    std::fs::copy(
+        fixtures.join("measuremap.lic"),
+        scripts.join("measuremap.lic"),
+    )
+    .unwrap();
+    let (handle, observer) = character(0, 0).await.unwrap();
+    let runners = Runners::with_atlas(Atlas {
+        map: Arc::new(map),
+        locate: |_, _, _| None,
+        walker: Arc::new(|_, _| cena_map::Walker::default()),
+    });
+    let stop = CancellationToken::new();
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .unwrap();
+    let url = format!("http://{}/mcp", listener.local_addr().unwrap());
+    tokio::spawn(serve(listener, runners.clone(), stop.clone()));
+    let token = runners
+        .admit("Nisugi", handle.script_door(), &observer)
+        .await
+        .unwrap();
+    unpack(&dir.join("runner")).unwrap();
+    let mut child = start(&Start {
+        ruby: &ruby,
+        dir: &dir.join("runner"),
+        url: &url,
+        token: &token,
+        character: "Nisugi",
+        game: "GS3",
+        scripts: &scripts,
+        data: &dir.join("data"),
+        symbol: ';',
+        windows: false,
+    })
+    .unwrap();
+    let pid = child.id().unwrap_or_default();
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    println!("the runner, no script: {}", memory(pid));
+
+    assert!(runners.typed(&token, "measuremap"));
+    let file = scripts.join("measured-map.json");
+    let mut measured = None;
+    for _ in 0..1200 {
+        if let Ok(text) = std::fs::read_to_string(&file) {
+            measured = serde_json::from_str::<serde_json::Value>(&text).ok();
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let measured = measured.expect("the script wrote nothing");
+    println!("Map.list and after: {measured}");
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    println!("the runner, the list held: {}", memory(pid));
 
     let _ = child.kill().await;
     runners.dismiss(&token);

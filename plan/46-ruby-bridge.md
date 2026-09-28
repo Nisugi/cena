@@ -3,7 +3,7 @@
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
-**step 7 BUILT**, 8 to 11 not yet. It
+**steps 7 and 8 BUILT**, 9 to 11 not yet. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -349,6 +349,12 @@ thing to measure before changing if it ever matters.
   measure, so an order, not a ratio). With windows, 25 runners are some 5-6 GB private.
   - *Before, kept*: 27.0 and 58.8 MiB at step 1; 38.8 and 72.8 at step 2; 47.6 and 79.6 when
     step 5 loaded Lich's libraries at start, which autoload undid.
+- **`Map.list` over the real map** (step 8; 36,838 rooms, `E:\Gemstone\data\cena_data\gs.map`;
+  `measure.rs`, `a_runners_map_list`, Hydra a debug build): the first `Map.list` **2.8 s**,
+  eight pages; a tag search over every room 21 ms; a `Map.dijkstra` to every room 0.34 s
+  (20,454 reached by a walker with nothing known). The runner holding the list: **130.3 MiB
+  private, 77.6 MiB working set**, from 75.9 and 39.6: some 54 MiB, and only once a script has
+  asked. Lich holds its whole map in every process (`plan/38` §2a: 100 MB of its 466).
 - **The local copy's update size and rate in combat**: **12-13 `state` events over the 28
   chunks, 19.3 KB, about 690 bytes a chunk and 1.75 KB a game second**; the median event 0.6-1.7
   KB, the largest 3.3 KB. What changes most is the room (7 events: its creatures and objects go
@@ -732,6 +738,37 @@ elanthia-online's 236 and 1,254 of the old repository's 2,130):
      reads as none known.
 8. **The map's queries**: `Map.dijkstra`, `Room#find_nearest`, `Map.list`, `Room#path_to`, by
    travel's own map and costs, as `Room.current` already is. 100 and 1,418.
+   **BUILT 2026-09-27**, in two commits:
+   - **Hydra's half** (`crates/cena-agent/src/scripts/map_tools.rs`, `SCRIPTS.md`): `route` (the
+     shortest ways out of a room: to one, the nearest of several, or everywhere, as Lich's
+     `dijkstra` tables), `seconds` (a path's time, Lich's 0.2 for a step it cannot price),
+     `rooms` (every room a page at a time, short), `find` (by tag or the game's number) and
+     `tags`. **A way is priced for the character as its own walk is**: the runners' map carries
+     travel's walker, which the binary makes from the character's travel file
+     (`crates/cena/src/scripts.rs`, `walker_of`; `TravelNotes::of`), so an exit the character's
+     profession, society or a remembered crossing opens is open to its scripts' routes too.
+     `cena-map`'s search names every room it settled and where each came from
+     (`Routes::settled`).
+   - **The runner** (`bridges/ruby/hydra/map.rb`): `Map.dijkstra` and `Room#dijkstra` answer
+     Lich's `[previous, seconds]`; `path_to`, `find_nearest`, `find_nearest_by_tag` and
+     `find_all_nearest_by_tag` are Lich's own methods over it; `estimate_time`, `ids_from_uid`,
+     `tags` and `rooms_by_tag` ask Hydra. **`Map.list`** is Lich's array by room number, asked
+     the first time a script asks and kept, each room short (number, title, location, tags, the
+     game's numbers, the strings shared) and completing itself from `room` when a script reads
+     its description or exits: a search by tag or title never asks for the rest. Measured: §9.
+   - **The list** (`inventory/14`): **42% of elanthia-online's scripts and 65% of the old
+     repository's run** (98 and 1,391, against the forecast 100 and 1,418: the rest got past the
+     map to wait on the markup or a window).
+   - **Tests**: `Routes::settled` (`crates/cena-map/tests/route.rs`); the five tools over MCP
+     (`scripts_local.rs`), a Bard's shortcut taken by a Bard's route and not by another's, the
+     nearest of two, an island, a path's time and an unpriced step, pages, tags and a game's
+     number; the binary's walker from a travel file (`command_tests.rs`); in Ruby
+     (`crates/cena-agent/tests/runner.rs`, `maptest.lic`), a Lich script asking each, a listed
+     room completing itself.
+   - **Not yet**: `Map.reload`, `Map.get_location` and `Map.save` (Lich's map files, which
+     Hydra's is not), a room's tags or exits changed by a script (`Room#tags=`); a nearest-of-
+     several search answers only as far as the nearest, where Lich's may search on; a script's
+     walk is priced without what a walk finds on the way (a trip's own flags).
 9. **`Spell#cast`**, through the casting step (`plan/37` Stage 3). 105 and 1,522.
 10. **`Lich::Util`**: `issue_command` and `quiet_command`, over step 4's hooks. 121 and 1,570.
 11. **The game's markup as labelled data** (§6.2): first measured, what markup the scripts read,
