@@ -22,7 +22,8 @@ The rest are cited from the surveys and were not re-read.
 ### 1a. Files
 
 `<D>` is the data folder: `CENA_DATA_DIR`, otherwise `data` relative to wherever Hydra
-was started (`crates/cena-session/src/character_store.rs:62`). `<ic>` is
+was started (`crates/cena-session/src/character_store.rs:64`; Hydra's own folder since §7
+step 7). `<ic>` is
 `<instance>_<character>` in lower case.
 
 | File | Scope | How a player changes it | Keys | Where |
@@ -480,4 +481,29 @@ Claude's order, each step shippable and committed on its own:
 7. **Layouts by game and name**, a name-only layout taken as the first. Then **the fixed
    data folder**, the player's own application-data folder, the old `data` copied into it
    once and left with a note.
+
+   **BUILT 2026-09-27.**
+   - *Layouts by game and name:* a play window's layout is `layouts/<instance>_<name>.json`,
+     so Nisugi on Prime and a Nisugi on Shattered each keep their own. A layout saved under
+     the name alone, as they all were, is taken as the first, and saving keeps the game's own
+     from then (`crates/cena-gui/src/layout.rs`). The window learns the game when the binary
+     seats the character (`Sessions::attach` takes it).
+   - *The data folder is fixed:* `CENA_DATA_DIR`, otherwise `data` in Hydra's own folder in
+     the player's application data (`character_store::data_dir`, `app_dir`):
+     - `%APPDATA%\Hydra` on Windows;
+     - `~/Library/Application Support/Hydra` on macOS;
+     - `$XDG_DATA_HOME/hydra` or `~/.local/share/hydra` elsewhere.
+
+     It is not beside the program, which the installer's updates (Stage H) will replace.
+   - *The one-time copy:* when Hydra starts, the old `data` where it was started is copied in
+     once (`character_store::settle`, `move_in`). The copy is made whole under its own name
+     and then renamed, and the old folder is left as it was with a note, `MOVED.txt`, saying
+     where its data went. Until the copy is made the old folder is still the one read, so a
+     copy that fails never starts a player with nothing.
+   - *Not moved:* the logs. `CENA_LOG_DIR`'s default is still `logs` where Hydra was
+     started; §6 item 10 named the data folder.
+   - *Checked:* 11 mutants over the folder, the copy and the layouts. All were caught once a
+     test showed a play window taking its game's layout; the window's game could have been
+     dropped. That test's first form looked for a widget's title, which is labelled only
+     while arranging, and so passed either way.
 8. **The ways in:** a widget's right-click opens the one menu at its setting.

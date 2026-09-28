@@ -23,7 +23,7 @@ struct Scene {
 impl Scene {
     fn new() -> Self {
         Self {
-            play: Play::new(0, "Ashryn", None),
+            play: Play::new(0, "Ashryn", None, None),
             snapshot: snapshot(),
             story: story(),
             hunt: Some(cena_ui::HuntView {
@@ -177,7 +177,7 @@ fn a_dragged_pane_snaps_and_is_kept_by_name() {
     let dir = std::env::temp_dir().join(format!("cena-play-layout-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let mut scene = Scene::new();
-    scene.play = Play::new(0, "Ashryn", Some(dir.clone()));
+    scene.play = Play::new(0, "Ashryn", None, Some(dir.clone()));
     let mut harness = Harness::builder()
         .with_size((1000.0, 700.0))
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
@@ -210,7 +210,7 @@ fn a_dragged_pane_snaps_and_is_kept_by_name() {
     assert_eq!(after.size(), before.size(), "a move keeps the size");
     assert!(harness.state().play.engaged.is_empty(), "the gesture ended");
 
-    let reopened = Play::new(0, "Ashryn", Some(dir.clone()));
+    let reopened = Play::new(0, "Ashryn", None, Some(dir.clone()));
     assert_eq!(
         reopened
             .layout

@@ -86,6 +86,9 @@ pub(crate) struct Play {
     session: u32,
     /// The character, whose name its layout is kept by.
     name: String,
+    /// The game it is on, by the instance its files are named for: its
+    /// layout is kept by game and name.
+    instance: Option<&'static str>,
     /// Where layouts are kept; `None`, and nothing is saved.
     layouts: Option<PathBuf>,
     /// Where its windows sit: saved, or fitted to the window when first drawn.
@@ -123,13 +126,22 @@ pub(crate) struct Play {
 const MAX_HISTORY: usize = 100;
 
 impl Play {
-    /// A play window for session `session`, the character `name`, with its
-    /// layout from `layouts` when one was saved there.
-    pub(crate) fn new(session: u32, name: &str, layouts: Option<PathBuf>) -> Self {
-        let layout = layouts.as_deref().and_then(|dir| Layout::load(dir, name));
+    /// A play window for session `session`, the character `name` on the
+    /// game `instance` names, with its layout from `layouts` when one was
+    /// saved there.
+    pub(crate) fn new(
+        session: u32,
+        name: &str,
+        instance: Option<&'static str>,
+        layouts: Option<PathBuf>,
+    ) -> Self {
+        let layout = layouts
+            .as_deref()
+            .and_then(|dir| Layout::load(dir, instance, name));
         Self {
             session,
             name: name.to_owned(),
+            instance,
             layouts,
             layout,
             engaged: Vec::new(),
@@ -219,7 +231,7 @@ impl Play {
             return;
         };
         self.unsaved = layout
-            .save(dir, &self.name)
+            .save(dir, self.instance, &self.name)
             .err()
             .map(|why| why.to_string());
     }

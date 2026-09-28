@@ -61,7 +61,11 @@ fn start_merging(
     script: &Arc<Script>,
     merged: &Arc<Mutex<MergedHistory>>,
 ) -> (Arc<Seat>, tokio::task::JoinHandle<()>) {
-    let seat = Arc::new(Seat::new(handle(), "Ashryn"));
+    let seat = Arc::new(Seat::new(
+        handle(),
+        "Ashryn",
+        cena_session::DEFAULT_GAME_CODE,
+    ));
     let answering = Arc::clone(script);
     let ears = Ears {
         seat: Arc::clone(&seat),

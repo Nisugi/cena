@@ -104,6 +104,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(retired) = setup::retired(std::env::args().skip(1)) {
         eprintln!("{retired}");
     }
+    // Before anything reads the data folder: the old one, where Hydra was
+    // started, copied into Hydra's own once (`plan/50` §7 step 7).
+    match cena_session::character_store::settle() {
+        Ok(Some(done)) => eprintln!("{done}"),
+        Ok(None) => {}
+        Err(why) => eprintln!(
+            "[data] the old data folder could not be copied into Hydra's own ({why}); it is still the one read"
+        ),
+    }
     // Built by hand rather than by `#[tokio::main]`: a window needs the main
     // thread, so the sessions run on the runtime's workers (`plan/47` §4).
     let runtime = tokio::runtime::Builder::new_multi_thread()

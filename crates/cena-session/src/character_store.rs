@@ -51,12 +51,14 @@ use std::path::{Path, PathBuf};
 
 use cena_model::state::character::snapshot::CharacterSnapshot;
 
-/// Where character stores live when [`DATA_DIR_ENV`] is unset.
-///
-/// Relative deliberately, and for the reason `sink/config.rs:57-61` gives about
-/// the log directory: *"An absolute default is right for exactly one machine
-/// and silently wrong everywhere else."*
+/// Where character stores lived before Hydra had a folder of its own
+/// (`plan/50` §6 item 10), relative to wherever it was started; still where
+/// they live on a platform that names no application-data folder, and where
+/// [`move_in`] looks for them to copy in once.
 pub const DEFAULT_DATA_DIR: &str = "data";
+
+/// The note [`move_in`] leaves in the old folder it copied.
+pub const MOVED_NOTE: &str = "MOVED.txt";
 
 /// The environment variable that moves the store directory.
 pub const DATA_DIR_ENV: &str = "CENA_DATA_DIR";
@@ -77,16 +79,138 @@ pub const DATA_DIR_ENV: &str = "CENA_DATA_DIR";
 )]
 pub const MAX_STALE: std::time::Duration = std::time::Duration::from_secs(30 * 24 * 60 * 60);
 
-/// The configured data directory, or the default.
+/// The configured data directory, or Hydra's own: `data` in its folder in
+/// the player's application data ([`app_dir`]), fixed, not wherever Hydra
+/// was started. The author, 2026-09-27: *"yeah the data folder should be
+/// fixed"* (`plan/50` §6 item 10).
 ///
-/// Set with, in PowerShell:
+/// Set elsewhere with, in PowerShell:
 ///
 /// ```text
 /// $env:CENA_DATA_DIR = "E:\Gemstone\data\cena_data"
 /// ```
 #[must_use]
 pub fn data_dir() -> PathBuf {
-    std::env::var_os(DATA_DIR_ENV).map_or_else(|| PathBuf::from(DEFAULT_DATA_DIR), PathBuf::from)
+    std::env::var_os(DATA_DIR_ENV).map_or_else(own_data_dir, PathBuf::from)
+}
+
+/// `data` in Hydra's own folder, or [`DEFAULT_DATA_DIR`] where the platform
+/// names none.
+fn own_data_dir() -> PathBuf {
+    which(
+        app_dir().map(|app| app.join("data")),
+        Path::new(DEFAULT_DATA_DIR),
+    )
+}
+
+/// Hydra's own data folder `own`, unless the old folder `old` has data not
+/// yet copied in ([`move_in`] leaves a note when it has been): until then
+/// the old one is still read, so a copy that failed never starts a player
+/// with nothing.
+fn which(own: Option<PathBuf>, old: &Path) -> PathBuf {
+    match own {
+        Some(own) if own.exists() || !old.is_dir() || old.join(MOVED_NOTE).exists() => own,
+        _ => old.to_owned(),
+    }
+}
+
+/// Hydra's own folder in the player's application data: `%APPDATA%\Hydra`
+/// on Windows, `~/Library/Application Support/Hydra` on macOS, and
+/// `$XDG_DATA_HOME/hydra` or `~/.local/share/hydra` elsewhere. Not beside
+/// the program, which an update replaces. `None` when the platform's
+/// variables do not say.
+#[must_use]
+pub fn app_dir() -> Option<PathBuf> {
+    app_dir_from(|name| std::env::var_os(name))
+}
+
+/// [`app_dir`], over any set of variables, so it can be tested.
+fn app_dir_from(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<PathBuf> {
+    let set = |name: &str| {
+        var(name)
+            .filter(|value| !value.is_empty())
+            .map(PathBuf::from)
+    };
+    if cfg!(windows) {
+        set("APPDATA").map(|dir| dir.join("Hydra"))
+    } else if cfg!(target_os = "macos") {
+        set("HOME").map(|home| {
+            home.join("Library")
+                .join("Application Support")
+                .join("Hydra")
+        })
+    } else {
+        set("XDG_DATA_HOME")
+            .or_else(|| set("HOME").map(|home| home.join(".local").join("share")))
+            .map(|dir| dir.join("hydra"))
+    }
+}
+
+/// Copy the data Hydra kept where it was started into its own folder,
+/// once: when [`DATA_DIR_ENV`] does not name another, its own folder has no
+/// data yet, and the old [`DEFAULT_DATA_DIR`] has some. The old folder is
+/// left as it was, with a note ([`MOVED_NOTE`]) saying where its data went.
+/// What was done, for the caller to say; `None` when nothing was.
+///
+/// # Errors
+///
+/// The copy failed; nothing is in Hydra's folder then, and the next start
+/// tries again.
+pub fn settle() -> io::Result<Option<String>> {
+    if std::env::var_os(DATA_DIR_ENV).is_some() {
+        return Ok(None);
+    }
+    let Some(app) = app_dir() else {
+        return Ok(None);
+    };
+    move_in(Path::new(DEFAULT_DATA_DIR), &app.join("data"))
+}
+
+/// [`settle`], from `old` into `new`: copied whole under a name of its own,
+/// then renamed into place, so a copy cut short is never taken for the data.
+///
+/// # Errors
+///
+/// A file could not be read, written or renamed.
+pub fn move_in(old: &Path, new: &Path) -> io::Result<Option<String>> {
+    if new.exists() || !old.is_dir() || old.join(MOVED_NOTE).exists() {
+        return Ok(None);
+    }
+    let copying = new.with_extension("copying");
+    if copying.exists() {
+        std::fs::remove_dir_all(&copying)?;
+    }
+    copy_dir(old, &copying)?;
+    std::fs::rename(&copying, new)?;
+    let old_shown = std::fs::canonicalize(old).unwrap_or_else(|_| old.to_owned());
+    std::fs::write(
+        old.join(MOVED_NOTE),
+        format!(
+            "Hydra keeps its data in {} now. This folder was copied there on {} and is no longer read; delete it once the copy is checked.\n",
+            new.display(),
+            cena_platform::date_dir()
+        ),
+    )?;
+    Ok(Some(format!(
+        "[data] {} copied to {}, once; the old folder is left with a note in it",
+        old_shown.display(),
+        new.display()
+    )))
+}
+
+/// `from`, every file and folder in it, copied into `to`.
+fn copy_dir(from: &Path, to: &Path) -> io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
 }
 
 /// Make one path component out of a name from the wire.
@@ -222,4 +346,72 @@ pub fn save(dir: &Path, snapshot: &CharacterSnapshot) -> io::Result<PathBuf> {
         .ok_or_else(crate::store::unusable_name)?;
     crate::store::save_json(dir, &path, snapshot)?;
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Hydra's own folder is in the platform's application data, and there
+    /// is none without the variables that say where that is.
+    #[test]
+    fn the_own_folder_is_the_platforms() {
+        assert_eq!(app_dir_from(|_| None), None);
+        assert_eq!(
+            app_dir_from(|_| Some("".into())),
+            None,
+            "empty says nothing"
+        );
+        let root = PathBuf::from("root");
+        let expected = if cfg!(windows) {
+            root.join("Hydra")
+        } else if cfg!(target_os = "macos") {
+            root.join("Library")
+                .join("Application Support")
+                .join("Hydra")
+        } else {
+            root.join("hydra")
+        };
+        assert_eq!(
+            app_dir_from(|_| Some(root.clone().into_os_string())),
+            Some(expected)
+        );
+    }
+
+    /// The old folder is copied in once, whole, and left as it was with a
+    /// note; until then it is the one read, and after it never again.
+    #[test]
+    fn the_old_folder_is_copied_in_once() -> io::Result<()> {
+        let base = std::env::temp_dir().join(format!("cena-settle-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let (old, new) = (base.join("data"), base.join("app").join("data"));
+        fs::create_dir_all(old.join("hunt"))?;
+        fs::write(old.join("roster.json"), "[]")?;
+        fs::write(old.join("hunt").join("global.toml"), "x")?;
+        assert_eq!(which(Some(new.clone()), &old), old, "not copied yet");
+        assert_eq!(which(None, &old), old, "no folder of its own");
+        let nothing = base.join("nothing");
+        assert_eq!(which(Some(new.clone()), &nothing), new, "no old folder");
+        fs::create_dir_all(&new)?;
+        assert_eq!(which(Some(new.clone()), &old), new, "its own, once there");
+        fs::remove_dir_all(&new)?;
+
+        assert!(move_in(&old, &new)?.is_some());
+        assert_eq!(fs::read_to_string(new.join("roster.json"))?, "[]");
+        assert_eq!(
+            fs::read_to_string(new.join("hunt").join("global.toml"))?,
+            "x"
+        );
+        assert!(old.join("roster.json").exists(), "left as it was");
+        assert!(old.join(MOVED_NOTE).exists());
+        assert!(!new.with_extension("copying").exists());
+        assert_eq!(which(Some(new.clone()), &old), new);
+
+        assert_eq!(move_in(&old, &new)?, None, "once");
+        fs::remove_dir_all(&new)?;
+        assert_eq!(move_in(&old, &new)?, None, "not again once noted");
+        assert_eq!(which(Some(new.clone()), &old), new, "and not read again");
+        let _ = fs::remove_dir_all(&base);
+        Ok(())
+    }
 }

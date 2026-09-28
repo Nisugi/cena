@@ -421,3 +421,42 @@ fn a_window_is_drawn_again_while_something_counts_down() {
         Some(Duration::from_millis(250))
     );
 }
+
+/// A play window takes its character's layout for the seat's own game
+/// (`plan/50` §6 item 6): here one without the Loadout window, over the one
+/// kept under the name alone, which has it and its hands.
+#[test]
+fn a_play_window_takes_its_games_layout() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let data = std::env::temp_dir().join(format!("cena-app-layout-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&data);
+    let layouts = data.join("layouts");
+    let game = cena_session::instance(cena_session::DEFAULT_GAME_CODE);
+    let mut own = crate::layout::Layout::fitted(egui::Vec2::new(980.0, 680.0));
+    own.holders.retain(|holder| holder.title() != "Loadout");
+    own.save(&layouts, game, "Ashryn").expect("saved");
+    crate::layout::Layout::fitted(egui::Vec2::new(980.0, 680.0))
+        .save(&layouts, None, "Ashryn")
+        .expect("saved");
+
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(
+            |ui, app: &mut App| app.draw(ui),
+            App::keeping(sessions, &data),
+        );
+    harness.run();
+    assert!(
+        harness.query_by_role(Role::TextInput).is_some(),
+        "its window"
+    );
+    assert!(
+        harness.query_by_label("Left: ?").is_none(),
+        "the game's own"
+    );
+    let _ = std::fs::remove_dir_all(&data);
+}

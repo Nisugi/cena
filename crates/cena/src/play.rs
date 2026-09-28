@@ -288,7 +288,7 @@ impl Table {
             );
         }
         if let Some(gui) = &self.gui {
-            gui.attach(&character, hosted.observer.clone(), &hosted.handle);
+            gui.attach(&character, &game, hosted.observer.clone(), &hosted.handle);
         }
         let watcher = tokio::spawn(watch::watch_events(events, format!("[{character}]")));
         tokio::spawn(crate::attention::forward(

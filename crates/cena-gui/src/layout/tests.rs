@@ -171,8 +171,46 @@ fn a_resized_custom_window_keeps_its_cells_to_it() {
 #[test]
 fn a_characters_file_is_its_name_in_lower_case() {
     let dir = Path::new("layouts");
-    assert_eq!(file(dir, "Ashryn"), dir.join("ashryn.json"));
-    assert_eq!(file(dir, "Lord Ashryn:2"), dir.join("lordashryn2.json"));
+    assert_eq!(file(dir, None, "Ashryn"), dir.join("ashryn.json"));
+    assert_eq!(
+        file(dir, None, "Lord Ashryn:2"),
+        dir.join("lordashryn2.json")
+    );
+}
+
+/// A layout is kept by game and name: the same name on another game is
+/// another layout. One kept under the name alone, as layouts were before,
+/// is taken as the first, and saving keeps the game's own from then on
+/// (`plan/50` §6 item 6).
+#[test]
+fn a_layout_is_kept_by_game_and_name() {
+    let dir = std::env::temp_dir().join(format!("cena-layout-game-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(
+        file(&dir, Some("Prime"), "Nisugi"),
+        dir.join("prime_nisugi.json")
+    );
+    let old = Layout::fitted(Vec2::new(900.0, 600.0));
+    old.save(&dir, None, "Nisugi").expect("saved");
+    assert_eq!(
+        Layout::load(&dir, Some("Prime"), "Nisugi").as_ref(),
+        Some(&old),
+        "the name's, taken as the first"
+    );
+    let mut prime = old.clone();
+    prime.grid = 16.0;
+    prime.save(&dir, Some("Prime"), "Nisugi").expect("saved");
+    assert_eq!(
+        Layout::load(&dir, Some("Prime"), "Nisugi"),
+        Some(prime.clone())
+    );
+    assert_eq!(
+        Layout::load(&dir, Some("Shattered"), "Nisugi"),
+        Some(old),
+        "another game's is its own"
+    );
+    assert!(dir.join("prime_nisugi.json").exists() && dir.join("nisugi.json").exists());
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
@@ -186,16 +224,24 @@ fn a_layout_is_kept_by_name_whatever_its_case() {
         .expect("a room");
     layout.set(room, at(10.0, 20.0, 300.0, 200.0));
     layout.grid = 16.0;
-    layout.save(&dir, "Ashryn").expect("saved");
-    assert_eq!(Layout::load(&dir, "ASHRYN").as_ref(), Some(&layout));
-    assert_eq!(Layout::load(&dir, "Baelor"), None, "never saved");
-    std::fs::write(file(&dir, "Lorwyn"), "{ not json").expect("written");
-    assert_eq!(Layout::load(&dir, "Lorwyn"), None, "unreadable: fitted");
+    layout.save(&dir, None, "Ashryn").expect("saved");
+    assert_eq!(Layout::load(&dir, None, "ASHRYN").as_ref(), Some(&layout));
+    assert_eq!(Layout::load(&dir, None, "Baelor"), None, "never saved");
+    std::fs::write(file(&dir, None, "Lorwyn"), "{ not json").expect("written");
+    assert_eq!(
+        Layout::load(&dir, None, "Lorwyn"),
+        None,
+        "unreadable: fitted"
+    );
     let earlier = serde_json::to_string(&layout)
         .expect("written")
         .replace("\"version\":2", "\"version\":1");
-    std::fs::write(file(&dir, "Orsen"), earlier).expect("written");
-    assert_eq!(Layout::load(&dir, "Orsen"), None, "another version: fitted");
+    std::fs::write(file(&dir, None, "Orsen"), earlier).expect("written");
+    assert_eq!(
+        Layout::load(&dir, None, "Orsen"),
+        None,
+        "another version: fitted"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -492,8 +538,8 @@ fn an_added_widget_gets_a_window_and_keeps_whom_it_follows() {
         Some("Baelor")
     );
     assert!(!layout.follows.contains_key(&second));
-    layout.save(&dir, "Ashryn").expect("saved");
-    let loaded = Layout::load(&dir, "Ashryn").expect("loaded");
+    layout.save(&dir, None, "Ashryn").expect("saved");
+    let loaded = Layout::load(&dir, None, "Ashryn").expect("loaded");
     assert_eq!(loaded.follows, layout.follows);
     let _ = std::fs::remove_dir_all(&dir);
 }

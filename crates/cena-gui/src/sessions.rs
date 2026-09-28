@@ -98,11 +98,14 @@ pub(crate) struct Seat {
     pub(crate) id: SessionId,
     /// The character, as the table named it.
     pub(crate) name: String,
+    /// The game it is on, by its code: its layout is kept by game and name.
+    pub(crate) game: String,
 }
 
 impl Seat {
-    /// A seat for `handle`'s session, named `name`, with nothing seen yet.
-    pub(crate) fn new(handle: SessionHandle, name: &str) -> Self {
+    /// A seat for `handle`'s session, named `name`, on the game `game`
+    /// (its code), with nothing seen yet.
+    pub(crate) fn new(handle: SessionHandle, name: &str, game: &str) -> Self {
         let id = handle.session();
         Self {
             card: Mutex::new(SessionCard::of(id.0.to_string(), name.to_owned(), None)),
@@ -113,6 +116,7 @@ impl Seat {
             stop: CancellationToken::new(),
             id,
             name: name.to_owned(),
+            game: game.to_owned(),
         }
     }
 
@@ -164,8 +168,14 @@ impl Sessions {
 
     /// Show `handle`'s session as `name`, the character, and start following
     /// it. Replaces an earlier attachment of the same session.
-    pub fn attach(&self, name: &str, observer: SessionObserver, handle: &SessionHandle) {
-        let seat = Arc::new(Seat::new(handle.clone(), name));
+    pub fn attach(
+        &self,
+        name: &str,
+        game: &str,
+        observer: SessionObserver,
+        handle: &SessionHandle,
+    ) {
+        let seat = Arc::new(Seat::new(handle.clone(), name, game));
         {
             let mut seats = self.seats();
             if let Some(old) = seats.iter().position(|old| old.id == seat.id) {
@@ -320,7 +330,7 @@ impl Sessions {
     /// needs: nothing here can make a live session.
     #[cfg(test)]
     pub(crate) fn seat_for_test(&self, handle: SessionHandle, name: &str) -> Arc<Seat> {
-        let seat = Arc::new(Seat::new(handle, name));
+        let seat = Arc::new(Seat::new(handle, name, cena_session::DEFAULT_GAME_CODE));
         self.seats().push(Arc::clone(&seat));
         seat
     }

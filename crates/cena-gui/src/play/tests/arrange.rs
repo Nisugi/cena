@@ -289,13 +289,13 @@ fn a_cell_resized_past_its_window_stays_in_it() {
     }
 }
 
-/// What arranging did is kept under the character's name.
+/// What arranging did is kept under the character's game and name.
 #[test]
 fn an_arranged_layout_is_kept_by_name() {
     let dir = std::env::temp_dir().join(format!("cena-arrange-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let mut scene = Scene::new();
-    scene.play = Play::new(0, "Ashryn", Some(dir.clone()));
+    scene.play = Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()));
     let mut harness = Harness::builder()
         .with_size((1000.0, 700.0))
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
@@ -304,7 +304,8 @@ fn an_arranged_layout_is_kept_by_name() {
     harness.run();
     let exits = harness.get_by_label("Exits").rect().center();
     drag(&mut harness, exits, egui::pos2(200.0, 300.0));
-    let reopened = Play::new(0, "Ashryn", Some(dir.clone()));
+    assert!(dir.join("prime_ashryn.json").exists(), "by game and name");
+    let reopened = Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()));
     let kept = reopened
         .layout
         .as_ref()

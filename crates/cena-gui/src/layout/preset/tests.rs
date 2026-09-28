@@ -168,12 +168,12 @@ fn a_character_named_presets_keeps_the_library_whole() {
     };
     library.keep(vitals);
     let layout = Layout::fitted(Vec2::new(1200.0, 800.0));
-    layout.save(&dir, "Presets").expect("saved");
+    layout.save(&dir, None, "Presets").expect("saved");
     assert_eq!(
         Library::load(Some(dir.clone())).presets(),
         library.presets()
     );
-    assert_eq!(Layout::load(&dir, "Presets").as_ref(), Some(&layout));
+    assert_eq!(Layout::load(&dir, None, "Presets").as_ref(), Some(&layout));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

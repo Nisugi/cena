@@ -88,7 +88,7 @@ pub use cena_model::state::character::body;
 pub use cena_model::state::kit;
 pub use cena_model::trigger;
 pub use cena_model::{guard, herbs};
-pub use cena_platform::{DEFAULT_GAME_CODE, GAMES};
+pub use cena_platform::{DEFAULT_GAME_CODE, GAMES, instance};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Amount, Link, LinkKind, ProgressBar, Style, TextFrame};
 pub use cena_protocol::runs::{Run, Runs};

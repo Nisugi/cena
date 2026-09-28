@@ -272,7 +272,12 @@ impl App {
         for seat in seats {
             let layouts = self.layouts.clone();
             self.plays.entry(seat.id.0).or_insert_with(|| Window {
-                play: Play::new(seat.id.0, &seat.name, layouts),
+                play: Play::new(
+                    seat.id.0,
+                    &seat.name,
+                    cena_session::instance(&seat.game),
+                    layouts,
+                ),
                 open: true,
                 ended: false,
             });
