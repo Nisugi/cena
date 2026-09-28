@@ -12,7 +12,7 @@
 //! way and hold their text inside; these fill any of four ways and put their
 //! text on any side.
 
-use egui::{Align2, Color32, CornerRadius, Rect, Sense, Vec2, WidgetInfo, WidgetType};
+use egui::{Align2, Color32, Sense, Vec2, WidgetInfo, WidgetType};
 
 /// Health's colour: `VellumFE`'s, so a bar is the same red wherever it is.
 pub const HEALTH: Color32 = Color32::from_rgb(0xcd, 0x4d, 0x4d);
@@ -36,6 +36,11 @@ pub enum Fills {
     Up,
     /// Vertical, from the top edge.
     Down,
+    /// A circle, filling from the bottom as a flask fills: a health or mana
+    /// orb.
+    Orb,
+    /// A ring, filling clockwise from the top.
+    Ring,
 }
 
 /// Where a bar's text goes.
@@ -98,65 +103,39 @@ pub struct Look {
     /// An image laid over it, stretched, by its file's path; none unset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overlay: Option<String>,
+    /// An image under its fill, in place of its trough, by its file's path:
+    /// an empty orb's glass.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+    /// An image its fill uncovers as it fills, in place of its colour, by its
+    /// file's path: a liquid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_image: Option<String>,
+    /// A ring's thickness, in percent of its radius.
+    #[serde(default = "Look::default_ring")]
+    pub ring: u8,
+}
+
+impl Look {
+    /// A ring's thickness unless the player chose: a quarter of its radius.
+    pub const RING: u8 = 25;
+
+    const fn default_ring() -> u8 {
+        Self::RING
+    }
 }
 
 impl Fills {
-    /// Whether it fills up or down, standing upright.
+    /// Whether it is round, an orb or a ring: drawn in the square in the
+    /// middle of its space.
     #[must_use]
-    pub const fn upright(self) -> bool {
-        matches!(self, Self::Up | Self::Down)
+    pub const fn round(self) -> bool {
+        matches!(self, Self::Orb | Self::Ring)
     }
 }
 
 /// The least a bar is, either way, however little room it is given.
 const LEAST: f32 = 8.0;
-
-/// Art laid over a bar: a texture of `size` pixels, stretched whole, or
-/// framed -- a nine-slice, whose corners keep their size and whose edges
-/// stretch only along the bar, with the centre left clear so the fill shows
-/// through, as a skin's frame is over `VellumFE`'s bars.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Overlay {
-    texture: egui::TextureId,
-    size: Vec2,
-    /// Border widths in the texture's pixels, top, right, bottom, left; `None`
-    /// for the whole image stretched.
-    insets: Option<[f32; 4]>,
-}
-
-impl Overlay {
-    /// The whole image, stretched over the bar: a gloss, a texture.
-    #[must_use]
-    pub fn stretched(texture: egui::TextureId, size: Vec2) -> Self {
-        Self {
-            texture,
-            size,
-            insets: None,
-        }
-    }
-
-    /// A frame: `insets` pixels of each edge -- top, right, bottom, left --
-    /// are border, drawn at their own size; the middle is left clear.
-    #[must_use]
-    pub fn framed(texture: egui::TextureId, size: Vec2, insets: [f32; 4]) -> Self {
-        Self {
-            texture,
-            size,
-            insets: Some(insets),
-        }
-    }
-
-    fn paint(&self, painter: &egui::Painter, bar: Rect) {
-        let whole = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-        let patches = match self.insets {
-            None => vec![(bar, whole)],
-            Some(insets) => nine_slice(self.size, insets, bar),
-        };
-        for (dest, uv) in patches {
-            painter.image(self.texture, dest, uv, Color32::WHITE);
-        }
-    }
-}
 
 /// A bar's value: its percent, and its numbers when the game gave them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -181,6 +160,9 @@ pub struct Bar<'a> {
     place: Place,
     says: Says,
     overlay: Option<Overlay>,
+    background: Option<egui::TextureId>,
+    fill_image: Option<egui::TextureId>,
+    ring: u8,
 }
 
 /// The gap between a bar and text outside it.
@@ -199,6 +181,9 @@ impl<'a> Bar<'a> {
             place: Place::default(),
             says: Says::default(),
             overlay: None,
+            background: None,
+            fill_image: None,
+            ring: Look::RING,
         }
     }
 
@@ -234,13 +219,29 @@ impl<'a> Bar<'a> {
     }
 
     /// Drawn as `look` says: which way it fills, where its text goes, what
-    /// the text says, and its colour. The overlay is the caller's to load.
+    /// the text says, its colour and a ring's thickness. Its images are the
+    /// caller's to load.
     pub fn look(self, look: &Look) -> Self {
         let [red, green, blue] = look.color;
-        self.fills(look.fills)
+        let mut drawn = self
+            .fills(look.fills)
             .text(look.place)
             .says(look.says)
-            .fill(Color32::from_rgb(red, green, blue))
+            .fill(Color32::from_rgb(red, green, blue));
+        drawn.ring = look.ring;
+        drawn
+    }
+
+    /// An image under the fill, in place of the trough.
+    pub fn background(mut self, image: egui::TextureId) -> Self {
+        self.background = Some(image);
+        self
+    }
+
+    /// An image the fill uncovers as it fills, in place of its colour.
+    pub fn fill_image(mut self, image: egui::TextureId) -> Self {
+        self.fill_image = Some(image);
+        self
     }
 
     /// Sized to what `ui` has left, its text outside it counted: as wide and
@@ -306,6 +307,7 @@ impl<'a> Bar<'a> {
         self.size.unwrap_or(match self.fills {
             Fills::Right | Fills::Left => Vec2::new(72.0, 18.0),
             Fills::Up | Fills::Down => Vec2::new(18.0, 72.0),
+            Fills::Orb | Fills::Ring => Vec2::splat(48.0),
         })
     }
 }
@@ -355,18 +357,20 @@ impl egui::Widget for Bar<'_> {
         let visuals = ui.visuals();
         let trough = visuals.extreme_bg_color;
         let fill = self.fill.unwrap_or(visuals.selection.bg_fill);
-        let radius = CornerRadius::same(3);
         let painter = ui.painter();
-        painter.rect_filled(bar_rect, radius, trough);
-        let filled = self
+        let share = self
             .value
-            .map(|amount| filled(bar_rect, self.fills, amount.percent))
-            .filter(|filled| filled.width() > 0.0 && filled.height() > 0.0);
-        if let Some(filled) = filled {
-            painter.rect_filled(filled, radius, fill);
-        }
+            .map_or(0.0, |amount| shape::share(amount.percent));
+        let paint = shape::Paint {
+            trough,
+            fill,
+            background: self.background,
+            fill_image: self.fill_image,
+            ring: f32::from(self.ring) / 100.0,
+        };
+        let covered = shape::paint(painter, self.fills, bar_rect, share, &paint);
         if let Some(overlay) = self.overlay {
-            overlay.paint(painter, bar_rect);
+            overlay.paint(painter, shape::frame(self.fills, bar_rect));
         }
         if let Some(galley) = galley {
             let (at, color) = if outside {
@@ -385,11 +389,7 @@ impl egui::Widget for Bar<'_> {
                     .align_size_within_rect(galley.size(), bar_rect)
                     .min;
                 // Readable over whatever is behind the text's middle.
-                let behind = if filled.is_some_and(|filled| filled.contains(bar_rect.center())) {
-                    fill
-                } else {
-                    trough
-                };
+                let behind = if covered { fill } else { trough };
                 let color = readable_on(behind);
                 // A one-point outline in the other colour, so the text still
                 // reads where the fill's edge runs through it.
@@ -410,74 +410,6 @@ impl egui::Widget for Bar<'_> {
     }
 }
 
-/// The eight border patches of a nine-slice over `rect`, each as a
-/// destination and the part of the texture it shows: `VellumFE`'s
-/// `nine_slice_patches_impl` (`skin.rs`) without the hidden sides. Insets too
-/// wide for `rect` shrink in proportion, so opposite borders never overlap.
-fn nine_slice(texture: Vec2, insets: [f32; 4], rect: Rect) -> Vec<(Rect, Rect)> {
-    if texture.x <= 0.0 || texture.y <= 0.0 || !rect.is_positive() {
-        return Vec::new();
-    }
-    let [top, right, bottom, left] = insets.map(|inset| inset.max(0.0));
-    let shrink = |a: f32, b: f32, room: f32| {
-        if a + b > room {
-            let by = room / (a + b);
-            (a * by, b * by)
-        } else {
-            (a, b)
-        }
-    };
-    let (dt, db) = shrink(top, bottom, rect.height());
-    let (dl, dr) = shrink(left, right, rect.width());
-    let dx = [rect.min.x, rect.min.x + dl, rect.max.x - dr, rect.max.x];
-    let dy = [rect.min.y, rect.min.y + dt, rect.max.y - db, rect.max.y];
-    let ux = [
-        0.0,
-        (left / texture.x).min(1.0),
-        1.0 - (right / texture.x).min(1.0),
-        1.0,
-    ];
-    let uy = [
-        0.0,
-        (top / texture.y).min(1.0),
-        1.0 - (bottom / texture.y).min(1.0),
-        1.0,
-    ];
-    let mut patches = Vec::with_capacity(8);
-    for row in 0..3 {
-        for col in 0..3 {
-            if row == 1 && col == 1 {
-                continue;
-            }
-            let dest = Rect::from_min_max(
-                egui::pos2(dx[col], dy[row]),
-                egui::pos2(dx[col + 1], dy[row + 1]),
-            );
-            let uv = Rect::from_min_max(
-                egui::pos2(ux[col], uy[row]),
-                egui::pos2(ux[col + 1], uy[row + 1]),
-            );
-            if dest.width() > 0.0 && dest.height() > 0.0 && uv.width() > 0.0 && uv.height() > 0.0 {
-                patches.push((dest, uv));
-            }
-        }
-    }
-    patches
-}
-
-/// The part of `bar` a value of `percent` fills, from the side `fills` says.
-fn filled(bar: Rect, fills: Fills, percent: u32) -> Rect {
-    let share = f32::from(u16::try_from(percent.min(100)).unwrap_or(100)) / 100.0;
-    let mut part = bar;
-    match fills {
-        Fills::Right => part.max.x = bar.min.x + bar.width() * share,
-        Fills::Left => part.min.x = bar.max.x - bar.width() * share,
-        Fills::Up => part.min.y = bar.max.y - bar.height() * share,
-        Fills::Down => part.max.y = bar.min.y + bar.height() * share,
-    }
-    part
-}
-
 /// Black or white, whichever reads on `behind`: by its luminance, the ITU
 /// weights.
 fn readable_on(behind: Color32) -> Color32 {
@@ -490,102 +422,10 @@ fn readable_on(behind: Color32) -> Color32 {
     }
 }
 
+mod overlay;
+mod shape;
+
+pub use overlay::Overlay;
+
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn amount(percent: u32) -> Amount {
-        Amount {
-            percent,
-            current: i32::try_from(percent * 4).ok(),
-            max: Some(400),
-        }
-    }
-
-    #[test]
-    fn the_words_are_any_combination_in_one_order() {
-        let says = |label, numbers, percent| Says {
-            label,
-            numbers,
-            percent,
-        };
-        let bar = |s| Bar::new("HP", Some(amount(87))).says(s).words();
-        assert_eq!(bar(says(true, true, true)), "HP 348/400 87%");
-        assert_eq!(bar(says(true, false, false)), "HP");
-        assert_eq!(bar(says(false, true, false)), "348/400");
-        assert_eq!(bar(says(false, false, true)), "87%");
-        assert_eq!(bar(says(false, false, false)), "");
-    }
-
-    #[test]
-    fn unknown_is_a_question_and_missing_numbers_are_left_out() {
-        let all = Says {
-            label: true,
-            numbers: true,
-            percent: true,
-        };
-        assert_eq!(Bar::new("HP", None).says(all).words(), "HP ?");
-        let percent_only = Some(Amount {
-            percent: 50,
-            current: None,
-            max: None,
-        });
-        assert_eq!(Bar::new("MP", percent_only).says(all).words(), "MP 50%");
-    }
-
-    #[test]
-    fn each_direction_fills_from_its_own_edge() {
-        let bar = Rect::from_min_size(egui::pos2(0.0, 0.0), Vec2::new(100.0, 40.0));
-        assert_eq!(
-            filled(bar, Fills::Right, 25),
-            Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(25.0, 40.0))
-        );
-        assert_eq!(
-            filled(bar, Fills::Left, 25),
-            Rect::from_min_max(egui::pos2(75.0, 0.0), egui::pos2(100.0, 40.0))
-        );
-        assert_eq!(
-            filled(bar, Fills::Up, 25),
-            Rect::from_min_max(egui::pos2(0.0, 30.0), egui::pos2(100.0, 40.0))
-        );
-        assert_eq!(
-            filled(bar, Fills::Down, 25),
-            Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(100.0, 10.0))
-        );
-        assert_eq!(filled(bar, Fills::Right, 250), bar, "past 100 is full");
-    }
-
-    /// A frame's corners keep their size and its middle is left clear,
-    /// however long the bar.
-    #[test]
-    fn a_frame_keeps_its_corners_and_leaves_the_middle_clear() {
-        let bar = Rect::from_min_size(egui::pos2(0.0, 0.0), Vec2::new(200.0, 20.0));
-        let patches = nine_slice(Vec2::new(24.0, 12.0), [2.0, 2.0, 2.0, 2.0], bar);
-        assert_eq!(patches.len(), 8, "no centre");
-        let (corner, uv) = patches[0];
-        assert_eq!(corner.size(), Vec2::new(2.0, 2.0));
-        assert_eq!(uv.max, egui::pos2(2.0 / 24.0, 2.0 / 12.0));
-        assert!(
-            patches.iter().all(|(dest, _)| !dest.contains(bar.center())),
-            "the fill shows through"
-        );
-        let squeezed = nine_slice(
-            Vec2::new(24.0, 12.0),
-            [8.0, 2.0, 8.0, 2.0],
-            Rect::from_min_size(egui::pos2(0.0, 0.0), Vec2::new(200.0, 8.0)),
-        );
-        let (top_left, _) = squeezed[0];
-        assert!(
-            (top_left.height() - 4.0).abs() < f32::EPSILON,
-            "shrunk to fit"
-        );
-    }
-
-    #[test]
-    fn text_reads_on_light_and_dark() {
-        assert_eq!(readable_on(Color32::WHITE), Color32::BLACK);
-        assert_eq!(readable_on(Color32::from_rgb(20, 20, 20)), Color32::WHITE);
-        assert_eq!(readable_on(SPIRIT), Color32::BLACK);
-        assert_eq!(readable_on(HEALTH), Color32::WHITE);
-    }
-}
+mod tests;

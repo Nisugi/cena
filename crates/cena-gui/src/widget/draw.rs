@@ -207,31 +207,41 @@ fn vital(
     ui.add(drawn.fitted(ui));
 }
 
-/// `bar` as `look` says, its overlay among it (`plan/49` §2).
+/// `bar` as `look` says, its images among it (`plan/49` §2).
 pub(super) fn as_looks<'a>(ui: &egui::Ui, bar: Bar<'a>, look: Option<&bar::Look>) -> Bar<'a> {
     let Some(look) = look else {
         return bar;
     };
-    let drawn = bar.look(look);
-    match look.overlay.as_deref().and_then(|path| overlay(ui, path)) {
-        Some(overlay) => drawn.overlay(overlay),
-        None => drawn,
+    let mut drawn = bar.look(look);
+    if let Some(overlay) = look.overlay.as_deref().and_then(|path| overlay(ui, path)) {
+        drawn = drawn.overlay(overlay);
     }
+    if let Some(image) = look.background.as_deref().and_then(|path| image(ui, path)) {
+        drawn = drawn.background(image.id());
+    }
+    if let Some(image) = look.fill_image.as_deref().and_then(|path| image(ui, path)) {
+        drawn = drawn.fill_image(image.id());
+    }
+    drawn
 }
 
-/// The image at `path`, as an overlay stretched over a bar: read once, and
-/// kept by egui for every frame after; `None` when it cannot be read.
+/// The image at `path`, as an overlay stretched over a bar.
 pub(super) fn overlay(ui: &egui::Ui, path: &str) -> Option<bar::Overlay> {
+    image(ui, path).map(|texture| bar::Overlay::stretched(texture.id(), texture.size_vec2()))
+}
+
+/// The image at `path`, read once and kept by egui for every frame after;
+/// `None` when it cannot be read.
+fn image(ui: &egui::Ui, path: &str) -> Option<egui::TextureHandle> {
     let id = Id::new(("bar-overlay", path));
     let kept = ui
         .ctx()
         .data(|data| data.get_temp::<Option<egui::TextureHandle>>(id));
-    let texture = kept.unwrap_or_else(|| {
+    kept.unwrap_or_else(|| {
         let read = read_image(ui.ctx(), path);
         ui.ctx().data_mut(|data| data.insert_temp(id, read.clone()));
         read
-    })?;
-    Some(bar::Overlay::stretched(texture.id(), texture.size_vec2()))
+    })
 }
 
 /// A PNG, or any image the `image` crate reads, as a texture.

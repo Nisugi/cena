@@ -326,6 +326,9 @@ impl Widget {
             says,
             color: [color.r(), color.g(), color.b()],
             overlay: None,
+            background: None,
+            fill_image: None,
+            ring: Look::RING,
         })
     }
 

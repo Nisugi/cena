@@ -211,3 +211,8 @@ crates/cena-gui/src/widget/state.rs 300
 # is the window, its tests moved to app/tests.rs when Hydra's own settings and the Keys page
 # took it past 800: 500 lines, so 550.
 crates/cena-gui/src/app.rs 550
+# NEW SPLIT PARENT, 2026-09-28, capped at birth (the author's orbs and rings). crates/cena-gui/src/bar.rs
+# is the bar widget, its shapes in bar/shape.rs, its overlay in bar/overlay.rs and its tests in
+# bar/tests.rs, moved down when orbs, rings and their images would have taken it past 800:
+# 431 lines, so 500.
+crates/cena-gui/src/bar.rs 500

@@ -82,11 +82,13 @@ fn shows(mut parts: RoomParts, key: &str) -> bool {
 }
 
 /// Which way a bar fills, as the page names each.
-const FILLS: [(Fills, &str, &str); 4] = [
+const FILLS: [(Fills, &str, &str); 6] = [
     (Fills::Right, "right", "Across, from the left"),
     (Fills::Left, "left", "Across, from the right"),
     (Fills::Up, "up", "Upright, from the bottom"),
     (Fills::Down, "down", "Upright, from the top"),
+    (Fills::Orb, "orb", "Orb, filling from the bottom"),
+    (Fills::Ring, "ring", "Ring, clockwise from the top"),
 ];
 
 /// Where a bar's text goes, as the page names each.
@@ -250,8 +252,20 @@ fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(
             look.color = crate::menu::rgb(to).ok_or_else(|| format!("`{to}` is not a colour."))?;
         }
         ("color", None) => look.color = default.color,
+        ("ring", Some(to)) => {
+            look.ring = to
+                .parse::<u8>()
+                .ok()
+                .filter(|width| (RING_LEAST..=100).contains(width))
+                .ok_or_else(|| format!("`{to}` is not a thickness from {RING_LEAST} to 100."))?;
+        }
+        ("ring", None) => look.ring = default.ring,
         ("overlay", Some("") | None) => look.overlay = None,
         ("overlay", Some(path)) => look.overlay = Some(path.to_owned()),
+        ("background", Some("") | None) => look.background = None,
+        ("background", Some(path)) => look.background = Some(path.to_owned()),
+        ("fill_image", Some("") | None) => look.fill_image = None,
+        ("fill_image", Some(path)) => look.fill_image = Some(path.to_owned()),
         (key, _) => return Err(format!("A bar has no setting {key}.")),
     }
     Ok(())
@@ -345,10 +359,21 @@ fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf]) -> Vec<Ro
         row(
             "fills",
             "Fills",
-            "Across or upright, and from which edge. An upright bar takes its whole space: size it by its window or cell.",
+            "Across or upright and from which edge, or round: an orb or a ring. A bar takes its whole space, a round one the square in its middle: size it by its window or cell.",
             choice(FILLS.iter().map(|(_, value, called)| (*value, *called))),
             Value::Text(fills_value(now.fills)),
             now.fills != default.fills,
+        ),
+        row(
+            "ring",
+            "Ring thickness",
+            "A ring's thickness, in percent of its radius: 100 is a disc.",
+            RowKind::Whole {
+                min: u32::from(RING_LEAST),
+                max: 100,
+            },
+            Value::Text(now.ring.to_string()),
+            now.ring != default.ring,
         ),
         row(
             "text",
@@ -387,13 +412,46 @@ fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf]) -> Vec<Ro
             Value::Text(crate::menu::hex(now.color)),
             now.color != default.color,
         ),
+    ]
+    .into_iter()
+    .chain(image_rows(now, overlays))
+    .collect()
+}
+
+/// A bar widget's images, as `now` has them: the fill's, the one under it
+/// and the one over it, each any PNG in the data folder's overlays folder. An
+/// orb's or a ring's is laid over the square it sits in.
+fn image_rows(now: &Look, overlays: &[PathBuf]) -> Vec<Row> {
+    let row = |key: &str, label: &str, help: &str, set: &Option<String>| Row {
+        key: key.to_owned(),
+        label: label.to_owned(),
+        help: help.to_owned(),
+        kind: overlay_choice(overlays),
+        value: Value::Text(set.clone().unwrap_or_default()),
+        here: set.is_some(),
+        from: None,
+    };
+    vec![
+        row(
+            "fill_image",
+            "Fill image",
+            "An image the fill uncovers as it fills, in place of its colour: a liquid.",
+            &now.fill_image,
+        ),
+        row(
+            "background",
+            "Background",
+            "An image under the fill, in place of the empty part: an orb's glass.",
+            &now.background,
+        ),
         row(
             "overlay",
             "Overlay",
-            "An image laid over the bar, stretched: any PNG in the data folder's overlays folder.",
-            overlay_choice(overlays),
-            Value::Text(now.overlay.clone().unwrap_or_default()),
-            now.overlay.is_some(),
+            "An image laid over the bar and its fill, stretched: a frame, a gloss.",
+            &now.overlay,
         ),
     ]
 }
+
+/// The thinnest a ring may be, in percent of its radius.
+const RING_LEAST: u8 = 5;

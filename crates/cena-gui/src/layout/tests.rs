@@ -641,12 +641,30 @@ fn a_bars_look_is_kept_with_the_layout() {
         },
         color: [0x10, 0x20, 0x30],
         overlay: Some("C:/overlays/gloss.png".to_owned()),
+        background: Some("C:/overlays/glass.png".to_owned()),
+        fill_image: None,
+        ring: 40,
     };
     layout.looks.insert(7, look.clone());
     layout.save(&dir, None, "Ashryn").expect("saved");
     let read = Layout::load(&dir, None, "Ashryn").expect("read back");
     assert_eq!(read.looks.get(&7), Some(&look));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A look saved before orbs, rings and their images reads as it was, a
+/// ring's thickness its default: a look that failed to read would lose the
+/// whole layout to a fitted one.
+#[test]
+fn a_look_saved_before_orbs_reads_as_it_was() {
+    use crate::bar::{Fills, Look};
+    let saved = r#"{"fills":"up","place":"inside","says":{"label":true,"numbers":false,"percent":true},"color":[71,132,217]}"#;
+    let look: Look = serde_json::from_str(saved).expect("read");
+    assert_eq!(look.fills, Fills::Up);
+    assert_eq!(
+        (look.ring, look.background, look.fill_image),
+        (Look::RING, None, None)
+    );
 }
 
 /// The first layout's Room window is the one Room widget, the room as the

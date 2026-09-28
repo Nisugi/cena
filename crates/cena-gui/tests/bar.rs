@@ -215,3 +215,114 @@ fn a_fitted_bar_takes_its_room() {
         );
     }
 }
+
+/// Art for a round bar, made here rather than read from a file: a liquid
+/// that darkens downward, with a band across it and bubbles down it, a dark
+/// glass disc, and a gold rim clear inside.
+fn round_art(ctx: &egui::Context) -> [egui::TextureHandle; 3] {
+    let side = 48;
+    let centre = 23.5_f32;
+    let make = |name: &str, pixel: &dyn Fn(usize, usize, f32) -> Color32| {
+        let mut image = egui::ColorImage::filled([side, side], Color32::TRANSPARENT);
+        for y in 0..side {
+            for x in 0..side {
+                let (fx, fy) = (
+                    f32::from(u16::try_from(x).unwrap_or(0)),
+                    f32::from(u16::try_from(y).unwrap_or(0)),
+                );
+                let out = ((fx - centre).powi(2) + (fy - centre).powi(2)).sqrt();
+                image[(x, y)] = pixel(x, y, out);
+            }
+        }
+        ctx.load_texture(name, image, egui::TextureOptions::LINEAR)
+    };
+    let liquid = make("liquid", &|x, y, _| {
+        if (20..24).contains(&y) || x % 12 < 2 {
+            Color32::from_rgb(0xff, 0x90, 0x90)
+        } else {
+            let fall = u8::try_from(y * 3).unwrap_or(u8::MAX);
+            Color32::from_rgb(0xe0_u8.saturating_sub(fall), 0x20, 0x30)
+        }
+    });
+    let glass = make("glass", &|_, _, out| {
+        if out < 24.0 {
+            Color32::from_rgb(0x20, 0x24, 0x30)
+        } else {
+            Color32::TRANSPARENT
+        }
+    });
+    let rim = make("rim", &|_, _, out| {
+        if (21.5..24.0).contains(&out) {
+            Color32::from_rgb(0xd4, 0xaf, 0x37)
+        } else {
+            Color32::TRANSPARENT
+        }
+    });
+    [liquid, glass, rim]
+}
+
+/// Orbs and rings (the author, 2026-09-28: *"we also need circle progress
+/// bars (health/mana orbs!)"*): plain, with art under, in and over the fill,
+/// a thicker ring on glass, an orb in a wide space, round in its middle, and
+/// a bar across with the same art, its liquid uncovered, not squeezed.
+fn round_gallery(ui: &mut egui::Ui, art: &mut Option<[egui::TextureHandle; 3]>) {
+    let [liquid, glass, rim] = art.get_or_insert_with(|| round_art(ui.ctx())).clone();
+    let rim = Overlay::stretched(rim.id(), rim.size_vec2());
+    let thick = cena_gui::bar::Look {
+        fills: Fills::Ring,
+        place: Place::Inside,
+        says: Says::default(),
+        color: [0x55, 0xb8, 0x6c],
+        overlay: None,
+        background: None,
+        fill_image: None,
+        ring: 50,
+    };
+    let round = |label, percent, fills| {
+        Bar::new(label, Some(amount(percent)))
+            .fills(fills)
+            .size([80.0, 80.0])
+    };
+    ui.horizontal(|ui| {
+        ui.add(round("HP", 30, Fills::Orb).fill(HEALTH));
+        ui.add(round("MP", 75, Fills::Orb).fill(MANA).says(ALL));
+        ui.add(
+            round("HP", 60, Fills::Orb)
+                .fill_image(liquid.id())
+                .background(glass.id())
+                .overlay(rim),
+        );
+    });
+    ui.horizontal(|ui| {
+        ui.add(round("Sp", 40, Fills::Ring).fill(SPIRIT));
+        ui.add(
+            round("SP", 70, Fills::Ring)
+                .look(&thick)
+                .background(glass.id())
+                .overlay(rim),
+        );
+        ui.add(
+            Bar::new("MP", Some(amount(50)))
+                .fills(Fills::Orb)
+                .fill(MANA)
+                .size([140.0, 60.0])
+                .overlay(rim),
+        );
+    });
+    ui.add(
+        Bar::new("HP", Some(amount(50)))
+            .fill_image(liquid.id())
+            .background(glass.id())
+            .size([280.0, 20.0]),
+    );
+}
+
+#[test]
+fn the_orbs_and_rings_as_drawn() {
+    let mut harness = Harness::builder()
+        .with_size((300.0, 220.0))
+        .wgpu()
+        .build_ui_state(round_gallery, None);
+    harness.run();
+    harness.snapshot("orbs");
+}

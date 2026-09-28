@@ -358,17 +358,9 @@ fn a_widget_dragged_out_shows_where_it_goes() {
     harness.step();
 }
 
-/// A bar widget's own page, which its right-click opens, says how it draws;
-/// each change is kept with the layout by the widget's id, and drawn at
-/// once; back at the kind's own, nothing is kept; the widget's look goes
-/// with it when it is removed.
-#[test]
-fn a_bar_is_drawn_as_its_page_says() {
-    use crate::bar::{Fills, Place};
-    use cena_ui::settings::Value;
-    let mut harness = harness();
-    harness.run();
-    let health = layout(&harness)
+/// The first Health bar in the play window, and its page's id.
+fn health_page(harness: &Harness<'_, Scene>) -> (u32, String) {
+    let health = layout(harness)
         .holders
         .iter()
         .find_map(|holder| match &holder.holds {
@@ -380,8 +372,58 @@ fn a_bar_is_drawn_as_its_page_says() {
                 .map(|placed| placed.id),
             Holds::One(_) => None,
         })
-        .expect("a health bar");
-    let page = format!("widget:{health}");
+        .unwrap_or_default();
+    (health, format!("widget:{health}"))
+}
+
+/// A bar's page takes a ring's thickness, no thinner than a ring may be,
+/// and its three images by their paths: each kept with the layout, and put
+/// back to the kind's own.
+#[test]
+fn a_bars_page_takes_a_ring_and_its_images() {
+    let mut harness = harness();
+    harness.run();
+    let (health, page) = health_page(&harness);
+    let glass = "C:/overlays/glass.png";
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "ring", Some("60"))
+        .expect("changed");
+    assert!(
+        play.widget_change(&page, "ring", Some("3")).is_err(),
+        "thinner than a ring may be"
+    );
+    for key in ["fill_image", "background", "overlay"] {
+        play.widget_change(&page, key, Some(glass))
+            .expect("changed");
+    }
+    let look = layout(&harness).looks.get(&health).cloned().expect("kept");
+    assert_eq!(look.ring, 60);
+    assert_eq!(
+        [look.fill_image, look.background, look.overlay]
+            .map(|image| image.as_deref() == Some(glass)),
+        [true; 3]
+    );
+    let play = &mut harness.state_mut().play;
+    for key in ["ring", "fill_image", "background", "overlay"] {
+        play.widget_change(&page, key, None).expect("put back");
+    }
+    assert!(
+        !layout(&harness).looks.contains_key(&health),
+        "all its own again"
+    );
+}
+
+/// A bar widget's own page, which its right-click opens, says how it draws;
+/// each change is kept with the layout by the widget's id, and drawn at
+/// once; back at the kind's own, nothing is kept; the widget's look goes
+/// with it when it is removed.
+#[test]
+fn a_bar_is_drawn_as_its_page_says() {
+    use crate::bar::{Fills, Place};
+    use cena_ui::settings::Value;
+    let mut harness = harness();
+    harness.run();
+    let (health, page) = health_page(&harness);
     let pages = harness.state().play.widget_pages(&[]);
     let own = pages
         .iter()
@@ -392,7 +434,16 @@ fn a_bar_is_drawn_as_its_page_says() {
     assert_eq!(
         keys,
         [
-            "fills", "text", "label", "numbers", "percent", "color", "overlay"
+            "fills",
+            "ring",
+            "text",
+            "label",
+            "numbers",
+            "percent",
+            "color",
+            "fill_image",
+            "background",
+            "overlay"
         ]
     );
     assert!(own.rows.iter().all(|row| !row.here), "the kind's own");

@@ -595,3 +595,29 @@ Claude's order, each step shippable and committed on its own:
    > colour, the page, putting a part back and removal. 12 were caught at first. The two
    > survivors were real gaps, *objects* off while apart, and a custom window removed with a
    > Room widget in it; each now has a test that catches it.
+   >
+   > **The author's next round, 2026-09-28**, after running the Room widget:
+   >
+   > - *"vitals settings menu is busted looking"*: a choice row drew every option wrapped in
+   >   a narrow column, a few letters to a line. It drops down now (`8c80096`).
+   > - *"if I make a progress bar horizontal fill and make it taller, the bar doesn't get
+   >   taller, it should"*: a bar takes its whole space either way (`6dce913`). The upright
+   >   bar that looked wrong was at 100%.
+   > - *"we also need circle progress bars (health/mana orbs!) The goal being to give all
+   >   the options possible for custom overlays."* Two shapes join the four directions: an
+   >   **orb**, a circle filling from the bottom as a flask fills, and a **ring**, a band
+   >   filling clockwise from the top, its thickness chosen. Each sits in the square in the
+   >   middle of its space, so it stays round. A bar of any shape takes three images: a
+   >   *background* under the fill in place of its trough (an orb's glass), a *fill image*
+   >   the fill uncovers as it rises rather than squeezes (a liquid), and the *overlay* over
+   >   both (`crates/cena-gui/src/bar/shape.rs`). Claude's call, for the author to change:
+   >   which images, and that a ring's thickness is a share of its radius.
+   > - *"there is no prompt"*: the story drops no prompt now, and shows one as `VellumFE`
+   >   does; a typed line echoes after it (`d07c37b`).
+   > - *"room window right click menu doesn't have a settings for the room window"*: the
+   >   window pictured was the old Room window of five parts. The author's saved layout
+   >   already held the Room widget by then (checked, read-only), so no converter was built,
+   >   as none was for version 1 (`plan/49` §4, Stage A).
+   >
+   > Not tested: that a widget loads its background and fill image from their files
+   > (`as_looks`, six lines); the loading they share with the overlay is.
