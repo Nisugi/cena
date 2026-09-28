@@ -26,6 +26,7 @@ pub(super) fn draw(
 ) -> Option<String> {
     let state = seen.snapshot.map(|snapshot| &snapshot.state);
     let look = look.or_else(|| widget.bar_look());
+    let look = look.as_ref();
     let named = |label: &str| {
         seen.who
             .map_or_else(|| label.to_owned(), |who| format!("{who} {label}"))
@@ -191,18 +192,54 @@ fn vital(
     label: &str,
     vital: Option<Vital>,
     color: Color32,
-    look: Option<bar::Look>,
+    look: Option<&bar::Look>,
 ) {
     let amount = vital.map(|vital| Amount {
         percent: vital.percent,
         current: vital.current,
         max: vital.max,
     });
-    let mut drawn = Bar::new(label, amount).fill(color);
-    if let Some(look) = look {
-        drawn = drawn.look(look);
-    }
+    let drawn = as_looks(ui, Bar::new(label, amount).fill(color), look);
     ui.add(drawn.fitted(ui));
+}
+
+/// `bar` as `look` says, its overlay among it (`plan/49` §2).
+pub(super) fn as_looks<'a>(ui: &egui::Ui, bar: Bar<'a>, look: Option<&bar::Look>) -> Bar<'a> {
+    let Some(look) = look else {
+        return bar;
+    };
+    let drawn = bar.look(look);
+    match look.overlay.as_deref().and_then(|path| overlay(ui, path)) {
+        Some(overlay) => drawn.overlay(overlay),
+        None => drawn,
+    }
+}
+
+/// The image at `path`, as an overlay stretched over a bar: read once, and
+/// kept by egui for every frame after; `None` when it cannot be read.
+pub(super) fn overlay(ui: &egui::Ui, path: &str) -> Option<bar::Overlay> {
+    let id = Id::new(("bar-overlay", path));
+    let kept = ui
+        .ctx()
+        .data(|data| data.get_temp::<Option<egui::TextureHandle>>(id));
+    let texture = kept.unwrap_or_else(|| {
+        let read = read_image(ui.ctx(), path);
+        ui.ctx().data_mut(|data| data.insert_temp(id, read.clone()));
+        read
+    })?;
+    Some(bar::Overlay::stretched(texture.id(), texture.size_vec2()))
+}
+
+/// A PNG, or any image the `image` crate reads, as a texture.
+fn read_image(context: &egui::Context, path: &str) -> Option<egui::TextureHandle> {
+    let bytes = std::fs::read(path).ok()?;
+    let image = image::load_from_memory(&bytes).ok()?.to_rgba8();
+    let size = [
+        usize::try_from(image.width()).ok()?,
+        usize::try_from(image.height()).ok()?,
+    ];
+    let pixels = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+    Some(context.load_texture(path, pixels, egui::TextureOptions::LINEAR))
 }
 
 /// What a hand holds, after which hand: `?` until the game has said.

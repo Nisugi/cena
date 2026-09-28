@@ -217,7 +217,7 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
         if let Some(count) = placed.widget.count(&drawing.seen) {
             drawing.read.insert(placed.id, count);
         }
-        let look = drawing.looks.get(&placed.id).copied();
+        let look = drawing.looks.get(&placed.id).cloned();
         if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, look) {
             drawing.sent = Some(line);
         }
@@ -236,7 +236,7 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
                 ..drawing.seen
             };
             // Another character's widget sends nothing on this one's.
-            let look = drawing.looks.get(&placed.id).copied();
+            let look = drawing.looks.get(&placed.id).cloned();
             let _ = placed.widget.draw_with(ui, &seen, id, look);
         }
         None => {

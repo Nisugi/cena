@@ -75,6 +75,11 @@ pub enum RowKind {
     /// Names each given a value: shown, and changed with the behavior's own
     /// command, which the row's help names.
     Map,
+    /// One of these, each its value and what a player calls it: which way
+    /// a bar fills.
+    Choice(Vec<(String, String)>),
+    /// A colour, its value written `#rrggbb`.
+    Color,
 }
 
 /// A setting's value, as written: numbers are text, so nothing is lost to a

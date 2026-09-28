@@ -25,6 +25,7 @@ mod arrange;
 mod draw;
 mod holders;
 mod menu;
+mod options;
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -52,8 +53,9 @@ pub(crate) enum Asked {
     /// Forget the preset of this name.
     ForgetPreset(String),
     /// Open the settings menu on this character (`plan/50` §7 step 1): at
-    /// the page a widget's right-click names, when one does (step 8).
-    Settings(Option<&'static str>),
+    /// a widget's own page, when its right-click asked (step 8, as the
+    /// author corrected it).
+    Settings(Option<String>),
     /// Open the settings menu at Hydra's *Keys* page (step 8).
     Keys,
 }

@@ -292,44 +292,33 @@ impl Widget {
     /// one bar: a vital says its label, numbers and percent; the pulse its
     /// words. `None` for a widget that is not a bar.
     pub(crate) fn bar_look(&self) -> Option<crate::bar::Look> {
-        use crate::bar::{Fills, Look, Place, Says};
-        let says = match self {
-            Widget::Health | Widget::Mana | Widget::Stamina | Widget::Spirit => Says {
-                label: true,
-                numbers: true,
-                percent: true,
-            },
-            Widget::Pulse => Says {
-                label: true,
-                numbers: false,
-                percent: false,
-            },
+        use crate::bar::{Fills, HEALTH, Look, MANA, Place, SPIRIT, STAMINA, Says};
+        let vital = Says {
+            label: true,
+            numbers: true,
+            percent: true,
+        };
+        let (says, color) = match self {
+            Widget::Health => (vital, HEALTH),
+            Widget::Mana => (vital, MANA),
+            Widget::Stamina => (vital, STAMINA),
+            Widget::Spirit => (vital, SPIRIT),
+            Widget::Pulse => (
+                Says {
+                    label: true,
+                    numbers: false,
+                    percent: false,
+                },
+                MANA,
+            ),
             _ => return None,
         };
         Some(Look {
             fills: Fills::Right,
             place: Place::Inside,
             says,
-        })
-    }
-
-    /// The settings menu's page that holds what this widget shows or acts
-    /// on, which its right-click opens (`plan/50` §7 step 8): the page's id,
-    /// or the start of it for a page there may be several of (`hunt:`, one
-    /// per profile). `None` for a widget no setting governs.
-    pub(crate) fn settings_page(&self) -> Option<&'static str> {
-        Some(match self {
-            Widget::Story => "general",
-            Widget::Health => "heal",
-            Widget::RightHand | Widget::LeftHand | Widget::Containers => "loot",
-            Widget::RoomTitle | Widget::RoomDescription | Widget::Exits | Widget::Compass => {
-                "travel"
-            }
-            Widget::Hunt | Widget::Stance => "hunt:",
-            Widget::Effects(_) => "keep",
-            Widget::Spellbook | Widget::Prepared => "sc",
-            Widget::Combat => "record",
-            _ => return None,
+            color: [color.r(), color.g(), color.b()],
+            overlay: None,
         })
     }
 

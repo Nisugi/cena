@@ -19,7 +19,6 @@ use std::collections::HashSet;
 use egui::{Id, Order, Pos2, Rect, RichText, vec2};
 
 use super::{Asked, Play};
-use crate::bar::{Fills, Look, Place};
 use crate::layout::{Holds, Layout, Library, Preset};
 use crate::widget::{Character, Group, Widget};
 
@@ -55,10 +54,8 @@ enum Act {
     Rename(String),
     Follow(u32, Option<String>),
     Save(String),
-    /// The settings menu, at this page.
-    Settings(&'static str),
-    /// A bar widget drawn this way; the menu stays open for the next.
-    Look(u32, crate::bar::Look),
+    /// The settings menu, at this page: the widget's own.
+    Settings(String),
 }
 
 impl Play {
@@ -208,12 +205,6 @@ impl Play {
             return false;
         };
         let holder = menu.holder;
-        if let Act::Look(placed, look) = act {
-            if let Some(layout) = self.layout.as_mut() {
-                layout.looks.insert(placed, look);
-            }
-            return true;
-        }
         self.menu = None;
         let Some(layout) = self.layout.as_mut() else {
             return false;
@@ -233,7 +224,7 @@ impl Play {
             Act::RemoveWindow => layout.remove_window(holder),
             Act::Rename(title) => layout.rename(holder, &title),
             Act::Follow(placed, who) => layout.follow(placed, who),
-            Act::Save(_) | Act::Settings(_) | Act::Look(..) => {}
+            Act::Save(_) | Act::Settings(_) => {}
         }
         true
     }
@@ -358,22 +349,16 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
         .and_then(|placed| widget_in(layout, menu.holder, placed));
     if let (Some(placed), Some(widget)) = (menu.placed, widget) {
         ui.weak(widget.name());
-        if let Some(page) = widget.settings_page()
+        if super::options::has_page(widget)
             && ui
                 .button("Settings...")
-                .on_hover_text("The settings menu, where this is set")
+                .on_hover_text("This widget's own settings: how it draws")
                 .clicked()
         {
-            act = Some(Act::Settings(page));
+            act = Some(Act::Settings(super::options::page_id(placed)));
         }
         if ui.button("Remove").clicked() {
             act = Some(Act::Remove(placed));
-        }
-        if let Some(default) = widget.bar_look() {
-            let now = layout.looks.get(&placed).copied().unwrap_or(default);
-            if let Some(look) = bar_items(ui, now) {
-                act = Some(Act::Look(placed, look));
-            }
         }
     }
     if let Holds::Custom(custom) = &holder.holds {
@@ -438,46 +423,6 @@ fn items(ui: &mut egui::Ui, menu: &mut Menu, layout: &Layout, others: &[Characte
             });
     }
     act
-}
-
-/// A bar widget's own items, drawn as `now` says: which way it fills, where
-/// its text goes, and what the text says (`plan/49` §2, a widget's options).
-/// The look asked for, when one was changed.
-fn bar_items(ui: &mut egui::Ui, now: Look) -> Option<Look> {
-    let mut look = now;
-    ui.separator();
-    ui.weak("Bar");
-    ui.horizontal(|ui| {
-        ui.label("Fills");
-        for (fills, arrow, says) in [
-            (Fills::Right, "→", "Across, from the left"),
-            (Fills::Left, "←", "Across, from the right"),
-            (Fills::Up, "↑", "Upright, from the bottom"),
-            (Fills::Down, "↓", "Upright, from the top"),
-        ] {
-            ui.selectable_value(&mut look.fills, fills, arrow)
-                .on_hover_text(says);
-        }
-    });
-    ui.horizontal_wrapped(|ui| {
-        ui.label("Text");
-        for (place, name) in [
-            (Place::Inside, "Inside"),
-            (Place::Above, "Above"),
-            (Place::Below, "Below"),
-            (Place::Left, "Left"),
-            (Place::Right, "Right"),
-            (Place::Hidden, "None"),
-        ] {
-            ui.selectable_value(&mut look.place, place, name);
-        }
-    });
-    ui.horizontal(|ui| {
-        ui.checkbox(&mut look.says.label, "Label");
-        ui.checkbox(&mut look.says.numbers, "Numbers");
-        ui.checkbox(&mut look.says.percent, "Percent");
-    });
-    (look != now).then_some(look)
 }
 
 /// The kind of widget `placed` in window `holder`.

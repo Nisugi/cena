@@ -80,10 +80,12 @@ impl Default for Says {
     }
 }
 
-/// How a bar widget draws its bar: which way it fills, where its text goes
-/// and what the text says. The player picks it from the widget's right-click
-/// menu, and it is kept with the layout (`plan/49` §2, a widget's options).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+/// How a bar widget draws its bar: which way it fills, where its text goes,
+/// what the text says, its colour, and an image laid over it. The player
+/// picks it on the widget's own page in the settings menu, which its
+/// right-click opens, and it is kept with the layout (`plan/49` §2, a
+/// widget's options).
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Look {
     /// Which way it fills.
     pub fills: Fills,
@@ -91,6 +93,11 @@ pub struct Look {
     pub place: Place,
     /// What its text says.
     pub says: Says,
+    /// Its fill's colour, red, green and blue.
+    pub color: [u8; 3],
+    /// An image laid over it, stretched, by its file's path; none unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlay: Option<String>,
 }
 
 impl Fills {
@@ -229,10 +236,14 @@ impl<'a> Bar<'a> {
         self
     }
 
-    /// Drawn as `look` says: which way it fills, where its text goes, and
-    /// what the text says.
-    pub fn look(self, look: Look) -> Self {
-        self.fills(look.fills).text(look.place).says(look.says)
+    /// Drawn as `look` says: which way it fills, where its text goes, what
+    /// the text says, and its colour. The overlay is the caller's to load.
+    pub fn look(self, look: &Look) -> Self {
+        let [red, green, blue] = look.color;
+        self.fills(look.fills)
+            .text(look.place)
+            .says(look.says)
+            .fill(Color32::from_rgb(red, green, blue))
     }
 
     /// Sized to what `ui` has left, its text outside it counted. Across, it is

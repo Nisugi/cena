@@ -355,13 +355,14 @@ fn a_widget_dragged_out_shows_where_it_goes() {
     harness.step();
 }
 
-/// A bar widget's right-click has its own items: which way it fills, where
-/// its text goes, and what it says. Each is kept with the layout, by the
-/// widget's id, while the menu stays open for the next; the widget's own
-/// look goes with it when it is removed.
+/// A bar widget's own page, which its right-click opens, says how it draws;
+/// each change is kept with the layout by the widget's id, and drawn at
+/// once; back at the kind's own, nothing is kept; the widget's look goes
+/// with it when it is removed.
 #[test]
-fn a_bar_is_drawn_as_its_menu_says() {
+fn a_bar_is_drawn_as_its_page_says() {
     use crate::bar::{Fills, Place};
+    use cena_ui::settings::Value;
     let mut harness = harness();
     harness.run();
     let health = layout(&harness)
@@ -377,33 +378,125 @@ fn a_bar_is_drawn_as_its_menu_says() {
             Holds::One(_) => None,
         })
         .expect("a health bar");
-    let bar = harness.get_by_label_contains("HP ");
-    let across = bar.rect().height();
-    bar.click_secondary();
-    harness.run();
-    // Drawn as it says: its words below it make it taller.
-    harness.get_by_label("Below").click();
+    let page = format!("widget:{health}");
+    let pages = harness.state().play.widget_pages(&[]);
+    let own = pages
+        .iter()
+        .find(|found| found.id == page)
+        .expect("its page");
+    assert_eq!(own.title, "Health (Vitals)");
+    let keys: Vec<&str> = own.rows.iter().map(|row| row.key.as_str()).collect();
+    assert_eq!(
+        keys,
+        [
+            "fills", "text", "label", "numbers", "percent", "color", "overlay"
+        ]
+    );
+    assert!(own.rows.iter().all(|row| !row.here), "the kind's own");
+
+    let across = harness.get_by_label_contains("HP ").rect().height();
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "text", Some("below"))
+        .expect("changed");
     harness.run();
     let below = harness.get_by_label_contains("HP ").rect().height();
-    assert!(below > across + 4.0, "{below} against {across}");
-    harness.get_by_label("↑").click();
-    harness.run();
-    harness.get_by_label("None").click();
-    harness.run();
-    let look = layout(&harness).looks.get(&health).copied();
-    assert_eq!(
-        look.map(|look| (look.fills, look.place)),
-        Some((Fills::Up, Place::Hidden))
-    );
     assert!(
-        harness.query_by_label("Percent").is_some(),
-        "the menu stays open"
+        below > across + 4.0,
+        "drawn at once: {below} against {across}"
     );
 
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "fills", Some("up"))
+        .expect("changed");
+    play.widget_change(&page, "color", Some("#102030"))
+        .expect("changed");
+    play.widget_change(&page, "numbers", Some("off"))
+        .expect("changed");
+    assert!(
+        play.widget_change(&page, "fills", Some("sideways"))
+            .is_err()
+    );
+    assert!(play.widget_change(&page, "volume", Some("on")).is_err());
+    let look = layout(&harness).looks.get(&health).cloned().expect("kept");
+    assert_eq!((look.fills, look.place), (Fills::Up, Place::Below));
+    assert_eq!(look.color, [0x10, 0x20, 0x30]);
+    assert!(!look.says.numbers);
+    let pages = harness.state().play.widget_pages(&[]);
+    let own = pages
+        .iter()
+        .find(|found| found.id == page)
+        .expect("its page");
+    let color = own
+        .rows
+        .iter()
+        .find(|row| row.key == "color")
+        .expect("a colour row");
+    assert_eq!(
+        (&color.value, color.here),
+        (&Value::Text("#102030".to_owned()), true)
+    );
+
+    let play = &mut harness.state_mut().play;
+    for key in ["fills", "text", "color", "numbers"] {
+        play.widget_change(&page, key, None).expect("put back");
+    }
+    assert!(
+        !layout(&harness).looks.contains_key(&health),
+        "all its own again"
+    );
+
+    harness
+        .state_mut()
+        .play
+        .widget_change(&page, "fills", Some("down"))
+        .expect("changed");
+    harness.get_by_label_contains("HP ").click_secondary();
+    harness.run();
     harness.get_by_label("Remove").click();
     harness.run();
     assert!(
         !layout(&harness).looks.contains_key(&health),
         "its look goes with it"
     );
+}
+
+/// A change on a bar's own page is saved with the layout at once, and a
+/// window opened again draws the bar so.
+#[test]
+fn a_bars_page_is_saved_with_the_layout() {
+    let dir = std::env::temp_dir().join(format!("cena-bar-page-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut play = Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()));
+    let mut harness = Harness::builder()
+        .with_size((1000.0, 700.0))
+        .build_ui_state(
+            |ui, scene: &mut Scene| scene.draw(ui),
+            Scene {
+                play: std::mem::replace(&mut play, Play::new(0, "Ashryn", None, None)),
+                ..Scene::new()
+            },
+        );
+    harness.run();
+    let page = harness
+        .state()
+        .play
+        .widget_pages(&[])
+        .into_iter()
+        .find(|page| page.title.starts_with("Health"))
+        .map(|page| page.id)
+        .expect("a health bar's page");
+    harness
+        .state_mut()
+        .play
+        .widget_change(&page, "fills", Some("up"))
+        .expect("changed");
+    let reopened = Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()));
+    let fills = reopened
+        .widget_pages(&[])
+        .into_iter()
+        .find(|found| found.id == page)
+        .and_then(|found| found.rows.into_iter().find(|row| row.key == "fills"))
+        .map(|row| row.value);
+    assert_eq!(fills, Some(cena_ui::settings::Value::Text("up".to_owned())));
+    let _ = std::fs::remove_dir_all(&dir);
 }

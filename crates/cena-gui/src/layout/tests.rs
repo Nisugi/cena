@@ -603,8 +603,10 @@ fn a_bars_look_is_kept_with_the_layout() {
             numbers: false,
             percent: true,
         },
+        color: [0x10, 0x20, 0x30],
+        overlay: Some("C:/overlays/gloss.png".to_owned()),
     };
-    layout.looks.insert(7, look);
+    layout.looks.insert(7, look.clone());
     layout.save(&dir, None, "Ashryn").expect("saved");
     let read = Layout::load(&dir, None, "Ashryn").expect("read back");
     assert_eq!(read.looks.get(&7), Some(&look));

@@ -2,6 +2,7 @@
 //! menu, driven through [`App::draw`].
 
 use super::*;
+use crate::MenuAsked;
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
@@ -461,9 +462,10 @@ fn a_play_window_takes_its_games_layout() {
     let _ = std::fs::remove_dir_all(&data);
 }
 
-/// A widget's right-click opens the one menu on its character at the page
-/// that governs it, and the Keys menu at Hydra's Keys page (`plan/50` §7
-/// step 8).
+/// A bar's right-click opens the one menu on its character at the bar's own
+/// page, where a change is made in the character's layout; the Keys menu
+/// opens it at Hydra's Keys page (`plan/50` §7 step 8, as the author
+/// corrected it).
 #[test]
 fn a_play_window_opens_the_menu_where_it_is_set() {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -482,14 +484,37 @@ fn a_play_window_opens_the_menu_where_it_is_set() {
         .with_size((1200.0, 900.0))
         .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
     harness.run();
-    harness.get_by_label("Left: ?").click_secondary();
+    // The play window's, drawn after the hub card's.
+    if let Some(bar) = harness.get_all_by_label_contains("HP ").last() {
+        bar.click_secondary();
+    }
     harness.run();
     harness.get_by_label("Settings...").click();
     harness.run();
     let ashryn = format!("{}:Ashryn", cena_session::DEFAULT_GAME_CODE);
     assert!(harness.state().menu.open);
     assert_eq!(harness.state().menu.character(), Some(ashryn.as_str()));
-    assert_eq!(harness.state().menu.page(), Some("loot"));
+    let page = harness
+        .state()
+        .menu
+        .page()
+        .map(str::to_owned)
+        .unwrap_or_default();
+    assert!(page.starts_with("widget:"), "{page}");
+
+    // A change on it is made in the character's layout.
+    harness.state_mut().menu_asked(MenuAsked::Widget {
+        page: page.clone(),
+        key: "fills".to_owned(),
+        to: Some("up".to_owned()),
+    });
+    let pages = harness.state().plays[&0].play.widget_pages(&[]);
+    let fills = pages
+        .iter()
+        .find(|found| found.id == page)
+        .and_then(|found| found.rows.iter().find(|row| row.key == "fills"))
+        .map(|row| row.value.clone());
+    assert_eq!(fills, Some(cena_ui::settings::Value::Text("up".to_owned())));
 
     harness.state_mut().menu.open = false;
     harness.run();

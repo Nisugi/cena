@@ -41,6 +41,17 @@ pub enum MenuAsked {
     },
     /// A change to the keybinds, which the window writes.
     Key(KeyChange),
+    /// A change on a widget's own page, which its play window makes to its
+    /// layout: the character is the one the menu shows.
+    Widget {
+        /// The page's id.
+        page: String,
+        /// The row's key.
+        key: String,
+        /// Its value, written as the menu writes it; `None` puts it back
+        /// to the kind's own.
+        to: Option<String>,
+    },
 }
 
 /// What a row asks for.
@@ -85,6 +96,9 @@ pub struct MenuView<'a> {
     pub own: &'a [Page],
     /// The keybinds, for the *Keys* page.
     pub keys: KeysView<'a>,
+    /// The pages of the widgets in the shown character's play window: each
+    /// widget's own, which its right-click opens.
+    pub widgets: &'a [Page],
 }
 
 /// A roster character's name for the binary: `GAME:Name`.
@@ -158,13 +172,18 @@ impl Menu {
             self.typed.clear();
             asked = Some(MenuAsked::Binary(HubRequest::Settings(character.clone())));
         }
-        let pages = match view.pages {
+        let theirs = match view.pages {
             Some((whose, pages)) if whose == character => pages,
             _ => {
                 ui.weak("Reading the settings...");
-                return asked;
+                &[]
             }
         };
+        if theirs.is_empty() && view.widgets.is_empty() {
+            return asked;
+        }
+        // The binary's pages, then the play window's widgets' own.
+        let pages: Vec<&Page> = theirs.iter().chain(view.widgets).collect();
         let titles: Vec<(&str, &str)> = pages
             .iter()
             .map(|page| (page.id.as_str(), page.title.as_str()))
@@ -180,7 +199,15 @@ impl Menu {
                     && let Some(change) = self.page_drawn(ui, &character, page)
                 {
                     self.note = None;
-                    asked = Some(MenuAsked::Binary(HubRequest::Change(change)));
+                    asked = Some(if page.id.starts_with("widget:") {
+                        MenuAsked::Widget {
+                            page: change.page,
+                            key: change.key,
+                            to: change.to,
+                        }
+                    } else {
+                        MenuAsked::Binary(HubRequest::Change(change))
+                    });
                 }
             });
         });
@@ -362,6 +389,26 @@ impl Menu {
                     wanted = Some(Wanted::Set(if on { "on" } else { "off" }.to_owned()));
                 }
             }
+            (RowKind::Choice(choices), value) => {
+                let now = shown(value);
+                ui.horizontal_wrapped(|ui| {
+                    for (choice, called) in choices {
+                        if ui.selectable_label(now == *choice, called).clicked() && now != *choice {
+                            wanted = Some(Wanted::Set(choice.clone()));
+                        }
+                    }
+                });
+            }
+            (RowKind::Color, value) => {
+                let mut rgb = rgb(&shown(value)).unwrap_or([0x80, 0x80, 0x80]);
+                let picked = ui.color_edit_button_srgb(&mut rgb);
+                picked.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::ColorButton, true, &row.label)
+                });
+                if picked.changed() {
+                    wanted = Some(Wanted::Set(hex(rgb)));
+                }
+            }
             (RowKind::Map, value) => {
                 let shown = match value {
                     Value::Map(pairs) if !pairs.is_empty() => pairs
@@ -474,8 +521,27 @@ pub fn typed(kind: &RowKind, text: &str) -> Result<String, String> {
                 .collect();
             Ok(format!("[{}]", words.join(", ")))
         }
-        RowKind::Toggle | RowKind::Map => Err("changed another way".to_owned()),
+        RowKind::Toggle | RowKind::Map | RowKind::Choice(_) | RowKind::Color => {
+            Err("changed another way".to_owned())
+        }
     }
+}
+
+/// A colour written `#rrggbb`, as a colour row holds it.
+#[must_use]
+pub fn rgb(written: &str) -> Option<[u8; 3]> {
+    let digits = written.trim().strip_prefix('#')?;
+    if digits.len() != 6 {
+        return None;
+    }
+    let byte = |at: usize| u8::from_str_radix(digits.get(at..at + 2)?, 16).ok();
+    Some([byte(0)?, byte(2)?, byte(4)?])
+}
+
+/// A colour as a colour row writes it: `#rrggbb`.
+#[must_use]
+pub fn hex([red, green, blue]: [u8; 3]) -> String {
+    format!("#{red:02x}{green:02x}{blue:02x}")
 }
 
 /// `text` as a TOML string: in quotes, a quote or a backslash in it escaped.

@@ -310,7 +310,7 @@ pub(super) fn pulse(
     ui: &mut egui::Ui,
     state: Option<&GameState>,
     name: &str,
-    look: Option<crate::bar::Look>,
+    look: Option<&crate::bar::Look>,
 ) {
     let now = state.and_then(GameState::game_time_now);
     let (label, percent) = pulse_said(
@@ -323,10 +323,7 @@ pub(super) fn pulse(
         current: None,
         max: None,
     });
-    let mut drawn = Bar::new(&label, amount).fill(PULSE);
-    if let Some(look) = look {
-        drawn = drawn.look(look);
-    }
+    let drawn = super::draw::as_looks(ui, Bar::new(&label, amount).fill(PULSE), look);
     ui.add(drawn.fitted(ui));
 }
 

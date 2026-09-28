@@ -691,25 +691,30 @@ fn world_events_say_where_and_how_long() {
     assert!(listed(&[]).query_by_label("No world events.").is_some());
 }
 
-/// A widget a setting governs names its page in the settings menu, a page
-/// there is; one nothing governs names none (`plan/50` §7 step 8).
+/// A bar's overlay is an image the player puts in the data folder: read
+/// from its path and kept; a path with nothing there gives none, and the bar
+/// is drawn bare.
 #[test]
-fn a_widget_names_the_page_that_governs_it() {
-    use crate::widget::kind::Widget;
-    let pages = [
-        "general", "heal", "loot", "travel", "hunt:", "keep", "sc", "record",
-    ];
-    assert_eq!(Widget::Story.settings_page(), Some("general"));
-    assert_eq!(Widget::Health.settings_page(), Some("heal"));
-    assert_eq!(Widget::Exits.settings_page(), Some("travel"));
-    assert_eq!(Widget::Hunt.settings_page(), Some("hunt:"));
-    assert_eq!(Widget::Spellbook.settings_page(), Some("sc"));
-    assert_eq!(Widget::Combat.settings_page(), Some("record"));
-    assert_eq!(Widget::Mana.settings_page(), None);
-    assert_eq!(Widget::GameState.settings_page(), None);
-    for widget in Widget::all() {
-        if let Some(page) = widget.settings_page() {
-            assert!(pages.contains(&page), "{widget:?}: {page}");
-        }
-    }
+fn an_overlay_is_read_from_its_file() {
+    let dir = std::env::temp_dir().join(format!("cena-overlay-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("made");
+    let png = dir.join("gloss.png");
+    image::RgbaImage::from_pixel(4, 2, image::Rgba([255, 255, 255, 128]))
+        .save(&png)
+        .expect("written");
+    let path = png.display().to_string();
+    let missing = dir.join("none.png").display().to_string();
+    let mut harness = Harness::new_ui_state(
+        move |ui, found: &mut (bool, bool)| {
+            *found = (
+                super::draw::overlay(ui, &path).is_some(),
+                super::draw::overlay(ui, &missing).is_some(),
+            );
+        },
+        (false, false),
+    );
+    harness.run();
+    assert_eq!(*harness.state(), (true, false));
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -781,7 +781,9 @@ bundle on macOS, a `.desktop` entry on Linux.
 
 - Pause, Scroll Lock and macOS's Clear: the egui fork's key hook widened, the author's to
   make (`plan/47` step 7).
-- A bar's options saved: a widget's options (Stage A) are saved with the layout.
+- ~~A bar's options saved~~ **BUILT 2026-09-28**: a bar widget's look (fill direction, text
+  place and words, colour, overlay) on its own page in the settings menu, saved with the
+  layout (`plan/50` §7 step 8, as the author corrected it).
 - CI's first run on macOS and Linux (`plan/47` step 9), which needs a pull request.
 
 ---

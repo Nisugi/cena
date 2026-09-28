@@ -21,6 +21,7 @@ struct Board {
     bound: Vec<(String, String)>,
     numpad_always: bool,
     numpad: Option<String>,
+    widgets: Vec<Page>,
     asked: Vec<MenuAsked>,
 }
 
@@ -40,6 +41,7 @@ impl Board {
                 said: &[],
                 numpad: self.numpad.as_deref(),
             },
+            widgets: &self.widgets,
         };
         if let Some(request) = self.menu.show(ui, &view) {
             self.asked.push(request);
@@ -720,4 +722,67 @@ fn a_way_in_opens_the_menu_at_its_page() {
         .open_at(Some("GS3:Nisugi".to_owned()), Some("hunt:"));
     harness.run();
     assert_eq!(harness.state().menu.page(), Some("hunt:ojandhaart"));
+}
+
+/// A widget's own page, from its play window, sits after the character's
+/// others; a choice and a colour are drawn as such, and a change on it is
+/// asked of the window, not the binary.
+#[test]
+fn a_widget_page_is_asked_of_its_window() {
+    let health = page(
+        "widget:3",
+        "Health (Vitals)",
+        vec![
+            row(
+                "fills",
+                "Fills",
+                RowKind::Choice(vec![
+                    ("right".to_owned(), "Across, from the left".to_owned()),
+                    ("up".to_owned(), "Upright, from the bottom".to_owned()),
+                ]),
+                Value::Text("right".to_owned()),
+                false,
+            ),
+            row(
+                "color",
+                "Colour",
+                RowKind::Color,
+                Value::Text("#cd4d4d".to_owned()),
+                false,
+            ),
+        ],
+    );
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        pages: Some(("GS3:Nisugi".to_owned(), pages())),
+        widgets: vec![health],
+        ..Board::default()
+    };
+    board
+        .menu
+        .open_at(Some("GS3:Nisugi".to_owned()), Some("widget:3"));
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    assert!(harness.query_by_label("Heal").is_some(), "the others too");
+    assert_eq!(
+        harness.query_all_by_label("Colour").count(),
+        2,
+        "the row's name, and its colour button"
+    );
+    harness.get_by_label("Upright, from the bottom").click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [
+            MenuAsked::Binary(HubRequest::Settings("GS3:Nisugi".to_owned())),
+            MenuAsked::Widget {
+                page: "widget:3".to_owned(),
+                key: "fills".to_owned(),
+                to: Some("up".to_owned()),
+            }
+        ],
+        "the character's pages asked for on opening, then the change of the window"
+    );
 }

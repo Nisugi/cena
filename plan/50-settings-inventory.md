@@ -532,3 +532,30 @@ Claude's order, each step shippable and committed on its own:
    - *Claude's call, for the author to change:* which widget opens which page.
    - *Checked:* 9 mutants over the mapping, the menu item, the Keys menu, the page opening
      and the app's wiring, all caught.
+
+   > **CORRECTED by the author, 2026-09-28**, after running it: *"on health bar takes you to
+   > the heal behavior settings? It should take you to settings to edit that bar, is it
+   > horizontal or vertical, is the text inside it or outside it, is it just a percent, or
+   > just current/max, or text label plus numbers, or any combination, what color is it?
+   > what overlay am I using (if I want one)."* The table above is retired.
+   >
+   > A widget's right-click *Settings...* now opens the one menu at **that widget's own
+   > page** (`crates/cena-gui/src/play/options.rs`). The pages come from the play window's
+   > layout, listed after the character's other pages, and a change is made in the layout
+   > and saved with it.
+   >
+   > A bar's page (the four vitals and the pulse) holds its `Look`:
+   > - which way it fills;
+   > - where its text goes;
+   > - whether it says its label, current/max and percent, in any mix;
+   > - its colour;
+   > - an overlay: any PNG in the data folder's `overlays`, stretched over it.
+   >
+   > The menu gained a choice row and a colour row (`RowKind::Choice`, `RowKind::Color`). A
+   > widget with no settings of its own offers no *Settings...*. A framed, nine-slice overlay
+   > needs each image's border sizes, and waits for skins (`plan/49` Stage F). The room's
+   > own page, choosing and joining its parts, is next.
+   >
+   > Checked: 8 mutants over the pages, the menu and the app's wiring, 7 caught once a test
+   > saved a change with the layout. Not tested: the colour button itself asking, egui's
+   > own picker, which the harness cannot drive. It is one line, `if picked.changed()`.

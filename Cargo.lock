@@ -506,6 +506,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui_kittest",
+ "image",
  "log",
  "serde",
  "serde_json",

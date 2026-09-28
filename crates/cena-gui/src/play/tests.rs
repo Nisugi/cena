@@ -152,15 +152,24 @@ fn stop_asks_to_stop() {
     assert_eq!(harness.state().asked, [Asked::Stop]);
 }
 
-/// A widget's right-click opens the settings menu at the page that governs
-/// it (`plan/50` §7 step 8): the hunt panel's is the first hunt page; the
-/// Keys menu opens Hydra's Keys page.
+/// A bar's right-click opens its own page in the settings menu (the
+/// author, 2026-09-28: *"It should take you to settings to edit that
+/// bar"*); a widget with no settings of its own offers none. The Keys menu
+/// opens Hydra's Keys page.
 #[test]
-fn a_widget_opens_the_settings_where_it_is_set() {
+fn a_widget_opens_its_own_settings() {
     let mut harness = harness();
     harness
         .get_by_label("Waiting: mana 30%, wants 50%")
         .click_secondary();
+    harness.run();
+    assert!(
+        harness.query_by_label("Settings...").is_none(),
+        "the hunt panel has none"
+    );
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    harness.get_by_label_contains("HP ").click_secondary();
     harness.run();
     harness.get_by_label("Settings...").click();
     harness.run();
@@ -168,9 +177,10 @@ fn a_widget_opens_the_settings_where_it_is_set() {
     harness.run();
     harness.get_by_label("Change the keys...").click();
     harness.run();
-    assert_eq!(
-        harness.state().asked,
-        [Asked::Settings(Some("hunt:")), Asked::Keys]
+    let asked = &harness.state().asked;
+    assert!(
+        matches!(&asked[..], [Asked::Settings(Some(page)), Asked::Keys] if page.starts_with("widget:")),
+        "{asked:?}"
     );
 }
 

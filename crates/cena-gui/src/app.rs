@@ -31,7 +31,7 @@ use crate::own::Own;
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
 use crate::widget::Character;
-use crate::{Hub, KeysView, Menu, MenuAsked, MenuView, Sessions};
+use crate::{Hub, Menu, Sessions};
 
 /// The window's title: the product's name (`CLAUDE.md`: anything
 /// user-facing is Hydra, not the working name).
@@ -192,80 +192,13 @@ impl App {
                         .iter()
                         .find(|card| card.character.eq_ignore_ascii_case(&seat.name))
                         .map(crate::menu::roster_name);
-                    self.menu.open_at(name, page);
+                    self.menu.open_at(name, page.as_deref());
                 }
                 Some(Asked::Keys) => self.menu.open_at(None, Some("keys")),
                 _ => {}
             }
         }
         self.settings(ui.ctx(), &glance);
-    }
-
-    /// The settings menu, in a window of its own, while it is open
-    /// (`plan/50` §7 step 1).
-    fn settings(&mut self, context: &egui::Context, glance: &crate::sessions::Glance) {
-        if !self.menu.open {
-            return;
-        }
-        let own = [self.own.page()];
-        let bound = self.keys.listed();
-        let view = MenuView {
-            roster: &glance.roster,
-            pages: glance
-                .settings
-                .as_ref()
-                .map(|(whose, pages)| (whose.as_str(), pages.as_slice())),
-            said: glance.said.as_ref().map(|(said, _)| said.as_str()),
-            own: &own,
-            keys: KeysView {
-                bound: &bound,
-                numpad_always: self.keys.numpad_always,
-                said: &self.keys_said,
-                numpad: self.numpad_for_menu.as_deref(),
-            },
-        };
-        let menu = &mut self.menu;
-        let (asked, closed) = context.show_viewport_immediate(
-            egui::ViewportId::from_hash_of("settings"),
-            egui::ViewportBuilder::default()
-                .with_title(format!("Settings — {TITLE}"))
-                .with_inner_size([760.0, 560.0]),
-            |ui, _class| {
-                let closed = ui.input(|input| input.viewport().close_requested());
-                (menu.show(ui, &view), closed)
-            },
-        );
-        if closed {
-            self.menu.open = false;
-        }
-        if let Some(asked) = asked {
-            self.menu_asked(asked);
-        }
-    }
-
-    /// Do what the settings menu asked: the binary's through it, Hydra's
-    /// own and the keybinds here, saying what was done.
-    fn menu_asked(&mut self, asked: MenuAsked) {
-        let said = match asked {
-            MenuAsked::Binary(request) => return self.sessions.ask(request),
-            MenuAsked::Own { key, to } => {
-                let said = self.own.change(&key, to.as_deref());
-                self.hub.card_width = self.own.card_width();
-                said
-            }
-            MenuAsked::Key(change) => {
-                let data = self.keys_file.as_deref().and_then(std::path::Path::parent);
-                let said = data.map_or_else(
-                    || Err("Keys: nothing is kept here.".to_owned()),
-                    |data| keys::write::apply(data, &change),
-                );
-                if said.is_ok() {
-                    self.read_keys();
-                }
-                said
-            }
-        };
-        self.menu.tell(said.unwrap_or_else(|why| why));
     }
 
     /// A window for each seat new since the last frame, open; none for a
@@ -508,5 +441,6 @@ pub fn run(sessions: Sessions) -> eframe::Result {
     )
 }
 
+mod settings;
 #[cfg(test)]
 mod tests;
