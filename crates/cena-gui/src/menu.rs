@@ -390,13 +390,28 @@ impl Menu {
                 }
             }
             (RowKind::Choice(choices), value) => {
+                // A list that drops down: the choices side by side wrapped in
+                // the value's narrow column, a letter to a line (the author,
+                // 2026-09-28: *"vitals settings menu is busted looking"*).
                 let now = shown(value);
-                ui.horizontal_wrapped(|ui| {
-                    for (choice, called) in choices {
-                        if ui.selectable_label(now == *choice, called).clicked() && now != *choice {
-                            wanted = Some(Wanted::Set(choice.clone()));
+                let called = choices
+                    .iter()
+                    .find(|(choice, _)| *choice == now)
+                    .map_or(now.as_str(), |(_, called)| called.as_str());
+                let dropped = egui::ComboBox::from_id_salt(("settings-choice", &page.id, &row.key))
+                    .selected_text(called)
+                    .show_ui(ui, |ui| {
+                        for (choice, called) in choices {
+                            if ui.selectable_label(now == *choice, called).clicked()
+                                && now != *choice
+                            {
+                                wanted = Some(Wanted::Set(choice.clone()));
+                            }
                         }
-                    }
+                    });
+                // It shows its choice; a screen reader hears the row's name.
+                dropped.response.widget_info(|| {
+                    egui::WidgetInfo::labeled(egui::WidgetType::ComboBox, true, &row.label)
                 });
             }
             (RowKind::Color, value) => {

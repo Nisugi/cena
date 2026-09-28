@@ -771,6 +771,14 @@ fn a_widget_page_is_asked_of_its_window() {
         2,
         "the row's name, and its colour button"
     );
+    assert!(
+        harness.query_by_label("Upright, from the bottom").is_none(),
+        "the choices drop down, not all shown at once"
+    );
+    harness
+        .get_by_role_and_label(Role::ComboBox, "Fills")
+        .click();
+    harness.run();
     harness.get_by_label("Upright, from the bottom").click();
     harness.run();
     assert_eq!(
@@ -785,4 +793,84 @@ fn a_widget_page_is_asked_of_its_window() {
         ],
         "the character's pages asked for on opening, then the change of the window"
     );
+}
+
+/// A bar's page as a player sees it, each choice one line that drops down
+/// (the author, 2026-09-28: *"vitals settings menu is busted looking"*),
+/// rendered and compared with the committed image.
+#[test]
+fn a_bars_page_as_drawn() {
+    let choice = |named: &[(&str, &str)]| {
+        RowKind::Choice(
+            named
+                .iter()
+                .map(|(value, called)| ((*value).to_owned(), (*called).to_owned()))
+                .collect(),
+        )
+    };
+    let on = |key: &str, label: &str| row(key, label, RowKind::Toggle, Value::On(true), false);
+    let mana = page(
+        "widget:4",
+        "Mana (Vitals)",
+        vec![
+            row(
+                "fills",
+                "Fills",
+                choice(&[
+                    ("right", "Across, from the left"),
+                    ("left", "Across, from the right"),
+                    ("up", "Upright, from the bottom"),
+                    ("down", "Upright, from the top"),
+                ]),
+                Value::Text("up".to_owned()),
+                true,
+            ),
+            row(
+                "text",
+                "Text",
+                choice(&[
+                    ("inside", "Inside"),
+                    ("above", "Above"),
+                    ("below", "Below"),
+                    ("left", "Left"),
+                    ("right", "Right"),
+                    ("hidden", "None"),
+                ]),
+                Value::Text("inside".to_owned()),
+                false,
+            ),
+            on("label", "Says its label"),
+            on("numbers", "Says current/max"),
+            on("percent", "Says its percent"),
+            row(
+                "color",
+                "Colour",
+                RowKind::Color,
+                Value::Text("#4784d9".to_owned()),
+                false,
+            ),
+            row(
+                "overlay",
+                "Overlay",
+                choice(&[("", "None")]),
+                Value::Text(String::new()),
+                false,
+            ),
+        ],
+    );
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        pages: Some(("GS3:Nisugi".to_owned(), pages())),
+        widgets: vec![mana],
+        ..Board::default()
+    };
+    board
+        .menu
+        .open_at(Some("GS3:Nisugi".to_owned()), Some("widget:4"));
+    let mut harness = Harness::builder()
+        .with_size((760.0, 360.0))
+        .wgpu()
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    harness.snapshot("settings_bar");
 }
