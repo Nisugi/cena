@@ -303,3 +303,35 @@ Quoted as given. *Reading* marks Claude's understanding where the answer leaves 
 The hub's own changes, from the same session, are in `plan/49` Stage C's revision. Among
 them, the card width is a setting to keep once there is somewhere to keep it (Hydra's
 scope).
+
+---
+
+## 7. The steps, set when the author said *"stage d!"* (2026-09-27)
+
+Claude's order, each step shippable and committed on its own:
+
+1. **The menu, and the first pages.**
+   - *The description.* The pages a frontend draws are described in `cena-ui`: a page, its
+     rows, each row's kind, its value in effect, where that came from, whether it is saved,
+     and when it takes effect.
+   - *The one menu.* A Settings button on the hub and on each play window opens it. A
+     character is picked by roster name (`GAME:Name`), running or not.
+   - *The writer.* The binary builds the pages from each behavior's key table and applies a
+     change through the same writer its `;` command uses (`cena/src/hunt/settings.rs`).
+   - *The first pages:* Heal and Waggle, then Keep and Spellcaster.
+   - *A test* that holds each table to its profile's fields, as VellumFE's registry test
+     does.
+2. **Hydra's own page**, kept in the window's own file: the card width, and closing a play
+   window when its session closes (§6 item 11, off). Also the **Keys** page: keybinds for
+   every character, edited with a key pressed rather than typed.
+3. **The character's General page:** the command symbol, the player-log feeds, the sorter
+   (saved), and recording per kind (off until turned on, then kept on). The settings file
+   gets its writer, and `--record` and `--no-record` retire.
+4. **Travel**, typed: the keys the code reads, and the map's own keys as a free list.
+5. **Loot**, the loot profile's page.
+6. **Hunt:** first the chain in effect, each value with where it came from; then its pages,
+   one per table, with *check* beside *save*.
+7. **Layouts by game and name**, a name-only layout taken as the first. Then **the fixed
+   data folder**, the player's own application-data folder, the old `data` copied into it
+   once and left with a note.
+8. **The ways in:** a widget's right-click opens the one menu at its setting.
