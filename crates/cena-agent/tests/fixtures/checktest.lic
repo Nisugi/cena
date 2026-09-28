@@ -27,3 +27,5 @@ echo level, task, there
 Walktest::Stride.new
 echo Stats.level, Skills.edged_weapons, CMan.known?('bearhug'), Wounds.head, Resources.weekly
 Infomon.sync
+leader = Group::Leader
+Skills.trading = 5

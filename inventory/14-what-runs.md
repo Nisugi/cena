@@ -3,9 +3,10 @@
 The answer to *"does my script run under Hydra?"*, script by script, for both collections
 `inventory/13` measured, made by Hydra's own checker (`plan/46` §1, §11 step 5; the author, §10
 question 10: *"yes"*, ship it). The lists are the two TSVs beside this file; the tables below come
-from them. Made 2026-09-27.
+from them. Made 2026-09-27 after step 5, and again the same day after step 7, the character's
+sheet.
 
-**What it measures is the runner as built**, through step 4: Lich's engine and Hydra's edges,
+**What it measures is the runner as built**, through step 7: Lich's engine and Hydra's edges,
 exactly as a runner loads them. `inventory/13` §3.3 asked a different question, which scripts
 *could* run once Hydra answers what they need, and counted the model half of Lich's API as
 answered because Hydra's model holds it. This counts it as answered only when a script can
@@ -46,32 +47,44 @@ cannot read. Those stop the script under Lich 5.21 as well, which also runs on R
 
 | Verdict | A files | A lines | B files | B lines |
 |---|---:|---:|---:|---:|
-| runs | 82 (34.7%) | 34477 (18.8%) | 1254 (58.9%) | 201732 (23.7%) |
-| differs | 1 (0.4%) | 66 (0.0%) | 10 (0.5%) | 4679 (0.6%) |
-| markup | 12 (5.1%) | 4893 (2.7%) | 103 (4.8%) | 41750 (4.9%) |
-| windows | 16 (6.8%) | 11762 (6.4%) | 55 (2.6%) | 56139 (6.6%) |
-| stops | 125 (53.0%) | 131989 (72.1%) | 708 (33.2%) | 546248 (64.2%) |
+| runs | 94 (39.8%) | 41741 (22.8%) | 1358 (63.8%) | 224249 (26.4%) |
+| differs | 1 (0.4%) | 66 (0.0%) | 12 (0.6%) | 8434 (1.0%) |
+| markup | 13 (5.5%) | 5141 (2.8%) | 129 (6.1%) | 64152 (7.5%) |
+| windows | 17 (7.2%) | 12981 (7.1%) | 67 (3.1%) | 67921 (8.0%) |
+| stops | 111 (47.0%) | 123258 (67.3%) | 564 (26.5%) | 485792 (57.1%) |
 
-So **35% of A and 59% of B run today**, 1 and 10 more with a difference. `inventory/13`
+So **40% of A and 64% of B run today** (35% and 59% before step 7), 1 and 12 more with a difference. `inventory/13`
 §3.3's 76% and 87% were the ceiling once Hydra answers everything it plans to; this is the floor
-as built. As there, the big scripts are the blocked ones: by lines, 19% of A runs.
+as built. As there, the big scripts are the blocked ones: by lines, 23% of A runs.
 
 ## What Hydra has to answer, in the order that runs the most scripts
 
-Of the scripts that do not run (A 153, B 866), those whose every finding is Hydra's to answer
-(A 130, B 654), by what each needs. Greedy: at each step the gap whose answer lets the most scripts run, then the
+Of the scripts that do not run (A 142, B 772), those whose every finding is Hydra's to answer
+(A 125, B 574), by what each needs. Greedy: at each step the gap whose answer lets the most scripts run, then the
 one most needed; the percentages count every script, those already running included.
 
 | # | Gap | A: needing it | A: running after | B: needing it | B: running after |
 |---:|---|---:|---:|---:|---:|
-| 1 | the game's markup | 39 | 95 (40.3%) | 196 | 1362 (63.9%) |
-| 2 | Lich's windows (Gtk) | 35 | 111 (47.0%) | 122 | 1422 (66.8%) |
-| 3 | Spell#cast | 24 | 117 (49.6%) | 156 | 1501 (70.5%) |
-| 4 | Lich::Util | 34 | 136 (57.6%) | 75 | 1544 (72.5%) |
-| 5 | Stats | 19 | 140 (59.3%) | 90 | 1562 (73.3%) |
-| 6 | Skills | 22 | 146 (61.9%) | 102 | 1589 (74.6%) |
-| 7 | Spells | 6 | 147 (62.3%) | 57 | 1626 (76.3%) |
-| 8 | Spell#active | 0 | 147 (62.3%) | 20 | 1643 (77.1%) |
+| 1 | the game's markup | 38 | 108 (45.8%) | 192 | 1490 (70.0%) |
+| 2 | Spell#cast | 26 | 115 (48.7%) | 158 | 1585 (74.4%) |
+| 3 | Lich's windows (Gtk) | 37 | 136 (57.6%) | 124 | 1674 (78.6%) |
+| 4 | Lich::Util | 35 | 158 (66.9%) | 76 | 1736 (81.5%) |
+| 5 | Spell#active | 0 | 158 (66.9%) | 20 | 1753 (82.3%) |
+| 6 | Map.dijkstra | 7 | 159 (67.4%) | 33 | 1767 (83.0%) |
+| 7 | Map.list | 25 | 162 (68.6%) | 53 | 1777 (83.4%) |
+| 8 | Room#find_nearest | 13 | 164 (69.5%) | 47 | 1793 (84.2%) |
+| 9 | Room#find_nearest_by_tag | 9 | 165 (69.9%) | 26 | 1809 (84.9%) |
+| 10 | StringProc | 7 | 167 (70.8%) | 29 | 1821 (85.5%) |
+| 11 | XMLData.bounty_task | 1 | 168 (71.2%) | 11 | 1830 (85.9%) |
+| 12 | Map.ids_from_uid | 15 | 175 (74.2%) | 3 | 1832 (86.0%) |
+| 13 | Room#path_to | 9 | 176 (74.6%) | 17 | 1838 (86.3%) |
+| 14 | Group | 5 | 176 (74.6%) | 5 | 1843 (86.5%) |
+| 15 | StowList | 5 | 179 (75.8%) | 2 | 1845 (86.6%) |
+| 16 | Log | 5 | 183 (77.5%) | 1 | 1846 (86.7%) |
+| 17 | Room#find_all_nearest_by_tag | 2 | 184 (78.0%) | 9 | 1849 (86.8%) |
+| 18 | Map.tags | 3 | 185 (78.4%) | 7 | 1852 (86.9%) |
+| 19 | Map.estimate_time | 1 | 186 (78.8%) | 5 | 1855 (87.1%) |
+| 20 | XMLData.stow_container_id | 0 | 186 (78.8%) | 5 | 1859 (87.3%) |
 | 9 | Map.dijkstra | 7 | 147 (62.3%) | 33 | 1656 (77.7%) |
 | 10 | Map.list | 25 | 150 (63.6%) | 53 | 1665 (78.2%) |
 | 11 | Room#find_nearest | 13 | 151 (64.0%) | 47 | 1679 (78.8%) |
@@ -85,16 +98,20 @@ one most needed; the percentages count every script, those already running inclu
 | 19 | XMLData.level | 3 | 161 (68.2%) | 17 | 1780 (83.6%) |
 | 20 | Map.ids_from_uid | 15 | 168 (71.2%) | 3 | 1782 (83.7%) |
 
-The first two are decisions. **The game's markup** is `plan/46` §6.2's, taken: labelled data
-first, a copy of the game's bytes if that is not enough, never faked tags. **Lich's windows are loaded
-for now** (the author, 2026-09-27: *"sure for now we will load gtk, but we will probably not use
-gtk on release"*): the runner loads the gtk3 gem when Hydra lets it and the player has it, and
-these scripts open their windows. They are still counted here, since a release may not load it,
-and it is not cheap (`plan/46` §9). The rest are reads Hydra's model already holds
-(`inventory/13` §2.5: `Stats`, `Skills`, `Spells`, `Wounds`, `Scars`, `Effects`, `Society`,
-`XMLData`'s fields) or acts it already performs (`Spell#cast` is the casting step,
-`plan/37` Stage 3; `Map.dijkstra` and `find_nearest` are travel's), not yet given Lich's names in
-the runner.
+Two are decisions. **The game's markup** is `plan/46` §6.2's, taken: labelled data first, a copy
+of the game's bytes if that is not enough, never faked tags. **Lich's windows are loaded for now**
+(the author, 2026-09-27: *"sure for now we will load gtk, but we will probably not use gtk on
+release"*): the runner loads the gtk3 gem when Hydra lets it and the player has it, and these
+scripts open their windows. They are still counted here, since a release may not load it, and it
+is not cheap (`plan/46` §9).
+
+**Step 7 answered the character's sheet**: `Stats`, `Skills`, `Spells`, `Society`, `Experience`,
+`Resources`, `Currency`, the PSMs, `Effects`, `Wounds`, `Scars` and `XMLData`'s experience, Lich's
+own classes over what Hydra's model reads (`plan/46` §11). It took A from 82 running to 94, as
+forecast, and B from 1,254 to 1,358, against a forecast of 1,377. The rest are acts Hydra already
+performs, not yet given Lich's names (`Spell#cast` is the casting step, `plan/37` Stage 3;
+`Map.dijkstra`, `Map.list` and `find_nearest` are travel's), and `Lich::Util`'s commands, which
+wait on the game's markup: steps 8 to 10, then the markup, step 11.
 
 ## What stops scripts that is their own
 
@@ -102,13 +119,22 @@ INFERRED from the reason each finding gives: these stop the script under Lich 5.
 
 | | A | B |
 |---|---:|---:|
-| scripts with one | 23 | 212 |
-| a name defined nowhere: a typo (`elisf`, `eixt`), a local used out of its scope, a Lich 4 function, or a constant Ruby dropped (`Fixnum`, `TRUE`, `FALSE`: A 4, B 11) | 18 | 146 |
+| scripts with one | 17 | 198 |
+| a name defined nowhere: a typo (`elisf`, `eixt`), a local used out of its scope, a Lich 4 function, or a constant Ruby dropped (`Fixnum`, `TRUE`, `FALSE`: A 4, B 11) | 11 | 119 |
 | a method Ruby 4.0 dropped (`File.exists?` in 29 of B's, `URI.encode`) | 1 | 30 |
+| a method of Lich's class that Lich 5 does not have: an older Lich's setters (`Society.rank=`, `Stats.level=`, `Skills.trading=`) and `Script.find` | 1 | 14 |
 | Ruby cannot read it (among them Lich's own label cut: a comment line `USAGE:` alone is a label to Lich, which cuts a `=begin` block in two) | 0 | 29 |
 | a library not installed here (`Olib`, `nokogiri`, `discordrb`, `win32/clipboard`) | 4 | 13 |
 
 A script can have more than one, so the rows add up to more than the first.
+
+> **CORRECTED 2026-09-27**, after step 7. Step 5's list counted A 23 and B 212 here, and A 18 and
+> B 146 names defined nowhere. Of those, 7 of A's scripts and 30 of B's named a class under
+> Lich's `Effects` (`Effects::Buffs`...) or `PSMS`: Lich's, not the script's, so they
+> belonged on Hydra's list. The checker judged a constant under a Lich class by its last name
+> only; it now judges it by its first too (`bridges/ruby/hydra/check.rb`, `lich_class?`). Step 7
+> loads `Effects`, so these now run or wait on something else. And `Script.find`, which step 5
+> counted as Hydra's to answer, is gone from Lich 5 too.
 
 ## Hand check
 

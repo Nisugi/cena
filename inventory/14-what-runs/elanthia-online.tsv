@@ -1,7 +1,7 @@
 script	lines	verdict	builtin	hydra_answers	its_own
-0net	1781	stops		the game's markup; Spells; Skills; Spell#circlename; Map.list; Stats; XMLData.level; Log	
-absorb	128	stops		XMLData.next_level_text	
-alchemy	3091	stops		the game's markup; Room#find_nearest_by_tag; Map.estimate_time; Room#path_to; Map.list; Skills; Stats	
+0net	1781	stops		the game's markup; Spell#circlename; Map.list; Log	
+absorb	128	runs			
+alchemy	3091	stops		the game's markup; Room#find_nearest_by_tag; Map.estimate_time; Room#path_to; Map.list	
 alias	519	windows		Lich's windows (Gtk)	
 alteration	158	runs			
 arenatimer	88	runs			
@@ -11,23 +11,23 @@ attunecheck	252	stops		Lich::Util
 autoreact	19	runs			
 autostart	456	windows		Lich's windows (Gtk)	
 banditpatrol	137	stops		the game's markup; Bounty; Map.list; Room#find_nearest; Room#path_to	
-bardwag	1008	stops		Spells; Lich's windows (Gtk); the game's markup	a name defined nowhere
+bardwag	1008	stops		Lich's windows (Gtk); the game's markup	a name defined nowhere
 battery	183	stops		Spell.lock_cast; Spell.unlock_cast	
 betazzherb	630	stops		Lich's windows (Gtk); Map.tags; Map.list; Map.dijkstra; Spell#cast	
-bigshot	10422	stops		the game's markup; StringProc; Resources; Map.ids_from_uid; Spell#cast; Effects; Weapon; CMan; Shield; Spell#force_cast; Spell#force_incant; Feat; Spell#force_evoke; Spell#force_channel; Spell.after_stance=; Spell#last_cast; Skills; Stats; Warcry	
-BlackArts	9184	stops		Spell#cast; Effects; Room#dijkstra; Room#find_nearest_by_tag; the game's markup; Map.list; Skills; Map.ids_from_uid; Society; Room#path_to; Wounds; Scars	
+bigshot	10422	stops		the game's markup; StringProc; Map.ids_from_uid; Spell#cast; Spell#force_cast; Spell#force_incant; Spell#force_evoke; Spell#force_channel; Spell.after_stance=; Spell#last_cast	
+BlackArts	9184	stops		Spell#cast; Room#dijkstra; Room#find_nearest_by_tag; the game's markup; Map.list; Map.ids_from_uid; Room#path_to	
 blue-tracker	579	runs			
 bodega	1668	runs			
-boltdf	302	stops		Skills	
+boltdf	302	runs			
 bonuses	164	runs			
 boon	1996	stops		Lich's windows (Gtk); Lich::Util; Spell#cast; the game's markup	
-botcamp	132	stops		Stats	
+botcamp	132	runs			
 bottle	34	runs			
 boxes	207	stops		Spell.lock_cast; Group; Spell.unlock_cast	a library not installed here
 briefcombat	1054	runs			
 bsprofiles	2007	stops		Map.ids_from_uid; Map.list; Lich's windows (Gtk)	
 buff_tracker	158	runs			
-burstcalc	193	stops		Stats; Skills	
+burstcalc	193	runs			
 cake	53	stops		Spell#cast	
 calibrate_creaturebar	1819	windows		Lich's windows (Gtk)	
 cartograph	317	stops		StringProc	
@@ -35,11 +35,11 @@ citizenship2	250	runs
 clearcheckwiz	212	windows		Lich's windows (Gtk)	
 clobber	51	runs			
 cluster	600	runs			
-coin4deed	141	stops		Experience	
+coin4deed	141	runs			
 coins	50	stops		Lich::Util	
 combat_stats	1563	runs			
 CombatLog	564	markup		the game's markup	
-combo	248	stops		Skills; the game's markup	
+combo	248	markup		the game's markup	
 commas	99	runs			
 creaturebar	3155	stops		DB_Store; Lich's windows (Gtk)	
 crits	124	markup		the game's markup	
@@ -50,35 +50,35 @@ discordhook	105	stops			a library not installed here
 diskus	29	runs			
 duskruin_watch	59	runs			
 dyetied	395	stops		Lich::Util	
-ebestiary	2534	stops		Stats	
+ebestiary	2534	runs			
 eboost	229	stops		Lich::Util	
-ebounty	3894	stops		CMan; Experience; Stats; Spell#cast; Lich::Util; Group; StowList; Room#find_nearest_by_tag; Map.ids_from_uid; Skills; Bounty; Map.list; Room#find_nearest; Room#dijkstra; Claim; Effects; Spell#force_evoke	
+ebounty	3894	stops		Spell#cast; Lich::Util; Group; StowList; Room#find_nearest_by_tag; Map.ids_from_uid; Bounty; Map.list; Room#find_nearest; Room#dijkstra; Claim; Spell#force_evoke	
 ecaster	432	stops		Spell#force_cast; Spell#force_incant	
-echild	519	stops		Wounds; Scars; Skills; Room#find_all_nearest_by_tag; Map.ids_from_uid; Room#find_nearest; Watchfor	
-ecleanse	1912	stops		CMan; Feat; Spell#cast; Room#dijkstra; Room#find_nearest_by_tag; ReadyList; Spell#available?; Skills; Map.ids_from_uid	
+echild	519	stops		Room#find_all_nearest_by_tag; Map.ids_from_uid; Room#find_nearest; Watchfor	
+ecleanse	1912	stops		Spell#cast; Room#dijkstra; Room#find_nearest_by_tag; ReadyList; Spell#available?; Map.ids_from_uid	
 ECTracker	372	stops		Lich::Util; the game's markup	
-ecure	1425	stops		Spell#cast; Lich::Util; Skills; Spell#force_incant; Wounds; Scars; Group; Lich's windows (Gtk); Stats	a name defined nowhere
+ecure	1425	stops		Spell#cast; Lich::Util; Spell#force_incant; Group; Lich's windows (Gtk)	
 efamgo2	384	stops		XMLData.familiar_room_title; Map.ids_from_uid; XMLData.familiar_room_description; XMLData.familiar_room_exits; Map.list; Map.dijkstra	
-effect-watcher	80	stops		Log	a name defined nowhere
-effectmon	123	stops		Effects	a name defined nowhere
-eforgery	1945	stops		Lich's windows (Gtk); Map.dijkstra; Util; Lich::Util; CMan	
+effect-watcher	80	stops		Log	
+effectmon	123	runs			
+eforgery	1945	stops		Lich's windows (Gtk); Map.dijkstra; Lich::Util	
 eg_docent	558	stops		Map.list; Lich::Util	
 egemhoarder	1040	markup		the game's markup	
-eherbs	3639	stops		Society; Spell#cast; Room#find_nearest_by_tag; Wounds; Map.list; Scars; the game's markup	
+eherbs	3639	stops		Spell#cast; Room#find_nearest_by_tag; Map.list; the game's markup	
 ejoustsmart	306	stops		Map.ids_from_uid	
 elogin	835	runs			
-eloot	8111	stops		the game's markup; Map.list; ReadyList; Stats; Lich::Util; StowList; Bounty; Room#path_to; Map.ids_from_uid; Disk; Group; Spell#cast; CMan; Room#find_nearest_by_tag; Room#dijkstra; Wounds; Scars; Room#find_nearest; Effects	
+eloot	8111	stops		the game's markup; Map.list; ReadyList; Lich::Util; StowList; Bounty; Room#path_to; Map.ids_from_uid; Disk; Group; Spell#cast; Room#find_nearest_by_tag; Room#dijkstra; Room#find_nearest	
 elore	861	runs			
 enhancives	442	stops		DB_Store; Lich::Util; the game's markup	
 enhdetect	100	stops		Lich::Util	
 eohunter	1	runs			
-escortgo2	1641	stops		Spell.lock_cast; Spell.unlock_cast; Wounds; Scars; Map.dijkstra; Map.list; Lich::Util; Room#find_nearest_by_tag	
-ewaggle	1796	stops		Society; Armor; Spell.list; Lich's windows (Gtk); Effects; Lich::Util; $infomon_debug; Feat; Spell#cast; Stats; Skills	
+escortgo2	1641	stops		Spell.lock_cast; Spell.unlock_cast; Map.dijkstra; Map.list; Lich::Util; Room#find_nearest_by_tag	
+ewaggle	1796	stops		Spell.list; Lich's windows (Gtk); Lich::Util; $infomon_debug; Spell#cast	
 ewander	557	stops		the game's markup; Claim	
 ewatchdog	66	differs		$_IDLETIMESTAMP_	
 exchange	774	markup		the game's markup	
 experfect	193	runs			
-familiar	133	stops		Effects; Spell#cast	
+familiar	133	stops		Spell#cast	
 flarelog	837	stops		CritRanks	
 fletchit	2144	stops		Lich::Util; the game's markup; Lich's windows (Gtk)	
 foreach	2192	stops		Map.get_location; a hook matching markup; the game's markup	
@@ -90,20 +90,20 @@ gemshop	38	runs
 gemsort2	606	runs			
 gemtracker	1518	runs			
 give	100	stops		Log	a library not installed here
-go2	2517	stops	yes	the game's markup; Stats; Society; StringProc; Room#find_nearest; Room#path_to; Map.list; Room#find_all_nearest_by_tag; Spell#cast	
+go2	2517	stops	yes	the game's markup; StringProc; Room#find_nearest; Room#path_to; Map.list; Room#find_all_nearest_by_tag; Spell#cast	
 goshop	432	stops		Lich::Util; the game's markup	
 grep	124	runs			
 group	194	stops		Lich::Util	
 guidebook	191	stops		Map.ids_from_uid; Map.list; Lich::Util	
 hands_and_room	142	windows		Lich's windows (Gtk)	
 heal_spellup	285	windows		Lich's windows (Gtk)	
-healbot_actions	468	stops		Skills	
+healbot_actions	468	runs			
 healbot_core	206	runs			
 herbhunt	182	runs			
 holdhands	254	runs			
 hud_bounty	281	stops		Log	
 inbox	166	runs			
-infomon	1514	stops		Stats; Skills; Spells; Society; Spellsong; Spell.list; Spell#putdown; $infomon_debug; Spell.upmsgs; Spell.dnmsgs; the game's markup; Spell#putup; Spell#timeleft=; Spell#minsleft; Spell#remaining	
+infomon	1514	stops		Spellsong; Spell.list; Spell#putdown; $infomon_debug; Spell.upmsgs; Spell.dnmsgs; the game's markup; Spell#putup; Spell#timeleft=; Spell#minsleft; Spell#remaining	an older Lich's API
 invoker	325	stops		Lich::Util	
 isigils	168	stops		Lich's windows (Gtk); Spell#cast	
 iSigns	182	stops		Lich's windows (Gtk); Spell#cast	
@@ -113,27 +113,27 @@ jbook	164	runs
 jinx	2686	stops		Map.list; Map.reload; Lich's windows (Gtk)	
 junk	37	runs			
 keymaster	369	stops		Lich::Util	
-Killtracker	1249	stops		Stats	
-kswole	394	stops		Feat; Shield; Spell#force_channel	a name defined nowhere
+Killtracker	1249	runs			
+kswole	394	stops		Spell#force_channel	
 ledger	1116	stops		Lich::Util; the game's markup	
 libeo	1	runs			
 lich5-update	444	stops		Lich::Util; the game's markup	
 linktothefast	127	runs			
-lnet	1741	stops		the game's markup; Spells; Skills; Stats; XMLData.level; Spell#circlename; Map.list	
+lnet	1741	stops		the game's markup; Spell#circlename; Map.list	
 localchat	358	windows		Lich's windows (Gtk)	
 log	221	stops			a name defined nowhere
 log_search	358	runs			
 logxml	138	markup		the game's markup	
 looploot	174	markup		the game's markup	
-loot-be-gone	1801	stops		the game's markup; Lich's windows (Gtk); Room#find_nearest_by_tag; Skills; Stats; Room#find_nearest	a name defined nowhere
+loot-be-gone	1801	stops		the game's markup; Lich's windows (Gtk); Room#find_nearest_by_tag; Room#find_nearest	a name defined nowhere
 loottracker	5013	runs			
 lte	36	runs			
-lumnismon	1712	stops		Stats; XMLData.next_level_text	
+lumnismon	1712	runs			
 madwarrior	3558	stops		Lich's windows (Gtk); Map.list; Room#find_nearest; Room#path_to	
 manaleech	103	stops		Spell#cast	
 map	2946	stops		Map.list; Lich's windows (Gtk)	
 mapdupes	33	stops		Map.list	
-mechfire	1219	stops		Wounds; Scars; Lich's windows (Gtk)	
+mechfire	1219	windows		Lich's windows (Gtk)	
 memory_profiler	2065	runs			
 mend	355	markup		the game's markup	
 messaging	678	runs			
@@ -141,7 +141,7 @@ milkman	141	markup		the game's markup; a hook matching markup
 moneychanger	70	runs			
 move2	72	stops		Map.ids_from_uid; Map.dijkstra	
 multi	66	runs			
-mybounty	567	stops		Lich's windows (Gtk); Room#find_nearest_by_tag; XMLData.bounty_task	a name defined nowhere
+mybounty	567	stops		Lich's windows (Gtk); Room#find_nearest_by_tag; XMLData.bounty_task	
 MyFletch	515	windows		Lich's windows (Gtk)	
 newchrism	220	runs			
 no_mstrike	53	runs			
@@ -156,22 +156,22 @@ poisoncraft	194	stops		Lich::Util; Log	a name defined nowhere
 poolparty	717	markup		the game's markup	
 portkey	246	stops		Lich::Util; Map.list; Room#path_to; Room#find_nearest	a name defined nowhere
 proctor	502	stops		StringProc; Map.list; Map.dijkstra	URI.encode (Ruby 4.0); URI.decode (Ruby 4.0)
-puritan	685	stops		Wounds; Scars; Spell#cast; Spell.lock_cast; Spell.unlock_cast; Skills	
+puritan	685	stops		Spell#cast; Spell.lock_cast; Spell.unlock_cast	
 purser	186	runs			
 rainbowear	80	runs			
 reimmessage	151	runs			
 repository	3035	runs			
-resource	1320	stops		Lich::Util; Stats	
+resource	1320	stops		Lich::Util	
 restart	52	runs			
 rofl-notes	48	runs			
 rofl-puzzles	1551	runs			
 rofl-questions	1194	runs			
 rofl-run	315	runs			
 route2	182	stops		Room#find_nearest; StringProc	
-runestaffds	99	stops		Skills; Spells; Lich::Util; Stats	
-samaritan	234	stops		Spell.lock_cast; Spell.unlock_cast; Stats; Group	a library not installed here
-sammu	1140	stops		Lich::Util; Map.dijkstra; Lich's windows (Gtk); Stats	a name defined nowhere
-sbounty	1904	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Map.list; Map.dijkstra; Map.tags; Room#find_nearest; Room#find_nearest_by_tag; Room#path_to; Spell#cast; Skills	
+runestaffds	99	stops		Lich::Util	
+samaritan	234	stops		Spell.lock_cast; Spell.unlock_cast; Group	a library not installed here
+sammu	1140	stops		Lich::Util; Map.dijkstra; Lich's windows (Gtk)	a name defined nowhere
+sbounty	1904	stops		StringProc; Lich's windows (Gtk); Spell#putup; Spell#timeleft=; Map.list; Map.dijkstra; Map.tags; Room#find_nearest; Room#find_nearest_by_tag; Room#path_to; Spell#cast	
 sbounty-bigshot	61	runs			
 scripts	172	runs			
 sellunder	831	stops		Lich's windows (Gtk); StowList	
@@ -189,21 +189,21 @@ sloot	2165	stops		Lich's windows (Gtk); Lich::Util; Spell#cast; the game's marku
 slop-lib	1131	stops			a name defined nowhere
 snapshot	36	runs			
 soundfx	292	windows		Lich's windows (Gtk)	
-spa	2459	stops		Wounds; Scars; the game's markup; Room#find_nearest; Skills; Spells; Spell#cast	
-spellactive	244	stops		CMan; Lich::Util; Spell#cast	a name defined nowhere
-spellburst	201	stops		Lich::Util; Skills; Stats	
+spa	2459	stops		the game's markup; Room#find_nearest; Spell#cast	
+spellactive	244	stops		Spell#cast	
+spellburst	201	stops		Lich::Util	
 spellson	181	windows		Lich's windows (Gtk)	
-SpellWindows	700	stops		Spellsong; Group; Spell#max_duration; Effects	
-sspell	438	stops		Lich's windows (Gtk); Spells; Spell#cast; Wounds; Skills	
+SpellWindows	700	stops		Spellsong; Group; Spell#max_duration	
+sspell	438	stops		Lich's windows (Gtk); Spell#cast	
 standgroup	81	runs			
 symbolz	440	stops		Spell#cast; Lich's windows (Gtk)	
 tag_checker	116	stops		Preset; Map.list	
-tags	695	stops		Map.tags; the game's markup; Room#tags=; Room#climate=; Room#terrain=; Map.uids; Map.list; Skills; Room#find_nearest; Room#path_to	
+tags	695	stops		Map.tags; the game's markup; Room#tags=; Room#climate=; Room#terrain=; Map.uids; Map.list; Room#find_nearest; Room#path_to	
 targetlist	56	runs			
 targetwindow	128	runs			
 tdarts	101	runs			
 tdig	566	runs			
-tdusk	1334	stops		Society; Spell#cast; Stats	
+tdusk	1334	stops		Spell#cast	
 tduskpray	113	runs			
 tears	22	runs			
 tfish	565	runs			
@@ -213,24 +213,24 @@ tmillicent	139	runs
 to	76	stops		Map.list; Log	
 tonis	21	runs			
 totalrecall	20	runs			
-tourniquet	407	stops		Resources; Spell#cast; Society	
+tourniquet	407	stops		Spell#cast	
 tperfume	102	runs			
-tradingranks	271	stops		Skills; Stats	
+tradingranks	271	runs			
 traffle	579	markup		the game's markup	
 treim	1310	stops		Lich::Util; Group; XMLData.reset	
 trix	563	stops		Lich::Util	
 trove	56	runs			
 trovecheck	318	stops		Map.ids_from_uid; Map.dijkstra; Lich::Util	
 tsquelch	438	runs			
-uberbar_eo	1323	stops		XMLData.next_level_text; XMLData.next_level_value; Wounds; Scars; Stats; Lich::Util; Resources; Experience; Society	a name defined nowhere
+uberbar_eo	1323	stops		Lich::Util	a name defined nowhere
 uberfletch	2461	stops		Lich's windows (Gtk); Lich::Util; the game's markup	
 uhaul	140	stops		Map.ids_from_uid; Room#find_nearest	
 update-lich5	66	runs			
 vars	225	windows		Lich's windows (Gtk)	
 version	606	windows		Lich's windows (Gtk)	
-voln-favor	304	stops		Society; a hook matching markup; XMLData.level; the game's markup; Oleani	
+voln-favor	304	stops		a hook matching markup; the game's markup; Oleani	
 wannabe	1932	runs			
-warcries	11	stops		Stats	a name defined nowhere
+warcries	11	runs			
 webdispel	90	stops		Spell#cast	
 webui	367	runs			
 wps	157	runs			

@@ -3,7 +3,7 @@
 **Status: PROPOSED 2026-09-27, author asked for it; the eleven questions ANSWERED the same day
 (§10).** **Steps 1 to 6 BUILT 2026-09-27** (§11), the author moving M7b ahead of M6's live
 run (§10, question 11). **Steps 7 to 11, the runner's gaps, APPROVED the same day** (§11);
-not yet built. It
+**step 7 BUILT**, 8 to 11 not yet. It
 takes [`plan/38-scripting-bridge.md`](38-scripting-bridge.md)'s shape (scripts in their own
 process, talking to Hydra over [`plan/35-m7-agent.md`](35-m7-agent.md)'s connection) down to how
 it works, what Hydra has to answer, and which scripts it runs. The evidence is
@@ -332,6 +332,11 @@ thing to measure before changing if it ever matters.
   - *Before, kept*: 338 ms at step 1 (Lich's engine, no script: 313-370 ms over six runs), 885 ms
     at step 2 (`GameObj`, `ox`, `lich.rb`, the stores and `sequel` too), timed from a separate
     script the same way.
+  - **After step 7** (the character's sheet): **1.06 s** median over six, and 39.5 MiB working
+    set, 75.5 MiB private, as before within this machine's spread that day. Loaded at start,
+    Lich's sheet classes took it to 1.21 s and 80.0 MiB private, some 100 ms of it their load
+    (half `ostruct`, which `stats.rb` requires); they now load when a script first names one
+    (`bridges/ruby/hydra/gemstone.rb`), as the libraries do.
   - **With windows** (the gtk3 gem loaded, §10 question 12): **5.0-5.5 s** median (the release
     run's six, 4.3-6.3 s; the debug run's, up to 14 s on a busy machine). Gtk alone is 1.6 s
     warm in a bare Ruby and 8 s the first time after the machine starts, reading its libraries
@@ -682,6 +687,49 @@ elanthia-online's 236 and 1,254 of the old repository's 2,130):
    read them from `Infomon`, its store the game's text fills; **Hydra's model already reads the
    same text** (`crates/cena-model/src/state/character/`), so the runner answers `Infomon` from
    the copy and loads Lich's files unchanged. 94 and 1,377.
+   **BUILT 2026-09-27** (the author: *"Yeah let's fill those gaps"*), in three commits:
+   - **Hydra's half** (`crates/cena-agent/src/scripts/sheet.rs`): the copy carries the
+     character's sheet in Hydra's names: identity, stats by `info`'s three columns, skills,
+     circles, PSM ranks by category, warcries, society, citizenship, resources, currency and
+     experience (`SCRIPTS.md`). A table never read is absent, a value never stated `null`.
+   - **Two things the model did not read, found on the way** (Rule 2.2a): the mind bar's
+     experience (`field_exp`, `max_field_exp`, `exp`, `ascension_exp`, `until_next`, `lumnis`,
+     `rpa`, `fashlonae`; `crates/cena-model/src/state/character/mind_bar.rs`), which the frame
+     kept and the model dropped; and the injury window's mode, from its three radios
+     (`crates/cena-model/src/state/character/body.rs`, `InjuryMode`; the copy's `injury_mode`),
+     which Lich's `Wounds` and `Scars` read before they set it to both (`_injury 2`).
+   - **The runner** (`bridges/ruby/hydra/infomon.rb`, `bridges/ruby/hydra/gemstone.rb`): Lich's
+     own `Stats`, `Skills`, `Spells`, `Society`, `Experience`, `Resources`, `Currency`, the PSMs,
+     `Effects`, `Injured`, `Wounds` and `Scars`, byte for byte, over an `Infomon` answered from
+     the sheet by Lich's keys, each loaded when a script first names it; `Lich::Gemstone`
+     includes `Lich` and is included at the top level, as Lich's are. `CharacterStatus`, their
+     base, is copied from Lich's `games.rb`, which the runner does not load. `XMLData` answers
+     the level and the experience. `Lich::Util` loads for the PSMs' name helpers, its
+     `issue_command` family registered not yet answered (step 10), as is `Infomon.sync`. The
+     game's files of the runner are the agent's game module's
+     (`crates/cena-agent/src/gemstone/runner.rs`, `plan/05` Rule 3.4).
+   - **The checker**: a module's own method can be not yet answered (`Hydra.unanswered`); a
+     method a Lich class the runner loads does not have is an older Lich's, the script's own
+     (Lich 4's `Society.rank=`, `Skills.trading=`); and a constant under a Lich class is Lich's
+     (`Effects::Buffs`), which step 5 had counted as the script's own in 7 and 30 scripts
+     (`inventory/14`, corrected).
+   - **The list** (`inventory/14`): **40% of elanthia-online's scripts and 64% of the old
+     repository's run** (from 35% and 59%): 94 and 1,358, against the forecast 94 and 1,377.
+   - **Tests**: the mind bar and the radios in the model (`character_dialogs.rs`); the sheet over
+     MCP (`scripts_local.rs`), unknown before the game says it and each table after; in Ruby
+     (`crates/cena-agent/tests/runner.rs`, `sheettest.lic`), Lich's classes reading the
+     identity, the three stat columns, a skill's ranks and bonus, a circle, the society, the
+     field experience, a maneuver's ranks, a warcry not known, a wound and a scar, and
+     `db_refresh_needed?` before and after; the checker's three new findings, the path under a
+     Lich class red on the old checker. Measured: §9.
+   - **Not yet**: `Infomon.sync`, and these classes' methods that ask the game themselves
+     through `issue_command` (step 10); `Status`, `Enhancive`, `Spellsong`, `Bounty`, `Group`,
+     `StowList`, `ReadyList`, `Gift`, `CritRanks`, and `XMLData`'s `bounty_task`,
+     `society_task` and `stow_container_id`. The injury window's radios are read as Lich reads
+     them and are in no capture here, and whether the game answers `_injury 2` with a prompt,
+     where the copy updates, is not measured: without one, a first read of `Wounds` waits Lich's
+     7.5 s. A warcry cannot be unknown: Hydra keeps the warcries as a set, so an unread list
+     reads as none known.
 8. **The map's queries**: `Map.dijkstra`, `Room#find_nearest`, `Map.list`, `Room#path_to`, by
    travel's own map and costs, as `Room.current` already is. 100 and 1,418.
 9. **`Spell#cast`**, through the casting step (`plan/37` Stage 3). 105 and 1,522.

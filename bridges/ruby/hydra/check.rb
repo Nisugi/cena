@@ -99,7 +99,7 @@ module Hydra
 
     # Hydra's own answers to Lich's names: a missing method on one is Hydra's
     # to answer, not Ruby's or Lich's.
-    HYDRAS = %w[XMLData Room Map Spell Game Frontend].freeze
+    HYDRAS = %w[XMLData Room Map Spell Game Frontend Infomon].freeze
 
     # Markup in a hook's pattern, `<c>` aside: what a Wrayth frontend sends
     # before a typed line, which Hydra gives the input hooks too.
@@ -482,9 +482,11 @@ module Hydra
         nil
       end
 
-      # A name Lich gives its API (inventory/13 section 2.5).
+      # A name Lich gives its API (inventory/13 section 2.5), or a name
+      # under one: `Effects::Buffs` is Lich's as `Effects` is.
       def lich_class?(path)
-        LICH_CLASSES.include?(path.split('::').last)
+        names = path.split('::')
+        LICH_CLASSES.include?(names.last) || LICH_CLASSES.include?(names.first)
       end
 
       def global(node, name)
@@ -548,14 +550,22 @@ module Hydra
 
       def unanswered(node, path, call)
         head = path.split('::').first
-        if HYDRAS.include?(path)
+        if HYDRAS.include?(path.split('::').last)
           found(node, 'stops', "#{path}#{call}", 'not answered by Hydra yet (plan/46)', hydra: true)
+        elsif lichs_own?(resolve(path))
+          found(node, 'stops', "#{path}#{call}", "not in Lich #{LICH_VERSION}: an older Lich's")
         elsif head == 'Lich' || LICH_NAMES.include?(path.split('::').last)
           found(node, 'stops', "#{path}#{call}", 'Lich\'s, not loaded or not answered by Hydra\'s runner yet (plan/46)',
                 hydra: true)
         else
           found(node, 'stops', "#{path}#{call}", "not defined in Ruby #{RUBY_VERSION}")
         end
+      end
+
+      # One of Lich's classes the runner loads unchanged: what it lacks,
+      # Lich lacks too.
+      def lichs_own?(object)
+        object.is_a?(Module) && object.name.to_s.start_with?('Lich::')
       end
 
       # `Room.current.path_to`, `Spell[401].cast`: a room's or a spell's own.

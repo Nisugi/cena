@@ -50,6 +50,8 @@ async fn the_checker_finds_each_kind_and_nothing_else() {
             ),
             (11, Verdict::Markup, "$_SERVERBUFFER_", true),
             (29, Verdict::Stops, "Infomon.sync", true),
+            (30, Verdict::Stops, "Group::Leader", true),
+            (31, Verdict::Stops, "Skills.trading=", false),
         ],
         "{:#?}",
         script.findings

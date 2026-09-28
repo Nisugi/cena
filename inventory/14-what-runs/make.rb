@@ -24,7 +24,7 @@ def gap(finding)
   else
     return own(finding) unless finding['hydra']
     return what.sub(/\ARoom\./, 'Map.') if what.match?(/\A(?:Spell|Room|Map)[#.]|\AXMLData\./)
-    return 'Lich::Util' if what.start_with?('Lich::Util')
+    return 'Lich::Util' if what.start_with?('Lich::Util', 'Util.')
 
     what.sub(/\A(?:Lich::)?(?:Common::|Gemstone::|Games::Gemstone::)?/, '').split(/::|\./).first
   end
@@ -37,6 +37,7 @@ def own(finding)
   when /cannot read it/ then 'does not parse'
   when /no such library/ then 'a library not installed here'
   when /not defined in Ruby/ then "#{finding['what']} (Ruby 4.0)"
+  when /an older Lich/ then "an older Lich's API"
   else 'a name defined nowhere'
   end
 end

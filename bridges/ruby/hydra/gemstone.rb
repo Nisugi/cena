@@ -7,10 +7,10 @@
 # `XMLData`.
 #
 # The character's sheet (plan/46 section 11, step 7): Lich's own readers,
-# unchanged, over an `Infomon` answered from the copy (infomon.rb), in the
-# order the game loader loads them, and named at the top level as Lich
-# names them (lib/main/main.rb, `include Lich::Gemstone`). `Lich::Util`'s
-# commands that wait on the game's markup are step 10's.
+# unchanged, over an `Infomon` answered from the copy (infomon.rb), and
+# named at the top level as Lich names them (lib/main/main.rb, `include
+# Lich::Gemstone`). `Lich::Util`'s commands that wait on the game's markup
+# are step 10's.
 
 require_relative 'infomon'
 include Lich::Gemstone
@@ -59,21 +59,32 @@ module Lich
     end
   end
 end
-%w[
-  util/util.rb
-  gemstone/effects.rb
-  attributes/resources.rb
-  attributes/stats.rb
-  attributes/spells.rb
-  attributes/skills.rb
-  gemstone/society.rb
-  gemstone/experience.rb
-  gemstone/psms.rb
-  gemstone/currency.rb
-  gemstone/injured.rb
-  gemstone/wounds.rb
-  gemstone/scars.rb
-].each { |file| require File.join(LIB_DIR, file) }
+# Each is loaded the first time a script names it (Ruby's autoload), as the
+# libraries Lich loads before any script are (engine.rb): loaded at start,
+# they took some 100 ms of a runner's start (plan/46 section 9), half of it
+# `ostruct`. `Lich::Util` is loaded now: its commands are named not yet
+# answered below.
+require File.join(LIB_DIR, 'util', 'util.rb')
+{
+  Lich::Gemstone => {
+    'gemstone/effects.rb' => %i[Effects],
+    'attributes/stats.rb' => %i[Stats],
+    'attributes/spells.rb' => %i[Spells],
+    'attributes/skills.rb' => %i[Skills],
+    'gemstone/society.rb' => %i[Society Societies],
+    'gemstone/experience.rb' => %i[Experience],
+    'gemstone/psms.rb' => %i[PSMS Armor Ascension CMan Feat QStrike Shield Warcry Weapon],
+    'gemstone/currency.rb' => %i[Currency],
+    'gemstone/injured.rb' => %i[Injured],
+    'gemstone/wounds.rb' => %i[Wounds],
+    'gemstone/scars.rb' => %i[Scars]
+  },
+  Lich => { 'attributes/resources.rb' => %i[Resources] }
+}.each do |scope, files|
+  files.each do |file, names|
+    names.each { |name| scope.autoload(name, File.join(LIB_DIR, file)) }
+  end
+end
 %i[issue_command quiet_command quiet_command_xml silver_count].each do |name|
   Hydra.unanswered(Lich::Util.singleton_class, name, 'send the command and wait for its lines with dothistimeout')
 end
