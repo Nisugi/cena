@@ -823,7 +823,8 @@ Each BUILT the same day, each with its tests:
      its plain words: `_drag #<item> drop`. Each is sent without an echo.
    - **Unlike `VellumFE`, let go anywhere else and nothing happens.** It drops the item on
      the ground over any window it does not recognise, or none; the author named only the
-     story's blank area.
+     story's blank area, and, asked whether to follow `VellumFE` once the safeguards were
+     said, answered: *"story alone is fine"* (2026-09-28). DECIDED.
    - A widget following another character takes nothing: the line goes to this window's.
    - A window over the story goes under it once the story is pressed, as any window does,
      so a drop meant for it lands on the story's floor. Tiled windows do not meet this.
