@@ -345,6 +345,32 @@ Claude's order, each step shippable and committed on its own:
 2. **Hydra's own page**, kept in the window's own file: the card width, and closing a play
    window when its session closes (§6 item 11, off). Also the **Keys** page: keybinds for
    every character, edited with a key pressed rather than typed.
+
+   **BUILT 2026-09-27.**
+   - *Where the menu opens:* the hub's *Settings* opens Hydra's own pages, as §4.6 proposed;
+     a play window's opens its character's. The picker reaches either from the other.
+   - *The Window page:* `window.toml` in the data folder (`crates/cena-gui/src/own.rs`),
+     drawn as any other page and changed by the window itself, no behavior being behind it.
+     The card width is read at start, kept when a drag of a card's side lets go, and can
+     be typed. *Close a play window when its session closes* is off by default. When on,
+     it closes the window once, when the session closes; a window opened again from its
+     card stays open.
+   - *The Keys page:* `crates/cena-gui/src/keys/page.rs`. *Add a key*, press it, then
+     type the line it sends; a bound key's own button, pressed, waits for another key to
+     move the line to. Escape stops the wait. A key that types, or one already bound, is
+     refused and said.
+   - *The numpad:* while the page waits, the window opens the fork's channel to every
+     numpad key and hands the press to the page, so a numpad key is never taken for its
+     digit. Its *NumLock on too* switch is `numpad = "always"`.
+   - *keybinds.toml gets a writer:* `crates/cena-gui/src/keys/write.rs`. It changes the
+     file a line at a time, so a player's comments and order are kept, and reads the
+     result back before saving. A file it cannot change in place (an inline `[keys]`
+     table, say) is refused, not mangled. A change binds at once, with no reload.
+   - *One atomic text write:* `cena_session::store::save_text`. The JSON stores, the
+     behaviors' TOML and both of these files go through it.
+   - *Checked:* 29 mutants over both pages, the writer and the window's handling, all
+     caught once a test wrote a chord holding Shift and Alt: swapping their names had
+     passed.
 3. **The character's General page:** the command symbol, the player-log feeds, the sorter
    (saved), and recording per kind (off until turned on, then kept on). The settings file
    gets its writer, and `--record` and `--no-record` retire.

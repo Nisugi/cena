@@ -17,6 +17,22 @@ fn a_chord_is_its_modifiers_and_its_winit_key() {
     assert_eq!(Chord::parse("F13").map(|c| c.key), Ok("F13".to_owned()));
 }
 
+/// A chord is written with each modifier by its own name, in one order,
+/// and reads back as the same chord: what the Keys page saves.
+#[test]
+fn a_chord_is_written_as_it_reads() {
+    for (typed, written) in [
+        ("shift+F2", "Shift+F2"),
+        ("alt+F3", "Alt+F3"),
+        ("cmd+F4", "Cmd+F4"),
+        ("alt+cmd+shift+ctrl+num_8", "Ctrl+Shift+Alt+Cmd+Numpad8"),
+    ] {
+        let chord = Chord::parse(typed).expect("parses");
+        assert_eq!(chord.written(), written);
+        assert_eq!(Chord::parse(written), Ok(chord));
+    }
+}
+
 /// A key this build cannot see is told why; a name nobody knows, and a
 /// modifier nobody has, are told so.
 #[test]

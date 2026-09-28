@@ -207,3 +207,7 @@ crates/cena-gui/src/layout/preset.rs 350
 # addition). crates/cena-gui/src/widget/state.rs is the widget, its tests in
 # widget/state/tests.rs beside it, widget/tests.rs being near its cap: 215 lines, so 300.
 crates/cena-gui/src/widget/state.rs 300
+# NEW SPLIT PARENT, 2026-09-27, capped at birth (plan/50 §7 step 2). crates/cena-gui/src/app.rs
+# is the window, its tests moved to app/tests.rs when Hydra's own settings and the Keys page
+# took it past 800: 500 lines, so 550.
+crates/cena-gui/src/app.rs 550

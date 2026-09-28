@@ -1,8 +1,9 @@
-//! `plan/50` §7 step 1: the settings menu, the one every way in opens. It
-//! draws the pages it is given, knowing no behavior, and asks the binary
-//! for each change, written as the behavior's `;` command would type it.
+//! `plan/50` §7 steps 1 and 2: the settings menu, the one every way in
+//! opens. It draws the pages it is given, knowing no behavior, and asks the
+//! binary for each change, written as the behavior's `;` command would type
+//! it; Hydra's own pages, *Window* and *Keys*, it asks of the window.
 
-use cena_gui::{Menu, MenuView, typed};
+use cena_gui::{KeyChange, KeysView, Menu, MenuAsked, MenuView, typed};
 use cena_ui::settings::{Change, Page, Row, RowKind, Value};
 use cena_ui::{HubRequest, RosterCard};
 use egui::accesskit::Role;
@@ -16,7 +17,11 @@ struct Board {
     roster: Vec<RosterCard>,
     pages: Option<(String, Vec<Page>)>,
     said: Option<String>,
-    asked: Vec<HubRequest>,
+    own: Vec<Page>,
+    bound: Vec<(String, String)>,
+    numpad_always: bool,
+    numpad: Option<String>,
+    asked: Vec<MenuAsked>,
 }
 
 impl Board {
@@ -28,10 +33,28 @@ impl Board {
                 .as_ref()
                 .map(|(whose, pages)| (whose.as_str(), pages.as_slice())),
             said: self.said.as_deref(),
+            own: &self.own,
+            keys: KeysView {
+                bound: &self.bound,
+                numpad_always: self.numpad_always,
+                said: &[],
+                numpad: self.numpad.as_deref(),
+            },
         };
         if let Some(request) = self.menu.show(ui, &view) {
             self.asked.push(request);
         }
+    }
+
+    /// What it asked of the binary.
+    fn of_binary(&self) -> Vec<HubRequest> {
+        self.asked
+            .iter()
+            .filter_map(|asked| match asked {
+                MenuAsked::Binary(request) => Some(request.clone()),
+                _ => None,
+            })
+            .collect()
     }
 }
 
@@ -111,13 +134,14 @@ fn pages() -> Vec<Page> {
     ]
 }
 
-/// The menu open, with Nisugi's pages given.
+/// The menu open on Nisugi, with Nisugi's pages given.
 fn menu<'a>() -> Harness<'a, Board> {
-    let board = Board {
+    let mut board = Board {
         roster: vec![card("Nisugi"), card("Dicate")],
         pages: Some(("GS3:Nisugi".to_owned(), pages())),
         ..Board::default()
     };
+    board.menu.open_for(Some("GS3:Nisugi".to_owned()));
     let mut harness = Harness::builder()
         .with_size((760.0, 520.0))
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
@@ -126,13 +150,13 @@ fn menu<'a>() -> Harness<'a, Board> {
     harness
 }
 
-fn change(key: &str, to: Option<&str>) -> HubRequest {
-    HubRequest::Change(Change {
+fn change(key: &str, to: Option<&str>) -> MenuAsked {
+    MenuAsked::Binary(HubRequest::Change(Change {
         character: "GS3:Nisugi".to_owned(),
         page: "heal".to_owned(),
         key: key.to_owned(),
         to: to.map(str::to_owned),
-    })
+    }))
 }
 
 /// Type `text` into the field labelled `label`, and press Enter.
@@ -149,21 +173,35 @@ fn enter(harness: &mut Harness<'_, Board>, label: &str, text: &str) {
     harness.run();
 }
 
-/// Opened, it asks for the first roster character's pages once, and says
-/// it is reading them until they come; picking another character asks for
-/// that one's.
+/// Opened as the hub opens it, it shows Hydra's own pages and asks the
+/// binary nothing; a character picked, it asks for that one's pages once,
+/// and says it is reading them until they come.
 #[test]
 fn it_asks_for_a_characters_pages_once() {
-    let mut harness = Harness::builder().with_size((760.0, 520.0)).build_ui_state(
-        |ui, board: &mut Board| board.draw(ui),
-        Board {
-            roster: vec![card("Nisugi"), card("Dicate")],
-            ..Board::default()
-        },
-    );
+    let mut board = Board {
+        roster: vec![card("Nisugi"), card("Dicate")],
+        own: vec![page("window", "Window", Vec::new())],
+        ..Board::default()
+    };
+    board.menu.open_for(None);
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
     harness.run();
+    assert!(harness.state().asked.is_empty());
+    assert!(harness.query_by_label("Keys").is_some(), "Hydra's own");
+
+    let pick = |harness: &mut Harness<'_, Board>, name: &str| {
+        harness
+            .get_by_role_and_label(Role::ComboBox, "Settings for")
+            .click();
+        harness.run();
+        harness.get_by_label(name).click();
+        harness.run();
+    };
+    pick(&mut harness, "Nisugi (Prime)");
     assert_eq!(
-        harness.state().asked,
+        harness.state().of_binary(),
         [HubRequest::Settings("GS3:Nisugi".to_owned())]
     );
     assert!(harness.query_by_label("Reading the settings...").is_some());
@@ -172,14 +210,9 @@ fn it_asks_for_a_characters_pages_once() {
     assert!(harness.query_by_label("Herb container").is_some());
     assert_eq!(harness.state().asked.len(), 1, "asked once");
 
-    harness
-        .get_by_role_and_label(Role::ComboBox, "Character")
-        .click();
-    harness.run();
-    harness.get_by_label("Dicate (Prime)").click();
-    harness.run();
+    pick(&mut harness, "Dicate (Prime)");
     assert_eq!(
-        harness.state().asked.last(),
+        harness.state().of_binary().last(),
         Some(&HubRequest::Settings("GS3:Dicate".to_owned()))
     );
     assert!(
@@ -189,14 +222,16 @@ fn it_asks_for_a_characters_pages_once() {
 
     // Opened again, it asks again: a `;` command may have changed a file.
     let asked = harness.state().asked.len();
-    harness.state_mut().menu.open_for(None);
+    harness
+        .state_mut()
+        .menu
+        .open_for(Some("GS3:Dicate".to_owned()));
     harness.run();
     assert_eq!(harness.state().asked.len(), asked + 1);
-    assert_eq!(
-        harness.state().asked.last(),
-        Some(&HubRequest::Settings("GS3:Dicate".to_owned())),
-        "on the character it was on"
-    );
+
+    pick(&mut harness, "Hydra (every character)");
+    assert_eq!(harness.state().menu.character(), None);
+    assert_eq!(harness.state().asked.len(), asked + 1, "asked nothing");
 }
 
 /// A toggle asks at once; a typed value is asked for on Enter, written as
@@ -233,11 +268,19 @@ fn each_change_is_asked_for_as_the_command_would_type_it() {
 #[test]
 fn a_setting_the_file_sets_is_put_back_to_its_default() {
     let mut harness = menu();
+    // What the menu said of an earlier change gives way to the binary's.
+    harness
+        .state_mut()
+        .menu
+        .tell("Window: old news.".to_owned());
+    harness.run();
+    assert!(harness.query_by_label("Window: old news.").is_some());
     assert_eq!(harness.query_all_by_label("Use default").count(), 1);
     assert_eq!(harness.query_all_by_label("default").count(), 2);
     harness.get_by_label("Use default").click();
     harness.run();
     assert_eq!(harness.state().asked, [change("container", None)]);
+    assert!(harness.query_by_label("Window: old news.").is_none());
 }
 
 /// A page says where it is kept and when a change takes effect; a map is
@@ -326,10 +369,212 @@ fn the_menu_as_drawn() {
         pages: Some(("GS3:Nisugi".to_owned(), pages())),
         ..Board::default()
     };
+    let mut board = board;
+    board.menu.open_for(Some("GS3:Nisugi".to_owned()));
     let mut harness = Harness::builder()
         .with_size((760.0, 360.0))
         .wgpu()
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
     harness.run();
     harness.snapshot("settings_menu");
+}
+
+/// The menu as the hub opens it, on Hydra's own pages, with `bound` bound.
+fn hydra<'a>(bound: &[(&str, &str)]) -> Harness<'a, Board> {
+    let window = page(
+        "window",
+        "Window",
+        vec![
+            row(
+                "card_width",
+                "Card width",
+                RowKind::Number {
+                    min: 160.0,
+                    max: 2000.0,
+                },
+                Value::Text("312".to_owned()),
+                false,
+            ),
+            row(
+                "close_with_session",
+                "Close a play window when its session closes",
+                RowKind::Toggle,
+                Value::On(false),
+                false,
+            ),
+        ],
+    );
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        own: vec![window],
+        bound: bound
+            .iter()
+            .map(|(key, line)| ((*key).to_owned(), (*line).to_owned()))
+            .collect(),
+        ..Board::default()
+    };
+    board.menu.open_for(None);
+    let mut harness = Harness::builder()
+        .with_size((760.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    harness
+}
+
+/// Replace what the field labelled `label` holds with `text`, and press
+/// Enter.
+fn replace(harness: &mut Harness<'_, Board>, label: &str, text: &str) {
+    harness
+        .get_by_role_and_label(Role::TextInput, label)
+        .focus();
+    harness.run();
+    harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+    harness.run();
+    enter(harness, label, text);
+}
+
+fn bind(key: &str, line: &str, was: Option<&str>) -> MenuAsked {
+    MenuAsked::Key(KeyChange::Bind {
+        key: key.to_owned(),
+        line: line.to_owned(),
+        was: was.map(str::to_owned),
+    })
+}
+
+/// A change on Hydra's *Window* page is asked of the window, not the
+/// binary, and what the window answers is said at the top.
+#[test]
+fn hydras_own_page_is_changed_by_the_window() {
+    let mut harness = hydra(&[]);
+    harness
+        .get_by_role_and_label(
+            Role::CheckBox,
+            "Close a play window when its session closes",
+        )
+        .click();
+    harness.run();
+    replace(&mut harness, "Card width", "400");
+    assert_eq!(
+        harness.state().asked,
+        [
+            MenuAsked::Own {
+                key: "close_with_session".to_owned(),
+                to: Some("on".to_owned()),
+            },
+            MenuAsked::Own {
+                key: "card_width".to_owned(),
+                to: Some("400".to_owned()),
+            },
+        ]
+    );
+    harness
+        .state_mut()
+        .menu
+        .tell("Window: the card width is 400.".to_owned());
+    harness.run();
+    assert!(
+        harness
+            .query_by_label("Window: the card width is 400.")
+            .is_some()
+    );
+}
+
+/// A key is bound by pressing it: *Add a key*, the key, then the line it
+/// sends. One that types, or one bound already, is refused and said;
+/// Escape stops the wait.
+#[test]
+fn a_key_is_bound_by_pressing_it() {
+    let mut harness = hydra(&[("Ctrl+F1", "look")]);
+    harness.get_by_label("Keys").click();
+    harness.run();
+    harness.get_by_label("Add a key").click();
+    harness.run();
+    assert!(harness.state().menu.waiting_for_key());
+    harness.key_press(egui::Key::A);
+    harness.run();
+    assert!(harness.query_by_label_contains("KeyA types").is_some());
+    assert!(harness.state().menu.waiting_for_key(), "still waiting");
+    harness.key_press_modifiers(egui::Modifiers::CTRL, egui::Key::F1);
+    harness.run();
+    assert!(
+        harness
+            .query_by_label("Ctrl+F1 already sends `look`.")
+            .is_some()
+    );
+
+    harness.get_by_label("Add a key").click();
+    harness.run();
+    harness.key_press(egui::Key::F5);
+    harness.run();
+    assert!(!harness.state().menu.waiting_for_key());
+    enter(&mut harness, "F5", "hide");
+    assert_eq!(harness.state().asked, [bind("F5", "hide", None)]);
+
+    harness.get_by_label("Add a key").click();
+    harness.run();
+    harness.key_press(egui::Key::Escape);
+    harness.run();
+    assert!(!harness.state().menu.waiting_for_key(), "stopped");
+    assert_eq!(harness.state().asked.len(), 1);
+}
+
+/// A bound key's line is changed where it is typed; the key itself moves
+/// by pressing another, a numpad key coming through the window; *Remove*
+/// unbinds it; the numpad's switch is asked for as it is ticked.
+#[test]
+fn a_bound_key_is_changed_moved_and_removed() {
+    let mut harness = hydra(&[("Ctrl+F1", "look"), ("Numpad8", "north")]);
+    harness.get_by_label("Keys").click();
+    harness.run();
+    enter(&mut harness, "Ctrl+F1", " around");
+    harness
+        .get_by_role_and_label(Role::Button, "Ctrl+F1")
+        .click();
+    harness.run();
+    assert!(harness.state().menu.waiting_for_key());
+    harness.state_mut().numpad = Some("Numpad2".to_owned());
+    harness.run();
+    harness.state_mut().numpad = None;
+    if let Some(remove) = harness.get_all_by_label("Remove").nth(1) {
+        remove.click();
+    }
+    harness.run();
+    harness
+        .get_by_role_and_label(
+            Role::CheckBox,
+            "The numpad sends its keys with NumLock on too",
+        )
+        .click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [
+            bind("Ctrl+F1", "look around", None),
+            bind("Numpad2", "look", Some("Ctrl+F1")),
+            MenuAsked::Key(KeyChange::Unbind("Numpad8".to_owned())),
+            MenuAsked::Key(KeyChange::NumpadAlways(true)),
+        ]
+    );
+}
+
+/// The *Keys* page as a player sees it, rendered and compared with the
+/// committed image.
+#[test]
+fn the_keys_page_as_drawn() {
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        bound: vec![
+            ("Ctrl+F1".to_owned(), "look".to_owned()),
+            ("Numpad8".to_owned(), "north".to_owned()),
+        ],
+        ..Board::default()
+    };
+    board.menu.open_for(None);
+    let mut harness = Harness::builder()
+        .with_size((760.0, 260.0))
+        .wgpu()
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    // With no other page of Hydra's given, Keys is the one showing.
+    harness.run();
+    harness.snapshot("settings_keys");
 }

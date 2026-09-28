@@ -187,22 +187,16 @@ pub fn read_text(path: &Path) -> Stored<String> {
     read(path, |text| parse(text).map(|_| text.to_owned()))
 }
 
-/// Write `text` to `path` whole or not at all: to a file beside it, then
-/// renamed over it, so a failure part way leaves the old file as it was.
-/// The directory is made if missing.
+/// Write `text` to `path` whole or not at all, through the store's one
+/// atomic write ([`cena_session::store::save_text`]), so a failure part way
+/// leaves the old file as it was. The directory is made if missing.
 ///
 /// # Errors
 ///
 /// The directory cannot be made, or the file written or renamed.
 pub fn save(path: &Path, text: &str) -> io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let beside = path.with_extension("toml.saving");
-    std::fs::write(&beside, text)?;
-    std::fs::rename(&beside, path).inspect_err(|_| {
-        let _ = std::fs::remove_file(&beside);
-    })
+    let dir = path.parent().unwrap_or_else(|| Path::new(""));
+    cena_session::store::save_text(dir, path, text)
 }
 
 /// A value as a player typed it (the module docs).

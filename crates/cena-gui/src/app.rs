@@ -27,10 +27,11 @@ use cena_ui::LifecycleView;
 use crate::hub::{HubAction, HubView};
 use crate::keys::{self, Keybinds};
 use crate::layout::Library;
+use crate::own::Own;
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
 use crate::widget::Character;
-use crate::{Hub, Menu, MenuView, Sessions};
+use crate::{Hub, KeysView, Menu, MenuAsked, MenuView, Sessions};
 
 /// The window's title: the product's name (`CLAUDE.md`: anything
 /// user-facing is Hydra, not the working name).
@@ -60,6 +61,12 @@ pub struct App {
     numlock: Option<bool>,
     /// The settings menu, the one every way in opens (`plan/50` §7).
     menu: Menu,
+    /// Hydra's own settings, kept in the window's own file (step 2).
+    own: Own,
+    /// The fork was last told to hand every numpad key to the Keys page.
+    caught_for_menu: bool,
+    /// A numpad key pressed this frame while the Keys page waits for one.
+    numpad_for_menu: Option<String>,
 }
 
 /// One character's play window.
@@ -67,6 +74,8 @@ pub struct App {
 struct Window {
     play: Play,
     open: bool,
+    /// Its session was closed, when last drawn.
+    ended: bool,
 }
 
 impl App {
@@ -87,20 +96,26 @@ impl App {
             numpad: Vec::new(),
             numlock: None,
             menu: Menu::default(),
+            own: Own::default(),
+            caught_for_menu: false,
+            numpad_for_menu: None,
         }
     }
 
     /// The same, keeping what it keeps in `data`, the data folder: play
-    /// windows' layouts by character name (`plan/47` step 6), and the
-    /// keybinds read from it (step 7).
+    /// windows' layouts by character name (`plan/47` step 6), the keybinds
+    /// read from it (step 7), and Hydra's own settings (`plan/50` §7 step 2).
     #[must_use]
     pub fn keeping(sessions: Sessions, data: &std::path::Path) -> Self {
+        let own = Own::load(data);
         let mut app = Self {
             layouts: Some(data.join("layouts")),
             presets: Library::load(Some(data.join("layouts"))),
             keys_file: Some(keys::path(data)),
             ..Self::new(sessions)
         };
+        app.hub.card_width = own.card_width();
+        app.own = own;
         app.read_keys();
         app
     }
@@ -112,7 +127,10 @@ impl App {
         };
         let (keys, problems) = Keybinds::load(file);
         self.keys_said = std::iter::once(if keys.len() == 0 {
-            format!("No keys bound: write them in {}.", file.display())
+            format!(
+                "No keys bound: bind them here, or write them in {}.",
+                file.display()
+            )
         } else {
             format!("{} keys bound, from {}.", keys.len(), file.display())
         })
@@ -159,6 +177,12 @@ impl App {
             Some(HubAction::Settings) => self.menu.open_for(None),
             None => {}
         }
+        // A width a drag set is kept once the drag lets go.
+        if ui.ctx().dragged_id().is_none()
+            && let Err(why) = self.own.keep_width(self.hub.card_width)
+        {
+            self.menu.tell(why);
+        }
         for seat in &seats {
             if self.play(ui.ctx(), seat, &seats) {
                 // The character's own settings, by its roster name.
@@ -179,6 +203,8 @@ impl App {
         if !self.menu.open {
             return;
         }
+        let own = [self.own.page()];
+        let bound = self.keys.listed();
         let view = MenuView {
             roster: &glance.roster,
             pages: glance
@@ -186,6 +212,13 @@ impl App {
                 .as_ref()
                 .map(|(whose, pages)| (whose.as_str(), pages.as_slice())),
             said: glance.said.as_ref().map(|(said, _)| said.as_str()),
+            own: &own,
+            keys: KeysView {
+                bound: &bound,
+                numpad_always: self.keys.numpad_always,
+                said: &self.keys_said,
+                numpad: self.numpad_for_menu.as_deref(),
+            },
         };
         let menu = &mut self.menu;
         let (asked, closed) = context.show_viewport_immediate(
@@ -201,9 +234,34 @@ impl App {
         if closed {
             self.menu.open = false;
         }
-        if let Some(request) = asked {
-            self.sessions.ask(request);
+        if let Some(asked) = asked {
+            self.menu_asked(asked);
         }
+    }
+
+    /// Do what the settings menu asked: the binary's through it, Hydra's
+    /// own and the keybinds here, saying what was done.
+    fn menu_asked(&mut self, asked: MenuAsked) {
+        let said = match asked {
+            MenuAsked::Binary(request) => return self.sessions.ask(request),
+            MenuAsked::Own { key, to } => {
+                let said = self.own.change(&key, to.as_deref());
+                self.hub.card_width = self.own.card_width();
+                said
+            }
+            MenuAsked::Key(change) => {
+                let data = self.keys_file.as_deref().and_then(std::path::Path::parent);
+                let said = data.map_or_else(
+                    || Err("Keys: nothing is kept here.".to_owned()),
+                    |data| keys::write::apply(data, &change),
+                );
+                if said.is_ok() {
+                    self.read_keys();
+                }
+                said
+            }
+        };
+        self.menu.tell(said.unwrap_or_else(|why| why));
     }
 
     /// A window for each seat new since the last frame, open; none for a
@@ -216,6 +274,7 @@ impl App {
             self.plays.entry(seat.id.0).or_insert_with(|| Window {
                 play: Play::new(seat.id.0, &seat.name, layouts),
                 open: true,
+                ended: false,
             });
         }
     }
@@ -226,14 +285,22 @@ impl App {
     fn play(&mut self, context: &egui::Context, seat: &Arc<Seat>, seats: &[Arc<Seat>]) -> bool {
         let (keys, numpad, keys_said) = (&self.keys, &mut self.numpad, &self.keys_said);
         let numlock = self.numlock;
+        let close_with_session = self.own.close_with_session();
         let Some(window) = self.plays.get_mut(&seat.id.0) else {
             return false;
         };
+        let lifecycle = lock(&seat.card).lifecycle.clone();
+        // Closed with its session when the player asked for that (`plan/50`
+        // §6 item 11), once: reopened from its card, it stays open.
+        let ended = matches!(lifecycle, LifecycleView::Closed { .. });
+        if ended && !window.ended && close_with_session {
+            window.open = false;
+        }
+        window.ended = ended;
         if !window.open {
             return false;
         }
         let snapshot = lock(&seat.snapshot).clone();
-        let lifecycle = lock(&seat.card).lifecycle.clone();
         let hunt = lock(&seat.hunt).clone();
         let others: Vec<Character> = seats
             .iter()
@@ -353,24 +420,49 @@ fn clocks_run(
     effects.then_some(Duration::from_secs(1))
 }
 
-impl eframe::App for App {
-    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        if std::mem::take(&mut self.catch_again) {
-            frame.set_numpad_capture_mode(if self.keys.numpad_always {
-                eframe::NumpadCaptureMode::Always
-            } else {
-                eframe::NumpadCaptureMode::NumLockAware
-            });
-            frame.set_numpad_capture_keys(Some(self.keys.numpad_caught()));
-        }
-        let pressed = frame.numpad_keys();
+impl App {
+    /// The fork's numpad presses this frame: `NumLock` as they show it, and
+    /// the lines the bound ones send on the play window with the keyboard;
+    /// or, while the Keys page waits for a key, the first press, for it.
+    fn numpad_pressed(&mut self, pressed: &[eframe::NumpadKeyEvent]) {
         if let Some(on) = pressed.iter().rev().find_map(|event| event.numlock_on) {
             self.numlock = Some(on);
         }
+        if self.menu.waiting_for_key() {
+            self.numpad.clear();
+            self.numpad_for_menu = pressed
+                .iter()
+                .filter(|event| !event.repeat)
+                .find_map(keys::numpad_chord)
+                .map(|chord| chord.written());
+            return;
+        }
+        self.numpad_for_menu = None;
         self.numpad = pressed
             .iter()
             .filter_map(|event| keys::numpad_line(&self.keys, event))
             .collect();
+    }
+}
+
+impl eframe::App for App {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let waiting = self.menu.waiting_for_key();
+        if waiting != self.caught_for_menu {
+            self.caught_for_menu = waiting;
+            self.catch_again = true;
+        }
+        if std::mem::take(&mut self.catch_again) {
+            // While the Keys page waits for a key, every numpad key comes
+            // here, so none is typed as its digit.
+            frame.set_numpad_capture_mode(if self.keys.numpad_always || waiting {
+                eframe::NumpadCaptureMode::Always
+            } else {
+                eframe::NumpadCaptureMode::NumLockAware
+            });
+            frame.set_numpad_capture_keys((!waiting).then(|| self.keys.numpad_caught()));
+        }
+        self.numpad_pressed(frame.numpad_keys());
         if ui.ctx().input(|input| input.viewport().close_requested()) && !self.close_asked() {
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -405,277 +497,4 @@ pub fn run(sessions: Sessions) -> eframe::Result {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use egui::accesskit::Role;
-    use egui_kittest::Harness;
-    use egui_kittest::kittest::Queryable as _;
-
-    /// A handle with no session behind it: session 0, as every test
-    /// handle is.
-    fn handle() -> cena_session::SessionHandle {
-        cena_session::SessionHandle::new(
-            tokio::sync::mpsc::channel(1).0,
-            cena_session::GenerationCell::default(),
-            tokio::sync::broadcast::channel(1).0,
-        )
-    }
-
-    /// A character that starts gets its play window; closed, it runs
-    /// headless and its card offers the window again, which reopens it.
-    #[test]
-    fn a_character_gets_a_window_and_keeps_playing_without_it() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("a runtime");
-        let sessions = Sessions::new(runtime.handle().clone());
-        sessions.seat_for_test(handle(), "Ashryn");
-        let mut harness = Harness::builder()
-            .with_size((1200.0, 900.0))
-            .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
-        harness.run();
-        assert!(
-            harness.query_by_role(Role::TextInput).is_some(),
-            "its window"
-        );
-        assert!(harness.query_by_label("Open window").is_none());
-
-        if let Some(window) = harness.state_mut().plays.get_mut(&0) {
-            window.open = false;
-        }
-        harness.run();
-        assert!(harness.query_by_role(Role::TextInput).is_none(), "headless");
-        harness.get_by_label("Open window").click();
-        harness.run();
-        harness.run();
-        assert!(harness.query_by_role(Role::TextInput).is_some(), "reopened");
-    }
-
-    /// The one settings menu opens from the hub on the roster's first
-    /// character, and from a play window on its own (`plan/50` §7 step 1),
-    /// in a window of its own.
-    #[test]
-    fn the_settings_menu_opens_from_the_hub_and_from_a_play_window() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("a runtime");
-        let sessions = Sessions::new(runtime.handle().clone());
-        sessions.seat_for_test(handle(), "Ashryn");
-        let card = |character: &str| cena_ui::RosterCard {
-            character: character.to_owned(),
-            account: "acct".to_owned(),
-            game: "GS3".to_owned(),
-            kept: true,
-            favourite: false,
-        };
-        sessions.roster(vec![card("Baelor"), card("Ashryn")]);
-        let mut harness = Harness::builder()
-            .with_size((1200.0, 900.0))
-            .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
-        harness.run();
-        assert!(!harness.state().menu.open);
-        // The hub's is drawn first, then the play window's.
-        if let Some(hubs) = harness.get_all_by_label("Settings").next() {
-            hubs.click();
-        }
-        harness.run();
-        assert!(harness.state().menu.open);
-        assert_eq!(harness.state().menu.character(), Some("GS3:Baelor"));
-        assert!(
-            harness.query_by_label("Reading the settings...").is_some(),
-            "its window"
-        );
-
-        harness.state_mut().menu.open = false;
-        harness.run();
-        if let Some(play) = harness.get_all_by_label("Settings").nth(1) {
-            play.click();
-        }
-        harness.run();
-        assert!(harness.state().menu.open);
-        assert_eq!(harness.state().menu.character(), Some("GS3:Ashryn"));
-    }
-
-    /// A bound key sends its line on the character whose window has it, as
-    /// if typed there; the command input never sees the key.
-    #[test]
-    fn a_bound_key_sends_on_its_window() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("a runtime");
-        let sessions = Sessions::new(runtime.handle().clone());
-        sessions.seat_for_test(handle(), "Ashryn");
-        let mut app = App::new(sessions);
-        app.keys = Keybinds::read("[keys]\nF5 = \"look\"\n").0;
-        let mut harness = Harness::builder()
-            .with_size((1200.0, 900.0))
-            .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
-        harness.run();
-        harness.key_press(egui::Key::F5);
-        harness.run();
-        harness.run();
-        assert!(harness.query_by_label("> look").is_some());
-        assert_eq!(
-            harness.get_by_role(Role::TextInput).value().as_deref(),
-            Some(""),
-            "the input never saw it"
-        );
-    }
-
-    /// What the binary says of a character's hunt shows in its window's Hunt
-    /// pane, and goes when the hunt does.
-    #[test]
-    fn a_hunt_shows_in_its_window() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("a runtime");
-        let sessions = Sessions::new(runtime.handle().clone());
-        sessions.seat_for_test(handle(), "Ashryn");
-        let told = sessions.clone();
-        let mut harness = Harness::builder()
-            .with_size((1200.0, 900.0))
-            .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
-        harness.run();
-        assert!(harness.query_by_label("No hunt running.").is_some());
-        told.hunt(
-            cena_session::SessionId::FIRST,
-            Some(cena_ui::HuntView {
-                running: "ojandhaart".to_owned(),
-                phase: "resting (out of mana)".to_owned(),
-                doing: "waiting 5s".to_owned(),
-                target: None,
-                waiting: Some("mana 30%, wants 50%".to_owned()),
-            }),
-        );
-        harness.run();
-        assert!(
-            harness
-                .query_by_label("Waiting: mana 30%, wants 50%")
-                .is_some()
-        );
-        told.hunt(cena_session::SessionId::FIRST, None);
-        harness.run();
-        assert!(harness.query_by_label("No hunt running.").is_some());
-    }
-
-    /// Typed before the window has seen the session, a line is echoed and
-    /// the player is told it did not go.
-    #[test]
-    fn a_line_before_any_snapshot_is_not_sent_and_says_so() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("a runtime");
-        let sessions = Sessions::new(runtime.handle().clone());
-        sessions.seat_for_test(handle(), "Ashryn");
-        let mut harness = Harness::builder()
-            .with_size((1200.0, 900.0))
-            .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
-        harness.run();
-        harness.get_by_role(Role::TextInput).type_text("look");
-        harness.run();
-        harness.key_press(egui::Key::Enter);
-        harness.run();
-        harness.run();
-        assert!(harness.query_by_label("> look").is_some());
-        assert!(
-            harness
-                .query_by_label("Not connected yet; nothing was sent.")
-                .is_some()
-        );
-        // Stop is the character's own `;stop`, as if typed.
-        harness.get_by_label("Stop").click();
-        harness.run();
-        harness.run();
-        assert!(harness.query_by_label("> ;stop").is_some());
-    }
-
-    /// A custom window saved as a preset from a play window is kept in the
-    /// library every character adds from, in its file beside the layouts.
-    #[test]
-    fn a_preset_saved_is_kept_for_every_character() {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("a runtime");
-        let data = std::env::temp_dir().join(format!("cena-app-presets-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&data);
-        let sessions = Sessions::new(runtime.handle().clone());
-        sessions.seat_for_test(handle(), "Ashryn");
-        let mut harness = Harness::builder()
-            .with_size((1200.0, 900.0))
-            .build_ui_state(
-                |ui, app: &mut App| app.draw(ui),
-                App::keeping(sessions, &data),
-            );
-        harness.run();
-        harness.get_by_label("Left: ?").click_secondary();
-        harness.run();
-        harness.get_by_label("Save as preset...").click();
-        harness.run();
-        harness.key_press(egui::Key::Enter);
-        harness.run();
-        harness.run();
-        let kept = Library::load(Some(data.join("layouts")));
-        let names: Vec<&str> = kept
-            .presets()
-            .iter()
-            .map(|preset| preset.name.as_str())
-            .collect();
-        assert_eq!(names, ["Loadout"]);
-        harness.get_by_label("Layout").click();
-        harness.run();
-        harness.get_by_label("Add a widget...").click();
-        harness.run();
-        harness.get_by_label("Forget").click();
-        harness.run();
-        harness.run();
-        assert!(
-            Library::load(Some(data.join("layouts")))
-                .presets()
-                .is_empty(),
-            "forgotten"
-        );
-        let _ = std::fs::remove_dir_all(&data);
-    }
-
-    /// A window is drawn again soon while something counts down by itself:
-    /// a quarter of a second for the clocks, a second for an effect's time
-    /// left or the next pulse, and not at all when nothing does.
-    #[test]
-    fn a_window_is_drawn_again_while_something_counts_down() {
-        let story = std::sync::Mutex::new(crate::story::Story::default());
-        let mut quiet = crate::fixture::snapshot();
-        quiet.state.roundtime_ends = None;
-        assert_eq!(clocks_run(Some(&quiet), &story), None);
-        let mut pulsing = quiet.clone();
-        pulsing.state.apply(&cena_session::Frame::Pulse {
-            mana: false,
-            min: 46,
-            max: 75,
-        });
-        assert_eq!(
-            clocks_run(Some(&pulsing), &story),
-            Some(Duration::from_secs(1))
-        );
-        let mut buffed = quiet.clone();
-        let now = buffed.state.game_time_now().expect("a clock");
-        buffed.state.effects.insert(
-            "1".to_owned(),
-            cena_session::Effect {
-                category: "Buffs".to_owned(),
-                text: "Rapid Fire".to_owned(),
-                ends_at: Some(now + 60),
-                percent: 100,
-            },
-        );
-        assert_eq!(
-            clocks_run(Some(&buffed), &story),
-            Some(Duration::from_secs(1))
-        );
-        let mut struck = buffed.clone();
-        struck.state.roundtime_ends = Some(now + 3);
-        assert_eq!(
-            clocks_run(Some(&struck), &story),
-            Some(Duration::from_millis(250))
-        );
-    }
-}
+mod tests;

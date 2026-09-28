@@ -120,10 +120,25 @@ pub fn character_path(
 /// The directory cannot be created, the value cannot be serialised, or the
 /// file cannot be written or renamed.
 pub fn save_json<T: serde::Serialize>(dir: &Path, path: &Path, value: &T) -> io::Result<()> {
-    fs::create_dir_all(dir)?;
     let text = serde_json::to_string_pretty(value)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-    let temp = path.with_extension("json.tmp");
+    save_text(dir, path, &text)
+}
+
+/// Write `text` to `path` in `dir`, atomically: [`save_json`]'s write, for
+/// a file kept as text a player may also edit by hand (a behavior's TOML,
+/// the keybinds). The temp file is `path` with `.tmp` after its extension.
+///
+/// # Errors
+///
+/// The directory cannot be created, or the file cannot be written or
+/// renamed.
+pub fn save_text(dir: &Path, path: &Path, text: &str) -> io::Result<()> {
+    fs::create_dir_all(dir)?;
+    let extension = path
+        .extension()
+        .map_or_else(String::new, |ext| ext.to_string_lossy().into_owned());
+    let temp = path.with_extension(format!("{extension}.tmp"));
     // **Synced before the rename, and the directory after it.** The rename
     // alone survives a process crash, not a power loss: the rename's
     // directory entry can reach disk before the file's data does, leaving a
@@ -133,7 +148,9 @@ pub fn save_json<T: serde::Serialize>(dir: &Path, path: &Path, value: &T) -> io:
     io::Write::write_all(&mut file, text.as_bytes())?;
     file.sync_all()?;
     drop(file);
-    fs::rename(&temp, path)?;
+    fs::rename(&temp, path).inspect_err(|_| {
+        let _ = fs::remove_file(&temp);
+    })?;
     // std cannot open a directory for syncing on Windows, where NTFS
     // journals the rename itself.
     #[cfg(unix)]

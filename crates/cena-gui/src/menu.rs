@@ -4,11 +4,13 @@
 //! settings for widgets/windows then they would open the same main settings
 //! menu to the correct spot for that setting."*
 //!
-//! A character is picked from the roster, running or not. Its pages come
-//! from the binary as [`Page`]s, which this draws knowing no behavior. Each
-//! change goes back as a [`HubRequest::Change`], which the binary applies
-//! through the writer the behavior's `;` command uses. So the menu and the
-//! command cannot disagree about a value.
+//! It opens on Hydra's own pages (step 2): the *Window* page, drawn as any
+//! other, and the *Keys* page ([`KeysView`]); the window applies their
+//! changes itself. A character is picked from the roster, running or not.
+//! Its pages come from the binary as [`Page`]s, which this draws knowing no
+//! behavior. Each change goes back as a [`HubRequest::Change`], which the
+//! binary applies through the writer the behavior's `;` command uses. So the
+//! menu and the command cannot disagree about a value.
 //!
 //! A text setting is typed and committed on Enter, or when the field is
 //! left; a value that is not of its kind is refused here, before anything is
@@ -18,6 +20,28 @@ use std::collections::HashMap;
 
 use cena_ui::settings::{Change, Page, Row, RowKind, Value};
 use cena_ui::{HubRequest, RosterCard};
+
+use crate::keys::page::{KeyChange, KeysPage, KeysView};
+
+/// The *Keys* page's id.
+const KEYS: &str = "keys";
+
+/// What the settings menu asks for.
+#[derive(Clone, Debug, PartialEq)]
+pub enum MenuAsked {
+    /// Of the binary: a character's pages, or a change to one of them.
+    Binary(HubRequest),
+    /// A change to Hydra's own *Window* page, which the window makes.
+    Own {
+        /// The row's key.
+        key: String,
+        /// Its value, written as the menu writes it; `None` puts it back
+        /// to its default.
+        to: Option<String>,
+    },
+    /// A change to the keybinds, which the window writes.
+    Key(KeyChange),
+}
 
 /// What a row asks for.
 enum Wanted {
@@ -32,7 +56,8 @@ enum Wanted {
 pub struct Menu {
     /// Whether its window is open.
     pub open: bool,
-    /// The character whose settings are shown, as the roster names it.
+    /// The character whose settings are shown, as the roster names it;
+    /// `None` shows Hydra's own.
     character: Option<String>,
     /// The page showing, by its id.
     page: Option<String>,
@@ -40,8 +65,11 @@ pub struct Menu {
     typed: HashMap<(String, String), String>,
     /// The character whose pages were last asked for, since the menu opened.
     asked: Option<String>,
-    /// Why the last typed value was not sent.
-    refused: Option<String>,
+    /// What the menu itself last said: why a value was not sent, or what a
+    /// change to Hydra's own pages did.
+    note: Option<String>,
+    /// The *Keys* page.
+    keys: KeysPage,
 }
 
 /// What the menu draws from this frame.
@@ -53,6 +81,10 @@ pub struct MenuView<'a> {
     pub pages: Option<(&'a str, &'a [Page])>,
     /// What the binary answered the last request.
     pub said: Option<&'a str>,
+    /// Hydra's own pages but the keys: the *Window* page.
+    pub own: &'a [Page],
+    /// The keybinds, for the *Keys* page.
+    pub keys: KeysView<'a>,
 }
 
 /// A roster character's name for the binary: `GAME:Name`.
@@ -62,71 +94,54 @@ pub fn roster_name(card: &RosterCard) -> String {
 }
 
 impl Menu {
-    /// Open the menu, on `character`'s settings when one is named: a play
-    /// window's button names its own. Its pages are asked for afresh.
+    /// Open the menu on `character`'s settings, as the roster names it: a
+    /// play window's button names its own. `None` opens Hydra's own, as the
+    /// hub's button does. A character's pages are asked for afresh.
     pub fn open_for(&mut self, character: Option<String>) {
         self.open = true;
         self.asked = None;
-        if character.is_some() {
-            self.character = character;
-        }
+        self.character = character;
     }
 
-    /// The character whose settings are shown, as the roster names it.
+    /// The character whose settings are shown, as the roster names it;
+    /// `None` while Hydra's own are.
     #[must_use]
     pub fn character(&self) -> Option<&str> {
         self.character.as_deref()
     }
 
-    /// Draw the menu over `view`, and return what it asks of the binary.
-    pub fn show(&mut self, ui: &mut egui::Ui, view: &MenuView<'_>) -> Option<HubRequest> {
-        let mut asked = None;
-        if self.character.is_none() {
-            self.character = view.roster.first().map(roster_name);
-        }
-        let Some(character) = self.character.clone() else {
-            ui.weak("No character is on the roster yet: log one in from Not launched.");
-            return None;
-        };
-        ui.horizontal(|ui| {
-            let label = ui.label("Character");
-            let called = |name: &str| {
-                view.roster
-                    .iter()
-                    .find(|card| roster_name(card) == name)
-                    .map_or_else(
-                        || name.to_owned(),
-                        |card| {
-                            format!(
-                                "{} ({})",
-                                card.character,
-                                crate::launch::game_name(&card.game)
-                            )
-                        },
-                    )
-            };
-            egui::ComboBox::from_id_salt("settings-character")
-                .selected_text(called(&character))
-                .show_ui(ui, |ui| {
-                    for card in view.roster {
-                        let name = roster_name(card);
-                        let shown = called(&name);
-                        ui.selectable_value(&mut self.character, Some(name), shown);
-                    }
-                })
-                .response
-                .labelled_by(label.id);
-        });
-        let character = self.character.clone().unwrap_or(character);
-        if self.asked.as_deref() != Some(character.as_str()) {
-            self.asked = Some(character.clone());
-            self.typed.clear();
-            asked = Some(HubRequest::Settings(character.clone()));
-        }
-        if let Some(said) = self.refused.as_deref().or(view.said) {
+    /// Whether the *Keys* page waits for a key to be pressed: the window
+    /// then hands it every numpad key ([`KeysView::numpad`]).
+    #[must_use]
+    pub fn waiting_for_key(&self) -> bool {
+        self.open
+            && self.character.is_none()
+            && self.page.as_deref() == Some(KEYS)
+            && self.keys.waiting()
+    }
+
+    /// Say `said` at the top of the menu: what a change to Hydra's own
+    /// pages did.
+    pub fn tell(&mut self, said: String) {
+        self.note = Some(said);
+    }
+
+    /// Draw the menu over `view`, and return what it asks for.
+    pub fn show(&mut self, ui: &mut egui::Ui, view: &MenuView<'_>) -> Option<MenuAsked> {
+        self.picker(ui, view);
+        if let Some(said) = self.note.as_deref().or(view.said) {
             ui.weak(said);
         }
         ui.separator();
+        let Some(character) = self.character.clone() else {
+            return self.hydra(ui, view);
+        };
+        let mut asked = None;
+        if self.asked.as_deref() != Some(character.as_str()) {
+            self.asked = Some(character.clone());
+            self.typed.clear();
+            asked = Some(MenuAsked::Binary(HubRequest::Settings(character.clone())));
+        }
         let pages = match view.pages {
             Some((whose, pages)) if whose == character => pages,
             _ => {
@@ -134,23 +149,12 @@ impl Menu {
                 return asked;
             }
         };
-        if self
-            .page
-            .as_deref()
-            .is_none_or(|id| pages.iter().all(|page| page.id != id))
-        {
-            self.page = pages.first().map(|page| page.id.clone());
-        }
+        let titles: Vec<(&str, &str)> = pages
+            .iter()
+            .map(|page| (page.id.as_str(), page.title.as_str()))
+            .collect();
         ui.horizontal_top(|ui| {
-            ui.vertical(|ui| {
-                ui.set_width(140.0);
-                for page in pages {
-                    let showing = self.page.as_deref() == Some(page.id.as_str());
-                    if ui.selectable_label(showing, &page.title).clicked() {
-                        self.page = Some(page.id.clone());
-                    }
-                }
-            });
+            self.contents(ui, &titles);
             ui.separator();
             ui.vertical(|ui| {
                 let page = pages
@@ -159,7 +163,103 @@ impl Menu {
                 if let Some(page) = page
                     && let Some(change) = self.page_drawn(ui, &character, page)
                 {
-                    asked = Some(HubRequest::Change(change));
+                    self.note = None;
+                    asked = Some(MenuAsked::Binary(HubRequest::Change(change)));
+                }
+            });
+        });
+        asked
+    }
+
+    /// Whose settings: Hydra's own, or a roster character's.
+    fn picker(&mut self, ui: &mut egui::Ui, view: &MenuView<'_>) {
+        let called = |name: Option<&str>| {
+            let Some(name) = name else {
+                return "Hydra (every character)".to_owned();
+            };
+            view.roster
+                .iter()
+                .find(|card| roster_name(card) == name)
+                .map_or_else(
+                    || name.to_owned(),
+                    |card| {
+                        format!(
+                            "{} ({})",
+                            card.character,
+                            crate::launch::game_name(&card.game)
+                        )
+                    },
+                )
+        };
+        ui.horizontal(|ui| {
+            let label = ui.label("Settings for");
+            egui::ComboBox::from_id_salt("settings-character")
+                .selected_text(called(self.character.as_deref()))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.character, None, called(None));
+                    for card in view.roster {
+                        let name = roster_name(card);
+                        let shown = called(Some(&name));
+                        ui.selectable_value(&mut self.character, Some(name), shown);
+                    }
+                })
+                .response
+                .labelled_by(label.id);
+        });
+    }
+
+    /// The pages' titles down the side, one of them showing: the first,
+    /// until another is picked.
+    fn contents(&mut self, ui: &mut egui::Ui, titles: &[(&str, &str)]) {
+        if self
+            .page
+            .as_deref()
+            .is_none_or(|id| titles.iter().all(|(page, _)| *page != id))
+        {
+            self.page = titles.first().map(|(id, _)| (*id).to_owned());
+        }
+        ui.vertical(|ui| {
+            ui.set_width(140.0);
+            for (id, title) in titles {
+                let showing = self.page.as_deref() == Some(*id);
+                if ui.selectable_label(showing, *title).clicked() {
+                    self.page = Some((*id).to_owned());
+                }
+            }
+        });
+    }
+
+    /// Hydra's own pages: *Window*, drawn as any other page, and *Keys*.
+    fn hydra(&mut self, ui: &mut egui::Ui, view: &MenuView<'_>) -> Option<MenuAsked> {
+        let mut titles: Vec<(&str, &str)> = view
+            .own
+            .iter()
+            .map(|page| (page.id.as_str(), page.title.as_str()))
+            .collect();
+        titles.push((KEYS, "Keys"));
+        let mut asked = None;
+        ui.horizontal_top(|ui| {
+            self.contents(ui, &titles);
+            ui.separator();
+            ui.vertical(|ui| {
+                if self.page.as_deref() == Some(KEYS) {
+                    asked = self
+                        .keys
+                        .show(ui, &view.keys, &mut self.note)
+                        .map(MenuAsked::Key);
+                    return;
+                }
+                let page = view
+                    .own
+                    .iter()
+                    .find(|page| self.page.as_deref() == Some(page.id.as_str()));
+                if let Some(page) = page
+                    && let Some(change) = self.page_drawn(ui, "", page)
+                {
+                    asked = Some(MenuAsked::Own {
+                        key: change.key,
+                        to: change.to,
+                    });
                 }
             });
         });
@@ -254,10 +354,10 @@ impl Menu {
                     if field.lost_focus() && text != shown {
                         match typed(kind, &text) {
                             Ok(to) => {
-                                self.refused = None;
+                                self.note = None;
                                 wanted = Some(Wanted::Set(to));
                             }
-                            Err(why) => self.refused = Some(format!("{}: {why}", row.label)),
+                            Err(why) => self.note = Some(format!("{}: {why}", row.label)),
                         }
                     }
                 }
