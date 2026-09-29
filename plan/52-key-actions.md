@@ -9,8 +9,9 @@ those keybinds. Leaving them fully customizable of course."*
 This file is the list and the defaults, measured against what players already press, with
 the questions that are the author's (§6). The first seven were **ANSWERED the same day**
 (§6), which moved Tab to targeting, left Hydra's own actions without default keys, and
-added macro sets per character. Three follow from the answers (§6, 8-10). Nothing here is
-built.
+added macro sets per character. Three followed from them, answered too (§6, 8-10): set 0
+always active and holding the defaults, Alt and a digit choosing a set, and `stop` left
+for later. **APPROVED to build; nothing is built.**
 
 ---
 
@@ -106,16 +107,18 @@ arrives beneath the keys.
 - **Macros are the character's, with a switch to make one global** (§6 answer 7: *"The
   macro is character by default with a global toggle"*). A character's own are kept in
   its own keys file beside its settings; the global ones in `keybinds.toml`, as today.
-- **Ten macro sets, 0 to 9, as Wrayth has.** One set is chosen at a time, per character,
-  and kept. **Hydra's defaults are always active unless a macro in the chosen set binds
-  the same key** (the author: *"Default macros are always active unless one of the macros
-  in your macro set overwrites it"*). For a key press, the first that binds the key wins:
+- **Ten macro sets, 0 to 9, as Wrayth has, and set 0 is always active** (§6 answer 8).
+  **Hydra's defaults are set 0's**: every default in §3 is a macro in set 0, which the
+  player changes like any other. One of sets 1 to 9 may be chosen, per character, and
+  kept; Alt+1 to Alt+9 choose one and Alt+0 goes back to set 0 alone (§6 answer 10). For a
+  key press, the first that binds the key wins:
 
-  1. the chosen set: the character's own macro, then a global one;
-  2. Hydra's defaults.
+  1. the chosen set, if one is: the character's own macro, then a global one;
+  2. set 0: the character's own, then a global one, then Hydra's default.
 
-  Whether set 0 is one more set or always active under the chosen one, as Wrayth's
-  *(default)* set appears to be, is §6 question 8.
+  The author's example: *"if set 0 has F2 = stance offensive, F4 = stance defensive, and
+  set 1 only has F4 = loot, then when you activate set 1 and hit F4 you will loot, but if
+  you hit F2 you still stance offensive."*
 - **An action acts on the play window that has the keyboard.** Scrolling, Find and tabs
   act on **the window in use**: the window last clicked in the play window, the story
   until one is (§6 answer 3: *"click only for choosing the window"*). It is marked, so the
@@ -184,12 +187,12 @@ No default keys (the author: *"don't give default binds to those hydra actions"*
 
 | Action | Does |
 |---|---|
-| `stop` | what the top bar's Stop does, `;stop`: the running behaviors stop (the hunt with its errands, travel, `;foreach` and `;multi`, each registered in `crates/cena/src/commands.rs`, `stops`). Not a script: see §6 question 9 |
+| `stop` | what the top bar's Stop does, `;stop`: the running behaviors stop (the hunt with its errands, travel, `;foreach` and `;multi`, each registered in `crates/cena/src/commands.rs`, `stops`). Not a script: left for later (§6 item 9) |
 | `drawer_top` / `_bottom` / `_left` / `_right` | open or shut that drawer (`plan/49` Stage E) |
 | `character_1` … `character_9` | the play window of the hub's first to ninth character |
 | `settings` | the settings menu |
 | `lock` / `arrange` | the top bar's two switches |
-| `macro_set_0` … `macro_set_9` | choose that macro set for this character; Wrayth's are Alt+0 to Alt+9 (§6 question 10) |
+| `macro_set_0` … `macro_set_9` | choose that set for this character; `macro_set_0` chooses none, leaving set 0 alone. **The one exception to no default: Alt+0 to Alt+9**, as Wrayth has them (§6 answer 10) |
 
 ### Lines bound by default (not actions)
 
@@ -199,7 +202,21 @@ No default keys (the author: *"don't give default binds to those hydra actions"*
 | **Numpad5** / **Numpad0** / **NumpadDecimal** | `out` / `down` / `up` |
 | **NumpadAdd** / **NumpadSubtract** / **NumpadMultiply** / **NumpadDivide** | `look` / `info` / `exp` / `health` |
 
-F1 to F12, Alt and Ctrl with letters, and every other numpad chord are left to the player.
+**Shift and the numpad peers** (the author, 2026-09-28: *"shift + numpad = peer
+direction"*), the game's `PEER` for each key that walks:
+
+| Key | Sends |
+|---|---|
+| Shift+Numpad8 2 6 4 9 7 3 1 | `peer north` `peer south` `peer east` `peer west` `peer northeast` `peer northwest` `peer southeast` `peer southwest` |
+| Shift+Numpad5 / Shift+Numpad0 / Shift+NumpadDecimal | `peer out` / `peer down` / `peer up` |
+
+To check when built: on Windows, Shift with a numpad key while NumLock is on reaches a
+program as that key with NumLock off, so Vellum cannot tell the two apart
+(`reference/VellumFE/defaults/globals/keybinds.toml:158-161`). Hydra reads NumLock from
+each press through the fork's hook (`plan/47` step 7); whether Shift survives there is
+to be measured, not assumed.
+
+F1 to F12, Ctrl with letters, and every other numpad chord are left to the player.
 
 ## 4. Importing a Wrayth key set
 
@@ -252,18 +269,13 @@ quoted.
    like wrayth has. 0-9. Default macros are always active unless one of the macros in
    your macro set overwrites it."*
 
-Following from those answers, open:
+Three followed from those answers, asked and answered the same day:
 
-8. **Set 0.** Is it one set among ten, chosen like the others, with only Hydra's defaults
-   under it? Or always active beneath the chosen set, as Wrayth's *(default)* set appears
-   to be (the author's exports keep the numpad and history there and the spells in set
-   3, which is chosen)? Always active means a player's own everyday keys, a numpad peer
-   say, need writing once; one among ten means they need writing into every set used.
-   Recommended: always active, so the order in §2 becomes the chosen set, then set 0,
-   then Hydra's defaults.
-9. **Scripts.** Hydra runs scripts now: a Ruby runner per character (`plan/46`) and the
-   player's own Lich (`plan/51`). `;stop` stops neither. Should the `stop` action stop the
-   behaviors only, as asked, or the character's scripts too?
-10. **Keys for the sets.** Choosing a set is a Hydra action, so it has no default key by
-    the rule above; Wrayth's players know Alt+0 to Alt+9. Leave them unbound, or give
-    these ten Wrayth's keys?
+8. ~~Set 0.~~ **ANSWERED**: *"set 0 is one of the 10, and always active. Set 0 has all
+   the actions we just discussed, plus the numpad keybinds"*. §2 has the order and the
+   author's example; Shift and the numpad peer (§3) came with it.
+9. **Scripts and `stop`. LEFT FOR LATER** by the author. `stop` does what `;stop` does,
+   which reaches no script (`plan/46`'s runner, `plan/51`'s Lich), until it is revisited.
+10. ~~Keys for the sets.~~ **ANSWERED**: *"sure alt + number = set"*.
+
+Nothing is open. Step 1 can start.
