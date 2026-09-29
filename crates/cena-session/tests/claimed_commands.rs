@@ -32,17 +32,17 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
         }
     });
     assert!(handle.set_desk(Desk::new(None, runner)));
-    assert_eq!(handle.command_symbol(), Some(';'));
+    assert_eq!(handle.command_symbol(), Some('.'));
 
     // The game's, and it goes to the game.
     let north = handle.send_manual_at(generation, "north", DEADLINE).await;
     // Hydra's, and known.
     let known = handle
-        .send_manual_at(generation, ";go2 bank", DEADLINE)
+        .send_manual_at(generation, ".go2 bank", DEADLINE)
         .await;
     // Hydra's, and NOT known -- the line the author named.
     let unknown = handle
-        .send_manual_at(generation, ";go22 bank", DEADLINE)
+        .send_manual_at(generation, ".go22 bank", DEADLINE)
         .await;
 
     // Said by the outcome, not by a frame nobody sent: these were answered
@@ -69,7 +69,7 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
         }
     }
     assert_eq!(said.len(), 1, "only the unknown one is answered: {said:?}");
-    assert!(said[0].contains(";go22 bank"), "{said:?}");
+    assert!(said[0].contains(".go22 bank"), "{said:?}");
 }
 
 /// **A claimed line checks the generation before it runs.**
@@ -97,7 +97,7 @@ async fn a_claimed_line_from_a_stale_generation_does_not_run() {
     // generation behind.
     let _ = handle.generation_cell().advance();
 
-    let outcome = handle.send_manual_at(stale, ";go2 bank", DEADLINE).await;
+    let outcome = handle.send_manual_at(stale, ".go2 bank", DEADLINE).await;
     assert_eq!(outcome, cena_session::Outcome::Disconnected);
     assert!(
         ran.lock().unwrap().is_empty(),
@@ -144,7 +144,7 @@ async fn the_symbol_can_change_after_the_desk_is_installed() {
 
     let runner: Runner = Arc::new(|_: &str| Claimed::Done);
     assert!(handle.set_desk(Desk::new(None, runner)));
-    assert_eq!(handle.command_symbol(), Some(';'));
+    assert_eq!(handle.command_symbol(), Some('.'));
 
     assert!(handle.set_command_symbol('/'));
     assert_eq!(handle.command_symbol(), Some('/'));

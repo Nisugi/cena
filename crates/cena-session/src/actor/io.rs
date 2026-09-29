@@ -17,65 +17,14 @@
 //! moves here is the two halves of one turn -- bytes out ([`SessionActor::pump`])
 //! and bytes in ([`SessionActor::ingest`]).
 
+use super::ending::{QUIT_EOF_DEADLINE, is_exit_intent};
 use super::lich_text::QuietWindow;
 use super::{Envelope, Event, SessionActor, WRITE_DEADLINE};
-use crate::command::{Origin, Outcome, Sent};
+use crate::command::{Outcome, Sent};
 use cena_platform::ByteSource;
 use cena_protocol::Frame;
 
-/// What Cena sends to log out (`plan/16` §5b).
-///
-/// Lich recognises either `exit` or `quit`, optionally wrapped in `<c>`
-/// (`reference/lich-5/lib/common/shutdown_intent.rb:7`:
-/// `/\A\s*(?:<c>)?\s*(?:exit|quit)\s*\z/i`). `quit` is chosen because it is
-/// the word the author used and the one a player types; `exit` is the same
-/// thing to both Lich and the game.
-const EXIT_COMMAND: &str = "quit";
-
-/// How long a typed exit waits for the server's EOF.
-///
-/// The same bound `SessionHandle::quit` uses by default. A typed `quit` has no
-/// caller holding a deadline -- the player is not awaiting a `Farewell` -- so
-/// the actor supplies one rather than waiting unbounded, which `plan/12` §5.5
-/// forbids.
-const QUIT_EOF_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
-
-/// Is this line the player asking to log out?
-///
-/// Lich's own test (`reference/lich-5/lib/common/shutdown_intent.rb:7`):
-///
-/// ```text
-/// /\A\s*(?:<c>)?\s*(?:exit|quit)\s*\z/i
-/// ```
-///
-/// Reproduced without a regex crate -- `cena-session` has no `regex`
-/// dependency and one line of trimming is not worth acquiring one (Rule -1).
-/// The `<c>` prefix is Lich's client-command wrapper, kept because a frontend
-/// porting Lich's input path may pass it through.
-fn is_exit_intent(line: &str) -> bool {
-    let line = line.trim();
-    let line = line.strip_prefix("<c>").unwrap_or(line).trim();
-    line.eq_ignore_ascii_case("quit") || line.eq_ignore_ascii_case("exit")
-}
-
 impl<S: ByteSource> SessionActor<S> {
-    /// Whether a `quit` from `origin` may log the character out.
-    ///
-    /// The author, 2026-09-29, of players who idle out on a timer: *"I think
-    /// we allow it at higher permission levels."* So the player, their own
-    /// scripts and triggers (an imported trigger's send is already held until
-    /// approved, `plan/45` §1 row 1) and their own Lich may; an agent only
-    /// while it holds the authority, which its `takeover` level gives it; and
-    /// Hydra's own behaviors never, whatever they hold.
-    fn may_quit(&self, origin: crate::command::Origin) -> bool {
-        use crate::command::Origin;
-        match origin {
-            Origin::Manual | Origin::Script | Origin::Trigger | Origin::Lich => true,
-            Origin::Agent(Some(token)) => self.queue.authority() == Some(token),
-            Origin::Agent(None) | Origin::Behavior(_) => false,
-        }
-    }
-
     /// Write one message, bounded by [`WRITE_DEADLINE`] **and by the cancel
     /// token**.
     ///
@@ -102,7 +51,7 @@ impl<S: ByteSource> SessionActor<S> {
     /// Abandoning the write may leave part of a command on the wire. That is
     /// the state `WRITE_DEADLINE` already accepts, and it costs nothing here:
     /// the connection is being closed either way.
-    async fn write_bounded(&mut self, message: &[u8]) -> Result<(), super::EndReason> {
+    pub(super) async fn write_bounded(&mut self, message: &[u8]) -> Result<(), super::EndReason> {
         // The character acted, which answers the server's idle warning. Here
         // rather than at the three call sites because **this is the one
         // chokepoint they all pass through** -- and a fix applied at one of three
@@ -312,79 +261,6 @@ impl<S: ByteSource> SessionActor<S> {
             }
         }
         None
-    }
-
-    /// Send the exit command and start waiting for the server's EOF
-    /// (`plan/16` §5b.3).
-    ///
-    /// **Does not end the loop.** The loop keeps reading, because the read is
-    /// what observes the close -- see [`SessionActor::quitting`]. What this
-    /// does is put the command on the wire and arm the deadline.
-    ///
-    /// A second quit while one is pending is not re-sent: the server has
-    /// already been asked, and sending `quit` twice against a type-ahead
-    /// buffer of 2 would spend a slot for nothing (`plan/16` §5.2b). The newer
-    /// caller waits for the first one's verdict and is told the same, so
-    /// `Acknowledged` always means the server closed. It was told
-    /// `Acknowledged` at once, while the server had said nothing
-    /// (the crate review of 2026-09-28, R7).
-    /// Returns `false` if the write failed, which means **the connection is
-    /// gone** and the caller must end it rather than keep reading.
-    pub(super) async fn begin_quit(
-        &mut self,
-        timeout: std::time::Duration,
-        reply: tokio::sync::oneshot::Sender<crate::command::Farewell>,
-    ) -> bool {
-        if let Some(pending) = self.quitting.as_mut() {
-            // Already asked: this caller waits for the same verdict.
-            pending.replies.push(reply);
-            return true;
-        }
-
-        // The write goes through the same one-write path every command uses:
-        // two writes can emit two TLS records and the server drops the command
-        // (`cena_platform::bytes::ByteSource::write_all`).
-        let mut message = Vec::with_capacity(EXIT_COMMAND.len() + 1);
-        message.extend_from_slice(EXIT_COMMAND.as_bytes());
-        message.push(b'\n');
-        if self.write_bounded(&message).await.is_err() {
-            // Nothing to say goodbye to -- or a cancel overtook the write,
-            // which ends the session as a quit would. Lich raises `IOError` here
-            // (`orderly_shutdown.rb:181`); Cena reports it and lets the caller
-            // cancel, because a transport that cannot be written to is already
-            // the state a shutdown was trying to reach.
-            self.log("quit: could not send, transport gone");
-            let _ = reply.send(crate::command::Farewell::Unsent);
-            return false;
-        }
-        self.recorder.outbound(&message);
-        self.log_wire(false, &message);
-        // Published like any other send, so an observer sees the session's
-        // last act rather than it vanishing.
-        let _ = self.events.send(super::Event::Sent {
-            line: EXIT_COMMAND.to_owned(),
-            origin: Origin::Manual,
-            by: None,
-        });
-        self.log(&format!("quit: sent, awaiting EOF within {timeout:?}"));
-        self.quitting = Some(super::Quitting {
-            // `checked_add`, because `Instant + Duration` PANICS on overflow
-            // and `timeout` is caller-supplied. `SessionHandle::quit` doubles
-            // its own backstop before passing it, so a caller near the top of
-            // the range gets there in one multiply. A panic here takes down
-            // the actor on the one path whose entire job is an orderly exit
-            // (review SE-11).
-            //
-            // Saturating means "no deadline in any practical sense", which is
-            // the honest reading of a caller asking to wait ~584 years.
-            deadline: tokio::time::Instant::now()
-                .checked_add(timeout)
-                .unwrap_or_else(|| {
-                    tokio::time::Instant::now() + std::time::Duration::from_hours(24)
-                }),
-            replies: vec![reply],
-        });
-        true
     }
 
     /// Send a line immediately, subject only to the roundtime gate.

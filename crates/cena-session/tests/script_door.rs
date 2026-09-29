@@ -138,8 +138,8 @@ async fn a_scripts_line_goes_out_as_the_scripts_and_says_where() {
     .unwrap();
     assert_eq!(found, (cursor, "look".to_owned(), Origin::Script));
 
-    assert_eq!(door.send(";known").await, Sending::Ran);
-    assert_eq!(door.send(";nosuch").await, Sending::Unknown);
+    assert_eq!(door.send(".known").await, Sending::Ran);
+    assert_eq!(door.send(".nosuch").await, Sending::Unknown);
     assert_eq!(
         transcript.lines(),
         ["look"],
