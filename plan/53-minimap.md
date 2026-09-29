@@ -247,11 +247,54 @@ pictures (`svg.rs`) for the author to judge. **What tuned means is the author's 
    in total or in any area. Deterministic output, as VellumFE's `tests/layout_engine.rs`
    asserts.
 
-   **BUILT 2026-09-29** (`05f3a0d`): `cena-mapper --quality-check [map]` measures again and
-   refuses (exit 1) any area worse on any of five counts (the first three rules, directionless
-   exits not drawn, directionless lines crossing another), leaving the table alone. A
-   command, not a `cargo test`, because `gs.map` is not in the repository; its comparison
-   is tested. Run twice it is identical in every area: the layout is deterministic.
+   **BUILT 2026-09-29** (`05f3a0d`): `cena-mapper --quality-check [map]` measures again
+   against five counts (the first three rules, directionless exits not drawn, directionless
+   lines crossing another), leaving the table alone. A command, not a `cargo test`, because
+   `gs.map` is not in the repository; its comparison is tested. Run twice it is identical in
+   every area: the layout is deterministic. **Changed the same day by the author's choice**
+   (`6431701`): it refuses (exit 1) only a count worse **in total**, and lists each area
+   that traded one count for another; the event areas (`special-*`) are measured and not
+   gated.
+
+   **Since the baseline, 2026-09-29**, each step through the gate:
+
+   - The positioner's repairs (`329c70c`, `e70bb72`, `55acc53`): a group whose bearings
+     cannot all hold moves only what they force (`place_near`, up to 10% longer), and a
+     group whose exits truly contradict sets the least-trusted aside as connectors and
+     honours the rest.
+   - `cena-mapper --compare <area>` (`e788b32`) draws an area by the engine and by the
+     author's hand side by side (`<map>.<area>.engine.svg`, `.hand.svg`), with the four
+     rules and agreement with Lich's picture for each. Hinterwilds taught the next three.
+   - **The author's rulings from it.** Compactness is not a rule: the engine's own objective
+     (shortest lines, empty rows and columns removed) is what packed the pits, the shops and
+     the long lines together, and a smaller sheet is no longer reported as better. Indoors is
+     not a building: no signal in the data tells the Pits of the Dead from a pub (Lich's
+     picture draws both, room by room; the name, the forage tags and the terrain each fail
+     on one or the other, measured), so *"We leave all indoor rooms without terrain off the
+     map. their room that leads to an outside room, shows up on the map as a dot like it does
+     now, the rest of them are hidden"*. And a connector is a free joint: *"yellow connectors
+     should be stretchy, they should stretch until their whole group is free and clear"*,
+     and *"should also curve around to find empty space"*.
+   - **Indoor rooms without terrain hidden** but for their doorways (`b7132d9`,
+     `cena_map_layout::hidden`), laid out apart so what they join is still packed together;
+     an area with no outdoor room is drawn whole.
+   - **Stretchy, curving connectors** (`ac4cc39`, `cena_map_layout::stretch`,
+     `routing::curve_connectors`).
+
+   | Rule, events aside | baseline gate | now |
+   |---|---|---|
+   | exits against their direction | 454 | 247 |
+   | lines through rooms | 597 | 48 |
+   | building rooms under a line not theirs | 291 | 35 |
+   | directionless exits not drawn | 34 | 3 |
+   | directionless lines crossing another | 1,876 | 437 |
+
+   Rooms drawn fell from 31,787 to 19,444, which is the rule, not a loss. Laying out every
+   area takes 3.5 s against 0.9 s; the slowest, Solhaven, 550 ms. Next, by the Hinterwilds
+   pictures: a part of a group hanging on one compass exit slides along it until its
+   directionless lines are clear (Berserker's End's stairs, which no bend can clear); compass
+   lines stretched far past a step by empty columns kept across a whole group (Ojandhaart,
+   Eldurhaart's grove); the positioner's objective, which still minimises length.
 3. **Directions** (rule 1): the 358 drawn against their bearing on data that could be
    satisfied, by a repair that is not local (the README's own diagnosis). The 309 in groups
    whose exits truly contradict are data: curated, or drawn as the least wrong.
