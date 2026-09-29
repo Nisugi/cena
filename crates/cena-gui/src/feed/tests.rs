@@ -352,7 +352,7 @@ async fn the_live_prompt_settles_as_roundtime_ends() {
 /// it, in order, the next time it is taken.
 #[test]
 fn a_line_heard_while_the_story_is_drawn_waits_for_it_not_the_feed() {
-    let seat = Seat::new(handle(), "Nisugi", "GS3");
+    let seat = Seat::new(handle(), "Nisugi", cena_session::DEFAULT_GAME_CODE);
     let ears = Ears {
         seat: Arc::new(seat),
         merged: Arc::default(),
