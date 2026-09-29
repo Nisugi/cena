@@ -1,6 +1,6 @@
 //! The hub: every character this Hydra runs, at a glance, in two tabs
-//! (`plan/47` §3), and a third holding those not launched (`launch.rs`,
-//! `plan/49` Stage C). The author: *"we probably don't want to clutter the live cards
+//! (`plan/47` §3), a third holding those not launched (`launch.rs`,
+//! `plan/49` Stage C), and a fourth, a login by account. The author: *"we probably don't want to clutter the live cards
 //! with the closed cards. so tab for closed and tab for live?"*
 //!
 //! A card is [`SessionCard`], the web hub's own, so both hubs show the same

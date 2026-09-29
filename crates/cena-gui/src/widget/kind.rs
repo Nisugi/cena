@@ -347,15 +347,17 @@ impl Widget {
         })
     }
 
-    /// Whether it is one character's story, which never follows another
-    /// character (`plan/49` §1 row 7): no window mixes two characters'
-    /// story (`plan/29` §5a R2). Hydra's messages count as its story, and
-    /// so does each of its streams.
+    /// Whether it holds the game's lines: the story or one of its streams,
+    /// which the scrolling keys and Find work on. Hydra's own messages are
+    /// not among them.
     pub(crate) fn has_lines(&self) -> bool {
         matches!(self, Self::Story | Self::Stream(_))
     }
 
-    /// Whether it is the story.
+    /// Whether it is one character's story, which never follows another
+    /// character (`plan/49` §1 row 7): no window mixes two characters'
+    /// story (`plan/29` §5a R2). Hydra's messages count as its story, and
+    /// so does each of its streams.
     pub(crate) fn is_story(&self) -> bool {
         matches!(self, Widget::Story | Widget::Hydra | Widget::Stream(_))
     }

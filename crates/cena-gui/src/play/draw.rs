@@ -83,9 +83,6 @@ pub(super) enum Top {
     Lich(bool),
 }
 
-/// The top bar: who, how connected, the keybinds, the layout's grid, Stop;
-/// and any banner. What the hands hold and the clocks are widgets now, in
-/// the layout with the rest.
 /// The buttons that open another window: *Settings*, *Triggers* and *Log*,
 /// right to left as the top bar draws them.
 fn windows(ui: &mut egui::Ui) -> Option<Top> {
@@ -114,6 +111,9 @@ fn windows(ui: &mut egui::Ui) -> Option<Top> {
     asked
 }
 
+/// The top bar: who, how connected, the keybinds, the layout's grid, Stop;
+/// and any banner. What the hands hold and the clocks are widgets now, in
+/// the layout with the rest.
 pub(super) fn top(
     ui: &mut egui::Ui,
     view: &PlayView<'_>,

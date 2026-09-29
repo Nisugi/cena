@@ -80,7 +80,6 @@ impl Own {
         })
     }
 
-    /// Whether a play window closes when its session does.
     /// The key held to drag an object from a link: Ctrl unless chosen.
     pub(crate) fn drag_with(&self) -> Modifiers {
         let chosen = self.file.drag_with.as_deref().unwrap_or("ctrl");
@@ -90,6 +89,7 @@ impl Own {
             .map_or(Modifiers::CTRL, |(.., key)| *key)
     }
 
+    /// Whether a play window closes when its session does.
     pub(crate) fn close_with_session(&self) -> bool {
         self.file.close_with_session.unwrap_or(false)
     }
