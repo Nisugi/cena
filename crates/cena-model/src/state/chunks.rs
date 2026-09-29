@@ -259,6 +259,10 @@ impl super::GameState {
         // The combat state machine reads the same chunk with no new
         // buffering, stamped with the prompt that closed it.
         let mut facts = if chunk.is_empty() {
+            // A chunk of nothing but an injury image still ends a nerve
+            // rank's chunk (`character/nerves.rs`); one with lines reads it
+            // in `consume_chunk`, which has them.
+            self.character.consume_nerves(&[]);
             super::combat::ChunkFacts {
                 at,
                 ..Default::default()

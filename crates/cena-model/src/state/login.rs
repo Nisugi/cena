@@ -204,8 +204,8 @@ impl GameState {
         login.push('\n');
         // Each part the model knows of, as the injury window shows it: whole,
         // or its scar and then its wound, since a wound image leaves the scar
-        // under it known (`character/body.rs`). The nervous system's rank is
-        // not kept, so a hurt one is not told.
+        // under it known (`character/body.rs`). The nervous system as the
+        // window gives it, a rank without its kind (`character/nerves.rs`).
         let mut images = String::new();
         for part in super::character::body::ALL_PARTS {
             let injury = self
@@ -216,7 +216,14 @@ impl GameState {
                 .unwrap_or_default();
             if !injury.is_hurt() {
                 images.push_str(&empty("image", &[("id", part), ("name", part)]));
-            } else if part != "nsys" {
+            } else if part == "nsys" {
+                let rank = match self.character.nerves.rank {
+                    0 => injury.wound.max(injury.scar),
+                    rank => rank,
+                };
+                let name = format!("Nsys{rank}");
+                images.push_str(&empty("image", &[("id", part), ("name", &name)]));
+            } else {
                 if injury.scar > 0 {
                     let name = format!("Scar{}", injury.scar);
                     images.push_str(&empty("image", &[("id", part), ("name", &name)]));

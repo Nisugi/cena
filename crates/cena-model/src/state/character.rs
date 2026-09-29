@@ -56,6 +56,7 @@ pub mod experience_report;
 mod identity;
 pub mod injured;
 pub mod mind_bar;
+pub mod nerves;
 pub mod profile;
 pub mod psm;
 pub mod shadow;
@@ -228,6 +229,9 @@ pub struct Character {
     pub observed_body_parts: u16,
     /// What the injury window shows ([`body::InjuryMode`]); `None` until said.
     pub injury_mode: Option<body::InjuryMode>,
+    /// The nerves' last rank and whether `health` has said its kind
+    /// ([`nerves`]).
+    pub nerves: nerves::Nerves,
     /// `<progressBar id='pbarStance' text='defensive (100%)'>`.
     pub stance: Option<String>,
     /// `pbarStance`'s `value=`: percent of stance contributing to defense.
@@ -363,6 +367,7 @@ impl Character {
     /// |---|---|---|
     /// | `experience` | yes | in the burst, AND the one thing that genuinely moves offline (*"you can absorb experience extremely slowly if you enable that option"*) -- so the burst's value is the authority and arrives unprompted |
     /// | `injuries` | yes | wounds do not heal or appear while out of the world; `id='injuries'` is in the burst |
+    /// | `nerves` | yes | as `injuries`; the burst's same `Nsys` rank then asks nothing ([`nerves`]) |
     /// | `stance`, `stance_percent` | yes | **not** in the burst, and that is fine: nobody shifts a logged-off character's stance |
     /// | `encumbrance` and friends | yes | in the burst; nothing is picked up or dropped while away |
     /// | `stats`, `identity` | yes | taught by a command, which was step 9's original point and is the one part that survived |
@@ -399,6 +404,7 @@ impl Character {
             injuries,
             observed_body_parts,
             injury_mode,
+            nerves,
             stance,
             stance_percent,
             encumbrance,
@@ -433,6 +439,7 @@ impl Character {
 
         // --- Kept: a logged-off character is out of the world --------------
         let _ = (
+            nerves,
             experience,
             injuries,
             stance,
@@ -608,6 +615,7 @@ impl Character {
         self.consume_psms(chunk);
         self.consume_skills(chunk);
         self.consume_enhancives(&lines);
+        self.consume_nerves(&lines);
         // NOT MARKED TAUGHT, and there is no `Group::Experience`.
         // `reconnect_invalidation.rs` records why: experience changes
         // continuously and `<dialogData id='expr'>` is the live authority, so
