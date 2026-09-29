@@ -510,3 +510,34 @@ fn everything_owed_at_the_end_is_given_back_not_just_the_first() {
     assert_eq!(trip.tick(&map, &walker, at(2, 500)), Said::Arrived);
     assert_eq!(trip.owed(), [], "and each was owed once");
 }
+
+/// A routine's own move runs beside the plan, and what the crossing before
+/// it owes is still owed after: the hands put away for a ledge are not
+/// forgotten because a routine came next.
+#[test]
+fn what_a_crossing_owes_outlasts_a_routines_own_move() {
+    let rooms = r#"[
+      {"id":1,"exits":[{"to":2,"kind":"scripted","cost":1,
+                        "steps":[{"empty_hands":null},{"move":"climb ledge"}]}]},
+      {"id":2,"exits":[{"to":3,"kind":"cardinal","cmd":"north","cost":1}]},
+      {"id":3}
+    ]"#;
+    let rooms: Vec<Room> = serde_json::from_str(rooms).unwrap();
+    let map = Map::from_rooms(rooms).unwrap();
+    let walker = Walker::default();
+    let mut trip = Trip::to(RoomId(3));
+    assert_eq!(
+        trip.tick(&map, &walker, at(1, 0)),
+        Said::Do(Deed::EmptyHands)
+    );
+    assert_eq!(trip.tick(&map, &walker, at(1, 100)), send("climb ledge"));
+    // In 2, a routine asks for a move of its own.
+    let steps = serde_json::from_str(r#"[{"move":"go crack"}]"#).unwrap();
+    trip.aside(steps, None);
+    assert_eq!(trip.tick(&map, &walker, at(2, 200)), send("go crack"));
+    assert_eq!(
+        trip.owed(),
+        [Deed::FillHands],
+        "and owed still, with the routine's move under way"
+    );
+}

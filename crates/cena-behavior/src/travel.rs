@@ -400,7 +400,13 @@ impl Trip {
         if let Some((steps, to)) = self.aside.take() {
             // Nowhere the map has, when where it lands is not known.
             let to = to.unwrap_or(RoomId(u32::MAX));
-            self.run = Some(Run::new(here, here, to, steps));
+            // What an earlier crossing owes is this run's too, as a planned
+            // crossing's is (`step_from`): begun with nothing owed, its first
+            // tick wrote that over the trip's, and hands put away for a ledge
+            // before a routine were never filled (the review of 2026-09-29).
+            let mut run = Run::new(here, here, to, steps);
+            run.owes = self.owes;
+            self.run = Some(run);
             self.in_aside = true;
         }
         // A routine's own moves are asides: it is over when none is under way.
