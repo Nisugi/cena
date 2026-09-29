@@ -246,6 +246,47 @@ fn a_layout_is_kept_by_name_whatever_its_case() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A file the load could not read is kept, not written over: a broken
+/// hand edit and a later build's layout both. A second one is refused.
+#[test]
+fn a_layout_that_cannot_be_read_is_kept_beside_the_one_saved() {
+    let dir = std::env::temp_dir().join(format!("cena-layout-kept-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("a folder");
+    let layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
+    let path = file(&dir, Some("prime"), "Lorwyn");
+    let later = serde_json::to_string(&layout)
+        .expect("written")
+        .replace("\"version\":2", "\"version\":3");
+    assert!(later.contains("\"version\":3"), "the version is 2");
+    std::fs::write(&path, &later).expect("written");
+    assert_eq!(Layout::load(&dir, Some("prime"), "Lorwyn"), None);
+
+    layout.save(&dir, Some("prime"), "Lorwyn").expect("saved");
+    assert_eq!(
+        std::fs::read_to_string(super::kept::unread(&path)).ok(),
+        Some(later),
+        "the later build's layout is still there"
+    );
+    assert_eq!(
+        Layout::load(&dir, Some("prime"), "Lorwyn").as_ref(),
+        Some(&layout)
+    );
+    // One that reads is saved over as ever.
+    layout.save(&dir, Some("prime"), "Lorwyn").expect("saved");
+
+    std::fs::write(&path, "{ not json").expect("written");
+    assert!(
+        layout.save(&dir, Some("prime"), "Lorwyn").is_err(),
+        "one is kept already: neither is lost"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&path).ok().as_deref(),
+        Some("{ not json")
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// The Room window of a fitted layout, and the id of its widget `widget`.
 fn room_with(layout: &Layout, widget: &Widget) -> (u32, u32) {
     let room = layout.titled("Room").expect("a room");

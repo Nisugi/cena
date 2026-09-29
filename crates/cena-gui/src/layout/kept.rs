@@ -23,19 +23,57 @@ impl Layout {
             .or_else(|| instance.and_then(|_| read(file(dir, None, character))))
     }
 
-    /// Save this as `character`'s layout on `instance` in `dir`.
+    /// Save this as `character`'s layout on `instance` in `dir`. **A file
+    /// already there that [`Layout::load`] could not read is kept**, beside
+    /// it as `.unread`: a hand edit that broke it, or a later build's
+    /// layout, was fitted over and then written over by the first window
+    /// dragged (the review of 2026-09-29). The keys' writer refuses such a
+    /// file; a layout is saved on every drag, so this one steps round it.
     ///
     /// # Errors
     ///
-    /// The folder could not be made or the file written.
+    /// The folder could not be made or the file written, or an unread file
+    /// could not be kept: one kept earlier is still there.
     pub(crate) fn save(
         &self,
         dir: &Path,
         instance: Option<&str>,
         character: &str,
     ) -> std::io::Result<()> {
-        cena_session::store::save_json(dir, &file(dir, instance, character), self)
+        let path = file(dir, instance, character);
+        keep_unread(&path)?;
+        cena_session::store::save_json(dir, &path, self)
     }
+}
+
+/// The layout at `path` moved beside itself when it is there and does not
+/// read as this build's.
+fn keep_unread(path: &Path) -> std::io::Result<()> {
+    let text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(why) => return Err(why),
+    };
+    let reads = serde_json::from_str::<Layout>(&text).is_ok_and(|kept| kept.version == VERSION);
+    if reads {
+        return Ok(());
+    }
+    let aside = unread(path);
+    if aside.exists() {
+        return Err(std::io::Error::other(format!(
+            "{} cannot be read, and neither could the one kept as {}: move one away",
+            path.display(),
+            aside.display()
+        )));
+    }
+    std::fs::rename(path, aside)
+}
+
+/// Where a layout that could not be read is kept: `prime_nisugi.json.unread`.
+pub(crate) fn unread(path: &Path) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(".unread");
+    PathBuf::from(name)
 }
 
 /// `character`'s layout file on `instance`, `prime_nisugi.json`, or under
