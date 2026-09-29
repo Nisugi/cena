@@ -75,6 +75,8 @@ pub(super) enum Top {
     Settings,
     /// The character's log window was asked for.
     Log,
+    /// The trigger editor was asked for.
+    Triggers,
     /// The settings menu's *Keys* page was asked for.
     Keys,
     /// The player's own Lich was switched on, or off.
@@ -84,6 +86,34 @@ pub(super) enum Top {
 /// The top bar: who, how connected, the keybinds, the layout's grid, Stop;
 /// and any banner. What the hands hold and the clocks are widgets now, in
 /// the layout with the rest.
+/// The buttons that open another window: *Settings*, *Triggers* and *Log*,
+/// right to left as the top bar draws them.
+fn windows(ui: &mut egui::Ui) -> Option<Top> {
+    let mut asked = None;
+    for (label, hover, top) in [
+        (
+            "Settings",
+            "This character's settings, and Hydra's",
+            Top::Settings,
+        ),
+        (
+            "Triggers",
+            "Every trigger: what it watches, what it does, for whom",
+            Top::Triggers,
+        ),
+        (
+            "Log",
+            "What this character saw, read back: by day, searched, or exported",
+            Top::Log,
+        ),
+    ] {
+        if ui.button(label).on_hover_text(hover).clicked() {
+            asked = Some(top);
+        }
+    }
+    asked
+}
+
 pub(super) fn top(
     ui: &mut egui::Ui,
     view: &PlayView<'_>,
@@ -103,20 +133,7 @@ pub(super) fn top(
             {
                 asked = Some(Top::Stop);
             }
-            if ui
-                .button("Settings")
-                .on_hover_text("This character's settings, and Hydra's")
-                .clicked()
-            {
-                asked = Some(Top::Settings);
-            }
-            if ui
-                .button("Log")
-                .on_hover_text("What this character saw, read back: by day, searched, or exported")
-                .clicked()
-            {
-                asked = Some(Top::Log);
-            }
+            asked = windows(ui).or(asked);
             if let Some(on) = super::lich_switch(ui, view.lich) {
                 asked = Some(Top::Lich(on));
             }

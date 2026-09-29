@@ -51,6 +51,11 @@ pub enum HubRequest {
     Settings(String),
     /// Change one setting from the menu.
     Change(crate::settings::Change),
+    /// The trigger editor's view of the triggers file (`plan/54`). The binary
+    /// answers with a line and gives the window the [`Book`](crate::triggers::Book).
+    Triggers,
+    /// Make one change to the triggers file from the editor.
+    Trigger(crate::triggers::Change),
 }
 
 /// An account logged in to list its characters: the Not launched tab's login,

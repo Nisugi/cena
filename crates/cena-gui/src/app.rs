@@ -94,6 +94,8 @@ pub struct App {
     logs: BTreeMap<u32, crate::logs::Logs>,
     /// Where each window was, kept (`placement.rs`).
     placements: Placements,
+    /// The trigger editor (`plan/54`).
+    triggers: crate::triggers::Editor,
 }
 
 /// One character's play window.
@@ -133,6 +135,7 @@ impl App {
             clear_sends: false,
             logs: BTreeMap::new(),
             placements: Placements::default(),
+            triggers: crate::triggers::Editor::default(),
         }
     }
 
@@ -234,6 +237,7 @@ impl App {
                 }
             }
             Some(HubAction::Settings) => self.menu.open_for(None),
+            Some(HubAction::Triggers) => self.open_triggers(),
             Some(HubAction::Lich(session, on)) => {
                 if let Some(seat) = seats.iter().find(|seat| seat.id.0 == session) {
                     self.hydras(seat, lich_word(on));
@@ -276,6 +280,7 @@ impl App {
         }
         self.left_keyboard();
         self.settings(ui.ctx(), &glance);
+        self.trigger_window(ui.ctx(), &glance);
         self.log_windows(ui.ctx(), &seats);
         if let Some(after) = self.placements.save_due(Instant::now()) {
             ui.ctx().request_repaint_after(after);
@@ -515,3 +520,4 @@ mod logs;
 mod settings;
 #[cfg(test)]
 mod tests;
+mod triggers;

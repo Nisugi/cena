@@ -55,6 +55,8 @@ struct Shared {
     listing: Mutex<Option<Listing>>,
     /// The settings menu's pages the binary last gave, and for whom.
     settings: Mutex<Option<(String, Vec<Page>)>>,
+    /// The triggers file as the binary last gave it (`plan/54`).
+    triggers: Mutex<Option<cena_ui::triggers::Book>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
     /// The binary's answer to the last request, and when it came.
@@ -160,6 +162,8 @@ pub(crate) struct Glance {
     pub(crate) roster: Vec<RosterCard>,
     pub(crate) listing: Option<Listing>,
     pub(crate) settings: Option<(String, Vec<Page>)>,
+    /// The triggers file, for the trigger editor.
+    pub(crate) triggers: Option<cena_ui::triggers::Book>,
     pub(crate) merged: Vec<MergedLine>,
     /// The binary's last answer, while it is fresh, and how long it has left.
     pub(crate) said: Option<(String, Duration)>,
@@ -180,6 +184,7 @@ impl Sessions {
                 roster: Mutex::default(),
                 listing: Mutex::default(),
                 settings: Mutex::default(),
+                triggers: Mutex::default(),
                 merged: Arc::default(),
                 said: Mutex::default(),
             }),
@@ -266,6 +271,13 @@ impl Sessions {
     /// binary built them from its files (`plan/50` §7 step 1).
     pub fn settings(&self, character: String, pages: Vec<Page>) {
         *lock(&self.shared.settings) = Some((character, pages));
+        self.shared.window.wake();
+    }
+
+    /// The triggers file, as the binary read it for the trigger editor
+    /// (`plan/54`).
+    pub fn triggers(&self, book: cena_ui::triggers::Book) {
+        *lock(&self.shared.triggers) = Some(book);
         self.shared.window.wake();
     }
 
@@ -363,6 +375,7 @@ impl Sessions {
             roster: lock(&self.shared.roster).clone(),
             listing: lock(&self.shared.listing).clone(),
             settings: lock(&self.shared.settings).clone(),
+            triggers: lock(&self.shared.triggers).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
             said,
         }

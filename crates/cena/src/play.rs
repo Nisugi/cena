@@ -434,6 +434,15 @@ impl Table {
                 let problem = pages::send(&self.dir, &map, &change.character, self.gui.as_ref());
                 if problem.is_empty() { said } else { problem }
             }
+            HubRequest::Triggers => {
+                triggers::book::send(&self.dir, self.gui.as_ref());
+                String::new()
+            }
+            HubRequest::Trigger(change) => {
+                let said = triggers::book::apply(&self.dir, &self.changes, &change);
+                triggers::book::send(&self.dir, self.gui.as_ref());
+                said
+            }
             HubRequest::Reconnect(id) => self.reconnect(SessionId(id)).await,
             HubRequest::Shutdown => {
                 eprintln!("[play] shut down from the hub");
