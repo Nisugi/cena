@@ -48,6 +48,34 @@ pub(crate) fn apply(
     Ok(format!("{said}: {done}."))
 }
 
+/// Make every one of `changes` to the keys file at `path`, `whose` it is,
+/// in `data`, one after another in its text, and save it once: a Wrayth key
+/// set imported (step 9).
+///
+/// # Errors
+///
+/// Why nothing was changed: the file does not read, a change could not be
+/// made, or the file was not saved.
+pub(crate) fn apply_all(
+    data: &Path,
+    (path, whose): (&Path, Whose),
+    changes: &[KeyChange],
+    keys: &Keybinds,
+) -> Result<(), String> {
+    let mut text = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(why) => return Err(why.to_string()),
+    };
+    if let Err(why) = toml::from_str::<toml::Table>(&text) {
+        return Err(format!("it does not read: {why}"));
+    }
+    for change in changes {
+        text = changed(&text, whose, change, keys)?.0;
+    }
+    cena_session::store::save_text(data, path, &text).map_err(|why| why.to_string())
+}
+
 /// `old`, a keys file of `whose`, with `change` made, read back to be sure
 /// it holds, and what was done.
 fn changed(

@@ -65,6 +65,7 @@ pub(crate) const HELP: &[&str] = &[
     "agent help       what an agent (a program such as Claude Code) may do with this character",
     "lich help        run your own Lich for this character, and keep it on",
     "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
+    "keys import <file>   in a play window: a Wrayth key set into this character's keys (keys import global <file>: every character's)",
     "to <name> <command>, all <command>   send a command on another character, or on every one",
     "<script> [args]  run one of your Lich scripts; k, l, p, u as in Lich. scripts: where they are; scripts import, scripts check",
 ];

@@ -11,8 +11,15 @@
 //! Hydra's (the author: *"sure alt + number = set"*). The sending actions
 //! have Wrayth's keys (`plan/52` §3, step 3): `NumpadEnter` sends or repeats,
 //! Ctrl with an Enter repeats the last command and Alt the one before it,
-//! Up and Down walk what was typed, and Escape clears the input. Each later
-//! step of the plan adds the keys of the actions it builds.
+//! Up and Down walk what was typed, and Escape clears the input. The window
+//! in use scrolls with the page keys (step 4): a page, with Shift a line,
+//! with Ctrl to the oldest or newest line. Ctrl+Tab turns the tabs of the
+//! window in use, with Shift back (step 5); choosing the window has no key,
+//! a click chooses it (§6 answer 3). Ctrl+F finds, F3 the one found before
+//! and Shift+F3 the one after (step 6). Tab targets the next creature and
+//! Shift+Tab the one before (step 7; the author: *"I prefer tab for
+//! targetting"*). Each later step of the plan adds the
+//! keys of the actions it builds.
 
 use std::collections::BTreeMap;
 
@@ -54,6 +61,29 @@ const SENDING: [(&str, u8, Action); 8] = [
     ("Escape", 0, Action::ClearInput),
 ];
 
+/// The scrolling actions' keys, and the modifiers held.
+const SCROLLING: [(&str, u8, Action); 8] = [
+    ("PageUp", 0, Action::ScrollPageUp),
+    ("PageDown", 0, Action::ScrollPageDown),
+    ("PageUp", SHIFT, Action::ScrollLineUp),
+    ("PageDown", SHIFT, Action::ScrollLineDown),
+    ("Home", CTRL, Action::ScrollTop),
+    ("PageUp", CTRL, Action::ScrollTop),
+    ("End", CTRL, Action::ScrollBottom),
+    ("PageDown", CTRL, Action::ScrollBottom),
+];
+
+/// The tabs' keys, Find's and the targets', and the modifiers held.
+const TABS: [(&str, u8, Action); 7] = [
+    ("Tab", CTRL, Action::NextTab),
+    ("Tab", CTRL | SHIFT, Action::PreviousTab),
+    ("KeyF", CTRL, Action::Find),
+    ("F3", 0, Action::FindNext),
+    ("F3", SHIFT, Action::FindPrevious),
+    ("Tab", 0, Action::TargetNext),
+    ("Tab", SHIFT, Action::TargetPrevious),
+];
+
 /// Every key Hydra binds, and what each does.
 pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     let chord = |key: &str, held: u8| Chord {
@@ -68,7 +98,7 @@ pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     for (key, line) in MARKS {
         keys.insert(chord(key, 0), Macro::Send(line.to_owned()));
     }
-    for (key, held, action) in SENDING {
+    for (key, held, action) in SENDING.into_iter().chain(SCROLLING).chain(TABS) {
         keys.insert(chord(key, held), Macro::Act(action));
     }
     for set in 0..super::SETS {
@@ -92,8 +122,8 @@ mod tests {
         let defaults = defaults();
         assert_eq!(
             defaults.len(),
-            44,
-            "eleven walks, eleven peers, four marks, eight sending, ten sets"
+            59,
+            "eleven walks, eleven peers, four marks, eight sending, eight scrolling, two tabs, three finding, two targets, ten sets"
         );
         for (chord, made) in &defaults {
             let written = chord.written();

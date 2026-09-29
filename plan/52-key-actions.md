@@ -38,7 +38,7 @@ Four sources, measured by two surveys on 2026-09-28:
 
 | Source | What it is | Weight |
 |---|---|---|
-| **Wrayth's stock key set** | set 0, *(default)*, in two of the author's own Wrayth exports (`Mnstr.xml` line 19, identical in `NewLayoutWrayth.xml` line 233): 66 keys, 49 of them `{Action}` tokens | **first**: the official client; what most players' fingers know |
+| **Wrayth's stock key set** | set 0, *(default)*, in two of the author's own Wrayth exports: `Mnstr.xml` line 19, 63 keys, 46 of them `{Action}` tokens; `NewLayoutWrayth.xml` line 233, 76 keys, the same 46 tokens (CORRECTED 2026-09-29: this read *"66 keys, 49 of them"* and *"identical"*; 66 is `Mnstr.xml`'s two sets together. MEASURED: `sed -n 19p Mnstr.xml \| grep -o "<k " \| wc -l` and `grep -o "action='{"`, and line 233 of the other with `action="{"`) | **first**: the official client; what most players' fingers know |
 | Wizard, the older official client | its built-in keys (`reference/wiki_clean/Wizard _front end_.txt:254-293`) | where Wrayth kept them |
 | VellumFE | the author's client: its keyboard actions and their defaults (`reference/VellumFE/src/config/keybinds.rs:419-853`, `defaults/globals/keybinds.toml`) | the names, and the lessons |
 | Genie 5 | DragonRealms' client (`reference/Genie5/src/Genie.App/Views/MainWindow.axaml.cs:621-869`) | a tiebreak |
@@ -230,6 +230,7 @@ first) dropped, since a sent command never touches the input. A token Hydra has 
 action for (`{Rest}`, `{ToggleMusic}`), `@` and `\?` are said, not silently lost. The fixture comes from
 `Mnstr.xml` or `NewLayoutWrayth.xml`: the committed Wrayth fixture is cut from
 `Nisugi3.xml`, which has no `<macros>` (`crates/cena-behavior/tests/fixtures/wrayth.xml`).
+Step 9 cut its own from `Mnstr.xml` (`crates/cena-gui/tests/fixtures/wrayth_macros.xml`).
 
 ## 5. Steps, once §6 is answered
 
@@ -349,6 +350,137 @@ The author: *"step 3"*. §3's sending table, with Wrayth's keys:
   Escape in a play window, Escape and a caught key left to an open menu, another field
   with the keyboard, Enter alone refused, the fork's keys with and without a window
   (`crates/cena-gui/src/app/tests/sending.rs`). Thirteen mutants, all caught.
+
+### Step 4, BUILT 2026-09-29
+
+The author: *"do steps 4-10"*. The window in use, and §3's scrolling table:
+
+- **The window in use** (`crates/cena-gui/src/play.rs`, `Play::in_use`) is the widget
+  last pressed in, by its placed id, standalone, in a custom window's cell or a tab; the
+  story until one is, and again once the one pressed is taken away. It is marked with a
+  faint amber edge (`play/draw.rs`, `shown`), so the player sees what a key will act on.
+- **Six actions**, with Wrayth's keys: `scroll_page_up` and `_down` (PageUp, PageDown),
+  `scroll_line_up` and `_down` (Shift with them), `scroll_top` (Ctrl+Home, Ctrl+PageUp)
+  and `scroll_bottom` (Ctrl+End, Ctrl+PageDown). A key asks the widget in use by its id
+  and the widget scrolls as it is drawn (`widget/split.rs`, `ask` and `asked`).
+- **The story and a stream split as the wheel splits them**: back from the newest line a
+  page, a line or to the oldest opens the split with its top there; the keys then move
+  the top, never past the newest line; forward to the newest, or `scroll_bottom`, closes
+  it, as its button does. A key back is scrolled from inside the pane and at once: an
+  offset given a pane is not the player's own scroll to egui, and sticking to the newest
+  line took it straight back (`egui/src/containers/scroll_area.rs:1280` in the fork).
+- **Any other widget that scrolls** -- the Room, the lists, the Hunt panel -- takes the
+  same keys through its one scrolling helper (`widget/draw.rs`, `scrolled`).
+- *Tests:* the split by keys, from one pane and two; a list scrolled a page, a line, to
+  the bottom and the top; a catalog widget taking its key; the story in use until the
+  room is pressed, then the room scrolling and the story not (`play/tests/in_use.rs`).
+  Ten mutants, all caught.
+
+### Step 5, BUILT 2026-09-29
+
+§3's tabs and windows:
+
+- **`next_tab` and `previous_tab`** (Ctrl+Tab, Ctrl+Shift+Tab) turn the stack the window
+  in use is a tab of, round from the last to the first, and the tab shown is in use
+  (`layout/custom.rs`, `Layout::turn_tab`). A widget alone turns to itself.
+- **`next_window` and `previous_window`**, with no key (§6 answer 3), make the next
+  widget showing the one in use, in the order the windows are drawn, round
+  (`Layout::showing`).
+- **`next_unread_tab`**, with no key (§6 answer 5), shows the first tab not showing that
+  counts lines unread, as drawn, and puts it in use.
+- **Tab never moves the keyboard off the command input**: egui moves focus on Tab and
+  Shift+Tab before any of Hydra's code sees the key (`egui/src/memory/mod.rs:580` in the
+  fork), so the input keeps it (`lock_focus`), and Tab is the keys' alone (step 7's
+  targeting).
+- *Tests:* a stack turned both ways and in use, back from the first tab of three to the
+  last, the window after and before, the tab with lines unread
+  (`play/tests/tabs.rs`). Five mutants: four caught, and the fifth, a stack of one not
+  turned, was equivalent and its guard removed.
+
+### Step 6, BUILT 2026-09-29
+
+§3's Find:
+
+- **The bar** (`crates/cena-gui/src/play/find.rs`) opens on `find` (Ctrl+F) over the top
+  right of the window in use when it is a story or a stream, over the story when it is
+  not, with the keyboard; Ctrl+F again takes the keyboard back to it. It says *n of m*,
+  or *none*; ⬆ and ⬇ step, × closes, and so does Escape in it.
+- **What is found** (`widget/find.rs`): the lines the widget draws -- the game's, and
+  the echo when it is shown, never a prompt -- that hold what is typed, whatever its
+  case. Each is marked, the current one more. The current one counts from the newest:
+  the first found is the latest said, and `find_next` (F3, and Enter in the bar) goes
+  back to the one before, `find_previous` (Shift+F3, Shift+Enter) forward.
+- **Brought into sight**: when the bar moves to a line, the pane the player scrolls is
+  brought to it at once, so a story splits as scrolling back splits it and the newest
+  lines stay below. A widget is asked by its id each frame, as a key's scroll is, and
+  says how many it found back.
+- *Tests:* typed, found whatever its case, the latest first and the story split to it,
+  F3 and Shift+F3 stepping and stopping at the latest, Escape closing it
+  (`play/tests/in_use.rs`), and the bar as drawn (`tests/snapshots/find.png`). Six
+  mutants: five caught; the sixth, the lines counted afresh for each pane, changes only
+  which line is marked current in the pane that follows the newest, where the current
+  one is not in sight.
+
+### Step 7, BUILT 2026-09-29
+
+§3's targeting, on the author's Tab (*"I prefer tab for targetting"*):
+
+- **`target_next` (Tab) and `target_previous` (Shift+Tab)** send `target #<id>` for the
+  creature after, or before, the one the game says is targeted, in the order of its own
+  `dDBTarget` list (§6 answer 6; `crates/cena-model/src/state/targeting.rs`), round
+  from the last to the first; the first, or the last, when none of them is; nothing
+  while the game lists none (`play/keyed.rs`, `target`). The line is sent as if typed,
+  and echoed.
+- **`target_clear`**, with no key, sends `target clear`.
+- **Tab stays on the command input**: the input holds Tab (step 5), and a targeting key
+  puts the keyboard back on it, since with nothing holding it egui gives Tab to the next
+  widget.
+- *Tests:* round the list both ways, none targeted, one gone, none listed, a player's
+  negative id; the play window's list as the game last sent it; Tab and Shift+Tab
+  leaving the keyboard and the line where they were (`app/tests/sending.rs`). Four
+  mutants, all caught.
+
+### Step 8, BUILT 2026-09-29
+
+§3's Hydra actions, none with a key (the author: *"don't give default binds to those
+hydra actions"*); `stop` and `settings` came with step 1 and the sets with step 2:
+
+- **`drawer_top`, `_bottom`, `_left` and `_right`** open the play window's drawer, or
+  shut it (`plan/49` Stage E), kept with the layout.
+- **`lock` and `arrange`** are the top bar's two switches: Lock ends Arrange, and Arrange
+  does nothing while locked, as the bar's own do.
+- **`character_1` to `character_9`** open the play window of the hub's first to ninth
+  character, in the order they were started, and give it the keyboard
+  (`app/keyed.rs`, `bring`); one past the last is nothing.
+- *Tests:* a drawer opened and shut, Lock and Arrange, the second character's closed
+  window brought and the ninth nothing, and every action's name read back as itself
+  with a label of its own, fifty of them now. Four mutants, all caught.
+
+### Step 9, BUILT 2026-09-29
+
+§4's import:
+
+- **`;keys import <file>`**, typed in a play window, reads a Wrayth settings file's
+  `<macros>` into the character's own keys; `;keys import global <file>` into every
+  character's (`crates/cena-gui/src/app/import.rs`). It is the window's, not the
+  session's, since the keys are the window's: a character running headless has none.
+  `;help` names it.
+- **Each Wrayth set into the Hydra set of the same number** (`keys/wrayth.rs`): Wrayth's
+  key names made Hydra's (`Keypad 8`, `Page Up`, `Alt-Ctrl-E`, `UP`); a token as its
+  action, thirteen of them and `{MacroSet}n`; text ending `\r` sent, text without it
+  typed into the input; `\r` inside a break, `\p` a second's wait, `\x` dropped. A token
+  Hydra has no action for (`{Rest}`, `{ToggleMusic}`, `{Copy}`...), `@` and `\?`, and a
+  key that types or is Enter alone, are said by name, never silently lost.
+- **What is already so is left**: a key of set 0 already doing what Wrayth has it do is
+  not written again, so importing Wrayth's stock set writes only where it differs. Where
+  it differs from a key of Hydra's, the answer names the keys. The stock set's Tab is
+  `{CycleWindows}`, so importing it makes Tab choose the next window, not target: the
+  author's own Tab (§6 answer 3) is one *Restore* away on the Keys page, and the answer
+  says so.
+- *Tests:* the author's own set (`crates/cena-gui/tests/fixtures/wrayth_macros.xml`, cut
+  from `Mnstr.xml`'s `<macros>`), every one of its 66 keys bound or said; waits, breaks,
+  entities and what is refused; `;keys import` in a play window into the character's
+  keys and every character's, nothing sent to the game. Five mutants, all caught.
 
 ## 6. For the author
 

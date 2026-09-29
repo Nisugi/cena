@@ -15,6 +15,7 @@
 mod character;
 mod described;
 mod draw;
+pub(crate) mod find;
 mod kind;
 mod lines;
 mod lists;
@@ -33,6 +34,7 @@ use crate::story::Story;
 pub(crate) use described::RoomParts;
 pub(crate) use kind::{Group, Widget};
 pub(crate) use lines::{Lines, Stamps};
+pub(crate) use split::{Scroll, ask as ask_scroll};
 pub(crate) use status::{Category, Indicator};
 
 /// What a widget draws from: one character, as its play window has it.

@@ -32,6 +32,15 @@ pub(super) struct Drawing<'a> {
     pub(super) read: &'a mut HashMap<u32, u64>,
     /// A line a widget asked to send this frame, as if typed.
     pub(super) sent: Option<crate::widget::Clicked>,
+    /// The window in use, by placed id, which is marked (`plan/52` step 4).
+    pub(super) in_use: Option<u32>,
+    /// The widget pressed in this frame, by placed id: the window in use
+    /// from now.
+    pub(super) pressed: Option<u32>,
+    /// The tabs not showing that have lines unread, by placed id.
+    pub(super) unread: Vec<u32>,
+    /// Where each widget showing was drawn, by placed id.
+    pub(super) rects: Vec<(u32, egui::Rect)>,
 }
 
 impl Drawing<'_> {
@@ -224,7 +233,10 @@ pub(super) fn holder(
                 for (index, (tab, rect)) in cell.tabs.iter().zip(tabs).enumerate() {
                     let showing = index == cell.showing;
                     let name = match unread(drawing.read, tab, &drawing.seen).filter(|_| !showing) {
-                        Some(unread) => format!("{} {unread}", tab.widget.name()),
+                        Some(unread) => {
+                            drawing.unread.push(tab.id);
+                            format!("{} {unread}", tab.widget.name())
+                        }
                         None => tab.widget.name().into_owned(),
                     };
                     let mut child =
@@ -253,6 +265,22 @@ pub(super) fn holder(
 /// One that follows another character draws from that character, named on
 /// it, or says that character is not running; a story never follows.
 fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
+    let rect = ui.max_rect();
+    drawing.rects.push((placed.id, rect));
+    if ui.input(|input| input.pointer.primary_pressed()) && ui.rect_contains_pointer(rect) {
+        drawing.pressed = Some(placed.id);
+    }
+    if drawing.in_use == Some(placed.id) {
+        // The window in use, which a scrolling key acts on.
+        let stroke = egui::Stroke::new(1.0, crate::text::AMBER.gamma_multiply(0.5));
+        ui.painter()
+            .rect_stroke(rect, 2.0, stroke, egui::StrokeKind::Inside);
+    }
+    drawn(ui, placed, drawing);
+}
+
+/// `placed` drawn, as [`shown`] says.
+fn drawn(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
     let id = widget_id(drawing.session, placed.id);
     let follows = drawing
         .follows

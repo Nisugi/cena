@@ -421,3 +421,124 @@ fn a_tab_is_added_and_removed_from_the_menu() {
         "no story beside another character's widget"
     );
 }
+
+/// The keys turn the window in use's tabs round its stack, choose the next
+/// window and the one before, and show the first tab with lines unread
+/// (`plan/52` step 5); a widget alone has no tab to turn.
+#[test]
+fn the_keys_turn_tabs_and_choose_windows() {
+    use crate::keys::Action;
+    let mut harness = stacked();
+    let act = |harness: &mut Harness<'_, Scene>, action| {
+        let context = harness.ctx.clone();
+        assert_eq!(harness.state_mut().play.act(&context, action), None);
+        harness.run();
+    };
+    let id_of = |harness: &Harness<'_, Scene>, widget: Widget| {
+        let layout = harness.state().play.layout.as_ref()?;
+        let placed = layout.placed();
+        placed
+            .into_iter()
+            .find(|placed| placed.widget == widget)
+            .map(|placed| placed.id)
+    };
+    let showing = |harness: &Harness<'_, Scene>| {
+        harness
+            .state()
+            .play
+            .layout
+            .as_ref()
+            .map(crate::layout::Layout::showing)
+            .unwrap_or_default()
+    };
+    let (hydra, hunt, story) = (
+        id_of(&harness, Widget::Hydra),
+        id_of(&harness, Widget::Hunt),
+        id_of(&harness, Widget::Story),
+    );
+    let (Some(hydra), Some(hunt), Some(story)) = (hydra, hunt, story) else {
+        panic!("Hydra, Hunt and the story are placed");
+    };
+    let first = if showing(&harness).contains(&hydra) {
+        hydra
+    } else {
+        hunt
+    };
+    let other = if first == hydra { hunt } else { hydra };
+    harness.state_mut().play.in_use = Some(first);
+    act(&mut harness, Action::NextTab);
+    assert_eq!(harness.state().play.in_use(), Some(other));
+    assert!(showing(&harness).contains(&other) && !showing(&harness).contains(&first));
+    act(&mut harness, Action::PreviousTab);
+    assert_eq!(harness.state().play.in_use(), Some(first), "and back");
+
+    harness.state_mut().play.in_use = Some(hydra);
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        assert!(layout.show_tab(hydra));
+    }
+    act(&mut harness, Action::NextTab);
+    assert!(!showing(&harness).contains(&hydra), "Hydra hidden");
+    for said in ["Loot: a gold ring.", "Heal: nothing to heal."] {
+        harness.state_mut().story.tell(cena_session::Notice::line(
+            cena_session::NoticeKind::Info,
+            said,
+        ));
+    }
+    harness.run();
+    harness.state_mut().play.in_use = Some(story);
+    act(&mut harness, Action::NextUnreadTab);
+    assert_eq!(
+        harness.state().play.in_use(),
+        Some(hydra),
+        "the tab with lines unread"
+    );
+    assert!(showing(&harness).contains(&hydra));
+
+    harness.state_mut().play.in_use = Some(story);
+    act(&mut harness, Action::NextTab);
+    assert_eq!(harness.state().play.in_use(), Some(story), "no tab to turn");
+    let order = showing(&harness);
+    let at = order
+        .iter()
+        .position(|id| *id == story)
+        .expect("the story shows");
+    act(&mut harness, Action::NextWindow);
+    assert_eq!(
+        harness.state().play.in_use(),
+        order.get((at + 1) % order.len()).copied()
+    );
+    act(&mut harness, Action::PreviousWindow);
+    act(&mut harness, Action::PreviousWindow);
+    assert_eq!(
+        harness.state().play.in_use(),
+        order.get((at + order.len() - 1) % order.len()).copied(),
+        "round to the window before"
+    );
+}
+
+/// Back from a stack's first tab is its last, of three.
+#[test]
+fn back_from_the_first_tab_is_the_last() {
+    use crate::keys::Action;
+    let mut harness = harness();
+    harness.run();
+    let tabs = harness.state_mut().play.layout.as_mut().and_then(|layout| {
+        let holder = layout.titled("Hydra").map(|holder| holder.id)?;
+        let first = match &layout.holder(holder)?.holds {
+            Holds::One(placed) => placed.id,
+            Holds::Custom(_) => return None,
+        };
+        let second = layout.add_tab(holder, first, Widget::Combat)?;
+        let third = layout.add_tab(holder, second, Widget::Reserve)?;
+        assert!(layout.show_tab(first));
+        Some((first, third))
+    });
+    let Some((first, third)) = tabs else {
+        panic!("a stack of three");
+    };
+    harness.run();
+    harness.state_mut().play.in_use = Some(first);
+    let context = harness.ctx.clone();
+    let _ = harness.state_mut().play.act(&context, Action::PreviousTab);
+    assert_eq!(harness.state().play.in_use(), Some(third));
+}

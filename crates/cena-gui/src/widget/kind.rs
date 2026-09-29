@@ -336,6 +336,11 @@ impl Widget {
     /// character (`plan/49` §1 row 7): no window mixes two characters'
     /// story (`plan/29` §5a R2). Hydra's messages count as its story, and
     /// so does each of its streams.
+    pub(crate) fn has_lines(&self) -> bool {
+        matches!(self, Self::Story | Self::Stream(_))
+    }
+
+    /// Whether it is the story.
     pub(crate) fn is_story(&self) -> bool {
         matches!(self, Widget::Story | Widget::Hydra | Widget::Stream(_))
     }

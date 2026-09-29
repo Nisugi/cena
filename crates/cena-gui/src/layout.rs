@@ -294,23 +294,13 @@ impl Layout {
     /// The streams a widget here shows, showing or a tab behind another:
     /// the story leaves their lines out (`plan/49` Stage B step 4).
     pub(crate) fn streams(&self) -> Vec<String> {
-        let mut streams = Vec::new();
-        for holder in &self.holders {
-            let placed: Vec<&Placed> = match &holder.holds {
-                Holds::One(placed) => vec![placed],
-                Holds::Custom(custom) => custom
-                    .cells
-                    .iter()
-                    .flat_map(|cell| cell.tabs.iter())
-                    .collect(),
-            };
-            for placed in placed {
-                if let Widget::Stream(id) = &placed.widget {
-                    streams.push(id.clone());
-                }
-            }
-        }
-        streams
+        self.placed()
+            .into_iter()
+            .filter_map(|placed| match &placed.widget {
+                Widget::Stream(id) => Some(id.clone()),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Where window `id` sits, if it is here, from its zone's top left.

@@ -80,6 +80,9 @@ pub(crate) enum Asked {
     /// Use this macro set over set 0, kept for the character; 0 for set 0
     /// alone (`plan/52` step 2).
     UseSet(u8),
+    /// The play window of the hub's first to ninth character, 1 to 9, open
+    /// and with the keyboard (`plan/52` step 8).
+    Character(u8),
 }
 
 /// What a play window shows this frame.
@@ -170,6 +173,20 @@ pub(crate) struct Play {
     /// A key filled the input (`plan/52` §2): where its cursor goes, the
     /// end, as the input takes the keyboard.
     filled: Option<usize>,
+    /// The widget last clicked in, by its placed id: the window in use,
+    /// which the scrolling keys act on (`plan/52` step 4). The story until
+    /// one is, or once the one clicked is gone.
+    in_use: Option<u32>,
+    /// The tabs not showing that have lines unread, by placed id, in the
+    /// order they were drawn: what `next_unread_tab` shows (step 5).
+    unread_tabs: Vec<u32>,
+    /// The Find bar, while it is open (step 6).
+    find: Option<find::FindBar>,
+    /// Where each widget showing was drawn last, by placed id.
+    shown_rects: Vec<(u32, egui::Rect)>,
+    /// What the game last listed as ones to attack, in its order, and the
+    /// one targeted (step 7).
+    targets: (Vec<i64>, Option<i64>),
 }
 
 /// Lines of history kept for up and down.
@@ -213,6 +230,11 @@ impl Play {
             history: Vec::new(),
             back: None,
             filled: None,
+            in_use: None,
+            unread_tabs: Vec::new(),
+            find: None,
+            shown_rects: Vec::new(),
+            targets: (Vec::new(), None),
         }
     }
 
@@ -227,52 +249,6 @@ impl Play {
     /// The command input's id.
     pub(crate) fn input_id(&self) -> Id {
         Id::new(("play-input", self.session))
-    }
-
-    /// Whether the command input has the keyboard, or nothing does, with
-    /// nothing open that a key would close or move in first: the object's
-    /// menu, a widget's, the list of widgets to add, a drop-down or a menu
-    /// of the bar. What an action on the input waits for
-    /// ([`Action::on_input`](crate::keys::Action::on_input)).
-    pub(crate) fn typing(&self, context: &egui::Context) -> bool {
-        let focused = context.memory(egui::Memory::focused);
-        focused.is_none_or(|id| id == self.input_id())
-            && self.asking.is_none()
-            && self.menu.is_none()
-            && self.adding.is_none()
-            && !egui::Popup::is_any_open(context)
-    }
-
-    /// Do `action`, one of those on the command input or sending from it
-    /// (`plan/52` step 3); the line to send, if it sends one.
-    pub(crate) fn act(&mut self, action: crate::keys::Action) -> Option<String> {
-        use crate::keys::Action;
-        let typed = |back: usize| {
-            self.history
-                .len()
-                .checked_sub(back)
-                .and_then(|at| self.history.get(at).cloned())
-        };
-        match action {
-            Action::SendOrRepeat if self.input.trim().is_empty() => typed(1),
-            Action::SendOrRepeat => self.enter(),
-            Action::RepeatLast => typed(1),
-            Action::RepeatSecondLast => typed(2),
-            Action::HistoryBack => {
-                self.walk(true);
-                None
-            }
-            Action::HistoryForward => {
-                self.walk(false);
-                None
-            }
-            Action::ClearInput => {
-                self.input.clear();
-                self.back = None;
-                None
-            }
-            Action::Stop | Action::Settings | Action::Set(_) => None,
-        }
     }
 
     /// Draw the window into `ui` -- a viewport's whole area -- and return
@@ -346,11 +322,17 @@ impl Play {
             }
         });
         let area = ui.available_rect_before_wrap();
+        self.ask_find(ui.ctx());
+        if let Some(snapshot) = view.snapshot {
+            let targeting = &snapshot.state.targeting;
+            self.targets = (targeting.ids().to_vec(), targeting.current());
+        }
         changed |= self.arrange(ui, view);
         let received: Vec<&str> = view.story.streams.ids().collect();
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others, &received);
         self.object_menu(ui.ctx(), view);
+        self.find_bar(ui.ctx(), area);
         crate::carry::show(ui.ctx(), session);
         asked = asked.or(self.out.take());
         if changed {
@@ -382,6 +364,8 @@ impl Play {
         let response = ui.add(
             egui::TextEdit::singleline(&mut self.input)
                 .id(id)
+                // Tab is the keys', never egui's to move the keyboard on.
+                .lock_focus(true)
                 .hint_text("Type a command")
                 .desired_width(f32::INFINITY),
         );
@@ -436,5 +420,7 @@ impl Play {
     }
 }
 
+mod find;
+mod keyed;
 #[cfg(test)]
 mod tests;

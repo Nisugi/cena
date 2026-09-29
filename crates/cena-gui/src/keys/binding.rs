@@ -53,7 +53,83 @@ pub enum Action {
     HistoryForward,
     /// Empty the command input.
     ClearInput,
+    /// Scroll the window in use back a page (`plan/52` step 4).
+    ScrollPageUp,
+    /// Forward a page.
+    ScrollPageDown,
+    /// Back a line.
+    ScrollLineUp,
+    /// Forward a line.
+    ScrollLineDown,
+    /// To its oldest line.
+    ScrollTop,
+    /// To its newest line.
+    ScrollBottom,
+    /// Make the next window the one in use (`plan/52` step 5).
+    NextWindow,
+    /// The window before.
+    PreviousWindow,
+    /// Show the next tab of the window in use's stack.
+    NextTab,
+    /// The tab before.
+    PreviousTab,
+    /// Show the first tab, anywhere in the play window, with lines unread.
+    NextUnreadTab,
+    /// Open the Find bar over the window in use (`plan/52` step 6).
+    Find,
+    /// Go to the line found before.
+    FindNext,
+    /// Go to the line found after.
+    FindPrevious,
+    /// Target the next creature the game lists as one to attack, round
+    /// (`plan/52` step 7).
+    TargetNext,
+    /// The one before.
+    TargetPrevious,
+    /// Target nothing: `target clear`.
+    TargetClear,
+    /// Open the top drawer, or shut it (`plan/52` step 8).
+    DrawerTop,
+    /// The bottom drawer.
+    DrawerBottom,
+    /// The left drawer.
+    DrawerLeft,
+    /// The right drawer.
+    DrawerRight,
+    /// The top bar's Lock: every window kept where it is, or free again.
+    Lock,
+    /// The top bar's Arrange.
+    Arrange,
+    /// The play window of the hub's first to ninth character, 1 to 9: open,
+    /// and with the keyboard.
+    Character(u8),
 }
+
+/// Each character's action's name in the keybinds file, 1 to 9.
+const CHARACTER_NAMES: [&str; 9] = [
+    "character_1",
+    "character_2",
+    "character_3",
+    "character_4",
+    "character_5",
+    "character_6",
+    "character_7",
+    "character_8",
+    "character_9",
+];
+
+/// Each character's action's name for a player.
+const CHARACTER_LABELS: [&str; 9] = [
+    "The first character's window",
+    "The second character's window",
+    "The third character's window",
+    "The fourth character's window",
+    "The fifth character's window",
+    "The sixth character's window",
+    "The seventh character's window",
+    "The eighth character's window",
+    "The ninth character's window",
+];
 
 /// Each set's action's name in the keybinds file.
 const SET_NAMES: [&str; 10] = [
@@ -85,13 +161,45 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 50] = [
         Self::SendOrRepeat,
         Self::RepeatLast,
         Self::RepeatSecondLast,
         Self::HistoryBack,
         Self::HistoryForward,
         Self::ClearInput,
+        Self::ScrollPageUp,
+        Self::ScrollPageDown,
+        Self::ScrollLineUp,
+        Self::ScrollLineDown,
+        Self::ScrollTop,
+        Self::ScrollBottom,
+        Self::NextWindow,
+        Self::PreviousWindow,
+        Self::NextTab,
+        Self::PreviousTab,
+        Self::NextUnreadTab,
+        Self::Find,
+        Self::FindNext,
+        Self::FindPrevious,
+        Self::TargetNext,
+        Self::TargetPrevious,
+        Self::TargetClear,
+        Self::DrawerTop,
+        Self::DrawerBottom,
+        Self::DrawerLeft,
+        Self::DrawerRight,
+        Self::Lock,
+        Self::Arrange,
+        Self::Character(1),
+        Self::Character(2),
+        Self::Character(3),
+        Self::Character(4),
+        Self::Character(5),
+        Self::Character(6),
+        Self::Character(7),
+        Self::Character(8),
+        Self::Character(9),
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -119,6 +227,30 @@ impl Action {
             Self::HistoryBack => "history_back",
             Self::HistoryForward => "history_forward",
             Self::ClearInput => "clear_input",
+            Self::ScrollPageUp => "scroll_page_up",
+            Self::ScrollPageDown => "scroll_page_down",
+            Self::ScrollLineUp => "scroll_line_up",
+            Self::ScrollLineDown => "scroll_line_down",
+            Self::ScrollTop => "scroll_top",
+            Self::ScrollBottom => "scroll_bottom",
+            Self::NextWindow => "next_window",
+            Self::PreviousWindow => "previous_window",
+            Self::NextTab => "next_tab",
+            Self::PreviousTab => "previous_tab",
+            Self::NextUnreadTab => "next_unread_tab",
+            Self::Find => "find",
+            Self::FindNext => "find_next",
+            Self::FindPrevious => "find_previous",
+            Self::TargetNext => "target_next",
+            Self::TargetPrevious => "target_previous",
+            Self::TargetClear => "target_clear",
+            Self::DrawerTop => "drawer_top",
+            Self::DrawerBottom => "drawer_bottom",
+            Self::DrawerLeft => "drawer_left",
+            Self::DrawerRight => "drawer_right",
+            Self::Lock => "lock",
+            Self::Arrange => "arrange",
+            Self::Character(n) => CHARACTER_NAMES[usize::from(n.clamp(1, 9) - 1)],
         }
     }
 
@@ -135,6 +267,30 @@ impl Action {
             Self::HistoryBack => "Back through what was typed",
             Self::HistoryForward => "Forward through what was typed",
             Self::ClearInput => "Clear the command input",
+            Self::ScrollPageUp => "Scroll back a page",
+            Self::ScrollPageDown => "Scroll forward a page",
+            Self::ScrollLineUp => "Scroll back a line",
+            Self::ScrollLineDown => "Scroll forward a line",
+            Self::ScrollTop => "Scroll to the oldest line",
+            Self::ScrollBottom => "Scroll to the newest line",
+            Self::NextWindow => "Use the next window",
+            Self::PreviousWindow => "Use the window before",
+            Self::NextTab => "Show the next tab",
+            Self::PreviousTab => "Show the tab before",
+            Self::NextUnreadTab => "Show a tab with lines unread",
+            Self::Find => "Find in the window in use",
+            Self::FindNext => "Find the one before",
+            Self::FindPrevious => "Find the one after",
+            Self::TargetNext => "Target the next creature",
+            Self::TargetPrevious => "Target the creature before",
+            Self::TargetClear => "Target nothing",
+            Self::DrawerTop => "Open or shut the top drawer",
+            Self::DrawerBottom => "Open or shut the bottom drawer",
+            Self::DrawerLeft => "Open or shut the left drawer",
+            Self::DrawerRight => "Open or shut the right drawer",
+            Self::Lock => "Lock the windows, or free them",
+            Self::Arrange => "Arrange, or stop",
+            Self::Character(n) => CHARACTER_LABELS[usize::from(n.clamp(1, 9) - 1)],
         }
     }
 
@@ -372,6 +528,24 @@ mod tests {
         let two: toml::Table =
             toml::from_str("key = { fill = \"a\", action = \"stop\" }").expect("TOML");
         assert!(Macro::read(&two["key"]).is_err());
+    }
+
+    /// Every action's name reads back as the action, and its label is its
+    /// own.
+    #[test]
+    fn every_action_is_named_once() {
+        let mut labels = std::collections::HashSet::new();
+        for action in Action::ALL {
+            assert_eq!(
+                Action::named(action.name()),
+                Some(action),
+                "{}",
+                action.name()
+            );
+            assert!(labels.insert(action.label()), "{}", action.label());
+        }
+        assert_eq!(Action::named("character_3"), Some(Action::Character(3)));
+        assert_eq!(Action::named("macro_set_0"), Some(Action::Set(0)));
     }
 
     /// The Keys page shows `\r` as the two characters a player types.
