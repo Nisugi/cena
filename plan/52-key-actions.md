@@ -439,6 +439,22 @@ The author: *"do steps 4-10"*. The window in use, and §3's scrolling table:
   leaving the keyboard and the line where they were (`app/tests/sending.rs`). Four
   mutants, all caught.
 
+### Step 8, BUILT 2026-09-29
+
+§3's Hydra actions, none with a key (the author: *"don't give default binds to those
+hydra actions"*); `stop` and `settings` came with step 1 and the sets with step 2:
+
+- **`drawer_top`, `_bottom`, `_left` and `_right`** open the play window's drawer, or
+  shut it (`plan/49` Stage E), kept with the layout.
+- **`lock` and `arrange`** are the top bar's two switches: Lock ends Arrange, and Arrange
+  does nothing while locked, as the bar's own do.
+- **`character_1` to `character_9`** open the play window of the hub's first to ninth
+  character, in the order they were started, and give it the keyboard
+  (`app/keyed.rs`, `bring`); one past the last is nothing.
+- *Tests:* a drawer opened and shut, Lock and Arrange, the second character's closed
+  window brought and the ninth nothing, and every action's name read back as itself
+  with a label of its own, fifty of them now. Four mutants, all caught.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

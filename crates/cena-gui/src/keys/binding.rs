@@ -88,7 +88,48 @@ pub enum Action {
     TargetPrevious,
     /// Target nothing: `target clear`.
     TargetClear,
+    /// Open the top drawer, or shut it (`plan/52` step 8).
+    DrawerTop,
+    /// The bottom drawer.
+    DrawerBottom,
+    /// The left drawer.
+    DrawerLeft,
+    /// The right drawer.
+    DrawerRight,
+    /// The top bar's Lock: every window kept where it is, or free again.
+    Lock,
+    /// The top bar's Arrange.
+    Arrange,
+    /// The play window of the hub's first to ninth character, 1 to 9: open,
+    /// and with the keyboard.
+    Character(u8),
 }
+
+/// Each character's action's name in the keybinds file, 1 to 9.
+const CHARACTER_NAMES: [&str; 9] = [
+    "character_1",
+    "character_2",
+    "character_3",
+    "character_4",
+    "character_5",
+    "character_6",
+    "character_7",
+    "character_8",
+    "character_9",
+];
+
+/// Each character's action's name for a player.
+const CHARACTER_LABELS: [&str; 9] = [
+    "The first character's window",
+    "The second character's window",
+    "The third character's window",
+    "The fourth character's window",
+    "The fifth character's window",
+    "The sixth character's window",
+    "The seventh character's window",
+    "The eighth character's window",
+    "The ninth character's window",
+];
 
 /// Each set's action's name in the keybinds file.
 const SET_NAMES: [&str; 10] = [
@@ -120,7 +161,7 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 35] = [
+    pub const ALL: [Self; 50] = [
         Self::SendOrRepeat,
         Self::RepeatLast,
         Self::RepeatSecondLast,
@@ -144,6 +185,21 @@ impl Action {
         Self::TargetNext,
         Self::TargetPrevious,
         Self::TargetClear,
+        Self::DrawerTop,
+        Self::DrawerBottom,
+        Self::DrawerLeft,
+        Self::DrawerRight,
+        Self::Lock,
+        Self::Arrange,
+        Self::Character(1),
+        Self::Character(2),
+        Self::Character(3),
+        Self::Character(4),
+        Self::Character(5),
+        Self::Character(6),
+        Self::Character(7),
+        Self::Character(8),
+        Self::Character(9),
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -188,6 +244,13 @@ impl Action {
             Self::TargetNext => "target_next",
             Self::TargetPrevious => "target_previous",
             Self::TargetClear => "target_clear",
+            Self::DrawerTop => "drawer_top",
+            Self::DrawerBottom => "drawer_bottom",
+            Self::DrawerLeft => "drawer_left",
+            Self::DrawerRight => "drawer_right",
+            Self::Lock => "lock",
+            Self::Arrange => "arrange",
+            Self::Character(n) => CHARACTER_NAMES[usize::from(n.clamp(1, 9) - 1)],
         }
     }
 
@@ -221,6 +284,13 @@ impl Action {
             Self::TargetNext => "Target the next creature",
             Self::TargetPrevious => "Target the creature before",
             Self::TargetClear => "Target nothing",
+            Self::DrawerTop => "Open or shut the top drawer",
+            Self::DrawerBottom => "Open or shut the bottom drawer",
+            Self::DrawerLeft => "Open or shut the left drawer",
+            Self::DrawerRight => "Open or shut the right drawer",
+            Self::Lock => "Lock the windows, or free them",
+            Self::Arrange => "Arrange, or stop",
+            Self::Character(n) => CHARACTER_LABELS[usize::from(n.clamp(1, 9) - 1)],
         }
     }
 
@@ -458,6 +528,24 @@ mod tests {
         let two: toml::Table =
             toml::from_str("key = { fill = \"a\", action = \"stop\" }").expect("TOML");
         assert!(Macro::read(&two["key"]).is_err());
+    }
+
+    /// Every action's name reads back as the action, and its label is its
+    /// own.
+    #[test]
+    fn every_action_is_named_once() {
+        let mut labels = std::collections::HashSet::new();
+        for action in Action::ALL {
+            assert_eq!(
+                Action::named(action.name()),
+                Some(action),
+                "{}",
+                action.name()
+            );
+            assert!(labels.insert(action.label()), "{}", action.label());
+        }
+        assert_eq!(Action::named("character_3"), Some(Action::Character(3)));
+        assert_eq!(Action::named("macro_set_0"), Some(Action::Set(0)));
     }
 
     /// The Keys page shows `\r` as the two characters a player types.

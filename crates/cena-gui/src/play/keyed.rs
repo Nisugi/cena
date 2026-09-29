@@ -3,6 +3,7 @@
 //! its cap.
 
 use super::{Play, draw};
+use crate::layout::Zone;
 
 impl Play {
     /// The window in use, by its placed id: the widget last clicked in,
@@ -104,7 +105,23 @@ impl Play {
                 target(ids, *current, action == Action::TargetNext)
             }
             Action::TargetClear => Some("target clear".to_owned()),
-            Action::Stop | Action::Settings | Action::Set(_) => None,
+            Action::DrawerTop => self.drawer(Zone::Top),
+            Action::DrawerBottom => self.drawer(Zone::Bottom),
+            Action::DrawerLeft => self.drawer(Zone::Left),
+            Action::DrawerRight => self.drawer(Zone::Right),
+            Action::Lock => {
+                let layout = self.layout.as_mut()?;
+                layout.locked = !layout.locked;
+                self.arranging &= !layout.locked;
+                self.save();
+                None
+            }
+            Action::Arrange => {
+                let locked = self.layout.as_ref().is_some_and(|layout| layout.locked);
+                self.arranging = !self.arranging && !locked;
+                None
+            }
+            Action::Stop | Action::Settings | Action::Set(_) | Action::Character(_) => None,
         }
     }
 
@@ -143,6 +160,14 @@ impl Play {
             self.in_use = Some(tab);
             self.save();
         }
+        None
+    }
+
+    /// The drawer at `zone` opened, or shut (step 8).
+    fn drawer(&mut self, zone: Zone) -> Option<String> {
+        let drawer = self.layout.as_mut()?.drawers.get_mut(zone)?;
+        drawer.open = !drawer.open;
+        self.save();
         None
     }
 }

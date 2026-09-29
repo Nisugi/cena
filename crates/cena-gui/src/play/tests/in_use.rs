@@ -179,3 +179,35 @@ fn the_targets_go_round_the_games_list() {
         Some("target clear")
     );
 }
+
+/// Hydra's own actions on the window: each drawer opened and shut, Lock
+/// holding every window and ending Arrange, Arrange only while unlocked
+/// (`plan/52` step 8).
+#[test]
+fn the_drawers_lock_and_arrange_by_key() {
+    let mut harness = harness();
+    harness.run();
+    let context = harness.ctx.clone();
+    let play = &mut harness.state_mut().play;
+    let open = |play: &Play| {
+        play.layout
+            .as_ref()
+            .map(|layout| (layout.drawers.left.open, layout.drawers.top.open))
+    };
+    assert_eq!(open(play), Some((false, false)));
+    assert_eq!(play.act(&context, Action::DrawerLeft), None);
+    assert_eq!(open(play), Some((true, false)), "the left one");
+    let _ = play.act(&context, Action::DrawerLeft);
+    assert_eq!(open(play), Some((false, false)), "and shut");
+
+    let _ = play.act(&context, Action::Arrange);
+    assert!(play.arranging);
+    let _ = play.act(&context, Action::Lock);
+    assert!(play.layout.as_ref().is_some_and(|layout| layout.locked));
+    assert!(!play.arranging, "locked, not arranging");
+    let _ = play.act(&context, Action::Arrange);
+    assert!(!play.arranging, "not while locked");
+    let _ = play.act(&context, Action::Lock);
+    let _ = play.act(&context, Action::Arrange);
+    assert!(play.arranging, "free again");
+}

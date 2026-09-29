@@ -90,6 +90,7 @@ pub(super) fn asked(context: &egui::Context, window: &mut Play, action: Action) 
         Action::Stop => Asked::Stop,
         Action::Settings => Asked::Settings(None),
         Action::Set(set) => Asked::UseSet(set),
+        Action::Character(n) => Asked::Character(n),
         _ => return window.act(context, action).map(Asked::Send),
     })
 }
@@ -160,6 +161,19 @@ impl App {
         if !self.later.is_empty() {
             context.request_repaint();
         }
+    }
+
+    /// The play window of `seats`' `n`th character, from 1, opened and
+    /// given the keyboard (`plan/52` step 8); nothing past the last.
+    pub(super) fn bring(&mut self, context: &egui::Context, seats: &[Arc<Seat>], n: u8) {
+        let Some(seat) = usize::from(n).checked_sub(1).and_then(|at| seats.get(at)) else {
+            return;
+        };
+        if let Some(window) = self.plays.get_mut(&seat.id.0) {
+            window.open = true;
+        }
+        let viewport = egui::ViewportId::from_hash_of(("play", seat.id.0));
+        context.send_viewport_cmd_to(viewport, egui::ViewportCommand::Focus);
     }
 
     /// No play window had the keyboard this frame: the hub, the settings or

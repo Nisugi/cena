@@ -255,6 +255,7 @@ impl App {
                     self.menu.open_at(Some(named(seat)), page.as_deref());
                 }
                 Some(Asked::Keys) => self.menu.open_at(Some(named(seat)), Some("keys")),
+                Some(Asked::Character(n)) => self.bring(ui.ctx(), &seats, n),
                 Some(Asked::UseSet(set)) => {
                     let asked = crate::MenuAsked::Key {
                         character: Some(named(seat)),
@@ -394,7 +395,9 @@ impl App {
             Some(Asked::ForgetPreset(name)) => self.presets.forget(&name),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
             Some(Asked::Quietly(line)) => self.sessions.send_quietly(seat, line),
-            Some(asked @ (Asked::Settings(_) | Asked::Keys | Asked::UseSet(_))) => {
+            Some(
+                asked @ (Asked::Settings(_) | Asked::Keys | Asked::UseSet(_) | Asked::Character(_)),
+            ) => {
                 return Some(asked);
             }
             Some(Asked::Stop) => self.hydras(seat, "stop"),

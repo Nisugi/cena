@@ -80,6 +80,9 @@ pub(crate) enum Asked {
     /// Use this macro set over set 0, kept for the character; 0 for set 0
     /// alone (`plan/52` step 2).
     UseSet(u8),
+    /// The play window of the hub's first to ninth character, 1 to 9, open
+    /// and with the keyboard (`plan/52` step 8).
+    Character(u8),
 }
 
 /// What a play window shows this frame.
