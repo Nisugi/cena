@@ -7,6 +7,7 @@
 //! writes the file.
 
 mod editor;
+mod form;
 
 pub(crate) use editor::Editor;
 

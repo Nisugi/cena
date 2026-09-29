@@ -1,6 +1,6 @@
 # 54 — The trigger editor
 
-**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Step 1 BUILT 2026-09-29.**
+**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Steps 1 and 2 BUILT 2026-09-29.**
 
 M8 built triggers whole (`plan/45`) and left one door: the file, `;trigger`, and a Wrayth
 import. The author, choosing one file (`plan/45` §1 row 3): *"players won't be accessing the
@@ -105,6 +105,21 @@ settings menu's pages do.
    of `Rule`, the line's greyed for a condition), For whom (everyone or named characters, and
    off for each). New, duplicate, rename, delete (asked first). Saved through `edit.rs`; a
    send typed or changed here is approved (§1 row 2).
+   > **BUILT 2026-09-29.** The form is `cena_ui::triggers::Form`, every field of a trigger's
+   > table the form edits (`edit::FORM_KEYS`); the rest (`for.<name>`, `origin`, `held`,
+   > `approved`) the writer keeps. The binary turns a table into a form and back
+   > (`crates/cena/src/triggers/form.rs`, a round trip pinned by a test) and saves through
+   > `edit::save`, which renames, keeps what the form does not edit, and approves the send
+   > only when the form changed it; one left alone keeps its hold. *Off for* is a change of
+   > its own, `for.<name>.enabled`. The window (`crates/cena-gui/src/triggers/form.rs`):
+   > name and category; *A line* (words, regex, match case, whole words, an event from
+   > `LineEvent::every`, a stream) or *A condition* (guard words from
+   > `guard::vocabulary`, less the five a trigger cannot use, and its rearm); *only if*;
+   > each response behind a box, the line's greyed for a condition; cooldown and priority;
+   > everyone or the characters ticked; off for each roster character. *+ New*,
+   > *Duplicate*, *Save*, *Revert*. A draft is saved only when the file reads it back as
+   > it is, so a refused save stays unsaved, and a click elsewhere does not throw it away.
+   > Not built: ▶ to hear a sound (the sound plays in the binary, `crate::attention`).
 3. **The live test.** A line and its stream run through the real matcher in the window: the
    line as it would show (painted, squelched, substituted, moved) and what fires; the form's
    unsaved trigger with the saved ones.

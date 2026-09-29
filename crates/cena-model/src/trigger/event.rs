@@ -69,6 +69,27 @@ const WORDS: &[(&str, LineEvent)] = &[
 ];
 
 impl LineEvent {
+    /// Every event a trigger may name, each named one spelled out:
+    /// `speech`, ..., `affliction`, `affliction stunned`, `incident`, ...
+    /// For an editor to offer (`plan/54`).
+    #[must_use]
+    pub fn every() -> Vec<String> {
+        let mut all: Vec<String> = WORDS.iter().map(|(word, _)| (*word).to_owned()).collect();
+        all.push("affliction".to_owned());
+        all.extend(
+            Affliction::ALL
+                .iter()
+                .map(|a| format!("affliction {}", a.id())),
+        );
+        all.push("incident".to_owned());
+        all.extend(
+            Incident::NAMES
+                .iter()
+                .map(|name| format!("incident {name}")),
+        );
+        all
+    }
+
     /// Read an `event` as the file writes it.
     ///
     /// # Errors

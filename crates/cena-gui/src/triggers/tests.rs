@@ -1,6 +1,6 @@
 //! The trigger editor's list: what it shows, and what it asks of the file.
 
-use cena_ui::triggers::{Book, Change, Entry, Switch};
+use cena_ui::triggers::{Book, Change, Entry, Form, Look, Switch};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 
@@ -12,6 +12,17 @@ fn entry(name: &str, category: &str, summary: &str) -> Entry {
         category: category.to_owned(),
         enabled: true,
         summary: summary.to_owned(),
+        form: Form {
+            name: name.to_owned(),
+            category: category.to_owned(),
+            text: name.to_owned(),
+            look: Some(Look {
+                bold: true,
+                span: "match".to_owned(),
+                ..Look::default()
+            }),
+            ..Form::default()
+        },
         ..Entry::default()
     }
 }
@@ -35,7 +46,7 @@ fn book() -> Book {
             .map(|kind| ((*kind).to_owned(), true))
             .collect(),
         file: "triggers.toml".to_owned(),
-        problem: None,
+        ..Book::default()
     }
 }
 
@@ -56,7 +67,7 @@ fn harness<'a>() -> Harness<'a, Scene> {
         .with_size((1100.0, 680.0))
         .build_ui_state(
             |ui, scene: &mut Scene| {
-                let asked = scene.editor.show(ui, Some(&scene.book), None);
+                let asked = scene.editor.show(ui, Some(&scene.book), None, &[]);
                 scene.asked.extend(asked);
             },
             scene,
@@ -131,4 +142,125 @@ fn a_category_switch_asks_for_the_category() {
         harness.state().asked,
         [Change::Switch(Switch::Category("Ignores".to_owned()), true)]
     );
+}
+
+/// The last save the editor asked for.
+fn saved(harness: &Harness<'_, Scene>) -> Option<(Option<String>, Form)> {
+    harness
+        .state()
+        .asked
+        .iter()
+        .rev()
+        .find_map(|change| match change {
+            Change::Save { was, form } => Some((was.clone(), (**form).clone())),
+            _ => None,
+        })
+}
+
+#[test]
+fn a_trigger_edited_is_saved_under_its_old_name() {
+    let mut harness = harness();
+    harness.get_by_label("stunned").click();
+    harness.run();
+    harness.get_by_label("Save").click();
+    harness.run();
+    assert_eq!(
+        saved(&harness),
+        None,
+        "nothing to save until something changes"
+    );
+    harness
+        .state_mut()
+        .editor
+        .draft_form()
+        .expect("a draft")
+        .text = "You are stunned".to_owned();
+    harness.run();
+    harness.get_by_label("Save").click();
+    harness.run();
+    let (was, form) = saved(&harness).expect("a save");
+    assert_eq!(was.as_deref(), Some("stunned"));
+    assert_eq!(form.text, "You are stunned");
+    assert_eq!(form.category, "Combat", "the rest as it was");
+}
+
+#[test]
+fn a_new_trigger_is_saved_with_no_old_name() {
+    let mut harness = harness();
+    harness.get_by_label("+ New").click();
+    harness.run();
+    assert!(harness.query_by_label("A new trigger").is_some());
+    let form = harness.state_mut().editor.draft_form().expect("a draft");
+    form.name = "  rock ".to_owned();
+    form.text = "a rock".to_owned();
+    form.squelch = true;
+    harness.run();
+    harness.get_by_label("Save").click();
+    harness.run();
+    let (was, form) = saved(&harness).expect("a save");
+    assert_eq!(was, None);
+    assert_eq!(form.name, "rock", "trimmed before it is saved");
+}
+
+#[test]
+fn a_condition_saves_without_the_line_responses_it_cannot_have() {
+    let mut harness = harness();
+    harness.get_by_label("stunned").click();
+    harness.run();
+    harness.get_by_label("A condition").click();
+    harness.run();
+    assert!(
+        harness
+            .query_by_label("A condition has no line to colour, hide, change or move.")
+            .is_some()
+    );
+    harness
+        .state_mut()
+        .editor
+        .draft_form()
+        .expect("a draft")
+        .condition = "stunned".to_owned();
+    harness.run();
+    harness.get_by_label("Save").click();
+    harness.run();
+    let (_, form) = saved(&harness).expect("a save");
+    assert_eq!(form.condition, "stunned");
+    assert_eq!(form.text, "", "a condition watches no line");
+    assert_eq!(form.look, None, "its look went with the line");
+}
+
+#[test]
+fn unsaved_changes_are_not_thrown_away_by_a_click() {
+    let mut harness = harness();
+    harness.get_by_label("stunned").click();
+    harness.run();
+    harness
+        .state_mut()
+        .editor
+        .draft_form()
+        .expect("a draft")
+        .text = "changed".to_owned();
+    harness.run();
+    harness.get_by_label("spam").click();
+    harness.run();
+    assert!(
+        harness
+            .query_by_label_contains("has changes not saved")
+            .is_some()
+    );
+    assert_eq!(
+        harness
+            .state_mut()
+            .editor
+            .draft_form()
+            .map(|form| form.name.clone()),
+        Some("stunned".to_owned())
+    );
+}
+
+#[test]
+fn a_colour_reads_back_as_its_bytes() {
+    assert_eq!(super::form::parse_hex("#ff4000"), Some([255, 64, 0]));
+    assert_eq!(super::form::parse_hex("ff4000"), None);
+    assert_eq!(super::form::parse_hex("#fff"), None);
 }
