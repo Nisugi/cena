@@ -379,6 +379,36 @@ fn the_grid_shows_only_once_a_window_moves() {
     assert!(!harness.state().play.guiding, "let go, it goes");
 }
 
+/// A click on a window shows no grid even when egui draws it off where its
+/// layout keeps it -- kept past the play area's edge, and drawn inside it
+/// (the author, 2026-09-28: *"clicking on a window brings up the grid ...
+/// Clicking is not an active drag"*). The press read that difference as a
+/// move.
+#[test]
+fn a_click_on_a_window_drawn_off_its_place_shows_no_grid() {
+    let mut harness = harness();
+    harness.run();
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        let ids: Vec<u32> = layout.holders.iter().map(|holder| holder.id).collect();
+        for id in ids {
+            if let Some(rect) = layout.rect(id) {
+                layout.set(id, rect.translate(egui::vec2(0.0, 2000.0)));
+            }
+        }
+    }
+    harness.run();
+    let window = harness.get_by_label("Room").rect();
+    let grip = egui::pos2(window.center().x, window.min.y + 12.0);
+    harness.hover_at(grip);
+    harness.step();
+    harness.drag_at(grip);
+    harness.step();
+    harness.step();
+    assert!(!harness.state().play.guiding, "a press alone shows no grid");
+    harness.drop_at(grip);
+    harness.step();
+}
+
 /// Locked, no window moves: a drag leaves each where it was, Arrange cannot
 /// be turned on, and the lock is kept with the layout.
 #[test]

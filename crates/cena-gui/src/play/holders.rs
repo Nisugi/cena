@@ -198,11 +198,12 @@ impl Play {
         if self.engaged.is_empty() {
             return false;
         }
-        let (down, shift, latest) = context.input(|input| {
+        let (down, shift, latest, dragging) = context.input(|input| {
             (
                 input.pointer.any_down(),
                 input.modifiers.shift,
                 input.pointer.latest_pos(),
+                input.pointer.is_decidedly_dragging(),
             )
         });
         let bounds = Rect::from_min_size(Pos2::ZERO, area.size());
@@ -211,10 +212,14 @@ impl Play {
             let Some((_, now)) = drawn.iter().find(|(holder, _)| *holder == engaged.holder) else {
                 continue;
             };
-            // The grid shows once a window moves or changes its size, never
-            // for a click (the author, 2026-09-28).
-            self.guiding |= (now.min - engaged.start.min).length() > 0.5
-                || (now.size() - engaged.start.size()).length() > 0.5;
+            // The grid shows once a window moves or changes its size under a
+            // drag, never for a click (the author, 2026-09-28: "Clicking is
+            // not an active drag"). The drag is egui's word -- the pointer
+            // past a click's reach -- because a window egui draws off where
+            // its layout keeps it has moved, by its rect, at a mere press.
+            self.guiding |= dragging
+                && ((now.min - engaged.start.min).length() > 0.5
+                    || (now.size() - engaged.start.size()).length() > 0.5);
             let siblings: Vec<Rect> = layout
                 .holders
                 .iter()
