@@ -108,10 +108,18 @@ fn changed(
         }
         KeyChange::Unbind { key, place } => {
             let gone = chord(key)?;
-            (
-                vacate(old, whose, place.set, &gone, keys),
-                format!("{} does nothing{}", gone.written(), in_set(place.set)),
-            )
+            // A set from 1 to 9 falls to set 0 for a key it leaves out, so
+            // a key taken out of one is not a key that does nothing: said
+            // so, where this said `does nothing in set 3` of a key that
+            // went on doing set 0's (the review of 2026-09-29).
+            let done = match place.set {
+                0 => format!("{} does nothing", gone.written()),
+                set => format!(
+                    "{} is taken out of set {set}, and does what it does in set 0",
+                    gone.written()
+                ),
+            };
+            (vacate(old, whose, place.set, &gone, keys), done)
         }
         KeyChange::Restore { key, place } => {
             let back = chord(key)?;
@@ -557,7 +565,11 @@ Numpad8 = \"north\"
             key: "Numpad8".to_owned(),
             place: in_set(1),
         };
-        let (text, _) = changed(&text, &gone).expect("gone");
+        let (text, done) = changed(&text, &gone).expect("gone");
+        assert_eq!(
+            done, "Numpad8 is taken out of set 1, and does what it does in set 0",
+            "not said to do nothing: it walks north again"
+        );
         assert!(!text.contains("peer"), "{text}");
         assert!(!text.contains("\"Numpad8\" = \"\""), "not unbound: {text}");
     }
