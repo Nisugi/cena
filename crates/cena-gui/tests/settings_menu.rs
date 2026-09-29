@@ -3,7 +3,7 @@
 //! binary for each change, written as the behavior's `;` command would type
 //! it; Hydra's own pages, *Window* and *Keys*, it asks of the window.
 
-use cena_gui::{KeyChange, MenuAsked, typed};
+use cena_gui::{Action, KeyChange, KeyRow, Macro, MenuAsked, typed};
 use cena_ui::HubRequest;
 use cena_ui::settings::{Change, Row, RowKind, Value};
 use egui::accesskit::Role;
@@ -287,10 +287,7 @@ fn hydra<'a>(bound: &[(&str, &str)]) -> Harness<'a, Board> {
     let mut board = Board {
         roster: vec![card("Nisugi")],
         own: vec![window],
-        bound: bound
-            .iter()
-            .map(|(key, line)| ((*key).to_owned(), (*line).to_owned()))
-            .collect(),
+        bound: bound.iter().map(|(key, line)| sends(key, line)).collect(),
         ..Board::default()
     };
     board.menu.open_for(None);
@@ -316,9 +313,14 @@ fn replace(harness: &mut Harness<'_, Board>, label: &str, text: &str) {
 fn bind(key: &str, line: &str, was: Option<&str>) -> MenuAsked {
     MenuAsked::Key(KeyChange::Bind {
         key: key.to_owned(),
-        line: line.to_owned(),
+        does: Macro::Send(line.to_owned()),
         was: was.map(str::to_owned),
     })
+}
+
+/// A key the player bound to send `line`, which Hydra does not bind.
+fn sends(key: &str, line: &str) -> KeyRow {
+    KeyRow::players(key, Macro::Send(line.to_owned()))
 }
 
 /// A change on Hydra's *Window* page is asked of the window, not the
@@ -412,9 +414,9 @@ fn a_bound_key_is_changed_moved_and_removed() {
         .click();
     harness.run();
     assert!(harness.state().menu.waiting_for_key());
-    harness.state_mut().numpad = Some("Numpad2".to_owned());
+    harness.state_mut().caught = Some("Numpad2".to_owned());
     harness.run();
-    harness.state_mut().numpad = None;
+    harness.state_mut().caught = None;
     if let Some(remove) = harness.get_all_by_label("Remove").nth(1) {
         remove.click();
     }
@@ -437,6 +439,55 @@ fn a_bound_key_is_changed_moved_and_removed() {
     );
 }
 
+/// Hydra's keys are listed with the player's: one the player changed is
+/// restored, one Hydra's alone is removed (which unbinds it), and one
+/// unbound is restored; each says where it came from.
+#[test]
+fn hydras_keys_are_restored_and_removed() {
+    let hydras = |key: &str, does: Option<&str>, default: &str| KeyRow {
+        key: key.to_owned(),
+        does: does.map(|line| Macro::Send(line.to_owned())),
+        default: Some(Macro::Send(default.to_owned())),
+    };
+    let mut board = Board {
+        roster: vec![card("Nisugi")],
+        bound: vec![
+            hydras("Numpad2", Some("go2 bank"), "south"),
+            hydras("Numpad8", Some("north"), "north"),
+            hydras("Shift+Numpad8", None, "peer north"),
+        ],
+        ..Board::default()
+    };
+    board.menu.open_for(None);
+    let mut harness = Harness::builder()
+        .with_size((900.0, 520.0))
+        .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
+    harness.run();
+    for word in ["changed", "Hydra's", "unbound"] {
+        assert!(harness.query_by_label(word).is_some(), "{word}");
+    }
+    let restores: Vec<_> = harness.get_all_by_label("Restore").collect();
+    assert_eq!(restores.len(), 2, "not for a key as Hydra binds it");
+    restores[0].click();
+    harness.run();
+    if let Some(remove) = harness.get_all_by_label("Remove").nth(1) {
+        remove.click();
+    }
+    harness.run();
+    if let Some(restore) = harness.get_all_by_label("Restore").nth(1) {
+        restore.click();
+    }
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [
+            MenuAsked::Key(KeyChange::Restore("Numpad2".to_owned())),
+            MenuAsked::Key(KeyChange::Unbind("Numpad8".to_owned())),
+            MenuAsked::Key(KeyChange::Restore("Shift+Numpad8".to_owned())),
+        ]
+    );
+}
+
 /// The *Keys* page as a player sees it, rendered and compared with the
 /// committed image.
 #[test]
@@ -444,14 +495,30 @@ fn the_keys_page_as_drawn() {
     let mut board = Board {
         roster: vec![card("Nisugi")],
         bound: vec![
-            ("Ctrl+F1".to_owned(), "look".to_owned()),
-            ("Numpad8".to_owned(), "north".to_owned()),
+            sends("Ctrl+F1", "stance off\rincant 610"),
+            KeyRow::players("F3", Macro::Fill("prep 111 ".to_owned())),
+            KeyRow::players("F4", Macro::Act(Action::Stop)),
+            KeyRow {
+                key: "Numpad8".to_owned(),
+                does: Some(Macro::Send("north".to_owned())),
+                default: Some(Macro::Send("north".to_owned())),
+            },
+            KeyRow {
+                key: "Numpad2".to_owned(),
+                does: Some(Macro::Send("go2 bank".to_owned())),
+                default: Some(Macro::Send("south".to_owned())),
+            },
+            KeyRow {
+                key: "Shift+Numpad8".to_owned(),
+                does: None,
+                default: Some(Macro::Send("peer north".to_owned())),
+            },
         ],
         ..Board::default()
     };
     board.menu.open_for(None);
     let mut harness = Harness::builder()
-        .with_size((760.0, 260.0))
+        .with_size((760.0, 360.0))
         .wgpu()
         .build_ui_state(|ui, board: &mut Board| board.draw(ui), board);
     // With no other page of Hydra's given, Keys is the one showing.

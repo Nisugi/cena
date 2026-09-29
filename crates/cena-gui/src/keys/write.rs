@@ -7,6 +7,8 @@
 
 use std::path::Path;
 
+#[cfg(test)]
+use super::Macro;
 use super::page::KeyChange;
 use super::{Chord, FILE, Keybinds};
 
@@ -38,29 +40,43 @@ pub(crate) fn apply(data: &Path, change: &KeyChange) -> Result<String, String> {
 /// done.
 fn changed(old: &str, change: &KeyChange) -> Result<(String, String), String> {
     let chord = |written: &str| Chord::parse(written).map_err(|why| format!("Keys: {why}"));
+    let hydras = Keybinds::default();
     let (text, done) = match change {
-        KeyChange::Bind { key, line, was } => {
+        KeyChange::Bind { key, does, was } => {
             let to = chord(key)?;
             if to.types() {
                 return Err(format!(
                     "Keys: {key} types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
                 ));
             }
+            does.check().map_err(|why| format!("Keys: {key}: {why}."))?;
             let text = match was.as_deref().map(chord).transpose()? {
-                Some(was) => bind(old, &was, None),
+                Some(was) => vacate(old, &was, &hydras),
                 None => old.to_owned(),
             };
             (
-                bind(&text, &to, Some(line)),
-                format!("{} sends `{line}`", to.written()),
+                bind(&text, &to, Some(&does.written())),
+                format!("{} {}", to.written(), does.said()),
             )
         }
         KeyChange::Unbind(key) => {
             let gone = chord(key)?;
             (
-                bind(old, &gone, None),
-                format!("{} sends nothing", gone.written()),
+                vacate(old, &gone, &hydras),
+                format!("{} does nothing", gone.written()),
             )
+        }
+        KeyChange::Restore(key) => {
+            let back = chord(key)?;
+            let done = match hydras.does(&back) {
+                Some(does) => format!(
+                    "{} {} again, as Hydra binds it",
+                    back.written(),
+                    does.said()
+                ),
+                None => format!("{} does nothing", back.written()),
+            };
+            (bind(old, &back, None), done)
         }
         KeyChange::NumpadAlways(always) => (
             numpad(old, *always),
@@ -72,19 +88,24 @@ fn changed(old: &str, change: &KeyChange) -> Result<(String, String), String> {
             .to_owned(),
         ),
     };
-    let sends = |read: &Keybinds, key: &str| {
+    let does = |read: &Keybinds, key: &str| {
         Chord::parse(key)
             .ok()
-            .and_then(|key| read.line(&key).map(str::to_owned))
+            .and_then(|key| read.does(&key).cloned())
     };
     let holds = toml::from_str::<toml::Table>(&text).is_ok() && {
         let read = Keybinds::read(&text).0;
         match change {
-            KeyChange::Bind { key, line, was } => {
-                sends(&read, key).as_ref() == Some(line)
-                    && was.as_deref().is_none_or(|was| sends(&read, was).is_none())
+            KeyChange::Bind {
+                key,
+                does: made,
+                was,
+            } => {
+                does(&read, key).as_ref() == Some(made)
+                    && was.as_deref().is_none_or(|was| does(&read, was).is_none())
             }
-            KeyChange::Unbind(key) => sends(&read, key).is_none(),
+            KeyChange::Unbind(key) => does(&read, key).is_none(),
+            KeyChange::Restore(key) => does(&read, key) == does(&hydras, key),
             KeyChange::NumpadAlways(always) => read.numpad_always == *always,
         }
     };
@@ -96,10 +117,21 @@ fn changed(old: &str, change: &KeyChange) -> Result<(String, String), String> {
     Ok((text, done))
 }
 
-/// `text` with `chord` sending `line`, or nothing: each line that binds it
-/// changed or taken out, or one added at the end of `[keys]`.
-fn bind(text: &str, chord: &Chord, line: Option<&str>) -> String {
-    let mut entry = line.map(|line| format!("{} = {}", quoted(&chord.written()), quoted(line)));
+/// `text` with `chord` doing nothing: written `""` where Hydra binds it,
+/// so the default is unbound too, and taken out of the file where not.
+fn vacate(text: &str, chord: &Chord, hydras: &Keybinds) -> String {
+    if hydras.has_default(chord) {
+        bind(text, chord, Some("\"\""))
+    } else {
+        bind(text, chord, None)
+    }
+}
+
+/// `text` with `chord` bound to `value`, a TOML value as the file writes
+/// it, or to nothing of the file's: each line that binds it changed or
+/// taken out, or one added at the end of `[keys]`.
+fn bind(text: &str, chord: &Chord, value: Option<&str>) -> String {
+    let mut entry = value.map(|value| format!("{} = {value}", quoted(&chord.written())));
     let mut lines: Vec<String> = Vec::new();
     let mut in_keys = false;
     let mut end_of_keys = None;
@@ -223,9 +255,16 @@ Numpad8 = \"north\"
     fn bound(key: &str, line: &str, was: Option<&str>) -> KeyChange {
         KeyChange::Bind {
             key: key.to_owned(),
-            line: line.to_owned(),
+            does: Macro::Send(line.to_owned()),
             was: was.map(str::to_owned),
         }
+    }
+
+    fn does(text: &str, key: &str) -> Option<Macro> {
+        Keybinds::read(text)
+            .0
+            .does(&Chord::parse(key).expect("a key"))
+            .cloned()
     }
 
     /// A key bound again is changed where it is, a new one goes at the end
@@ -248,22 +287,70 @@ Numpad8 = \"north\"
         );
     }
 
-    /// A key moved sends its line from the new key only; one taken out is
-    /// gone, comments and all else kept.
+    /// A key moved does its macro from the new key only; one taken out is
+    /// gone, comments and all else kept. A key Hydra binds is written `""`
+    /// when it moves or is taken out, so the default goes too; one it does
+    /// not is taken out of the file.
     #[test]
     fn a_binding_moves_and_is_taken_out() {
-        let (text, _) = made(&bound("Numpad2", "north", Some("Numpad8"))).expect("moved");
-        let read = Keybinds::read(&text).0;
+        let (text, _) = made(&bound("Ctrl+F2", "north", Some("Numpad8"))).expect("moved");
         assert_eq!(
-            read.line(&Chord::parse("Numpad2").expect("a key")),
-            Some("north")
+            does(&text, "Ctrl+F2"),
+            Some(Macro::Send("north".to_owned()))
         );
-        assert_eq!(read.line(&Chord::parse("Numpad8").expect("a key")), None);
+        assert_eq!(does(&text, "Numpad8"), None, "Hydra's north too");
+        assert!(text.contains("\"Numpad8\" = \"\""), "{text}");
         assert!(text.contains("# Movement."));
 
         let (text, done) = made(&KeyChange::Unbind("Numpad8".to_owned())).expect("gone");
-        assert_eq!(done, "Numpad8 sends nothing");
-        assert_eq!(text, FILE_BY_HAND.replace("Numpad8 = \"north\"\n", ""));
+        assert_eq!(done, "Numpad8 does nothing");
+        assert_eq!(
+            text,
+            FILE_BY_HAND.replace("Numpad8 = \"north\"", "\"Numpad8\" = \"\"")
+        );
+        let (text, _) = made(&KeyChange::Unbind("Ctrl+F1".to_owned())).expect("gone");
+        assert!(!text.contains("look"), "not Hydra's, so taken out: {text}");
+    }
+
+    /// Restored, a key's line leaves the file and Hydra's default is back;
+    /// a key Hydra does not bind does nothing.
+    #[test]
+    fn a_default_is_restored() {
+        let unbound = changed(FILE_BY_HAND, &KeyChange::Unbind("Numpad8".to_owned()))
+            .expect("gone")
+            .0;
+        let (text, done) =
+            changed(&unbound, &KeyChange::Restore("Numpad8".to_owned())).expect("back");
+        assert_eq!(done, "Numpad8 sends `north` again, as Hydra binds it");
+        assert!(!text.contains("Numpad8"), "{text}");
+        assert_eq!(
+            does(&text, "Numpad8"),
+            Some(Macro::Send("north".to_owned()))
+        );
+        let (_, done) = made(&KeyChange::Restore("Ctrl+F1".to_owned())).expect("gone");
+        assert_eq!(done, "Ctrl+F1 does nothing");
+    }
+
+    /// Each kind is written so the file reads it back: commands with a
+    /// break between them, the input filled, an action.
+    #[test]
+    fn each_kind_is_written() {
+        for made_to in [
+            Macro::Send("stance off\rincant 610".to_owned()),
+            Macro::Fill("prep 111 ".to_owned()),
+            Macro::Act(crate::keys::Action::Stop),
+        ] {
+            let change = KeyChange::Bind {
+                key: "F9".to_owned(),
+                does: made_to.clone(),
+                was: None,
+            };
+            let (text, _) = made(&change).expect("written");
+            assert_eq!(does(&text, "F9"), Some(made_to), "{text}");
+        }
+        let (text, _) = made(&bound("F9", "look\rsearch", None)).expect("written");
+        assert!(text.contains(r#""F9" = "look\rsearch""#), "{text}");
+        assert!(made(&bound("F9", "s1", None)).is_err(), "sends no command");
     }
 
     /// The numpad's switch is written above the tables, or left out for
@@ -309,7 +396,10 @@ Numpad8 = \"north\"
         );
         let (read, problems) = Keybinds::load(&super::super::path(&data));
         assert!(problems.is_empty(), "{problems:?}");
-        assert_eq!(read.line(&Chord::parse("F5").expect("a key")), Some("look"));
+        assert_eq!(
+            read.does(&Chord::parse("F5").expect("a key")),
+            Some(&Macro::Send("look".to_owned()))
+        );
 
         std::fs::write(super::super::path(&data), "[keys\n").expect("written");
         let Err(why) = apply(&data, &bound("F6", "hide", None)) else {

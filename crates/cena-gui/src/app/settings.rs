@@ -16,7 +16,7 @@ impl App {
             return;
         }
         let own = [self.own.page()];
-        let bound = self.keys.listed();
+        let bound = self.keys.rows();
         let widgets = self
             .shown_play()
             .map(|session| {
@@ -39,7 +39,7 @@ impl App {
                 bound: &bound,
                 numpad_always: self.keys.numpad_always,
                 said: &self.keys_said,
-                numpad: self.numpad_for_menu.as_deref(),
+                caught: self.caught_for_page.as_deref(),
             },
             widgets: &widgets,
         };

@@ -1,5 +1,11 @@
-//! Keybinds (`plan/47` step 7): a key, and the line it sends on the
-//! character whose play window has the keyboard, as if typed there.
+//! Keybinds (`plan/47` step 7, `plan/52`): a key, and the macro it does on
+//! the character whose play window has the keyboard -- commands sent as if
+//! typed there, text put in the command input, or one of Hydra's actions
+//! (`binding.rs`).
+//!
+//! **Hydra's defaults live in the code** (`defaults.rs`); the keybinds file
+//! holds only what the player added or changed, a key written `""` unbinding
+//! a default (`plan/52` §2).
 //!
 //! **A key is named by its winit code** -- `Numpad8`, `F13`, `KeyA`,
 //! `ArrowUp` -- with `ctrl+`, `shift+`, `alt+` or `cmd+` before it. The
@@ -9,23 +15,32 @@
 //! why the numpad comes through the author's fork instead
 //! (`eframe::Frame::numpad_keys`), with `NumLock` read from each press.
 //!
-//! The keys come two ways. The numpad's through the fork's channel, which
-//! catches only the numpad keys that are bound, so an unbound one still
-//! types. Every other key through egui, which names F1-F35, the arrows and
-//! the rest; a bound key's press is taken before anything else sees it. A
-//! key that types -- a letter, a digit, a mark, with no Ctrl, Alt or Cmd --
-//! never fires a binding, or nobody could type it.
+//! The keys come three ways. The numpad's through the fork's numpad channel,
+//! which catches only the numpad keys that are bound, so an unbound one
+//! still types. The keys egui has no name for -- Pause, Scroll Lock, Print
+//! Screen, Caps Lock, the context-menu key -- through the fork's key capture
+//! (`plan/47` step 7, the fork pinned at `ed8b264`), which catches only those
+//! bound, so an unbound Caps Lock is left to egui. Every other key through
+//! egui, which names F1-F35, the arrows and the rest; a bound key's press is
+//! taken before anything else sees it. A key that types -- a letter, a digit,
+//! a mark, with no Ctrl, Alt or Cmd -- never fires a binding, or nobody could
+//! type it.
 //!
-//! **Not yet** (`plan/47` step 7): a key egui has no name for -- Pause,
-//! Scroll Lock, Print Screen, and macOS's Clear, which winit reports as
-//! `NumLock` -- needs the fork's hook widened from the numpad to every key,
-//! a change to the author's repository. The file names such a key and is
-//! told so, rather than a binding that silently never fires.
+//! **`NumLock` is nobody's.** On Windows and Linux it is the operating
+//! system's switch for the numpad; on macOS, which has none, winit calls the
+//! Clear key `NumLock`, and Clear is Hydra's switch there, the numpad typing
+//! or sending its keys (`app.rs`, `numpad_mode`).
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use egui::{Key, Modifiers};
+use egui::Modifiers;
+
+pub use binding::{Action, Macro};
+pub(crate) use names::NUM_LOCK;
+pub(crate) use names::winit_name;
+use names::{CAPTURED, NUMPAD, TYPING, known};
+pub use page::KeyRow;
 
 /// The keybinds file, in the data folder.
 pub(crate) const FILE: &str = "keybinds.toml";
@@ -115,156 +130,29 @@ impl Chord {
     }
 }
 
-/// The keys that type, by winit name.
-const TYPING: &[&str] = &[
-    "KeyA",
-    "KeyB",
-    "KeyC",
-    "KeyD",
-    "KeyE",
-    "KeyF",
-    "KeyG",
-    "KeyH",
-    "KeyI",
-    "KeyJ",
-    "KeyK",
-    "KeyL",
-    "KeyM",
-    "KeyN",
-    "KeyO",
-    "KeyP",
-    "KeyQ",
-    "KeyR",
-    "KeyS",
-    "KeyT",
-    "KeyU",
-    "KeyV",
-    "KeyW",
-    "KeyX",
-    "KeyY",
-    "KeyZ",
-    "Digit0",
-    "Digit1",
-    "Digit2",
-    "Digit3",
-    "Digit4",
-    "Digit5",
-    "Digit6",
-    "Digit7",
-    "Digit8",
-    "Digit9",
-    "Minus",
-    "Equal",
-    "Comma",
-    "Period",
-    "Slash",
-    "Backslash",
-    "Semicolon",
-    "Quote",
-    "Backquote",
-    "BracketLeft",
-    "BracketRight",
-    "Space",
-];
-
-/// The sixteen numpad keys: winit's name, and the fork's.
-const NUMPAD: &[(&str, &str)] = &[
-    ("Numpad0", "num_0"),
-    ("Numpad1", "num_1"),
-    ("Numpad2", "num_2"),
-    ("Numpad3", "num_3"),
-    ("Numpad4", "num_4"),
-    ("Numpad5", "num_5"),
-    ("Numpad6", "num_6"),
-    ("Numpad7", "num_7"),
-    ("Numpad8", "num_8"),
-    ("Numpad9", "num_9"),
-    ("NumpadAdd", "num_plus"),
-    ("NumpadSubtract", "num_minus"),
-    ("NumpadMultiply", "num_multiply"),
-    ("NumpadDivide", "num_divide"),
-    ("NumpadEnter", "num_enter"),
-    ("NumpadDecimal", "num_decimal"),
-];
-
-/// Keys winit names that no path reaches yet: they need the fork's hook
-/// widened (this module's docs).
-const NOT_YET: &[&str] = &[
-    "Pause",
-    "ScrollLock",
-    "PrintScreen",
-    "NumLock",
-    "ContextMenu",
-    "CapsLock",
-];
-
-/// The winit name `key` is written as, checked: a key this build can see.
-fn known(key: &str) -> Result<String, String> {
-    if let Some((winit, _)) = NUMPAD
-        .iter()
-        .find(|(winit, fork)| winit.eq_ignore_ascii_case(key) || fork.eq_ignore_ascii_case(key))
-    {
-        return Ok((*winit).to_owned());
-    }
-    if let Some(name) = Key::ALL
-        .iter()
-        .filter_map(|key| winit_name(*key))
-        .find(|name| name.eq_ignore_ascii_case(key))
-    {
-        return Ok(name);
-    }
-    if NOT_YET.iter().any(|name| name.eq_ignore_ascii_case(key)) {
-        return Err(format!(
-            "Hydra cannot see {key} yet: it needs the egui fork's key hook widened (plan/47 step 7)."
-        ));
-    }
-    Err(format!(
-        "{key} is not a key winit names; see the key names in plan/47 step 7."
-    ))
-}
-
-/// winit's name for the physical key egui calls `key`: `KeyA` for `A`,
-/// `Digit1` for `Num1`, the same name for the function keys, the arrows and
-/// the rest; `None` for an egui key that is a character and not a key
-/// (`Plus`, `Colon`, `Pipe`...).
-pub(crate) fn winit_name(key: Key) -> Option<String> {
-    let name = format!("{key:?}");
-    if name.len() == 1 {
-        return Some(format!("Key{name}"));
-    }
-    if let Some(digit) = name.strip_prefix("Num")
-        && digit.len() == 1
-    {
-        return Some(format!("Digit{digit}"));
-    }
-    let renamed = match key {
-        Key::Equals => "Equal",
-        Key::Backtick => "Backquote",
-        Key::OpenBracket => "BracketLeft",
-        Key::CloseBracket => "BracketRight",
-        Key::Plus
-        | Key::Colon
-        | Key::Pipe
-        | Key::Questionmark
-        | Key::Exclamationmark
-        | Key::OpenCurlyBracket
-        | Key::CloseCurlyBracket
-        | Key::Copy
-        | Key::Cut
-        | Key::Paste => return None,
-        _ => return Some(name),
-    };
-    Some(renamed.to_owned())
-}
-
-/// The keybinds, as the file says.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// The keybinds in effect: Hydra's defaults, with the file's changes on
+/// top.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Keybinds {
-    binds: BTreeMap<Chord, String>,
+    /// Hydra's own (`defaults.rs`).
+    defaults: BTreeMap<Chord, Macro>,
+    /// The file's: a macro, or `None` where it unbinds a default.
+    file: BTreeMap<Chord, Option<Macro>>,
     /// The numpad always sends its bindings, `NumLock` or not: `numpad =
     /// "always"`. macOS has no `NumLock`, so this is how a Mac binds its
     /// numpad until the Clear key can switch it (this module's docs).
     pub(crate) numpad_always: bool,
+}
+
+impl Default for Keybinds {
+    /// Hydra's defaults alone: no file.
+    fn default() -> Self {
+        Self {
+            defaults: defaults::defaults(),
+            file: BTreeMap::new(),
+            numpad_always: false,
+        }
+    }
 }
 
 /// The file as written.
@@ -274,12 +162,12 @@ struct File {
     #[serde(default)]
     numpad: Option<String>,
     #[serde(default)]
-    keys: BTreeMap<String, String>,
+    keys: BTreeMap<String, toml::Value>,
 }
 
 impl Keybinds {
-    /// Read `text`, a keybinds file. Every binding that is wrong is said,
-    /// and the rest still bind.
+    /// Read `text`, a keybinds file, over Hydra's defaults. Every binding
+    /// that is wrong is said, and the rest still bind.
     pub(crate) fn read(text: &str) -> (Self, Vec<String>) {
         let file = match toml::from_str::<File>(text) {
             Ok(file) => file,
@@ -294,16 +182,17 @@ impl Keybinds {
                 "numpad = \"{other}\": it is \"numlock\" or \"always\"."
             )),
         }
-        for (written, line) in file.keys {
+        for (written, value) in file.keys {
             match Chord::parse(&written) {
                 Ok(chord) if chord.types() => problems.push(format!(
                     "`{written}` types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
                 )),
-                // One command, or it is said, not bound: a line with a newline
-                // would send two (the crate review of 2026-09-28, R10).
-                Ok(chord) => match cena_ui::validate_line(&line) {
-                    Ok(()) => {
-                        keybinds.binds.insert(chord, line);
+                // Each command one line, or it is said, not bound: a line with
+                // a newline would send two (the crate review of 2026-09-28,
+                // R10); a send macro's commands are cut apart first.
+                Ok(chord) => match Macro::read(&value) {
+                    Ok(made) => {
+                        keybinds.file.insert(chord, made);
                     }
                     Err(why) => problems.push(format!("`{written}`: {why}.")),
                 },
@@ -322,42 +211,81 @@ impl Keybinds {
         }
     }
 
-    /// How many keys are bound.
+    /// How many keys are bound, defaults and all.
     pub(crate) fn len(&self) -> usize {
-        self.binds.len()
+        self.bound().count()
     }
 
-    /// Every key bound and the line it sends, the key as [`Chord::written`]
-    /// writes it: what the Keys page lists.
-    pub(crate) fn listed(&self) -> Vec<(String, String)> {
-        self.binds
+    /// How many of those the file changed or added.
+    pub(crate) fn changed(&self) -> usize {
+        self.file.len()
+    }
+
+    /// Each key bound, and what it does.
+    fn bound(&self) -> impl Iterator<Item = (&Chord, &Macro)> {
+        let file = self
+            .file
             .iter()
-            .map(|(chord, line)| (chord.written(), line.clone()))
+            .filter_map(|(chord, made)| made.as_ref().map(|made| (chord, made)));
+        let defaults = self
+            .defaults
+            .iter()
+            .filter(|(chord, _)| !self.file.contains_key(*chord));
+        file.chain(defaults)
+    }
+
+    /// Every key Hydra or the file binds or unbinds, in key order, with
+    /// what it does now and what Hydra's default is: what the Keys page
+    /// lists.
+    pub(crate) fn rows(&self) -> Vec<KeyRow> {
+        let chords: std::collections::BTreeSet<&Chord> =
+            self.defaults.keys().chain(self.file.keys()).collect();
+        chords
+            .into_iter()
+            .map(|chord| KeyRow {
+                key: chord.written(),
+                does: self.does(chord).cloned(),
+                default: self.defaults.get(chord).cloned(),
+            })
             .collect()
     }
 
-    /// What `chord` sends, if it is bound.
-    pub(crate) fn line(&self, chord: &Chord) -> Option<&str> {
-        self.binds.get(chord).map(String::as_str)
+    /// What `chord` does, if it is bound.
+    pub(crate) fn does(&self, chord: &Chord) -> Option<&Macro> {
+        match self.file.get(chord) {
+            Some(made) => made.as_ref(),
+            None => self.defaults.get(chord),
+        }
+    }
+
+    /// Whether Hydra binds `chord` by default.
+    pub(crate) fn has_default(&self, chord: &Chord) -> bool {
+        self.defaults.contains_key(chord)
     }
 
     /// The fork's names for the numpad keys that are bound, whatever the
     /// modifiers: what it is told to catch, so an unbound numpad key still
     /// types (`eframe::Frame::set_numpad_capture_keys`).
     pub(crate) fn numpad_caught(&self) -> HashSet<String> {
-        self.binds
-            .keys()
-            .filter_map(|chord| NUMPAD.iter().find(|(winit, _)| *winit == chord.key))
+        self.bound()
+            .filter_map(|(chord, _)| NUMPAD.iter().find(|(winit, _)| *winit == chord.key))
             .map(|(_, fork)| (*fork).to_owned())
             .collect()
     }
 
-    /// Take from `input` every key press this binds, and the lines they
-    /// send, in order: taken, so no widget sees a bound key.
-    pub(crate) fn take(&self, input: &mut egui::InputState) -> Vec<String> {
-        if self.binds.is_empty() {
-            return Vec::new();
-        }
+    /// The keys egui has no name for that are bound, whatever the
+    /// modifiers: what the fork is told to catch (`eframe::Frame::
+    /// set_key_capture`), so one unbound is left to egui.
+    pub(crate) fn key_capture(&self) -> HashSet<winit::keyboard::KeyCode> {
+        self.bound()
+            .filter_map(|(chord, _)| CAPTURED.iter().find(|(name, _)| *name == chord.key))
+            .map(|(_, code)| *code)
+            .collect()
+    }
+
+    /// Take from `input` every key press this binds, and the macros they
+    /// do, in order: taken, so no widget sees a bound key.
+    pub(crate) fn take(&self, input: &mut egui::InputState) -> Vec<Macro> {
         let mut lines = Vec::new();
         input.events.retain(|event| {
             let egui::Event::Key {
@@ -373,9 +301,9 @@ impl Keybinds {
             let Some(name) = winit_name(physical_key.unwrap_or(*key)) else {
                 return true;
             };
-            match self.line(&Chord::of(&name, *modifiers)) {
-                Some(line) => {
-                    lines.push(line.to_owned());
+            match self.does(&Chord::of(&name, *modifiers)) {
+                Some(made) => {
+                    lines.push(made.clone());
                     false
                 }
                 None => true,
@@ -402,14 +330,35 @@ pub(crate) fn numpad_chord(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
     Some(Chord::of(&format!("{code:?}"), event.modifiers))
 }
 
-/// The line a numpad press sends, when it is bound and the fork caught it.
-pub(crate) fn numpad_line(keybinds: &Keybinds, event: &eframe::NumpadKeyEvent) -> Option<String> {
+/// The macro a numpad press does, when it is bound and the fork caught it.
+pub(crate) fn numpad_macro(keybinds: &Keybinds, event: &eframe::NumpadKeyEvent) -> Option<Macro> {
     if !event.consumed {
         return None;
     }
-    keybinds.line(&numpad_chord(event)?).map(str::to_owned)
+    keybinds.does(&numpad_chord(event)?).cloned()
 }
 
+/// Every key egui has no name for that a binding may use: what the fork
+/// catches while the Keys page waits for a key, so it can take one.
+pub(crate) fn capturable() -> HashSet<winit::keyboard::KeyCode> {
+    CAPTURED.iter().map(|(_, code)| *code).collect()
+}
+
+/// The chord a press the fork's key capture caught is; `None` for a
+/// release, or a key with no code.
+pub(crate) fn captured_chord(event: &eframe::CapturedKeyEvent) -> Option<Chord> {
+    if !event.pressed {
+        return None;
+    }
+    let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
+        return None;
+    };
+    Some(Chord::of(&format!("{code:?}"), event.modifiers))
+}
+
+pub(crate) mod binding;
+mod defaults;
+mod names;
 pub(crate) mod page;
 #[cfg(test)]
 mod tests;
