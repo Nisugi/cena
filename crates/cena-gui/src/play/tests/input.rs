@@ -84,3 +84,61 @@ fn another_field_with_the_keyboard_is_not_typing() {
     harness.ctx.memory_mut(|memory| memory.request_focus(other));
     assert!(!harness.state().play.typing(&harness.ctx));
 }
+
+/// Up keeps the line being typed, and down past the newest line gives it
+/// back; sending starts the walk again from what is typed.
+#[test]
+fn walking_the_history_keeps_what_was_being_typed() {
+    use crate::keys::Action;
+    let context = egui::Context::default();
+    let mut play = Play::new(0, "Ashryn", None, None);
+    for line in ["look", "north"] {
+        play.fill(line);
+        assert_eq!(play.enter().as_deref(), Some(line));
+    }
+    play.fill("get ge");
+    let mut walked = Vec::new();
+    for action in [
+        Action::HistoryBack,
+        Action::HistoryBack,
+        Action::HistoryForward,
+        Action::HistoryForward,
+        Action::HistoryForward,
+    ] {
+        play.act(&context, action);
+        walked.push(play.input.clone());
+    }
+    assert_eq!(walked, ["north", "look", "north", "get ge", "get ge"]);
+    play.act(&context, Action::HistoryBack);
+    play.act(&context, Action::ClearInput);
+    play.act(&context, Action::HistoryForward);
+    assert_eq!(play.input, "", "a line cleared is not given back");
+}
+
+/// What was sent is kept by the character's game and name, and a window
+/// opened again, as after a restart, walks back through it; another
+/// character keeps its own.
+#[test]
+fn the_history_is_kept_across_a_restart() {
+    let dir = std::env::temp_dir().join(format!("cena-history-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut play = Play::new(0, "Ashryn", Some("Prime"), None).keeping_history(&dir);
+    for line in ["look", "north", "north"] {
+        play.fill(line);
+        play.enter();
+    }
+    assert_eq!(play.history.unsaved(), None);
+
+    let mut again = Play::new(1, "Ashryn", Some("Prime"), None).keeping_history(&dir);
+    let mut other = Play::new(2, "Brisa", Some("Prime"), None).keeping_history(&dir);
+    let context = egui::Context::default();
+    let mut walked = Vec::new();
+    for _ in 0..3 {
+        again.act(&context, crate::keys::Action::HistoryBack);
+        walked.push(again.input.clone());
+    }
+    assert_eq!(walked, ["north", "look", "look"], "a repeat kept once");
+    other.act(&context, crate::keys::Action::HistoryBack);
+    assert_eq!(other.input, "", "another character's is its own");
+    let _ = std::fs::remove_dir_all(&dir);
+}

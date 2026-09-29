@@ -42,7 +42,7 @@ impl Layout {
 /// its name alone with no instance: each in lower case, letters and digits
 /// only, so the same character is one file on every filesystem (the
 /// character store's lesson: one file on NTFS was two on ext4).
-pub(super) fn file(dir: &Path, instance: Option<&str>, character: &str) -> PathBuf {
+pub(crate) fn file(dir: &Path, instance: Option<&str>, character: &str) -> PathBuf {
     let clean = |words: &str| -> String {
         words
             .chars()

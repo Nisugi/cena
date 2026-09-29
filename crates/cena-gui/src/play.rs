@@ -166,10 +166,8 @@ pub(crate) struct Play {
     unsaved: Option<String>,
     /// The line being typed.
     input: String,
-    /// What was sent, oldest first, for up and down.
-    history: Vec<String>,
-    /// Where up and down have reached in the history.
-    back: Option<usize>,
+    /// What was sent, for up and down, kept per character.
+    history: history::History,
     /// A key filled the input (`plan/52` §2): where its cursor goes, the
     /// end, as the input takes the keyboard.
     filled: Option<usize>,
@@ -188,9 +186,6 @@ pub(crate) struct Play {
     /// one targeted (step 7).
     targets: (Vec<i64>, Option<i64>),
 }
-
-/// Lines of history kept for up and down.
-const MAX_HISTORY: usize = 100;
 
 impl Play {
     /// A play window for session `session`, the character `name` on the
@@ -227,8 +222,7 @@ impl Play {
             out: None,
             unsaved: None,
             input: String::new(),
-            history: Vec::new(),
-            back: None,
+            history: history::History::default(),
             filled: None,
             in_use: None,
             unread_tabs: Vec::new(),
@@ -242,7 +236,7 @@ impl Play {
     /// (`plan/52` §2).
     pub(crate) fn fill(&mut self, text: &str) {
         text.clone_into(&mut self.input);
-        self.back = None;
+        self.history.reset();
         self.filled = Some(self.input.chars().count());
     }
 
@@ -257,7 +251,11 @@ impl Play {
         let mut asked = None;
         let session = self.session;
         let mut grid = self.layout.as_ref().map_or(GRID, |layout| layout.grid);
-        let unsaved = self.unsaved.clone();
+        let unsaved = self
+            .unsaved
+            .as_ref()
+            .map(|why| format!("Layout not saved: {why}"))
+            .or_else(|| (self.history.unsaved()).map(|why| format!("History not saved: {why}")));
         let mut arranging = self.arranging;
         let mut locked = self.layout.as_ref().is_some_and(|layout| layout.locked);
         let mut drawers = self
@@ -391,36 +389,26 @@ impl Play {
     /// unless it is the last line again. Nothing for an empty line.
     fn enter(&mut self) -> Option<String> {
         let line = std::mem::take(&mut self.input);
-        self.back = None;
         if line.trim().is_empty() {
+            self.history.reset();
             return None;
         }
-        if self.history.last() != Some(&line) {
-            self.history.push(line.clone());
-            if self.history.len() > MAX_HISTORY {
-                self.history.remove(0);
-            }
-        }
+        self.history.keep(&line);
         Some(line)
     }
 
-    /// One step back (`up`) or forward through what was sent.
-    fn walk(&mut self, up: bool) {
-        let last = self.history.len().checked_sub(1);
-        self.back = match (self.back, up) {
-            (None, true) => last,
-            (Some(at), true) => Some(at.saturating_sub(1)),
-            (Some(at), false) if Some(at) < last => Some(at + 1),
-            (_, false) => None,
-        };
-        self.input = self
-            .back
-            .and_then(|at| self.history.get(at).cloned())
-            .unwrap_or_default();
+    /// Keep what is sent in `dir`, by the character's game and name, and
+    /// take up what was kept there: the app's windows do, and a test's
+    /// need not.
+    #[must_use]
+    pub(crate) fn keeping_history(mut self, dir: &std::path::Path) -> Self {
+        self.history = history::History::kept(dir, self.instance, &self.name);
+        self
     }
 }
 
 mod find;
+mod history;
 mod keyed;
 #[cfg(test)]
 mod tests;

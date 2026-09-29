@@ -50,28 +50,23 @@ impl Play {
             }
             None
         };
-        let typed = |back: usize| {
-            self.history
-                .len()
-                .checked_sub(back)
-                .and_then(|at| self.history.get(at).cloned())
-        };
+        let typed = |back: usize| self.history.ago(back);
         match action {
             Action::SendOrRepeat if self.input.trim().is_empty() => typed(1),
             Action::SendOrRepeat => self.enter(),
             Action::RepeatLast => typed(1),
             Action::RepeatSecondLast => typed(2),
             Action::HistoryBack => {
-                self.walk(true);
+                self.history.walk(true, &mut self.input);
                 None
             }
             Action::HistoryForward => {
-                self.walk(false);
+                self.history.walk(false, &mut self.input);
                 None
             }
             Action::ClearInput => {
                 self.input.clear();
-                self.back = None;
+                self.history.reset();
                 None
             }
             Action::ScrollPageUp => scroll(Scroll::PageUp),

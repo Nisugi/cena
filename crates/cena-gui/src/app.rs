@@ -51,6 +51,9 @@ pub struct App {
     plays: BTreeMap<u32, Window>,
     /// Where play windows keep their layouts; `None`, and they keep none.
     layouts: Option<PathBuf>,
+    /// Where play windows keep what was sent, per character; `None`, and
+    /// each window keeps it until closed.
+    histories: Option<PathBuf>,
     /// The presets a player saved, which every play window adds from
     /// (`plan/49` Stage A step 7), kept beside the layouts.
     presets: Library,
@@ -115,6 +118,7 @@ impl App {
             sessions,
             plays: BTreeMap::new(),
             layouts: None,
+            histories: None,
             presets: Library::default(),
             keys: Keybinds::default(),
             keys_file: None,
@@ -144,6 +148,7 @@ impl App {
         let own = Own::load(data);
         let mut app = Self {
             layouts: Some(data.join("layouts")),
+            histories: Some(data.join("history")),
             presets: Library::load(Some(data.join("layouts"))),
             keys_file: Some(keys::path(data)),
             placements: Placements::load(data),
@@ -289,15 +294,22 @@ impl App {
             .retain(|session, _| seats.iter().any(|seat| seat.id.0 == *session));
         for seat in seats {
             let layouts = self.layouts.clone();
-            self.plays.entry(seat.id.0).or_insert_with(|| Window {
-                play: Play::new(
+            let histories = self.histories.as_deref();
+            self.plays.entry(seat.id.0).or_insert_with(|| {
+                let play = Play::new(
                     seat.id.0,
                     &seat.name,
                     cena_session::instance(&seat.game),
                     layouts,
-                ),
-                open: true,
-                ended: false,
+                );
+                Window {
+                    play: match histories {
+                        Some(dir) => play.keeping_history(dir),
+                        None => play,
+                    },
+                    open: true,
+                    ended: false,
+                }
             });
         }
     }

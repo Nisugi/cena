@@ -30,6 +30,7 @@ pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL, stacks_at, tabs
 pub(crate) use drawers::{CLEAR, Drawers, Mode, THINNEST, Zone, Zones};
 #[cfg(test)]
 use kept::file;
+pub(crate) use kept::file as character_file;
 pub(crate) use moves::Taking;
 pub(crate) use preset::{Library, Preset};
 

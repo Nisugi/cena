@@ -172,7 +172,7 @@ pub(super) fn top(
             ui.toggle_value(locked, "Lock")
                 .on_hover_text("Keep every window where it is: none is dragged or resized");
             if let Some(why) = unsaved {
-                ui.colored_label(WRONG, format!("Layout not saved: {why}"));
+                ui.colored_label(WRONG, why);
             }
             if let Some(on) = view.numlock {
                 ui.weak(if on { "NumLock on" } else { "NumLock off" });
