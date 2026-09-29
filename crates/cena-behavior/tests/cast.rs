@@ -80,3 +80,101 @@ fn not_enough_mana_for_the_count_and_the_reserve() {
     assert!(matches!(ready(&state, 401, 3, 3), Err(NotReady::Mana(..))));
     assert_eq!(ready(&state, 401, 1, 4), Ok(()));
 }
+
+/// A pool's bar, as the wire states it.
+fn bar(state: &mut GameState, id: &str, current: i32, max: i32) {
+    state.apply(&Frame::ProgressBar(ProgressBar {
+        id: id.to_owned(),
+        dialog: Some("minivitals".to_owned()),
+        percent: 50,
+        text: format!("{id} {current}/{max}"),
+        amount: Some(Amount { current, max }),
+        attrs: Vec::new(),
+        time_remaining_secs: None,
+    }));
+}
+
+/// The first spell the table prices in `pool`, and what it costs this
+/// character.
+fn priced_in(state: &GameState, pool: &str) -> Option<(u16, i32)> {
+    (100_u16..10_000).find_map(|number| {
+        let cost = state.spell_cost(number, pool).filter(|cost| *cost > 0.0)?;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "a spell's cost is a small whole number"
+        )]
+        Some((number, cost.ceil() as i32))
+    })
+}
+
+#[test]
+fn the_rest_of_what_lich_waits_on() {
+    assert_eq!(classify("Sing Roundtime 3 Seconds."), Some(Answer::Cast));
+    assert_eq!(
+        classify("But you don't have any mana!"),
+        Some(Answer::NoMana)
+    );
+    assert_eq!(
+        classify("You do not currently have a target."),
+        Some(Answer::NoTarget)
+    );
+    assert_eq!(
+        classify("You can only evoke certain spells."),
+        Some(Answer::NoSuchVerb)
+    );
+    assert_eq!(
+        classify("You do not know that spell!"),
+        Some(Answer::Unknown)
+    );
+    assert_eq!(classify("Your spell is ready."), Some(Answer::Ready));
+    assert_eq!(
+        classify("You already have a spell readied!"),
+        Some(Answer::AlreadyReady)
+    );
+    assert_eq!(
+        classify("Cast Roundtime 3 Seconds"),
+        None,
+        "the game ends the line with a full stop"
+    );
+}
+
+#[test]
+fn cast_roundtime_left_is_waited_out_to_the_second() {
+    let mut state = GameState::default();
+    state.apply(&Frame::Prompt {
+        time: "1000".into(),
+        text: ">".into(),
+    });
+    state.apply(&Frame::CastTime { value: 1_003 });
+    assert_eq!(ready(&state, 401, 1, 0), Err(NotReady::CastRoundtime(3)));
+    state.apply(&Frame::Prompt {
+        time: "1003".into(),
+        text: ">".into(),
+    });
+    assert_eq!(ready(&state, 401, 1, 0), Ok(()), "over at its second");
+}
+
+#[test]
+fn spirit_keeps_one_back_and_stamina_does_not() {
+    let mut state = GameState::default();
+    let (spell, cost) = priced_in(&state, "spirit").expect("a spell that costs spirit");
+    bar(&mut state, "spirit", cost, 10);
+    assert_eq!(
+        ready(&state, spell, 1, 0),
+        Err(NotReady::Spirit),
+        "its cost exactly would leave none: one is kept back"
+    );
+    bar(&mut state, "spirit", cost + 1, 10);
+    assert_eq!(ready(&state, spell, 1, 0), Ok(()));
+
+    let mut state = GameState::default();
+    let (spell, cost) = priced_in(&state, "stamina").expect("a spell that costs stamina");
+    bar(&mut state, "stamina", cost - 1, 100);
+    assert_eq!(ready(&state, spell, 1, 0), Err(NotReady::Stamina));
+    bar(&mut state, "stamina", cost, 100);
+    assert_eq!(
+        ready(&state, spell, 1, 0),
+        Ok(()),
+        "its cost exactly is enough"
+    );
+}

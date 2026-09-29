@@ -108,3 +108,141 @@ fn spell_active_is_read_for_sharing_and_minutes() {
     let (sharing, _) = read_spell_active(&["Bob has spell sharing disabled.".to_owned()]);
     assert!(!sharing);
 }
+
+/// Mana, as the wire states it.
+fn mana(state: &mut GameState, current: i32) {
+    state.apply(&Frame::ProgressBar(cena_session::ProgressBar {
+        id: "mana".to_owned(),
+        dialog: Some("minivitals".to_owned()),
+        percent: 50,
+        text: format!("mana {current}/100"),
+        amount: Some(cena_session::Amount { current, max: 100 }),
+        attrs: Vec::new(),
+        time_remaining_secs: None,
+    }));
+}
+
+/// A run on yourself that has just been told to cast 401.
+fn casting() -> (GameState, Waggler) {
+    let state = caster();
+    let mut run = Waggler::new(profile(), &[]);
+    assert!(matches!(run.next(&state), Step::Cast(_)), "a cast");
+    (state, run)
+}
+
+#[test]
+fn a_spell_the_room_or_the_game_refuses_is_not_tried_again() {
+    for refusal in [Answer::NotHere, Answer::Unknown] {
+        let (state, mut run) = casting();
+        run.outcome(&[], &[refusal], &state);
+        assert_eq!(
+            run.next(&state),
+            Step::Done(Waggled::Done(0)),
+            "{refusal:?}: the one spell on the list is left"
+        );
+    }
+}
+
+#[test]
+fn armor_in_the_way_is_cast_again() {
+    let (state, mut run) = casting();
+    run.outcome(&[], &[Answer::Hindered], &state);
+    let Step::Cast(again) = run.next(&state) else {
+        panic!("the same cast again");
+    };
+    assert_eq!(again.spell, 401);
+    run.outcome(&[], &[Answer::Cast], &state);
+    run.next(&state);
+    run.outcome(&[], &[Answer::Cast], &state);
+    assert_eq!(
+        run.next(&state),
+        Step::Done(Waggled::Done(2)),
+        "the hindered one is not counted as cast"
+    );
+}
+
+#[test]
+fn an_answer_nobody_read_moves_on_rather_than_casting_for_ever() {
+    let (state, mut run) = casting();
+    run.outcome(&[], &[], &state);
+    assert_eq!(run.next(&state), Step::Done(Waggled::Done(0)));
+}
+
+#[test]
+fn someone_who_cannot_be_cast_at_is_left_and_the_next_one_taken() {
+    let state = caster();
+    let mut run = Waggler::new(profile(), &["Bob".to_owned(), "self".to_owned()]);
+    assert_eq!(run.next(&state), Step::Ask("Bob".to_owned()));
+    run.outcome(
+        &["Bob currently has the following active effects:".to_owned()],
+        &[],
+        &state,
+    );
+    let Step::Cast(at_bob) = run.next(&state) else {
+        panic!("a cast at Bob");
+    };
+    assert_eq!(at_bob.target.as_deref(), Some("Bob"));
+    run.outcome(&[], &[Answer::NoTarget], &state);
+    let Step::Cast(own) = run.next(&state) else {
+        panic!("Bob is left, and yourself is next");
+    };
+    assert_eq!(own.target, None);
+}
+
+#[test]
+fn someone_not_sharing_gets_one_cast_or_none_by_the_profile() {
+    let state = caster();
+    let hidden = vec!["Bob has spell sharing disabled.".to_owned()];
+    let mut run = Waggler::new(profile(), &["Bob".to_owned()]);
+    assert_eq!(run.next(&state), Step::Ask("Bob".to_owned()));
+    run.outcome(&hidden, &[], &state);
+    assert!(
+        matches!(run.next(&state), Step::Cast(_)),
+        "what Bob has cannot be known: one cast"
+    );
+    run.outcome(&[], &[Answer::Cast], &state);
+    assert_eq!(
+        run.next(&state),
+        Step::Done(Waggled::Done(1)),
+        "and one only"
+    );
+
+    let skipping = WaggleProfile {
+        skip_not_sharing: true,
+        ..profile()
+    };
+    let mut run = Waggler::new(skipping, &["Bob".to_owned()]);
+    assert_eq!(run.next(&state), Step::Ask("Bob".to_owned()));
+    run.outcome(&hidden, &[], &state);
+    assert_eq!(run.next(&state), Step::Done(Waggled::Done(0)));
+}
+
+#[test]
+fn short_of_mana_waits_or_ends_the_run_by_the_profile() {
+    let mut state = caster();
+    mana(&mut state, 0);
+    let mut run = Waggler::new(profile(), &[]);
+    assert_eq!(run.next(&state), Step::Wait(5), "waited for");
+    let bailing = WaggleProfile {
+        bail: true,
+        ..profile()
+    };
+    let mut run = Waggler::new(bailing, &[]);
+    assert_eq!(run.next(&state), Step::Done(Waggled::OutOfMana));
+    // The reserve is mana too.
+    mana(&mut state, 5);
+    let keeping = WaggleProfile {
+        reserve_mana: 10,
+        ..profile()
+    };
+    let mut run = Waggler::new(keeping, &[]);
+    assert_eq!(run.next(&state), Step::Wait(5));
+}
+
+#[test]
+fn cast_roundtime_is_waited_out_for_as_long_as_it_has_left() {
+    let mut state = caster();
+    state.apply(&Frame::CastTime { value: 1_003 });
+    let mut run = Waggler::new(profile(), &[]);
+    assert_eq!(run.next(&state), Step::Wait(3));
+}
