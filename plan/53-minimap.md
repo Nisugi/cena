@@ -541,7 +541,10 @@ commits are in hydra-mapper, the rest in Hydra.
 The author, 2026-09-29, Stage 1 at a stopping point: *"I'd like to get it in game to
 experience what we've built now! So let's come up with that plan to implement into
 hydra!"* Stages 2 and 3 of §3, made concrete, with what the code showed that §3 did not
-know. **PROPOSED**; the four questions at the end are the author's.
+know. **APPROVED 2026-09-29**, the four questions answered (§7c); **steps 0-6 BUILT the same
+day**, on branch `minimap` (worktree `G:\dev\Cena-minimap`): hydra-mapper `46337a5`,
+`e9cc07d` and `c3f8c98` (step 0, and CI green there), Hydra `4106472` (step 1) and `3e99ebb`
+(steps 2-6).
 
 ### 7a. What §3 did not know
 
@@ -600,12 +603,28 @@ A commit per step; step 0 in hydra-mapper, the rest in Hydra, on a branch `minim
 **The author's first run** is after step 6: Hydra with a character, the minimap widget
 added, walking the Landing and Hinterwilds.
 
-### 7c. For the author
+### 7c. For the author, answered 2026-09-29
 
-1. **Push hydra-mapper?** `tune-layout` merged into `main` and pushed to
-   `Nisugi/hydra-mapper`, so Hydra can pin it. The other way, a path dependency on
-   `G:\dev\hydra-mapper`, works on this machine only and breaks CI.
-2. **Every area at launch**, from the cache, rebuilt in the background when stale
-   (§7a)?
-3. **`CENA_MAP`**: point it at `G:\dev\hydra-mapper\gs.map`, the one with areas baked in?
-4. **The first cut** at step 6, before the hover, clicks, labels and icons?
+1. **Push hydra-mapper?** *"we need to commit and push all of our mapper work."* Pushed as
+   `tune-layout` (PR), not `main`, which the author merges; Hydra pins a commit on it.
+2. **Every area at launch**, from the cache, rebuilt in the background when stale: *"yes"*.
+3. **`CENA_MAP`**: *"embed"*, and *"Hydra is going to embed the gs.map from the mapper"*:
+   `gs.map` is committed in hydra-mapper and embedded through `cena-gs-map`, pinned with
+   the engine; `CENA_MAP` now names a map to use instead, one being curated.
+4. **The first cut** at step 6: *"yes"*.
+
+### 7d. As built
+
+- **The map.** `map_context::load` decodes the embedded map unless `CENA_MAP` names
+  another; the embedded one is the file Despana's atlas was built from (same SHA-256,
+  `d5e8ac60`), so the web minimap still matches.
+- **The atlas** (`crates/cena/src/atlas/`): started with the map only when there is a
+  window; a worker per spare core; each area's scene kept as JSON under
+  `atlas/<map hash>-<engine rev>/` in the data folder, other maps' caches removed; an area
+  a character asks for moved to the front. `ENGINE` is held to `Cargo.lock` by a test.
+- **Where you are** (`atlas/follow.rs`): `room_of` with the guard of §6 item 4, unit-tested.
+  A room not found says so, where the map would be; a room in no area, likewise.
+- **The widget** (`cena-gui/src/widget/minimap.rs`): *Minimap* under Hydra's own. Rooms,
+  lines (solid, dashed, marks), the way-in dots and big places' names, you; the camera,
+  indoors the building alone. Three images and the dead zone as a unit. Not yet: the
+  hover card, clicks, labels, icons, the settings page, a glide (step 7).
