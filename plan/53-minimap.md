@@ -533,3 +533,79 @@ commits are in hydra-mapper, the rest in Hydra.
 9. **The copy.** *"g:\dev is the right one yes."* `G:\dev\hydra-mapper` is the mapper and
    its `gs.map` the map; `C:\Users\shawn\hydra-mapper` is retired once `CENA_MAP` points at
    `G:`'s.
+
+---
+
+## 7. Into Hydra: the steps, against the code as it is
+
+The author, 2026-09-29, Stage 1 at a stopping point: *"I'd like to get it in game to
+experience what we've built now! So let's come up with that plan to implement into
+hydra!"* Stages 2 and 3 of §3, made concrete, with what the code showed that §3 did not
+know. **PROPOSED**; the four questions at the end are the author's.
+
+### 7a. What §3 did not know
+
+- **Which rooms make an area is decided in the mapper, not the engine.**
+  `areas::layout_rooms` (`hydra-mapper/crates/mapper/src/areas.rs:561`) pulls in the
+  neighbours an area's rooms are stranded without; the gate and the window both use it.
+  Hydra cannot depend on the mapper's app crate, so it moves down into `cena-map-layout`
+  first, with the room → area index from `meta:area:` (Stage 1 step 7's bake).
+- **The engine is not on GitHub.** hydra-mapper's `tune-layout` has never been pushed, and
+  `origin/main` is `86ec84e` of 2026-09-23, before all of Stage 1. A git dependency (§6
+  item 2) needs it pushed.
+- **The map Hydra loads may not be the mapper's.** `CENA_MAP` is documented as
+  `E:\Gemstone\data\cena_data\gs.map` (`crates/cena/src/travel.rs:44`); the areas the
+  layout goes by are baked into `G:\dev\hydra-mapper\gs.map` only (§6 item 9).
+- **A debug build lays out far slower.** The gate's 104 s is a release build. Hydra
+  builds debug for testing (`CLAUDE.md`), so the engine alone is built optimised in every
+  profile (`[profile.dev.package.cena-map-layout] opt-level = 3`), one target still.
+- **When** (the author, the same day: *"it just loads 1 map for all characters yeah? So why
+  not just load the entire thing right then and there"*): every area at launch, not on
+  first need as §2 has it.
+
+### 7b. The steps
+
+A commit per step; step 0 in hydra-mapper, the rest in Hydra, on a branch `minimap`.
+
+0. **hydra-mapper, ready to be depended on.** `layout_rooms` and the room → area index
+   moved into `cena-map-layout`, the mapper calling them there; `tune-layout` merged to
+   `main` and pushed (the author's word needed, §7c item 1).
+1. **The dependency.** `cena-map-layout` by git, pinned to that commit; a `[patch]` so its
+   `cena-map` is Hydra's own `crates/cena-map` (§5 item 2); the engine optimised in debug;
+   `cena` → `cena-map-layout` in `ALLOWED_EDGES` with its reason.
+2. **`Scene` in `cena-ui`**, plain data: rooms at cells (in focus or a dot), edges by kind
+   with their bends, the way-in dots and their places' names, labels, the sheet's bounds.
+   The conversion from the engine's `MapScene` in the binary, tested on a small extract.
+3. **The atlas, built at launch.** In the binary (`crates/cena/src/atlas/`): with the map,
+   a background worker lays out every area on the spare cores, into a table of area →
+   `Arc<Scene>` every character shares, and writes each to a disk cache in Hydra's data
+   folder keyed by the map's hash and the engine's version. A current cache is read at
+   launch and nothing is laid out; a stale one is rebuilt in the background, an area a
+   character is in first. Timed against Stage 1's 104 s.
+4. **The current room per character**: `room_of` with guarded memory (§6 item 4: the last
+   room used only when `GameState::arrivals` rose by exactly one), and a revision the
+   widget recentres on.
+5. **Handed to the GUI**: `Sessions::attach` (`crates/cena-gui/src/sessions.rs:201`,
+   called at `crates/cena/src/play.rs:390`) gains a provider: for a character, its area's
+   scene and its room, or why there is none (no map, still laying out, room unknown).
+6. **The minimap, first cut** (Stage 3 steps 1-4 at their simplest, to be in game soon):
+   `Widget::Map` in Add a widget; the painter in Despana's tokens (§1c): rooms, edges by
+   kind, the way-in dots, you; the camera following you with Despana's dead zone, wheel
+   zoom, drag pan, double-click back to you; indoors, the building alone. A kittest image
+   on a fixed scene.
+7. **Then the rest of Stage 3**, a step each: hover card; left-click route, right-click
+   walk (`;go2`), Shift+left-click the room in the story (§6 item 6); labels placed by
+   Despana's rules; place icons; the settings page.
+
+**The author's first run** is after step 6: Hydra with a character, the minimap widget
+added, walking the Landing and Hinterwilds.
+
+### 7c. For the author
+
+1. **Push hydra-mapper?** `tune-layout` merged into `main` and pushed to
+   `Nisugi/hydra-mapper`, so Hydra can pin it. The other way, a path dependency on
+   `G:\dev\hydra-mapper`, works on this machine only and breaks CI.
+2. **Every area at launch**, from the cache, rebuilt in the background when stale
+   (§7a)?
+3. **`CENA_MAP`**: point it at `G:\dev\hydra-mapper\gs.map`, the one with areas baked in?
+4. **The first cut** at step 6, before the hover, clicks, labels and icons?
