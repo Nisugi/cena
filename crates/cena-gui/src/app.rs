@@ -79,6 +79,8 @@ pub struct App {
     /// Commands a key's macro sends once a wait in it is over
     /// (`keyed.rs`).
     later: Vec<keyed::Later>,
+    /// The overlays folder as last listed, and when (`settings.rs`).
+    overlays: Option<(Instant, Vec<std::path::PathBuf>)>,
     /// `NumLock`, as the last numpad press showed it.
     numlock: Option<bool>,
     /// The settings menu, the one every way in opens (`plan/50` §7).
@@ -133,6 +135,7 @@ impl App {
             keyboard_now: None,
             caught: Vec::new(),
             later: Vec::new(),
+            overlays: None,
             numlock: None,
             menu: Menu::default(),
             own: Own::default(),

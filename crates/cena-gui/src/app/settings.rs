@@ -20,6 +20,11 @@ impl App {
             return;
         }
         let own = [self.own.page()];
+        let shown = self.shown_play();
+        let overlays = match shown {
+            Some(_) => self.overlays(),
+            None => Vec::new(),
+        };
         // The keys of the character the menu shows, over every character's.
         let file = self.menu_mine();
         self.load_mine(file.as_deref());
@@ -44,10 +49,8 @@ impl App {
             }
             None => self.keys_said.clone(),
         };
-        let widgets = self
-            .shown_play()
+        let widgets = shown
             .map(|session| {
-                let overlays = self.overlays();
                 self.plays
                     .get(&session)
                     .map(|window| window.play.widget_pages(&overlays))
@@ -209,8 +212,24 @@ impl App {
     }
 
     /// The images a bar may lay over itself: each PNG in the data folder's
-    /// `overlays`, by name.
-    fn overlays(&self) -> Vec<PathBuf> {
+    /// `overlays`, by name. **Listed again no oftener than every two
+    /// seconds**: the menu asks each frame it is drawn, and the folder was
+    /// read from the disk sixty times a second for as long as Settings
+    /// stood open on a character (the review of 2026-09-29).
+    fn overlays(&mut self) -> Vec<PathBuf> {
+        let now = std::time::Instant::now();
+        if let Some((at, found)) = &self.overlays
+            && now.duration_since(*at) < OVERLAYS_KEPT
+        {
+            return found.clone();
+        }
+        let found = self.list_overlays();
+        self.overlays = Some((now, found.clone()));
+        found
+    }
+
+    /// The overlays folder as it is on the disk now.
+    fn list_overlays(&self) -> Vec<PathBuf> {
         let Some(folder) = self
             .layouts
             .as_deref()
@@ -235,3 +254,6 @@ impl App {
         found
     }
 }
+
+/// How long a listing of the overlays folder is good for.
+const OVERLAYS_KEPT: std::time::Duration = std::time::Duration::from_secs(2);
