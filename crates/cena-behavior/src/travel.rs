@@ -381,6 +381,23 @@ impl Trip {
         said
     }
 
+    /// The aside asked for, begun from `here`.
+    fn begin_aside(&mut self, here: RoomId) {
+        let Some((steps, to)) = self.aside.take() else {
+            return;
+        };
+        // Nowhere the map has, when where it lands is not known.
+        let to = to.unwrap_or(RoomId(u32::MAX));
+        // What an earlier crossing owes is this run's too, as a planned
+        // crossing's is (`step_from`): begun with nothing owed, its first
+        // tick wrote that over the trip's, and hands put away for a ledge
+        // before a routine were never filled (the review of 2026-09-29).
+        let mut run = Run::new(here, here, to, steps);
+        run.owes = self.owes;
+        self.run = Some(run);
+        self.in_aside = true;
+    }
+
     fn tick_inner(&mut self, map: &Map, walker: &Walker, now: Now) -> Said {
         let Some(seen) = now.here else {
             return Said::Hold;
@@ -397,18 +414,7 @@ impl Trip {
         let prompted = std::mem::take(&mut self.prompted);
         let could_not = std::mem::take(&mut self.could_not);
         self.heard_about_standing(&feedback, &lines, now.ms);
-        if let Some((steps, to)) = self.aside.take() {
-            // Nowhere the map has, when where it lands is not known.
-            let to = to.unwrap_or(RoomId(u32::MAX));
-            // What an earlier crossing owes is this run's too, as a planned
-            // crossing's is (`step_from`): begun with nothing owed, its first
-            // tick wrote that over the trip's, and hands put away for a ledge
-            // before a routine were never filled (the review of 2026-09-29).
-            let mut run = Run::new(here, here, to, steps);
-            run.owes = self.owes;
-            self.run = Some(run);
-            self.in_aside = true;
-        }
+        self.begin_aside(here);
         // A routine's own moves are asides: it is over when none is under way.
         if !self.in_aside
             && let Some((leaving, expected, from)) = self.routine.take()
