@@ -48,6 +48,8 @@ pub(super) struct Menu {
     saving: Option<String>,
     /// The kinds a tab could be added of, listed.
     tabbing: bool,
+    /// The story line it was opened on, as its words (`plan/54` step 4).
+    line: Option<String>,
 }
 
 /// What a menu was asked to do.
@@ -61,6 +63,8 @@ enum Act {
     Settings(String),
     /// A tab of this kind beside the widget.
     AddTab(u32, Widget),
+    /// The trigger editor, a new trigger on this line's words.
+    Trigger(String),
 }
 
 impl Play {
@@ -180,6 +184,7 @@ impl Play {
                 renaming: None,
                 saving: None,
                 tabbing: false,
+                line: crate::widget::line_under(context),
             });
         }
         let (Some(menu), Some(layout)) = (self.menu.as_mut(), self.layout.as_ref()) else {
@@ -192,7 +197,19 @@ impl Play {
             .show(context, |ui| {
                 egui::Frame::menu(ui.style()).show(ui, |ui| {
                     ui.set_min_width(170.0);
-                    act = items(ui, menu, layout, (others, received));
+                    // A story line's words, offered first (`plan/54` step 4).
+                    let mut trigger = None;
+                    if let Some(line) = &menu.line {
+                        if ui
+                            .button("Make a trigger from this line")
+                            .on_hover_text(line.as_str())
+                            .clicked()
+                        {
+                            trigger = Some(Act::Trigger(line.clone()));
+                        }
+                        ui.separator();
+                    }
+                    act = trigger.or(items(ui, menu, layout, (others, received)));
                 });
             });
         let outside = pressed && pointer.is_some_and(|at| !shown.response.rect.contains(at));
@@ -217,6 +234,10 @@ impl Play {
             self.out = Some(Asked::Settings(Some(page)));
             return false;
         }
+        if let Act::Trigger(line) = act {
+            self.out = Some(Asked::TriggerFrom(line));
+            return false;
+        }
         match act {
             Act::Remove(placed) => layout.remove_widget(holder, placed),
             Act::RemoveWindow => layout.remove_window(holder),
@@ -225,7 +246,7 @@ impl Play {
             Act::AddTab(beside, kind) => {
                 let _ = layout.add_tab(holder, beside, kind);
             }
-            Act::Save(_) | Act::Settings(_) => {}
+            Act::Save(_) | Act::Settings(_) | Act::Trigger(_) => {}
         }
         true
     }

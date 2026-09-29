@@ -155,6 +155,23 @@ fn a_widget_opens_its_own_settings() {
     );
 }
 
+/// A story line's right-click offers a trigger on its words, which asks
+/// the window for the trigger editor (`plan/54` step 4).
+#[test]
+fn a_story_lines_right_click_makes_a_trigger_of_it() {
+    let mut harness = harness();
+    let line = "You swing a steel broadsword at a kobold!";
+    harness.get_by_label(line).hover();
+    harness.run();
+    harness.get_by_label(line).click_secondary();
+    harness.run();
+    harness
+        .get_by_label("Make a trigger from this line")
+        .click();
+    harness.run();
+    assert_eq!(harness.state().asked, [Asked::TriggerFrom(line.to_owned())]);
+}
+
 /// The Lich switch asks for the character's own Lich (`plan/51`).
 #[test]
 fn the_lich_switch_asks_for_lich() {

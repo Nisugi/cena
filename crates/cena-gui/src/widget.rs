@@ -34,7 +34,7 @@ use egui::Id;
 use crate::story::Story;
 pub(crate) use described::RoomParts;
 pub(crate) use kind::{Group, Widget};
-pub(crate) use lines::{Lines, Stamps};
+pub(crate) use lines::{Lines, Stamps, line_under};
 pub(crate) use split::{Scroll, ask as ask_scroll};
 pub(crate) use status::{Category, Indicator};
 

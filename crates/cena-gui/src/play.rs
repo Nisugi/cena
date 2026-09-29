@@ -78,6 +78,9 @@ pub(crate) enum Asked {
     Log,
     /// Open the trigger editor (`plan/54`).
     Triggers,
+    /// Open the trigger editor on a new trigger for this line's words
+    /// (`plan/54` step 4).
+    TriggerFrom(String),
     /// Switch the player's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(bool),
     /// Use this macro set over set 0, kept for the character; 0 for set 0

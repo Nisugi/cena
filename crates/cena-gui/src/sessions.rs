@@ -356,6 +356,37 @@ impl Sessions {
         });
     }
 
+    /// Run the trigger editor's *What would it have caught?* off the
+    /// window's thread (`plan/54` step 4): the character's player log
+    /// flushed first when it is playing, the answer in `inbox`, the window
+    /// woken.
+    pub(crate) fn check_log(
+        &self,
+        ask: crate::triggers::catch::Ask,
+        inbox: crate::triggers::catch::Inbox,
+    ) {
+        let shared = Arc::clone(&self.shared);
+        let handle = lock(&self.shared.seats)
+            .iter()
+            .find(|seat| seat.name.eq_ignore_ascii_case(&ask.character))
+            .map(|seat| seat.handle.clone());
+        self.shared.runtime.spawn(async move {
+            if let Some(handle) = handle {
+                handle.flush_player_log().await;
+            }
+            let root = cena_session::player_log::writer::root();
+            let caught =
+                tokio::task::spawn_blocking(move || crate::triggers::catch::run(&root, &ask))
+                    .await
+                    .unwrap_or_else(|_| crate::triggers::catch::Caught {
+                        why: Some("the check stopped before it finished".to_owned()),
+                        ..crate::triggers::catch::Caught::default()
+                    });
+            *lock(&inbox) = Some(caught);
+            shared.window.wake();
+        });
+    }
+
     /// What the hub draws this frame.
     pub(crate) fn glance(&self) -> Glance {
         self.glance_at(Instant::now())

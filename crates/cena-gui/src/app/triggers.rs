@@ -58,5 +58,8 @@ impl App {
         for change in asked {
             self.sessions.ask(HubRequest::Trigger(change));
         }
+        if let Some((ask, inbox)) = self.triggers.take_check() {
+            self.sessions.check_log(ask, inbox);
+        }
     }
 }
