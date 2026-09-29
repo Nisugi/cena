@@ -1,13 +1,14 @@
 # 53 — The map in the GUI: tune the layout, bring it in, style it, show it
 
-**Status: PROPOSED 2026-09-29, for the author.** `plan/49` Stage G (*"The map and minimap
+**Status: APPROVED 2026-09-29, the author's answers in §6**; two of them are Claude's
+recommendations for the author to confirm (§6 items 4 and 5). Was PROPOSED the same day. `plan/49` Stage G (*"The map and minimap
 ... Each gets its own plan when it is next"*, `plan/49-gui-widgets.md:850-853`); the author,
 2026-09-29: *"I think next we do the minimap? Let's build a solid plan to implement it.
 There is the despana map demo that we implemented ... despana map demo is the styling,
 hydra-mapper has our layout engine, which still isn't perfect. So the plan is tuning the
 layout engine, implementing it, styling it, presenting it. Learning from vellum."*
 
-Four stages, in the author's order (§4), and nine questions before the first (§5).
+Four stages, in the author's order (§4); the nine questions of §5, answered in §6.
 
 **How it was measured.** Four read-only surveys, 2026-09-29: hydra-mapper, Despana's map,
 VellumFE's map, and what Hydra has that a map stands on. Each item cites its source. Items
@@ -207,22 +208,40 @@ gs.map --decode--> Map ---------> room_of (the current room, per character)
 ### Stage 1 — Tune the layout engine (in hydra-mapper)
 
 The engine is tuned where it lives, measured by the mapper's own counts (`stats.rs`), with
-pictures (`svg.rs`) for the author to judge.
+pictures (`svg.rs`) for the author to judge. **What tuned means is the author's four rules**
+(§6 item 1), over the whole map:
+
+- **exits drawn with their direction**, never against it;
+- **no line drawn through a room**;
+- **each building under its own street's line**;
+- **exits with no direction placed well**: the 35% (`go door`, `out`, climbs) put where
+  they read naturally, not flung out as long connectors.
 
 1. **A baseline, measured.** Time the whole map and each area on `gs.map`, release build;
-   the per-area counts of the table in §1b; the areas the author plays first (the towns he
-   uses, the hunting grounds of `ojandhaart`, the Landing), each as a picture. Rebuild
-   `cena-mapper.exe`.
-2. **A regression gate.** The counts above as a test over the chosen areas: no change may make
-   any of them worse. Deterministic output, as VellumFE's `tests/layout_engine.rs` asserts.
-3. **The 358.** Exits drawn against their bearing on data that could be satisfied: a repair
-   that is not local (the README's own diagnosis), measured against the gate.
-4. **Lines through rooms and buildings under lines** (741 and 4,299): routing and the shelf.
-5. **The author's list.** What looks wrong to the author in the pictures, one area at a time,
-   fixed in the engine where it is a rule, in `curation/` or the overrides where it is a
-   fact about one place.
+   the four rules as counts, per area and in total (the first three are the table in §1b;
+   the fourth needs a count of its own: connector length and crossings); a picture of each
+   of the author's usual places to judge by eye. Rebuild `cena-mapper.exe`.
+2. **A regression gate.** The four counts as a test: no change may make any of them worse,
+   in total or in any area. Deterministic output, as VellumFE's `tests/layout_engine.rs`
+   asserts.
+3. **Directions** (rule 1): the 358 drawn against their bearing on data that could be
+   satisfied, by a repair that is not local (the README's own diagnosis). The 309 in groups
+   whose exits truly contradict are data: curated, or drawn as the least wrong.
+4. **Lines through rooms** (rule 2): the 741, in routing.
+5. **Buildings under the right lines** (rule 3): the 4,299, in the shelf, and the 19 groups
+   welded by indoor links.
+6. **Exits with no direction** (rule 4): placed by what else the data says -- the stated
+   bearing (`dirto`), the exit back the other way, the Lich picture's rectangle, a door's
+   side, the room's own words, the building a door leads into -- and by keeping the
+   connector short and uncrossed when nothing says.
+7. **The hand pins into `gs.map`** (§6 item 3): the mapper writes the editor's
+   `gs.overrides.json` pins into the map's `placement` extension, so Hydra reads the map
+   alone.
+8. **The author's list.** What still looks wrong in the pictures, one area at a time: a rule
+   in the engine, or a fact about one place in `curation/`.
 
-Done when the author says the chosen areas read right (§5 question 1).
+Done when the four counts are as low as the data allows, and the author says the map reads
+right.
 
 ### Stage 2 — Bring it into Hydra
 
@@ -231,15 +250,17 @@ Done when the author says the chosen areas read right (§5 question 1).
 2. **`Scene` in `cena-ui`**, and the conversion from the engine's output, tested on a small
    extract (the fixtures pattern of VellumFE's `tests/fixtures/layout/`).
 3. **The scene service in the binary**: an area laid out on first need on a worker thread;
-   the disk cache; the room → area index; the overrides file read beside the map (§5
-   question 3). Its time measured against Stage 1's baseline.
-4. **The current room per character**: `room_of`, with or without memory (§5 question 4), and
-   a revision the widget recentres on.
+   the disk cache; the room → area index; from `gs.map` alone, the pins baked in (§6
+   item 3). Its time measured against Stage 1's baseline.
+4. **The current room per character**, kept by the binary for every widget of that
+   character: `room_of`, with memory under the guard of §6 item 4, and a revision the widget
+   recentres on.
 5. **Hand it to the GUI**: `Sessions::attach` gains the provider (`crates/cena/src/play.rs:389`).
 
 ### Stage 3 — Style it: the minimap widget
 
-1. **`Widget::Map`** in the catalog (`widget/kind.rs`), "Minimap" in Add a widget.
+1. **`Widget::Map`** in the catalog (`widget/kind.rs`), "Minimap" in Add a widget: a widget
+   of its own, which a custom window can hold beside others (§6 item 8).
 2. **The painter**, a pure function of scene, camera and style: rooms, edges by kind,
    transitions, place icons, you; culled; detail by zoom; labels last, placed by Despana's
    rules (`labels.mjs` ported, with its tests).
@@ -249,7 +270,12 @@ Done when the author says the chosen areas read right (§5 question 1).
    double-click; zoom kept per widget.
 5. **Hover**: a card with the room's title, number, area, exits (the Genie card of §1e), from
    one hit-test at the pointer.
-6. **Clicks** (§5 question 6).
+6. **Clicks** (§6 item 6): **left-click** shows the route to the room, as Despana draws it;
+   **right-click** walks there (`;go2 <id>`, with the character's own symbol), perhaps a
+   button later; **Shift+left-click** shows the room in the story as Lich's `;map` does on
+   a shift-click (`reference/scripts/scripts/map.lic:2025-2033`: `respond room`, which is
+   `#<id> (u<uid>):`, the title with its location, the description and the paths,
+   `reference/lich-5/lib/common/map/map_gs.rb:126-128`), as Hydra's notice.
 7. **Its settings page**: zoom, what to show (numbers, labels, icons, transitions), and the
    colours.
 8. **Tests**: kittest images of the minimap on a fixed scene, as the other widgets have; the
@@ -264,7 +290,8 @@ Done when the author says the chosen areas read right (§5 question 1).
 3. **Despana on the same scenes** (optional): its minimap drawing the live scene instead of
    the baked atlas.
 
-**Later, not in this plan:** floors (§5 question 7), ghost rooms for places the map lacks
+**Later, not in this plan:** floors (§6 item 7: curated, never computed), ghost rooms for
+places the map lacks
 (VellumFE's cartography mode), and editing the layout from Hydra (the mapper does that).
 
 ---
@@ -306,3 +333,47 @@ commits are in hydra-mapper, the rest in Hydra.
 9. **Which hydra-mapper copy is the one.** `G:\dev\hydra-mapper` is newer in code and pins;
    proposed: it is, and `C:\Users\shawn\hydra-mapper` is retired once `CENA_MAP` points at
    `G:`'s `gs.map`.
+
+---
+
+## 6. The author's answers, 2026-09-29
+
+1. **Tuned.** *"tuned to me means exits drawn right not against their direction, lines not
+   drawn through rooms, buildings sitting under the right lines, exits without a direction
+   being placed in a smart way, I know you ai's can figure that out!"* Four rules over the
+   whole map, not a list of areas: Stage 1 is written around them.
+2. **The engine.** *"yeah we can do a dependency for now, and it will probably get pulled
+   into hydra once it's how we want it."* A git dependency, with the `[patch]` of §5
+   question 2.
+3. **The pins.** *"the mapper should write them into gs.map"* (Stage 1 step 7).
+4. **The current room**, asked for Claude's suggestion and why. **CLAUDE'S RECOMMENDATION,
+   TO CONFIRM: with memory, guarded.** Memory decides only one step of the ladder
+   (`crates/cena-map/src/locate.rs:1-40`): after the game's number and the text have both
+   failed, 333 rooms are still ambiguous, and where the character was settles 91 of them. It
+   can never overrule the game's number. Despana chose none because its view is sampled:
+   *"Coalesced observations do not supply reliable step-by-step history"*
+   (`plan/40-despana-live-map.md:23-24`). Two moves between two looks, and "the room it just
+   left" is the wrong room. The guard: the binary keeps one tracker per character, and
+   uses where it was only when the move count (`GameState::arrivals`) has gone up by
+   exactly one since it last looked (the same count means still there); by more, no
+   memory. So the gain is real and small, and the risk Despana named is shut out.
+5. **The look**: *"that works to start out, but what all are our options?"* Two separate
+   choices. **Where the colours come from:** (a) Despana's fixed dark palette; (b) egui's
+   own theme, as VellumFE does, so the map turns light when the window does (Hydra sets no
+   theme of its own today, and egui follows the system's); (c) Despana's palette as the
+   defaults, every colour changeable on the widget's settings page, as the bars' are. **What
+   a room's colour means:** nothing but where you are and what is selected (Despana); its
+   **terrain or climate**, which the map carries for each room (`crates/cena-map/src/room.rs:83-88`,
+   VellumFE tints by terrain); its **area**; the **kind of place** (Despana's icons: bank,
+   shops, healer...); or Genie's colour-coded rooms (`plan/21-mapdb.md:466-470`). **Start:**
+   (c) with Despana's meaning, plus the place icons; the other meanings as a choice on the
+   settings page later.
+6. **Clicks.** *"I did like the way despana showed the route on left click, right click to
+   travel is fine for now, might change to a button. shift + left click should display the
+   room in the story window like ;maps does."* (Stage 3 step 6.)
+7. **Floors.** *"floors are a touchy subject, they have to be curated otherwise you end up
+   with 14 floors going down a mine"*; and not in this plan (*"yep"*).
+8. **Placement.** *"it'll be a widget, that can be placed in a custom widget."*
+9. **The copy.** *"g:\dev is the right one yes."* `G:\dev\hydra-mapper` is the mapper and
+   its `gs.map` the map; `C:\Users\shawn\hydra-mapper` is retired once `CENA_MAP` points at
+   `G:`'s.
