@@ -34,7 +34,7 @@ use crate::loot::{self, LootProfile};
 use crate::operation::{Steering, Underway};
 use crate::settings::Stored;
 use crate::travel::{Heard, TravelNotes};
-use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, watch};
+use crate::watchdog::{BEHAVIOR_WATCHDOG, Heartbeat, Watched, outlasting, watch};
 
 /// One session's hunt desk.
 pub struct Desk {
@@ -647,15 +647,18 @@ impl Desk {
                 self.boards.get().cloned().zip(place),
                 &self.reports,
             ));
-            tokio::select! {
-                end = run => end,
-                // Stopped by the player, or preempted as wedged: either way
-                // the hunt was cancelled from outside.
-                watched = watch(handle, stop, &heartbeat, BEHAVIOR_WATCHDOG, "Hunt") => match watched {
+            // Stopped by the player, the hunt is given its own ending (a
+            // follower's `leave group`, a leader's board closed); preempted as
+            // wedged, it is cut off.
+            outlasting(
+                run,
+                watch(handle, stop, &heartbeat, BEHAVIOR_WATCHDOG, "Hunt"),
+                |watched| match watched {
                     Watched::Stopped => HuntEnd::Stopped(BehaviorError::Cancelled),
                     Watched::Wedged(_) => HuntEnd::Stopped(BehaviorError::Wedged),
                 },
-            }
+            )
+            .await
         };
         handle.release(self.token);
         end

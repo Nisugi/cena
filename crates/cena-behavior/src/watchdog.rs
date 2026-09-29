@@ -95,3 +95,80 @@ pub async fn watch(
         }
     }
 }
+
+/// How long a behavior the player stopped is given to finish its own ending:
+/// a follower's `leave group`, a leader's board closed, *"Hunt: stopped."*
+/// said. Its longest wait there is one send's five seconds; this is that and
+/// room to spare.
+pub const WIND_DOWN: Duration = Duration::from_secs(8);
+
+/// Run a behavior's `run` beside its `watched` watchdog, and give it its
+/// ending: when the player stops it, `run` is awaited on, up to
+/// [`WIND_DOWN`], so the behavior sees its own cancel and cleans up after
+/// itself; only a run that will not end in that time, or a wedged one, is cut
+/// off with `cut`.
+///
+/// **Why not a plain `select!`.** The desk raced the two, and the watcher is
+/// ready the moment the stop is: the run, still on its way out, was dropped
+/// mid-cleanup. A stopped follower never sent `leave group`, a stopped leader
+/// never closed its board, and the leader's rest then waited on the stale
+/// follower for good (the review of 2026-09-29).
+pub async fn outlasting<T>(
+    run: impl Future<Output = T>,
+    watched: impl Future<Output = Watched>,
+    cut: impl FnOnce(Watched) -> T,
+) -> T {
+    let mut run = std::pin::pin!(run);
+    tokio::select! {
+        // The run first: one that has ended is never cut.
+        biased;
+        end = &mut run => end,
+        watched = watched => match watched {
+            Watched::Stopped => match tokio::time::timeout(WIND_DOWN, &mut run).await {
+                Ok(end) => end,
+                Err(_) => cut(Watched::Stopped),
+            },
+            wedged @ Watched::Wedged(_) => cut(wedged),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A run that cleans up after its stop: a second of work once cancelled.
+    async fn cleaning(stop: CancellationToken) -> &'static str {
+        stop.cancelled().await;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        "cleaned up"
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_stopped_run_is_given_its_ending() {
+        let stop = CancellationToken::new();
+        let watched = {
+            let stop = stop.clone();
+            async move {
+                stop.cancelled().await;
+                Watched::Stopped
+            }
+        };
+        stop.cancel();
+        let end = outlasting(cleaning(stop.clone()), watched, |_| "cut off").await;
+        assert_eq!(end, "cleaned up");
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_run_that_will_not_end_is_cut_off_after_the_wind_down() {
+        let started = Instant::now();
+        let end = outlasting(
+            std::future::pending::<&str>(),
+            async { Watched::Stopped },
+            |_| "cut off",
+        )
+        .await;
+        assert_eq!(end, "cut off");
+        assert!(started.elapsed() >= WIND_DOWN);
+    }
+}
