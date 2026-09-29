@@ -94,8 +94,9 @@ fn attach_player_log(
     )
 }
 
-/// Archive the player log's finished months or weeks, as the character's
-/// settings file chooses (`plan/25` step 4), on a blocking task: a month of
+/// Archive the player log's finished months or weeks, then remove what is
+/// older than the days kept, as the character's settings file chooses
+/// (`plan/25` steps 4 and 5), on a blocking task: a month of
 /// day-files is tens of megabytes to compress, and the session starts
 /// without waiting for it.
 ///
@@ -104,15 +105,16 @@ fn attach_player_log(
 /// logged in is archived at the next login. A failure is said and changes
 /// nothing: the day-files stay.
 fn archive_player_log(character: &str, game: &str) {
-    let choice = crate::general::archive_choice(
+    let log = crate::general::log_settings(
         &cena_session::character_store::data_dir(),
         &format!("{game}:{character}"),
     );
     let character = character.to_owned();
     tokio::task::spawn_blocking(move || {
-        let root = cena_session::player_log::writer::root();
+        use cena_session::player_log::{archive, retention, writer};
+        let root = writer::root();
         let now = cena_platform::eastern::now();
-        match cena_session::player_log::archive::sweep(&root, &character, choice, now) {
+        match archive::sweep(&root, &character, log.archive.unwrap_or_default(), now) {
             Ok(swept) if swept.files > 0 => eprintln!(
                 "[player log] archived {} day-files into {}",
                 swept.files,
@@ -120,6 +122,19 @@ fn archive_player_log(character: &str, game: &str) {
             ),
             Ok(_) => {}
             Err(e) => eprintln!("[player log] not archived, the day-files are kept: {e}"),
+        }
+        // After archiving, so a month is judged whole as its archive
+        // (`plan/25` step 5): what the Player log page and `;history`
+        // previewed is what goes.
+        let keep_days = log.keep_days.unwrap_or(0);
+        match retention::prune(&root, &character, keep_days, &cena_platform::date_dir()) {
+            Ok(gone) if !gone.is_empty() => eprintln!(
+                "[player log] kept {keep_days} days: removed {} files, the days up to {}",
+                gone.len(),
+                gone.last().map_or("", |g| g.newest.as_str())
+            ),
+            Ok(_) => {}
+            Err(e) => eprintln!("[player log] old days not removed: {e}"),
         }
     });
 }

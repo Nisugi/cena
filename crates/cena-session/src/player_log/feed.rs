@@ -125,6 +125,10 @@ pub struct LogSettings {
     /// when the file does not say.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archive: Option<super::archive::Archive>,
+    /// How many days are kept, counting today; 0 or unset is forever
+    /// (`plan/25` D5, [`super::retention`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keep_days: Option<u32>,
 }
 
 /// The name of [`LogSettings`]' section.

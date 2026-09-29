@@ -358,7 +358,7 @@ impl Table {
         commands: &Commands,
     ) {
         let database = loot::reports(&hosted.handle, commands, &self.dir, game, character);
-        crate::history::open(&hosted.handle, commands, character);
+        crate::history::open(&hosted.handle, commands, character, game);
         if let Some(agent) = &self.agent {
             agent.seat(
                 id,

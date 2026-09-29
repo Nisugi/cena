@@ -1,7 +1,7 @@
 # 25 — The player log
 
 **Status: steps 1, 2 and 2b BUILT (2026-09-21); step 3 BUILT (2026-09-29), with
-`;history`; steps 4 and 7 BUILT the same day; 5, 6 and 8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI).** Author decisions
+`;history`; steps 4-7 BUILT the same day; step 8, the GUI, APPROVED 2026-09-29.** Author decisions
 recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
@@ -474,8 +474,22 @@ Each step leaves the tree green and is independently reviewable.
    > covered by a test that would pass either way.
 5. **Retention**, per D5: forever by default, a number of days when set,
    whole archives only, with §7's deletion preview. No size cap. APPROVED.
+
+   > **BUILT 2026-09-29.** `crates/cena-session/src/player_log/retention.rs`:
+   > `keep_days` in the `player_log` section (0 or unset, forever). `doomed`
+   > names every day-file and archive whose newest day is before the first
+   > day kept (today counted); `prune` deletes exactly that, at login, after
+   > the archive sweep (`crates/cena/src/setup.rs`). **The preview is the
+   > same call**: the *Keep logs for* row's help, the reply when it is
+   > changed, and `;history`'s day list all say what the next login removes.
 6. **Export**, per §1's spec shape: a range of days and tags written to one
    plain file the player chooses. APPROVED.
+
+   > **BUILT 2026-09-29.** `reader::export`: the days from one to another,
+   > kept by tag, oldest first, each line `YYYY-MM-DD HH:MM:SS.mmm [tag] text`,
+   > written beside its name and renamed. With no place named it goes to
+   > `exports/` in the character's log folder (`reader::export_path`), which
+   > no read of the log looks in. `;history export <day> [<day>] [in:...]`.
 7. **Disk usage**, broken out raw / archive / total / day count. APPROVED.
 
    > **BUILT 2026-09-29.** `archive::usage`: plain bytes, archived bytes,

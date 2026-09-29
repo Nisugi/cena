@@ -338,7 +338,7 @@ async fn the_characters_own_settings_file_switches_feeds() {
         "player_log",
         &LogSettings {
             feeds,
-            archive: None,
+            ..LogSettings::default()
         },
     )
     .expect("set");
@@ -385,7 +385,7 @@ async fn a_supervised_session_reads_the_settings_file_too() {
         "player_log",
         &LogSettings {
             feeds,
-            archive: None,
+            ..LogSettings::default()
         },
     )
     .expect("set");

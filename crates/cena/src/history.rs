@@ -26,9 +26,9 @@ use std::time::Duration;
 use cena_session::SessionHandle;
 use cena_session::command::claimant::Claimed;
 use cena_session::notice::{Body, Notice, NoticeKind};
-use cena_session::player_log::archive;
 use cena_session::player_log::reader::{self, Entry, Found, MAX_HITS, Moment, Pattern, Streams};
 use cena_session::player_log::writer;
+use cena_session::player_log::{archive, retention};
 
 use crate::commands::Commands;
 
@@ -39,6 +39,7 @@ const USAGE: &[&str] = &[
     "history last <span>     a span back from now: 90s, 15m, 2h, 1d; a bare number is minutes",
     "history day <day> [<from> [<to>]]   a day (YYYY-MM-DD, today, yesterday), or from HH:MM to HH:MM of it",
     "history search <text>   lines holding the text, any case, newest first; /<regex>/ for an expression",
+    "history export <day> [<day>]   those days, one to the other, written to one text file",
     "Add in:<stream>[,<stream>] to any: in:thoughts, in:combat, in:cmd.",
 ];
 
@@ -73,6 +74,8 @@ enum Command {
     },
     /// Lines holding a text or matching an expression.
     Search(Query, Streams),
+    /// Days from one to the other, to a file.
+    Export(Day, Day, Streams),
 }
 
 /// A day as the player names it; resolved against the clock when run.
@@ -81,6 +84,17 @@ enum Day {
     Today,
     Yesterday,
     Named(String),
+}
+
+impl Day {
+    /// `YYYY-MM-DD`, on the player's clock.
+    fn resolve(self) -> String {
+        match self {
+            Day::Today => cena_platform::date_dir(),
+            Day::Yesterday => cena_platform::stamp_ago(Duration::from_hours(24)).0,
+            Day::Named(day) => day,
+        }
+    }
 }
 
 /// What a search looks for, before it is compiled.
@@ -127,6 +141,23 @@ fn parse(line: &str) -> Option<Result<Command, String>> {
             .map(|d| Command::Last(d, streams))
             .ok_or_else(|| usage("say how far back: 90s, 15m, 2h, 1d".to_owned())),
         Some("day") => day_command(&rest[1..], streams).map_err(usage),
+        Some("export") => {
+            let day = |word: Option<&&str>| match word.map(|w| w.to_ascii_lowercase()).as_deref() {
+                Some("today") => Ok(Day::Today),
+                Some("yesterday") => Ok(Day::Yesterday),
+                Some(named) if is_day(named) => Ok(Day::Named(named.to_owned())),
+                Some(other) => Err(usage(format!("`{other}` is not a day; say YYYY-MM-DD"))),
+                None => Err(usage("say which day to export from".to_owned())),
+            };
+            day(rest.get(1)).and_then(|from| {
+                let to = if rest.get(2).is_some() {
+                    day(rest.get(2))?
+                } else {
+                    from.clone()
+                };
+                Ok(Command::Export(from, to, streams))
+            })
+        }
         Some("search") => {
             let text = rest[1..].join(" ");
             if text.is_empty() {
@@ -212,9 +243,10 @@ fn is_time(word: &str) -> bool {
 }
 
 /// Register `;history` on `character`'s command line.
-pub(crate) fn open(handle: &SessionHandle, commands: &Commands, character: &str) {
+pub(crate) fn open(handle: &SessionHandle, commands: &Commands, character: &str, game: &str) {
     let handler = handle.clone();
     let character = character.to_owned();
+    let login = format!("{game}:{character}");
     commands.history(Arc::new(move |line: &str| {
         let command = match parse(line)? {
             Ok(command) => command,
@@ -223,14 +255,21 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, character: &str)
                 return Some(Claimed::Done);
             }
         };
-        let (handle, character) = (handler.clone(), character.clone());
+        let (handle, character, login) = (handler.clone(), character.clone(), login.clone());
         tokio::spawn(async move {
             // What the writer holds is the last second of play, which is the
             // part a player reading back is most likely to want.
             handle.flush_player_log().await;
-            let read =
-                tokio::task::spawn_blocking(move || run(&writer::root(), &character, command))
-                    .await;
+            let read = tokio::task::spawn_blocking(move || {
+                let keep_days = crate::general::log_settings(
+                    &cena_session::character_store::data_dir(),
+                    &login,
+                )
+                .keep_days
+                .unwrap_or(0);
+                run(&writer::root(), &character, keep_days, command)
+            })
+            .await;
             match read {
                 Ok(Ok(lines)) => handle.say_unlogged(Notice {
                     kind: NoticeKind::Info,
@@ -251,11 +290,19 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, character: &str)
 
 /// Run one command against `character`'s log under `root`, and give the
 /// lines to say.
-fn run(root: &Path, character: &str, command: Command) -> Result<Vec<String>, String> {
+///
+/// `keep_days` is how many days the character's settings keep (0, forever),
+/// for the day list to say what the next login removes.
+fn run(
+    root: &Path,
+    character: &str,
+    keep_days: u32,
+    command: Command,
+) -> Result<Vec<String>, String> {
     let io = |e: std::io::Error| e.to_string();
     match command {
         Command::Help => Ok(USAGE.iter().map(|&l| l.to_owned()).collect()),
-        Command::Days => days(root, character).map_err(io),
+        Command::Days => days(root, character, keep_days).map_err(io),
         Command::Tail(count, streams) => {
             let entries = reader::tail(root, character, count, &streams).map_err(io)?;
             if entries.is_empty() {
@@ -301,11 +348,7 @@ fn run(root: &Path, character: &str, command: Command) -> Result<Vec<String>, St
             to,
             streams,
         } => {
-            let day = match day {
-                Day::Today => cena_platform::date_dir(),
-                Day::Yesterday => cena_platform::stamp_ago(Duration::from_hours(24)).0,
-                Day::Named(day) => day,
-            };
+            let day = day.resolve();
             let start = Moment::new(day.clone(), from.clone().unwrap_or_default());
             let end = to
                 .clone()
@@ -317,6 +360,21 @@ fn run(root: &Path, character: &str, command: Command) -> Result<Vec<String>, St
                 (Some(from), Some(to)) => format!("History, {day} {from} to {to}"),
             };
             Ok(shown(&found, &format!("{label}{}", of(&streams)), false))
+        }
+        Command::Export(from, to, streams) => {
+            let (mut from, mut to) = (from.resolve(), to.resolve());
+            if from > to {
+                std::mem::swap(&mut from, &mut to);
+            }
+            let out = reader::export_path(root, character, (&from, &to));
+            let done = reader::export(root, character, (&from, &to), &streams, &out).map_err(io)?;
+            Ok(vec![format!(
+                "History: {} lines from {} days{} written to {}",
+                done.lines,
+                done.days,
+                of(&streams),
+                done.path.display()
+            )])
         }
         Command::Search(query, streams) => {
             let (pattern, said) = match &query {
@@ -340,7 +398,7 @@ fn end_of(day: String) -> Moment {
 }
 
 /// `the days kept`, newest first, with each file's size.
-fn days(root: &Path, character: &str) -> std::io::Result<Vec<String>> {
+fn days(root: &Path, character: &str, keep_days: u32) -> std::io::Result<Vec<String>> {
     let days = reader::days(root, character)?;
     let Some(oldest) = days.last() else {
         return Ok(vec![format!("History: nothing kept for {character} yet.")]);
@@ -374,6 +432,13 @@ fn days(root: &Path, character: &str) -> std::io::Result<Vec<String>> {
     }
     if days.len() > DAYS_SHOWN {
         lines.push(format!("  and {} more", days.len() - DAYS_SHOWN));
+    }
+    if keep_days > 0 {
+        let doomed = retention::doomed(root, character, keep_days, &cena_platform::date_dir())?;
+        lines.push(format!(
+            "Kept {keep_days} days. {}",
+            retention::preview(&doomed)
+        ));
     }
     Ok(lines)
 }
@@ -533,7 +598,7 @@ mod tests {
         )
         .expect("write");
 
-        let lines = run(&root, "Nisugi", parsed("history search ROCK")).expect("run");
+        let lines = run(&root, "Nisugi", 0, parsed("history search ROCK")).expect("run");
         assert_eq!(
             lines,
             [
@@ -541,9 +606,63 @@ mod tests {
                 "2026-09-21 06:47:12 [main] You see a rock."
             ]
         );
-        let lines = run(&root, "Nisugi", parsed("history day 2026-09-21 06:47:13")).expect("run");
+        let lines = run(
+            &root,
+            "Nisugi",
+            0,
+            parsed("history day 2026-09-21 06:47:13"),
+        )
+        .expect("run");
         assert_eq!(lines[1], "06:47:13 [main] A kobold dies.");
-        assert!(run(&root, "Nisugi", parsed("history search /(/")).is_err());
+        assert!(run(&root, "Nisugi", 0, parsed("history search /(/")).is_err());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn export_names_its_days_and_writes_them() {
+        assert_eq!(
+            parsed("history export 2026-09-01 2026-09-07 in:thoughts"),
+            Command::Export(
+                Day::Named("2026-09-01".to_owned()),
+                Day::Named("2026-09-07".to_owned()),
+                Streams::only(["thoughts"])
+            )
+        );
+        assert_eq!(
+            parsed("history export yesterday"),
+            Command::Export(Day::Yesterday, Day::Yesterday, Streams::all())
+        );
+        assert!(parse("history export").is_some_and(|r| r.is_err()));
+        assert!(parse("history export sometime").is_some_and(|r| r.is_err()));
+
+        let root = std::env::temp_dir().join(format!("cena-history-export-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let path = writer::day_path(&root, "Nisugi", "2026-09-21");
+        std::fs::create_dir_all(path.parent().expect("a parent")).expect("mkdir");
+        std::fs::write(
+            &path,
+            "[06:47:12.481][main] You see a rock.
+",
+        )
+        .expect("write");
+        // Named backwards, the days are put in order.
+        let said = run(
+            &root,
+            "Nisugi",
+            0,
+            parsed("history export 2026-09-22 2026-09-21"),
+        )
+        .expect("run");
+        assert!(
+            said[0].starts_with("History: 1 lines from 1 days"),
+            "{said:?}"
+        );
+        let out = reader::export_path(&root, "Nisugi", ("2026-09-21", "2026-09-22"));
+        assert_eq!(
+            std::fs::read_to_string(out).expect("the export"),
+            "2026-09-21 06:47:12.481 [main] You see a rock.
+"
+        );
         let _ = std::fs::remove_dir_all(&root);
     }
 
