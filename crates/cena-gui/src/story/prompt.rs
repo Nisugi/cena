@@ -1,10 +1,20 @@
 //! A story's prompts, and what the player typed after one, shown as
 //! `VellumFE` shows them (`core/messages/element.rs`, the `Prompt` arm): a
-//! prompt after the story has had a line since the last, or when it changed
-//! (`R>` to `>` as roundtime ends), never twice in a row for nothing; what
-//! the player types echoed after the last prompt shown, `>look`
-//! (`core/app_core/commands.rs`, the echo). The author, 2026-09-28: *"there
-//! is no prompt"*.
+//! prompt after the story has had a line with something to read since the
+//! last, or when it changed (`R>` to `>` as roundtime ends), never twice in
+//! a row for nothing; what the player types echoed after the last prompt
+//! shown, `>look` (`core/app_core/commands.rs`, the echo). The author,
+//! 2026-09-28: *"there is no prompt"*; and 2026-09-29: *"We want to throw
+//! away prompts that come in and do not have any visible text to show unless
+//! the prompt holds a change."*
+//!
+//! The game sends a prompt with every chunk: one of effects alone, a
+//! thought, a change of indicator. A chunk with nothing for the story to
+//! read earns no prompt (a blank line counts as nothing, [`super::visible`]);
+//! nor does one whose lines another widget shows, which is decided where the
+//! story is drawn (`crate::widget`'s `lines.rs`, `Prompts`). A prompt is
+//! taken from [`cena_session::Event::Prompt`], which lands after the lines
+//! it ends even while the player's Lich runs.
 //!
 //! Where `VellumFE` stops short, the live prompt -- the last line, nothing
 //! printed after it -- drops its `R` once roundtime has run out

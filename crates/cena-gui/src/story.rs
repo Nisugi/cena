@@ -113,6 +113,9 @@ impl Story {
                 }
                 for shown in lines {
                     let mut runs = shown.runs;
+                    // Only a line with something to read earns the prompt
+                    // after it (`prompt.rs`).
+                    self.since_prompt |= visible(&runs);
                     if let Some(style) = &style {
                         for run in runs.iter_mut().filter(|run| run.preset.is_none()) {
                             run.preset = Some(style.clone());
@@ -124,17 +127,18 @@ impl Story {
                         Shown::From(line.stream.clone(), runs)
                     });
                     self.heard += 1;
-                    self.since_prompt = true;
                 }
             }
-            Event::Frame(frame) => match frame.as_ref() {
-                Frame::Prompt { text, .. } => self.prompted(text),
-                Frame::MenuResponse(menu) => {
+            // The prompt a viewer shows, not the game's frame: while the
+            // player's Lich runs, the frame comes before Lich's lines and
+            // this after them (`cena_session::Event::Prompt`).
+            Event::Prompt(text) => self.prompted(text),
+            Event::Frame(frame) => {
+                if let Frame::MenuResponse(menu) = frame.as_ref() {
                     let count = self.menu.as_ref().map_or(0, |(count, _)| count + 1);
                     self.menu = Some((count, menu.clone()));
                 }
-                _ => {}
-            },
+            }
             Event::Notice(notice) => self.tell(notice.clone()),
             Event::Attention(call) => {
                 if let Some(alert) = &call.alert {
@@ -162,6 +166,13 @@ impl Story {
             self.lines.pop_front();
         }
     }
+}
+
+/// Whether a line has anything to read: a blank one earns no prompt, as in
+/// `VellumFE`, which counts a line toward the next prompt only for text that
+/// is not whitespace (`core/messages/flush_line.rs`, `chunk_has_main_text`).
+pub(crate) fn visible(runs: &[StyledRun]) -> bool {
+    runs.iter().any(|run| !run.text.trim().is_empty())
 }
 
 /// Whether a line is on the main stream: the wire writes main's text with an

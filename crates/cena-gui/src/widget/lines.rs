@@ -153,12 +153,12 @@ pub(super) fn story(
         for (at, shown) in lines {
             match shown {
                 Shown::Game(runs) => {
-                    prompts.line();
+                    prompts.line(runs);
                     clicked = clicked.take().or(options.label(ui, *at, runs));
                 }
                 Shown::From(stream, runs) => {
                     if !open.contains(stream) {
-                        prompts.line();
+                        prompts.line(runs);
                         clicked = clicked.take().or(options.label(ui, *at, runs));
                     }
                 }
@@ -194,9 +194,10 @@ struct Prompts<'a> {
 }
 
 impl<'a> Prompts<'a> {
-    /// A line was drawn.
-    fn line(&mut self) {
-        self.since = true;
+    /// A line was drawn: it earns the next prompt if it has something to
+    /// read (`crate::story::visible`).
+    fn line(&mut self, runs: &[StyledRun]) {
+        self.since |= crate::story::visible(runs);
     }
 
     /// Whether `prompt`, next, is drawn: after a line drawn, or changed.
@@ -239,7 +240,7 @@ mod tests {
     use super::*;
     use crate::story::Story;
     use crate::widget::{Chosen, Widget};
-    use cena_session::{Event, Frame, Generation, ObservedEvent, SessionId};
+    use cena_session::{Event, Generation, ObservedEvent, SessionId};
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
     use std::sync::Arc;
@@ -265,13 +266,7 @@ mod tests {
     fn evening() -> Story {
         let mut story = Story::default();
         story.hear(&heard(said("", "You swing.")), None);
-        story.hear(
-            &heard(Event::Frame(Box::new(Frame::Prompt {
-                time: "1000".to_owned(),
-                text: ">".to_owned(),
-            }))),
-            None,
-        );
+        story.hear(&heard(Event::Prompt(">".to_owned())), None);
         story.hear(&heard(said("thoughts", "[General] hello")), None);
         story.typed("look");
         for (at, _) in &mut story.lines {
@@ -409,12 +404,7 @@ mod tests {
     /// *"vellum has some code to suppress prompts at times"*).
     #[test]
     fn a_prompt_after_a_line_shown_elsewhere_is_not_drawn() {
-        let prompt = |text: &str| {
-            heard(Event::Frame(Box::new(Frame::Prompt {
-                time: "1000".to_owned(),
-                text: text.to_owned(),
-            })))
-        };
+        let prompt = |text: &str| heard(Event::Prompt(text.to_owned()));
         let heard_all = move || {
             let mut story = Story::default();
             story.hear(&heard(said("", "You swing.")), None);
@@ -449,5 +439,37 @@ mod tests {
         };
         assert_eq!(prompts(vec!["thoughts".to_owned()]), (1, 1), "open");
         assert_eq!(prompts(Vec::new()), (3, 1), "no Thoughts widget");
+    }
+
+    /// A blank line drawn earns no prompt after it: nothing was said.
+    #[test]
+    fn a_prompt_after_a_blank_line_is_not_drawn() {
+        let run = |text: &str| cena_session::ChunkLine::plain(text).runs;
+        let mut story = Story::default();
+        for shown in [
+            Shown::Game(cena_ui::painted(&cena_session::Line::new(
+                "",
+                run("You swing."),
+            ))),
+            Shown::Prompt(">".to_owned()),
+            Shown::Game(cena_ui::painted(&cena_session::Line::new("", run("  ")))),
+            Shown::Prompt(">".to_owned()),
+        ] {
+            story.lines.push_back((Stamp::now(), shown));
+        }
+        let mut harness = Harness::builder()
+            .with_size((420.0, 400.0))
+            .build_ui(move |ui| {
+                let seen = Seen {
+                    snapshot: None,
+                    story: &story,
+                    hunt: None,
+                    who: None,
+                    open: &[],
+                };
+                let _ = Widget::Story.draw_with(ui, &seen, Id::new("b"), &Chosen::default());
+            });
+        harness.run();
+        assert_eq!(harness.query_all_by_label(">").count(), 1);
     }
 }
