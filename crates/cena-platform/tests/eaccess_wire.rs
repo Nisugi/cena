@@ -52,6 +52,11 @@ fn refuses_out_of_range_instead_of_wrapping() {
     let e = hash_password(&[0x20], &[0xFF]).expect_err("must refuse");
     assert_eq!(e.stage, "hash");
     assert!(e.detail.contains("out of range"), "got: {}", e.detail);
+    // The same password hashes in range under another key, and the server
+    // sends a new one each attempt: not a refusal the next try must repeat,
+    // and not one that may keep the web login from being tried.
+    assert!(hash_password(&[0x20], &[0x41]).is_ok());
+    assert!(!e.fatal, "out of range depends on this attempt's key");
 }
 
 // **A test that ENFORCED the leak used to live here**, and it is worth recording

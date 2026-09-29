@@ -233,6 +233,13 @@ pub(super) fn err<E: fmt::Display>(stage: &'static str, e: E) -> EaccessError {
 ///
 /// [`EaccessError`] with stage `hash` if the key is shorter than the password,
 /// or if any byte falls outside `0..=255`.
+///
+/// Only the first is fatal. Whether a byte falls outside the range depends on
+/// the key, and the key is the server's, new with every attempt: a password
+/// with a byte above ASCII fails some keys and passes others. Fatal, it
+/// stopped the retries and skipped the web login, which takes the password as
+/// typed (the crate review of 2026-09-28). Transient, the next attempt draws a
+/// new key and the fallback is tried.
 pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessError> {
     if key.len() < password.len() {
         // FATAL: the password is longer than the protocol's key can hash. That
@@ -283,8 +290,7 @@ pub fn hash_password(password: &[u8], key: &[u8]) -> Result<Vec<u8>, EaccessErro
                      Refusing to guess. Neither the byte nor the arithmetic is \
                      shown: the key byte and the result together recover it."
                 ),
-            )
-            .fatal());
+            ));
         }
         #[expect(
             clippy::cast_possible_truncation,
