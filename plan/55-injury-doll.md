@@ -1,6 +1,9 @@
 # 55 — The injury doll
 
-**Status: PROPOSED 2026-09-29.** `plan/49` Stage G named the injury doll as work that
+**Status: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
+written to those answers. One question is new (§4a).
+
+**Status before that: PROPOSED 2026-09-29.** `plan/49` Stage G named the injury doll as work that
 *"gets its own plan when it is next"*. This is that plan. The author asked for it on
 2026-09-29:
 
@@ -45,6 +48,30 @@ questions for the author.
   hidden, invisible, webbed, dead) and the statuses read from text (bound, calmed,
   cutthroat, silenced, sleeping, thorned, poisoned, diseased)
   (`crates/cena-model/src/status.rs:52-234`). Debuffs are in `effects`.
+
+**Two things the model gets wrong, found while writing this plan:**
+
+- **What the radio hides is erased.** The game's Wounds / Scars / Both radio decides what
+  the images carry. With Wounds set, a part that only has a scar comes as `name == part`, and
+  `apply_image` reads that as whole, **erasing the scar it knew**. Scars set does the same to
+  a wound (`body.rs:93-125`).
+
+  The author saw this without knowing the cause: *"that will cause wounds/scars to flash when
+  injury is set for healing and stuff"*. INFERRED from the code and the radio's meaning; step
+  0 confirms it against a capture before changing anything.
+- **A nerve rank is dropped.** The game reports the nervous system as `Nsys1`-`3`, not
+  `Injury`/`Scar`. Hydra reads that as whole and removes `nsys`.
+  - VERIFIED in Lich (`reference/lich-5/lib/common/xmlparser.rb:816-872`) and in VellumFE
+    (`reference/VellumFE/src/core/messages.rs:35-44`, whose comment says the doll *"never
+    showed convulsions"* until it read them).
+  - **The image does not say whether the rank is a wound or a scar.** Lich finds out by
+    sending `health` and reading one of six lines (`xmlparser.rb:843-860`): *uncontrollable
+    convulsions*, *sporadic convulsions* and *muscle twitching* are wounds 3-1; *a very
+    difficult time with muscle control*, *constant muscle spasms* and *slurred speech* are
+    scars 3-1.
+  - Hydra reads none of those lines today. The one capture on hand,
+    `E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi`, has 242 `nsys` images, all whole, so it
+    cannot show one.
 
 **Other players' dolls are left out on purpose.** `injuries-<id>` is another player's doll,
 and the model does not claim it (`crates/cena-model/src/state/dialogs.rs:43-46`, `plan/28`
@@ -212,22 +239,28 @@ Why one kind rather than three:
 ### 2b. Art is files, VellumFE's convention kept
 
 Doll pictures live in `<data>/dolls/`, next to the bar's `<data>/overlays/`. **VellumFE's
-naming is kept exactly:** `<base>.png`, the sidecar `<base>.toml`, and the overlays
-`<base>_<part>_<level>.png`, with group sharing. Keeping it means:
+naming is kept:** `<base>.png`, with its anchors and dot style embedded in the picture, and
+the overlays `<base>_<part>_<level>.png`, with group sharing. Keeping it means:
 
 - A player's existing VellumFE dolls work by copying the folder.
 - Art made for one client works in the other.
 
-Two changes from VellumFE:
+**The calibration lives in the picture** (the author: *"hydra should write in the picture, not
+make a sidecar toml"*), so a doll travels as one file:
 
-- **Hydra never writes into a player's PNG.** The sidecar `.toml` is the only thing saved.
-  An embedded text chunk is read once, on import, into a new `.toml`, and the image itself is
-  left alone.
-- **Anchor keys are written in the wire's spelling** (`leftArm`). Lowercase keys are still
-  read, so VellumFE's sidecars load.
+- **Where it goes.** It is written as a PNG text chunk, VellumFE's own format
+  (`reference/VellumFE/src/config/pool.rs:1164-1191`), so VellumFE and Hydra read each
+  other's.
+- **How it is written.**
+  - The chunk is added or replaced without re-encoding the pixels: the file's other chunks
+    are copied through untouched.
+  - The file is written to a temp file and renamed into place, as `store::save_text` does,
+    so a crash leaves the old picture whole.
+- **A VellumFE `.toml` sidecar beside a picture is read.** Where the picture has no chunk of
+  its own, the sidecar is written into it on the first save, and Hydra writes no `.toml`.
 
-The sidecar is written through `cena_session::store::save_text`, atomically, like every
-other file Hydra keeps.
+**Anchor keys are written in the wire's spelling** (`leftArm`). Lowercase keys are still
+read, so VellumFE's calibrations load.
 
 ### 2c. One table of parts and levels
 
@@ -235,8 +268,12 @@ Hydra already has one table of parts (`ALL_PARTS`) and one model of a rank (`Inj
 widget reads those, and nothing else defines them. This is how VellumFE's nerve-wound bug
 cannot happen here.
 
-**The default anchors** are VellumFE's (`reference/VellumFE/src/config/skins.rs:616-631`),
-plus two for the feet.
+**The doll has VellumFE's 14 parts.** The feet fold into the legs everywhere, each leg showing
+the worse of itself and its foot (the author: *"I've never seen a feet wound so probably just
+rolled into legs everywhere"*). The model keeps the feet as the game sends them; only the doll
+folds them.
+
+**The default anchors** are VellumFE's (`reference/VellumFE/src/config/skins.rs:616-631`).
 
 **What a dot looks like:**
 
@@ -245,8 +282,15 @@ plus two for the feet.
 - Its numeral shows the rank.
 - It gets a per-part tooltip.
 
-**Which layer shows** follows the game's own Wounds / Scars / Both radio (`InjuryMode`),
-which the model already reads. A setting overrides it (§4 question 5).
+**Both are always shown, the wound first** (the author: *"it just shows both always. wounds >
+scars > nothing"*):
+
+- a part with a wound shows the wound;
+- a part with only a scar shows the scar;
+- a whole part shows nothing.
+
+The game's radio does not change the doll. Step 0 is what makes that possible: once the model
+keeps what the radio hides, switching the radio no longer blanks half the doll.
 
 ### 2d. Loading only what is drawn
 
@@ -285,19 +329,45 @@ and the triggers already read, rather than a third condition language.
 
 ### 2f. Infinite: an adapter, two changes in gs_studio, and one hook in Hydra
 
-**In gs_studio** (the author offered to make these there, and should):
+**In gs_studio** (the author: *"we can make studio changes"*), three changes and one decision:
 
-1. Pin the egui fork by the same `rev` as Hydra, and keep the two moving together from then
-   on.
-2. Make the doll's view id a parameter of `paint_state`.
-3. Hydra calls `set_base_dir` with its own data folder. That is a line in Hydra, but
-   gs_studio's docs should say so.
+1. **The egui fork by `rev`.**
+   - What: every gs_studio manifest names `https://github.com/Nisugi/egui.git` with
+     `rev = "ed8b2649fd4b1c3351e38988b045f1bf33335f38"`, Hydra's pin, instead of
+     `branch = "numpad-support"`. That covers `egui`, `egui-wgpu`, and `eframe` in `studio`.
+     It is best done once in a `[workspace.dependencies]` table, which every crate then takes
+     with `.workspace = true`, followed by `cargo update -p egui` so the lock says the same
+     commit.
+   - Why: cargo treats a branch and a rev as two sources, and two egui builds cannot share a
+     `Ui`.
+   - From then on: the two repos move the pin together, in one commit each.
+2. **A view per doll.**
+   - What: `doll_view` stops using the one constant `DOLL_VIEW`
+     (`gs_studio/crates/gs_field_egui/src/doll_view.rs:38, 325`) and gives each doll its own
+     GPU view. The simplest shape changes no signature: the view id is derived from the
+     doll's `id` (a hash of it), with `DOLL_VIEW` kept for `id: None`.
+   - Why: Hydra's two play windows each draw their own character's doll, in one egui pass.
+3. **Say where the data folder is set.** `gs_field::data_dirs::set_base_dir` exists, and
+   without it gs_field reads `~/.vellum-fe` (`gs_studio/crates/gs_field/src/data_dirs.rs:64-93`).
+   Its doc should say a host calls it once before drawing. Hydra will call it with Hydra's own
+   data folder.
+4. **The licence** is a decision, not code (§4, question 7).
+
+Nothing else is needed from gs_studio. Answer 6's build option is Hydra's: the whole
+dependency sits behind a cargo feature in `cena-gui`, so gs_studio needs no feature of its
+own.
 
 **In Hydra:**
 
 - **Depend on `gs_field` and `gs_field_egui`** by git and `rev`, as the binary already does
-  on hydra-mapper, and **only from `cena-gui`**. The crates Hydra builds for phones never see
-  them.
+  on hydra-mapper, and **only from `cena-gui`**.
+  - **Behind a cargo feature, `doll-infinite`, on by default** (the author: *"optional at
+    build time, on by default, might not go in mobile builds? don't know yet"*).
+  - A build without it drops the 32 MB of art and offers only the Doll and the Doll plus.
+  - The crates Hydra builds for phones never see it either way.
+- **Every character is `humanoid`** (the author: *"we will probably make puppets for all
+  races, but just humanoid for now"*). The form is chosen in one function, so a race-to-form
+  table replaces one line when the puppets exist.
 - **Call `field_gpu::init`** in `cena-gui`'s `run`, from the creation context
   (`crates/cena-gui/src/app.rs:528-535`).
 - **An adapter, `widget/doll/infinite.rs`,** turns the character into gs_studio's input:
@@ -317,31 +387,50 @@ and the triggers already read, rather than a third condition language.
 
 ## 3. Stages
 
-Each step is committed and tested on its own, on branch `injury-doll`.
+Each step is committed and tested on its own, on branch `injury-doll`. An image test over the
+play window's scene clears its roundtime first: the scene counts roundtime down by the wall
+clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`7ec5601`).
 
+0. **The model keeps what the game's radio hides, and reads a nerve rank.** Before changing
+   anything, confirm the radio's effect against a capture: one of the author's own, or one
+   they make by switching the radio with a scar showing.
+
+   Then:
+   - With Wounds set, a whole image clears only the wound. With Scars set, it clears only the
+     scar. With Both, or no radio seen, it clears both, as it does today.
+   - `Nsys1`-`3` is kept as a nerve rank of unknown kind, and shown as a wound until the game
+     says otherwise.
+   - The six `health` lines (§1a) are read whenever they come, and settle the kind.
+
+   Tests: each radio over a scarred part and a wounded one; `Nsys2`; each of the six lines.
+
+   The model change is `cena-model`'s, and so is its own test file. `GameState::login`'s note
+   that nsys *"is not kept"* (`crates/cena-model/src/state/login.rs:207-219`) is corrected in
+   the same commit.
 1. **The picture cache.** One texture cache for the GUI's pictures, keyed by path and
    modification time, which retries after a change. The bar moves onto it. Tests: a changed
    file is reloaded, a failed one retried, an unchanged one kept.
 2. **The Injuries widget, Doll style, with no picture.** The kind, its name and group, and
    its size. The body drawn in code, with a dot per hurt part coloured by the palette and
-   numbered, and a tooltip per part. It follows the game's Wounds / Scars / Both radio.
-   Snapshots of a whole body, a hurt one, and one with scars. The test character gains
+   numbered, and a tooltip per part. Each part shows its wound, else its scar. The feet fold
+   into the legs. Snapshots of a whole body, a hurt one, and one with scars. The test character gains
    injuries.
-3. **Pictures and anchors.** `<data>/dolls/` listed on the widget's page. The sidecar read
-   with its anchors and dot style, VellumFE's lowercase keys included. The default anchors,
-   the feet among them. A snapshot over a picture made in the test.
+3. **Pictures and anchors.** `<data>/dolls/` listed on the widget's page. The calibration
+   read from the picture's text chunk, or from a VellumFE `.toml` beside it, VellumFE's
+   lowercase keys included. The default anchors. A snapshot over a picture made in the test.
 4. **The calibrator.** The window, the canvas drawn by the widget's own renderer, Save
    through `save_text`, and Use default. Tests: a click sets an anchor as a fraction of the
-   drawn picture, whatever the window's size; a saved sidecar reads back the same.
+   drawn picture, whatever the window's size; a saved calibration reads back the same; saving
+   leaves the picture's pixels and other chunks byte for byte as they were.
 5. **Doll plus.** Overlays by VellumFE's naming, group sharing, a part's art drawn in place of
    its dot, and only the shown levels loaded. Tests over pictures made in the test: art
    drawn where it exists, a dot where it does not, an inherited group, and nothing decoded
    for a level not shown.
 6. **Bringing VellumFE's dolls over.** `;doll import <VellumFE folder>` copies the dolls
-   folder. It turns each embedded sidecar into a `.toml`, never writing into an image, and it
-   says what it brought, as `;scripts import` does.
-7. **Infinite.** After gs_studio's two changes (§2f):
-   - the dependency, with its reasons in `Cargo.toml`;
+   folder, writing any `.toml` sidecar into its picture, and says what it brought, as
+   `;scripts import` does.
+7. **Infinite.** After gs_studio's changes (§2f):
+   - the dependency behind `doll-infinite`, with its reasons in `Cargo.toml`;
    - `set_base_dir`;
    - `field_gpu::init`;
    - the adapter;
@@ -362,35 +451,45 @@ The glossary gains *doll*, *anchor*, *overlay* and *style*.
 
 ---
 
-## 4. Questions for the author
+## 4. The author's answers, 2026-09-29
 
-Each has Claude's recommendation first.
+| # | Question | Answer |
+|---|---|---|
+| 1 | One widget with three styles, or three widgets | *"sounds good"*: one widget, three styles |
+| 2 | The feet | *"I've never seen a feet wound so probably just rolled into legs everywhere"* |
+| 3 | Write into the player's picture, or a sidecar | *"hydra should write in the picture, not make a sidecar toml"* |
+| 4 | With no picture chosen | *"hydra should draw a body in code"* |
+| 5 | Wounds, scars or both | *"it just shows both always. wounds > scars > nothing"*; the game's radio would make them *"flash"*, which is §1a's first model fault |
+| 6 | Infinite's weight | *"optional at build time, on by default, might not go in mobile builds? don't know yet"* |
+| 7 | The licence | asked *"What in gs_studio is gpl?"*; answered below |
+| 8 | The puppet's form | *"we will probably make puppets for all races, but just humanoid for now"* |
+| 9 | gs_studio's changes | *"we can make studio changes, what are they?"*: §2f lists them |
 
-1. **One widget with three styles** (recommended, §2a), **or three widgets** in the Add menu?
-2. **The feet.** Hydra's model has 16 parts; VellumFE's doll and gs_studio's puppet have 14,
-   folding the feet into the legs.
-   - **Recommended:** the feet get anchors of their own in the Doll, defaulting to just below
-     the legs, and fold into the legs for Infinite, as gs_studio already does.
-   - **Or:** fold them everywhere.
-3. **Never write into a player's picture** (recommended, §2b), **or match VellumFE** and
-   embed the sidecar in the PNG so a doll travels as one file?
-4. **With no picture chosen, the Doll draws a body in code** (recommended: it works the
-   moment the widget is added).
-   - **Or:** Infinite is the default once it is in.
-   - **Or:** a picture ships with Hydra's install. It cannot be compiled in; it would be a file
-     the installer puts in `<data>/dolls/`.
-5. **Wounds, scars or both.** Follow the game's own radio (recommended: it is what the player
-   already set in the game), **or** a setting on the widget, **or** the radio unless the
-   widget's setting overrides it?
-6. **Infinite's weight.** The 32 MB of puppet art, 2-3 ms a frame and about 64 MB of GPU
-   memory while shown. Should that always be in Hydra (recommended while Hydra is desktop
-   only), **or** behind a cargo feature a smaller build can leave out?
-7. **The licence.** gs_studio's crates are GPL-3.0-or-later, and Hydra declares no licence.
-   Linking them makes Hydra's binary GPL. That is the author's call; it is recorded here so
-   it is made on purpose.
-8. **The puppet's form.** gs_studio has `humanoid`, `troll` and `canine`. Is every character
-   `humanoid` for now (recommended), **or** is the race mapped to a form, or chosen by the
-   player?
-9. **gs_studio's two changes** (the egui `rev` and the view id): the author offered to make
-   them in that repo. Recommended: yes, since they are gs_studio's API, and step 7 waits on
-   them. Steps 1-6 do not.
+**Question 7, what is GPL in gs_studio.** Only five manifest lines, and nothing gs_studio
+depends on requires it:
+
+- **The five.** `gs_field`, `gs_field_egui`, `gs_puppet`, `gs_calibrators` and `studio` each
+  say `license = "GPL-3.0-or-later"`. They got the line on 2026-09-19, when they were carved
+  out of VellumFE, which is GPL-3.0-or-later with a `LICENSE` file
+  (`reference/VellumFE/Cargo.toml:10`).
+- **The rest.** `rig`, `rig_bake` and `vellum_light` declare no licence.
+- **The dependencies.** Among all of gs_studio's (`cargo metadata`), the only one naming GPL
+  is `self_cell`, which is `Apache-2.0 OR GPL-2.0-only` and can be taken as Apache.
+
+So GPL applies to the code ported from VellumFE because VellumFE's copyright holders
+licensed it that way, and to nothing else. If VellumFE's code is all the author's own, the
+author may license it, and gs_studio, however they choose. Code anyone else contributed to
+VellumFE stays under GPL unless they agree otherwise. Linking the crates as they are now
+makes Hydra's binary GPL-3.0-or-later. That is the author's decision; it is recorded here, not
+made.
+
+### 4a. A new question, from step 0
+
+**A nerve rank's kind.** `Nsys2` does not say whether it is a wound or a scar. Lich sends
+`health` itself to find out, each time a nerve rank arrives. Hydra could:
+
+- **Read the `health` lines whenever they come, and show an unknown nerve rank as a wound
+  until then** (recommended: nothing is sent that the player did not send, and wounds > scars
+  is the author's own order); or
+- **Send `health` itself when a nerve rank arrives,** as Lich does, through the session's
+  sync so it is never spoken over the player.
