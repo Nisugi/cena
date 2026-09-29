@@ -140,6 +140,8 @@ pub enum Topic {
     Heal,
     /// `waggle help`.
     Waggle,
+    /// `sc help`, or `sc` alone.
+    Sc,
 }
 
 /// A character's own profile, changed from the game line.
@@ -202,6 +204,7 @@ pub const fn help(topic: Topic) -> &'static [&'static str] {
         Topic::Hunt => HUNT_HELP,
         Topic::Heal => HEAL_HELP,
         Topic::Waggle => WAGGLE_HELP,
+        Topic::Sc => SC_HELP,
     }
 }
 
@@ -232,6 +235,16 @@ const HEAL_HELP: &[&str] = &[
     "A hunt heals at every rest once a container is set. `hunt stop` stops a heal under way.",
 ];
 
+const SC_HELP: &[&str] = &[
+    "sc <spell|alias> [target] [count]      cast it: sc 401, sc 903 kobold, sc 111 3",
+    "sc alias <spell> <name>                call a spell by a name of yours: sc alias 211 bravery",
+    "sc verb <spell> <verb>                 cast it with this verb (channel, evoke, incant...)",
+    "sc stance <spell> <stance>             take this stance to cast it",
+    "sc set typed on|off                    cast a bare 401 or alias typed with no sc (on by default)",
+    "sc set conserve|safety|channel|stance on|off   keep mana, need a target, channel attacks, stance",
+    "A cast goes beside a running hunt, never in its place. The Spellcaster page in Settings has every setting.",
+];
+
 const WAGGLE_HELP: &[&str] = &[
     "waggle [name] [name]...                cast the waggle spells on these people, or yourself",
     "waggle show                            the waggle settings, the defaults included",
@@ -251,6 +264,9 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     }
     if first.eq_ignore_ascii_case("sc") {
         let rest: Vec<String> = words.map(str::to_owned).collect();
+        if rest.is_empty() || (rest.len() == 1 && rest[0].eq_ignore_ascii_case("help")) {
+            return Some(Ok(Command::Help(Topic::Sc)));
+        }
         let edit = rest.first().is_some_and(|w| {
             ["alias", "verb", "stance", "set"].contains(&w.to_ascii_lowercase().as_str())
         });
@@ -522,6 +538,9 @@ mod tests {
         assert_eq!(parse("hunt setup"), Some(Ok(Command::Setup)));
         assert_eq!(parse("heal help"), Some(Ok(Command::Help(Topic::Heal))));
         assert_eq!(parse("waggle help"), Some(Ok(Command::Help(Topic::Waggle))));
+        assert_eq!(parse("sc help"), Some(Ok(Command::Help(Topic::Sc))));
+        assert_eq!(parse("sc"), Some(Ok(Command::Help(Topic::Sc))));
+        assert!(matches!(parse("sc 401"), Some(Ok(Command::Sc(_)))));
         assert_eq!(
             parse("waggle Kiyna Dicate"),
             Some(Ok(Command::Waggle(vec![

@@ -27,6 +27,7 @@ pub(super) fn help(topic: Topic, say: Say<'_>) {
         Topic::Hunt => "Hunt",
         Topic::Heal => "Heal",
         Topic::Waggle => "Waggle",
+        Topic::Sc => "Sc",
     };
     for line in help_for(topic) {
         say(NoticeKind::Info, format!("{label}: {line}"));
