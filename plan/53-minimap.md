@@ -221,9 +221,37 @@ pictures (`svg.rs`) for the author to judge. **What tuned means is the author's 
    the four rules as counts, per area and in total (the first three are the table in §1b;
    the fourth needs a count of its own: connector length and crossings); a picture of each
    of the author's usual places to judge by eye. Rebuild `cena-mapper.exe`.
+
+   **BUILT 2026-09-29** on hydra-mapper's branch `tune-layout` (`19d7df5`):
+   `cena_map_layout::quality` counts the four rules on a drawn scene, by the engine's own
+   tests (the positioner's signs; routing's clearance, 0.4 of a cell); `cena-mapper
+   --quality [map]` lays out every area baked into the map as the window draws it
+   (`meta:area:`, the store's corrections and pins), measures and times it, and writes
+   `<map>.quality.tsv`. **The baseline**, `gs.map` `d5e8ac60`, release:
+
+   | | count |
+   |---|---|
+   | areas, rooms | 207, 31,787 (rooms with no baked area are not in it) |
+   | time to lay out every area | 1.0 s; the slowest, the Landing's town, 102 ms for 2,596 rooms |
+   | rule 1, exits against their direction | 720 |
+   | rule 2, lines through rooms | 704 |
+   | rule 3, building rooms under a line not theirs | 351 |
+   | rule 4, pairs joined only without a direction | 10,799: 10,609 lines (**2,144 crossing another**; median 1.4 cells, p90 8.2), 154 stubs, 36 not drawn |
+
+   102 of the 207 areas are clean on rules 1-3; the rest gather in the big towns, the
+   Landing's town worst on every rule (45, 186, 133), then Solhaven, Ta'Vaalor and
+   Ta'Illistim. These are not the README's 667, 741 and 4,299, which were one-off counts of
+   the solver's groups and of a narrower "line not theirs"; these count what is drawn. The
+   time settles §2: laying out an area live in Hydra costs at most a tenth of a second.
 2. **A regression gate.** The four counts as a test: no change may make any of them worse,
    in total or in any area. Deterministic output, as VellumFE's `tests/layout_engine.rs`
    asserts.
+
+   **BUILT 2026-09-29** (`05f3a0d`): `cena-mapper --quality-check [map]` measures again and
+   refuses (exit 1) any area worse on any of five counts (the first three rules, directionless
+   exits not drawn, directionless lines crossing another), leaving the table alone. A
+   command, not a `cargo test`, because `gs.map` is not in the repository; its comparison
+   is tested. Run twice it is identical in every area: the layout is deterministic.
 3. **Directions** (rule 1): the 358 drawn against their bearing on data that could be
    satisfied, by a repair that is not local (the README's own diagnosis). The 309 in groups
    whose exits truly contradict are data: curated, or drawn as the least wrong.
@@ -293,6 +321,19 @@ right.
 **Later, not in this plan:** floors (§6 item 7: curated, never computed), ghost rooms for
 places the map lacks
 (VellumFE's cartography mode), and editing the layout from Hydra (the mapper does that).
+
+**Floors, measured for their own plan** (the author, 2026-09-29: *"What constitutes a floor
+change? I think x amount of rooms on the same floor. How many rooms is the right amount
+though?"*; hydra-mapper `examples/floors.rs`, `d1237a4`). A level is the rooms joined
+without going up or down; 2,435 explicit up/downs join two levels, 833 of them to a level
+of one room. A room count alone does not stop a stack: Sapphire Gate and Whistler's Pass
+North, a mountain road, is 27 floors at one room and still 4 at thirty. Counting only
+up/downs between indoor rooms (1,150) drops it, and leaves at 3 rooms 72 floors, tallest 7;
+at 5, 51, tallest 6 (the Landing's coastal cliffs). Claude's proposal, not decided: a floor
+is an indoor level reached by up/down that would be drawn **over** the level below; room
+count only trims (3 is the knee); a stack over three floors is listed for the author. Not
+counted yet: 2,108 stairs, ladders and hatches with no stated direction (`plan/21` §3e's
+order of trust).
 
 ---
 
