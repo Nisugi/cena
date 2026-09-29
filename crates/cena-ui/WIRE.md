@@ -83,8 +83,26 @@ scheduled delay, never as a countdown. This is supplied by native lifecycle
 observation. When retry scheduling has not been observed, the attempt and delay
 are null; an unknown attempt must not be displayed as attempt zero.
 
-Story lines are `{stream, runs, truncated}`. The empty stream name is Story's
-main channel. Each run is `{text, bold, monospace, preset}`; preset is nullable
+Story lines are `{stream, runs, truncated, closed}`. The empty stream name is
+Story's main channel.
+
+`closed` is required, and says what the line does when its stream's window is
+shut in the viewer, which only the viewer knows. It is tagged by `kind`:
+
+| `kind` | Fields | The line, with its window shut |
+|---|---|---|
+| `main` | | is shown in the main story, unstyled. Every main-channel line, and any stream nobody declared |
+| `drop` | | is not shown at all: the game sent it to main as well. `speech` is declared so, and a viewer showing every line shows what is said twice |
+| `styled` | `style` | is shown in main wearing `style`, a token for the viewer's own preset allowlist |
+| `route` | `window` | goes to the window `window`, which may be shut in its turn |
+
+(CORRECTED 2026-09-29: this read `{stream, runs, truncated}`. `closed` was
+already on the wire, `StoryLine::closed` in `src/view.rs`, and in
+`tests/fixtures/snapshot-v1.json`; a viewer written from this document
+showed speech twice, and a consumer that reads strictly refused every
+snapshot.)
+
+Each run is `{text, bold, monospace, preset}`; preset is nullable
 and is only a token for a browser-owned allowlist. It must never become arbitrary
 CSS or markup.
 
