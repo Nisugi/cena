@@ -8,6 +8,7 @@
 
 mod editor;
 mod form;
+mod test;
 
 pub(crate) use editor::Editor;
 
