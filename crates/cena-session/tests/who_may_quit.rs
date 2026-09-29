@@ -29,11 +29,11 @@ async fn started() -> (
 }
 
 /// `quit` from `origin`, queued, and how it was answered and whether it
-/// reached the wire.
-async fn quit_from(origin: Origin, claim: Option<AuthorityToken>) -> (Outcome, bool) {
+/// reached the wire; `None` if the authority could not be claimed first.
+async fn quit_from(origin: Origin, claim: Option<AuthorityToken>) -> Option<(Outcome, bool)> {
     let (handle, transcript, cancel) = started().await;
     if let Some(token) = claim {
-        handle.claim(token).await.expect("the authority");
+        handle.claim(token).await.ok()?;
     }
     let outcome = handle
         .send_and_await(
@@ -46,13 +46,13 @@ async fn quit_from(origin: Origin, claim: Option<AuthorityToken>) -> (Outcome, b
         .await;
     let sent = transcript.lines().iter().any(|line| line == "quit");
     cancel.cancel();
-    (outcome, sent)
+    Some((outcome, sent))
 }
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn the_player_their_scripts_and_triggers_may_quit() {
     for origin in [Origin::Manual, Origin::Script, Origin::Trigger] {
-        let (outcome, sent) = quit_from(origin, None).await;
+        let (outcome, sent) = quit_from(origin, None).await.unwrap();
         assert_eq!(outcome, Outcome::Disconnected, "{origin:?}");
         assert!(sent, "{origin:?}'s quit reached the game");
     }
@@ -60,7 +60,7 @@ async fn the_player_their_scripts_and_triggers_may_quit() {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn an_agent_may_quit_only_holding_the_authority() {
-    let (outcome, sent) = quit_from(Origin::Agent(None), None).await;
+    let (outcome, sent) = quit_from(Origin::Agent(None), None).await.unwrap();
     assert_eq!(outcome, Outcome::Refused(Refusal::Permanent));
     assert!(
         !sent,
@@ -68,7 +68,9 @@ async fn an_agent_may_quit_only_holding_the_authority() {
     );
 
     let token = AuthorityToken(9);
-    let (outcome, sent) = quit_from(Origin::Agent(Some(token)), Some(token)).await;
+    let (outcome, sent) = quit_from(Origin::Agent(Some(token)), Some(token))
+        .await
+        .unwrap();
     assert_eq!(outcome, Outcome::Disconnected, "a takeover may");
     assert!(sent);
 }
@@ -77,7 +79,7 @@ async fn an_agent_may_quit_only_holding_the_authority() {
 async fn a_behavior_never_quits_even_holding_the_authority() {
     let token = AuthorityToken(3);
     for claim in [None, Some(token)] {
-        let (outcome, sent) = quit_from(Origin::Behavior(token), claim).await;
+        let (outcome, sent) = quit_from(Origin::Behavior(token), claim).await.unwrap();
         assert_eq!(outcome, Outcome::Refused(Refusal::Permanent), "{claim:?}");
         assert!(!sent, "a behavior logged the character out: {claim:?}");
     }
