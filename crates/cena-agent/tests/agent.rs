@@ -755,3 +755,36 @@ async fn a_command_is_sent_as_the_agents_and_the_denylist_holds() {
     assert_eq!(glanced, 2, "the approved glance went out and was answered");
     stop.cancel();
 }
+
+/// The contract's *"the `Host` header must be local"*: a request naming
+/// another host is refused, the right token or not, and `/health`, which
+/// needs no token, is refused it too.
+#[tokio::test]
+async fn a_request_naming_another_host_is_refused() {
+    let stop = CancellationToken::new();
+    let router = cena_agent::router(Characters::default(), "secret".to_owned(), &stop);
+    let health = |host: Option<&str>| {
+        let mut builder = axum::http::Request::builder().uri("/health");
+        if let Some(host) = host {
+            builder = builder.header("host", host);
+        }
+        builder.body(Body::empty()).unwrap_or_default()
+    };
+    for (host, status) in [
+        (None, StatusCode::OK),
+        (Some("127.0.0.1:47700"), StatusCode::OK),
+        (Some("localhost:47700"), StatusCode::OK),
+        (Some("rebound.example.com:47700"), StatusCode::FORBIDDEN),
+    ] {
+        let answer = router.clone().oneshot(health(host)).await.unwrap();
+        assert_eq!(answer.status(), status, "{host:?}");
+    }
+    let hello = serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "ping"});
+    let mut named = request(Some("secret"), None, &hello);
+    named.headers_mut().insert(
+        "host",
+        axum::http::HeaderValue::from_static("rebound.example.com"),
+    );
+    let answer = router.oneshot(named).await.unwrap();
+    assert_eq!(answer.status(), StatusCode::FORBIDDEN, "token and all");
+}

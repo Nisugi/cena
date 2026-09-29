@@ -47,7 +47,39 @@ pub fn router(characters: Characters, token: String, stop: &CancellationToken) -
                 async move { require_token(&token, request, next).await }
             },
         ));
-    Router::new().route("/health", get(health)).merge(guarded)
+    Router::new()
+        .route("/health", get(health))
+        .merge(guarded)
+        .layer(axum::middleware::from_fn(require_local))
+}
+
+/// A request that names a host names this machine.
+///
+/// The contract has said so since step 1 (`CONTRACT.md`, *Connecting*) and
+/// nothing checked it (the review of 2026-09-29). The token keeps a page in
+/// a browser from calling a tool; this keeps one that has pointed a name of
+/// its own at loopback from reading `/health`, which needs no token. A
+/// request with no `Host` at all is let by: a browser always sends one.
+async fn require_local(request: Request, next: Next) -> Response {
+    let named = request
+        .headers()
+        .get(header::HOST)
+        .map(|value| value.to_str().unwrap_or_default());
+    if named.is_none_or(is_local) {
+        next.run(request).await
+    } else {
+        (StatusCode::FORBIDDEN, "the Host header must be local").into_response()
+    }
+}
+
+/// Whether a `Host` header's value is loopback's, with a port or without.
+fn is_local(host: &str) -> bool {
+    let name = if let Some(bracketed) = host.strip_prefix('[') {
+        bracketed.split(']').next().unwrap_or_default()
+    } else {
+        host.rsplit_once(':').map_or(host, |(name, _)| name)
+    };
+    name.eq_ignore_ascii_case("localhost") || name == "127.0.0.1" || name == "::1"
 }
 
 /// Serve on `listener` until `stop`.
@@ -112,4 +144,34 @@ pub fn new_token() -> Result<String, String> {
         hex.push(char::from(HEX[usize::from(b & 0xf)]));
         hex
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_local;
+
+    #[test]
+    fn a_host_is_local_by_its_name_whatever_its_port() {
+        for host in [
+            "127.0.0.1:47700",
+            "127.0.0.1",
+            "localhost:47700",
+            "LOCALHOST",
+            "[::1]:47700",
+            "[::1]",
+        ] {
+            assert!(is_local(host), "{host}");
+        }
+        for host in [
+            "example.com",
+            "example.com:47700",
+            "127.0.0.1.example.com",
+            "localhost.example.com:80",
+            "10.0.0.5:47700",
+            "",
+            "not a header \u{7f}",
+        ] {
+            assert!(!is_local(host), "{host}");
+        }
+    }
 }

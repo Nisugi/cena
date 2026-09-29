@@ -17,7 +17,7 @@ Hydra starts the runner and hands it, in its environment:
 | Variable | Is |
 |---|---|
 | `HYDRA_URL` | the listener, `http://127.0.0.1:<port>/mcp`: loopback, a port the system chose |
-| `HYDRA_TOKEN` | this runner's bearer token, for the `Authorization` header, **never a tool argument**. It names the character; it is kept only in Hydra's memory and opens nothing once the runner is dismissed |
+| `HYDRA_TOKEN` | this runner's bearer token, for the `Authorization` header, **never a tool argument**. It names the character, and opens nothing once the runner is dismissed. Hydra keeps it in memory and writes it nowhere; the runner has it in its environment, which another program run by the same user can read, and the script door has no level and no denylist: that program is trusted as the player is |
 | `HYDRA_CHARACTER` | the character's name |
 | `HYDRA_GAME` | the game the character logged into, by its login code: `GS3` (GemStone IV), `GSX` (Platinum), `GST` (test), `GSF` (Shattered) |
 | `HYDRA_SCRIPTS` | the folder the player's scripts are in |
