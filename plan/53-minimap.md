@@ -1,7 +1,7 @@
 # 53 — The map in the GUI: tune the layout, bring it in, style it, show it
 
-**Status: APPROVED 2026-09-29, the author's answers in §6**; two of them are Claude's
-recommendations for the author to confirm (§6 items 4 and 5). Was PROPOSED the same day. `plan/49` Stage G (*"The map and minimap
+**Status: APPROVED 2026-09-29, the author's answers in §6**, Claude's two recommendations
+among them confirmed (*"I'm ok with your recommendations yep"*). Was PROPOSED the same day. `plan/49` Stage G (*"The map and minimap
 ... Each gets its own plan when it is next"*, `plan/49-gui-widgets.md:850-853`); the author,
 2026-09-29: *"I think next we do the minimap? Let's build a solid plan to implement it.
 There is the despana map demo that we implemented ... despana map demo is the styling,
@@ -347,7 +347,7 @@ commits are in hydra-mapper, the rest in Hydra.
    question 2.
 3. **The pins.** *"the mapper should write them into gs.map"* (Stage 1 step 7).
 4. **The current room**, asked for Claude's suggestion and why. **CLAUDE'S RECOMMENDATION,
-   TO CONFIRM: with memory, guarded.** Memory decides only one step of the ladder
+   CONFIRMED BY THE AUTHOR: with memory, guarded.** Memory decides only one step of the ladder
    (`crates/cena-map/src/locate.rs:1-40`): after the game's number and the text have both
    failed, 333 rooms are still ambiguous, and where the character was settles 91 of them. It
    can never overrule the game's number. Despana chose none because its view is sampled:
@@ -365,9 +365,9 @@ commits are in hydra-mapper, the rest in Hydra.
    a room's colour means:** nothing but where you are and what is selected (Despana); its
    **terrain or climate**, which the map carries for each room (`crates/cena-map/src/room.rs:83-88`,
    VellumFE tints by terrain); its **area**; the **kind of place** (Despana's icons: bank,
-   shops, healer...); or Genie's colour-coded rooms (`plan/21-mapdb.md:466-470`). **Start:**
-   (c) with Despana's meaning, plus the place icons; the other meanings as a choice on the
-   settings page later.
+   shops, healer...); or Genie's colour-coded rooms (`plan/21-mapdb.md:466-470`). **Start,
+   Claude's recommendation, confirmed by the author:** (c) with Despana's meaning, plus the
+   place icons; the other meanings as a choice on the settings page later.
 6. **Clicks.** *"I did like the way despana showed the route on left click, right click to
    travel is fine for now, might change to a button. shift + left click should display the
    room in the story window like ;maps does."* (Stage 3 step 6.)
