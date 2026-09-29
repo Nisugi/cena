@@ -35,6 +35,8 @@ struct Game {
     observer: SessionObserver,
     transcript: TranscriptHandle,
     told: Receiver<Event>,
+    /// Every command as the session published it going out.
+    sends: Receiver<Event>,
 }
 
 async fn logged_in() -> Result<Game, String> {
@@ -43,6 +45,7 @@ async fn logged_in() -> Result<Game, String> {
     let handle = session.handle();
     let observer = session.observer();
     let (_, told) = session.subscribe();
+    let (_, sends) = session.subscribe();
     let (_, ready) = session.subscribe();
     tokio::spawn(session.into_actor().run());
     ready::until_ready(ready).await?;
@@ -51,6 +54,7 @@ async fn logged_in() -> Result<Game, String> {
         observer,
         transcript,
         told,
+        sends,
     })
 }
 
@@ -70,6 +74,20 @@ impl Game {
             .run(&self.handle, joined, job, hydra)
             .ok_or("the desk would not run it")?;
         run.await.map_err(|e| e.to_string())
+    }
+
+    /// Each command the run sent, as a frontend echoes it: `foreach>get`.
+    fn echoed(&mut self) -> Vec<String> {
+        let mut echoed = Vec::new();
+        while let Ok(event) = self.sends.try_recv() {
+            if let Event::Sent {
+                line, by: Some(by), ..
+            } = event
+            {
+                echoed.push(format!("{by}>{line}"));
+            }
+        }
+        echoed
     }
 
     fn said(&mut self) -> Vec<String> {
@@ -129,6 +147,16 @@ async fn each_item_gets_the_commands_with_its_own_id() {
             "get #2376082",
             "put #2376082 in #2376077",
         ]
+    );
+    assert_eq!(
+        game.echoed(),
+        [
+            "foreach>get #2376084",
+            "foreach>put #2376084 in #2376077",
+            "foreach>get #2376082",
+            "foreach>put #2376082 in #2376077",
+        ],
+        "named as the player starts it; the quiet look not echoed"
     );
     let said = game.said();
     assert!(

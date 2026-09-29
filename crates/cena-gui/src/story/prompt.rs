@@ -26,6 +26,7 @@
 //! against `<roundTime>`.
 
 use cena_session::GameState;
+use cena_ui::StyledRun;
 
 use super::{Shown, Story};
 
@@ -68,4 +69,11 @@ impl Story {
         *text = text.replacen('R', "", 1);
         self.prompt = Some(text.clone());
     }
+}
+
+/// Whether a line has anything to read: a blank one earns no prompt, as in
+/// `VellumFE`, which counts a line toward the next prompt only for text that
+/// is not whitespace (`core/messages/flush_line.rs`, `chunk_has_main_text`).
+pub(crate) fn visible(runs: &[StyledRun]) -> bool {
+    runs.iter().any(|run| !run.text.trim().is_empty())
 }

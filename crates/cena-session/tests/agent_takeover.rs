@@ -119,7 +119,7 @@ async fn a_takeover_holds_the_character_until_it_is_given_back() {
     assert_eq!(answered.reason, "answered");
     let mut origins = Vec::new();
     while let Ok(event) = events.try_recv() {
-        if let Event::Sent { line, origin } = event {
+        if let Event::Sent { line, origin, .. } = event {
             origins.push((line, origin));
         }
     }

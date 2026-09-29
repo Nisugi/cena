@@ -143,6 +143,12 @@ pub enum Event {
         line: String,
         /// Manual or behavior.
         origin: crate::command::Origin,
+        /// The behavior's run that sent it, by the name it was given when it
+        /// started (`go2`, `hunt`, `heal`): what a frontend echoes it with,
+        /// `go2>look`, as Lich echoes a script's (the author, 2026-09-29).
+        /// `None` for any other origin, a run nobody named, and a quiet
+        /// command, whose report a frontend keeps out of the story.
+        by: Option<String>,
     },
     /// A **quiet** command's window opened (`true`) or ended (`false`).
     ///

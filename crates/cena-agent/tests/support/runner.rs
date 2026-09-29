@@ -261,7 +261,7 @@ impl Running {
                     Ok(Event::Notice(notice)) => heard.told.extend(notice.lines().iter().cloned()),
                     Ok(Event::Line(line)) => heard.shown.push(line.text()),
                     // A script's own, never the player's typing before it.
-                    Ok(Event::Sent { line, origin }) if origin != Origin::Manual => {
+                    Ok(Event::Sent { line, origin, .. }) if origin != Origin::Manual => {
                         heard.sent.push((line, origin));
                     }
                     Ok(_) => {}

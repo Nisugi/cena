@@ -55,7 +55,7 @@ fn told(observed: &ObservedEvent) -> Option<listening::Event> {
             stream: line.stream.clone(),
             text: line.text(),
         }),
-        Event::Sent { line, origin } => Some(listening::Event::Sent {
+        Event::Sent { line, origin, .. } => Some(listening::Event::Sent {
             cursor,
             line: line.clone(),
             origin: origin.word().to_owned(),

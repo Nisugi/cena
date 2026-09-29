@@ -187,6 +187,28 @@ fn a_prompt_follows_what_the_game_said() {
     assert_eq!(story.heard, 2, "a prompt is not a line heard");
 }
 
+/// A behavior's command is echoed with its name, `go2>north`, as Lich
+/// echoes a script's; one without a name -- the player's, which is echoed
+/// as it is typed, or a quiet one -- is not echoed again here.
+#[test]
+fn a_behaviors_command_is_echoed_with_its_name() {
+    let mut story = Story::default();
+    let sent = |line: &str, origin, by: Option<&str>| Event::Sent {
+        line: line.to_owned(),
+        origin,
+        by: by.map(str::to_owned),
+    };
+    let walking = cena_session::Origin::Behavior(cena_session::queue::AuthorityToken(2));
+    for event in [
+        sent("north", walking, Some("go2")),
+        sent("look", cena_session::Origin::Manual, None),
+        sent("info", walking, None),
+    ] {
+        story.hear(&observed(0, event), None);
+    }
+    assert_eq!(texts(&story), ["go2>north"]);
+}
+
 /// A blank line earns no prompt: a chunk with nothing to read shows none
 /// unless the prompt changed (the author, 2026-09-29: *"throw away prompts
 /// that come in and do not have any visible text to show unless the prompt

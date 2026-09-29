@@ -44,7 +44,7 @@ pub(crate) async fn send_manual(handle: &SessionHandle, line: &str) -> cena_sess
 pub(crate) async fn watch_events(mut events: broadcast::Receiver<Event>, who: String) {
     loop {
         match events.recv().await {
-            Ok(Event::Sent { line, origin }) => {
+            Ok(Event::Sent { line, origin, .. }) => {
                 // Who sent it, which is the whole reason a script's, a
                 // trigger's, an agent's and Lich's are variants of their own:
                 // each queues like manual input, but a reader of this

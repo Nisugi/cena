@@ -260,7 +260,7 @@ impl Desk {
                     (joined.0, joined.1.into()),
                     machine,
                     Some(place),
-                    &name,
+                    ("hunt", &name),
                 ))
             }
             _ => None,
@@ -293,15 +293,16 @@ impl Desk {
         true
     }
 
-    /// Start a run that is not a hunt, named `what` for its reports.
+    /// Start a run that is not a hunt, named `what` for its reports and
+    /// `word`, as the player starts it, for the echo of its commands.
     fn start(
         self: &Arc<Self>,
-        what: &str,
+        (word, what): (&'static str, &str),
         handle: SessionHandle,
         joined: (Snapshot, Heard),
         machine: Hunt,
     ) -> Underway<HuntEnd> {
-        self.start_in(handle, joined, machine, None, what)
+        self.start_in(handle, joined, machine, None, (word, what))
     }
 
     /// A per-character settings file of this character's, as found: `path`
@@ -344,7 +345,7 @@ impl Desk {
         joined: (Snapshot, Heard),
         machine: Hunt,
         place: Option<Place>,
-        what: &str,
+        (word, what): (&'static str, &str),
     ) -> Underway<HuntEnd> {
         let what = what.to_owned();
         let running = Running {
@@ -369,6 +370,8 @@ impl Desk {
                 before.over.cancelled().await;
             }
             desk.reports.running(&what);
+            // Its commands echoed as the player starts it: `hunt>attack`.
+            handle.name_behavior(desk.token, word);
             let end = Box::pin(desk.hunt_once(&handle, &stop, joined, machine, place)).await;
             // Before `over`: the next run, waiting on it, reports after this.
             desk.reports.tell(None);
@@ -468,7 +471,12 @@ impl Desk {
         match crate::spellcaster::lines(&profile, state, &words) {
             Ok(lines) => {
                 let machine = Hunt::send_only(lines);
-                Some(self.start("sc", handle.clone(), (joined.0, joined.1.into()), machine))
+                Some(self.start(
+                    ("sc", "sc"),
+                    handle.clone(),
+                    (joined.0, joined.1.into()),
+                    machine,
+                ))
             }
             Err(why) => {
                 handle.say(Notice::line(NoticeKind::Warn, format!("Sc: {why}")));
@@ -502,7 +510,7 @@ impl Desk {
         };
         let machine = Hunt::waggle_only(profile, targets);
         Some(self.start(
-            "waggle",
+            ("waggle", "waggle"),
             handle.clone(),
             (joined.0, joined.1.into()),
             machine,
@@ -539,7 +547,7 @@ impl Desk {
             ),
         ));
         Some(self.start(
-            "keep",
+            ("keep", "keep"),
             handle.clone(),
             (joined.0, joined.1.into()),
             Hunt::keep_only(profile),
@@ -567,7 +575,7 @@ impl Desk {
             return None;
         };
         Some(self.start(
-            "herbs",
+            ("heal", "herbs"),
             handle.clone(),
             (joined.0, joined.1.into()),
             make(profile),

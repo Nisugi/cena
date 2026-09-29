@@ -613,6 +613,16 @@ impl SessionHandle {
             .unwrap_or(Err(crate::queue::AuthorityHeld(token)))
     }
 
+    /// The run that holds `token` from now on is called `name`, as the
+    /// player starts it (`go2`, `hunt`, `heal`): each command it sends is
+    /// published with that name ([`Event::Sent`](crate::Event::Sent)'s
+    /// `by`), which a frontend echoes as `go2>look`, the way Lich echoes a
+    /// script's commands (the author, 2026-09-29). A run names itself as it
+    /// starts, since two runs may share a token.
+    pub fn name_behavior(&self, token: crate::queue::AuthorityToken, name: &str) {
+        self.authority.name(token, name);
+    }
+
     /// Give the authority back. Ignored if this token does not hold it.
     ///
     /// Fire-and-forget: a release has no answer worth waiting for, and a
