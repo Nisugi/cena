@@ -1,9 +1,16 @@
 # 50 — Settings: what Hydra has, what it lacks, and where each lives
 
-**Status: PROPOSED 2026-09-27, for the author.** This is `plan/49` Stage D's first step. It
-answers `plan/28` §9 item 3, where the author said: *"we shall discuss this when it's time
-taking inventory of all settings we have and need."* Nothing in this document is built. §5
-lists the questions to answer before any settings editor is written.
+**Status: BUILT.** Approved 2026-09-27; all eight steps of §7 are built. **§1 to §4 are the
+inventory as it stood before any of it was**, kept as the record of what was measured: where
+they call a setting hand-edit-only or unchecked, §7 records what changed. The settings in
+effect today are on the one settings menu (the hub's and the play window's *Settings*), and
+each behavior's `;<name> help`. (Relabelled after the integrated crate review of 2026-09-28,
+whose reader took this opening's "nothing is built" for the present.)
+
+This was `plan/49` Stage D's first step. It answers `plan/28` §9 item 3, where the author
+said: *"we shall discuss this when it's time taking inventory of all settings we have and
+need."* §5 lists the questions that were answered (§6) before any settings editor was
+written.
 
 **How it was measured.** Three read-only surveys, 2026-09-27, on branch `gui-widgets` at
 `fc52989`:
