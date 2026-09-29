@@ -220,18 +220,20 @@ impl Agent {
     )]
     async fn characters(&self) -> Result<CallToolResult, ErrorData> {
         let mut listed = Vec::new();
-        for seat in self.characters.all() {
+        let seats = self.characters.all();
+        for seat in &seats {
             let level = seat.door.level();
+            let label = seat.label(&seats);
             if level < Level::Observe {
                 listed.push(serde_json::json!({
-                    "character": seat.name,
+                    "character": label,
                     "level": level.word(),
                 }));
                 continue;
             }
             let snapshot = subscribe(&seat.observer, &CancellationToken::new()).await;
             listed.push(serde_json::json!({
-                "character": seat.name,
+                "character": label,
                 "level": level.word(),
                 "game": snapshot.as_ref().and_then(|(s, _)| s.state.character.instance.clone()),
                 "lifecycle": snapshot.as_ref().map(|(s, _)| format!("{:?}", s.lifecycle).to_ascii_lowercase()),
@@ -571,15 +573,21 @@ impl Agent {
     }
 
     fn seat(&self, name: &str) -> Result<Seat, ErrorData> {
-        self.characters.named(name).ok_or_else(|| {
-            let names: Vec<String> = self.characters.all().into_iter().map(|s| s.name).collect();
-            ErrorData::invalid_params(
+        self.characters.named(name).map_err(|could| {
+            let why = if could.is_empty() {
+                let seats = self.characters.all();
+                let names: Vec<String> = seats.iter().map(|s| s.label(&seats)).collect();
                 format!(
                     "no character {name:?} is running; the characters are: {}",
                     names.join(", ")
-                ),
-                None,
-            )
+                )
+            } else {
+                format!(
+                    "{name:?} is running on more than one game; name one: {}",
+                    could.join(", ")
+                )
+            };
+            ErrorData::invalid_params(why, None)
         })
     }
 }

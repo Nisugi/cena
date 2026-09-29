@@ -29,6 +29,8 @@ use crate::projection::{CharacterState, project};
 /// A seated character, as the tools read it.
 #[derive(Clone, Debug)]
 pub struct Seat {
+    /// The game it is on, by its code (`GS3`).
+    pub game: String,
     /// The name Hydra runs it as.
     pub name: String,
     /// Read-only access to its session.
@@ -45,6 +47,24 @@ pub struct Seat {
     stop: CancellationToken,
 }
 
+impl Seat {
+    /// How an agent names it among `seats`: its name, and `GAME:Name` when
+    /// another seated character has the same name, as `;to` names it.
+    #[must_use]
+    pub fn label(&self, seats: &[Seat]) -> String {
+        let twice = seats
+            .iter()
+            .filter(|other| other.name.eq_ignore_ascii_case(&self.name))
+            .count()
+            > 1;
+        if twice {
+            format!("{}:{}", self.game, self.name)
+        } else {
+            self.name.clone()
+        }
+    }
+}
+
 /// Every seated character. Cloned freely: one table behind it.
 #[derive(Clone, Debug, Default)]
 pub struct Characters {
@@ -52,18 +72,19 @@ pub struct Characters {
 }
 
 impl Characters {
-    /// Seat a character, and start watching it. Called inside a Tokio
-    /// runtime.
+    /// Seat a character, `name` on `game` (its code, `GS3`), and start
+    /// watching it. Called inside a Tokio runtime.
     pub fn seat(
         &self,
         id: SessionId,
-        name: &str,
+        (game, name): (&str, &str),
         observer: SessionObserver,
         door: Door,
         database: Option<PathBuf>,
         recording: Option<bool>,
     ) {
         let seat = Seat {
+            game: game.to_owned(),
             name: name.to_owned(),
             observer,
             door,
@@ -92,13 +113,34 @@ impl Characters {
         self.lock().values().cloned().collect()
     }
 
-    /// A seated character by name, ignoring case.
-    #[must_use]
-    pub fn named(&self, name: &str) -> Option<Seat> {
-        self.lock()
-            .values()
-            .find(|seat| seat.name.eq_ignore_ascii_case(name.trim()))
-            .cloned()
+    /// A seated character by what an agent called it, ignoring case: its
+    /// name, or `GAME:Name` ([`Seat::label`]).
+    ///
+    /// # Errors
+    ///
+    /// How each character it could be is named: two or more when a bare name
+    /// is on two games, which picks neither, and none when nothing seated is
+    /// called that.
+    ///
+    /// The first seat by that name was taken, so a name on two games reached
+    /// whichever was seated first (the integrated crate review of
+    /// 2026-09-28, I3), as `;to` did before it (`crates/cena/src/relay.rs`).
+    pub fn named(&self, asked: &str) -> Result<Seat, Vec<String>> {
+        let asked = asked.trim();
+        let (game, name) = match asked.split_once(':') {
+            Some((game, name)) => (Some(game.trim()), name.trim()),
+            None => (None, asked),
+        };
+        let seats = self.all();
+        let mut found: Vec<&Seat> = seats
+            .iter()
+            .filter(|seat| seat.name.eq_ignore_ascii_case(name))
+            .filter(|seat| game.is_none_or(|game| seat.game.eq_ignore_ascii_case(game)))
+            .collect();
+        if found.len() == 1 {
+            return Ok(found.remove(0).clone());
+        }
+        Err(found.iter().map(|seat| seat.label(&seats)).collect())
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, BTreeMap<SessionId, Seat>> {

@@ -86,6 +86,10 @@ Each character this Hydra runs, with its `level`. Where the level allows reading
 `game`, `lifecycle` (`ready`, `reconnecting`, ...) and `records` (whether its database exists
 yet).
 
+`character` is how every other tool names it: its name, or `GAME:Name` (`GS3:Nisugi`) when
+another running character has the same name on another game. Any tool takes either; a bare
+name that two games have is refused with the choices, never one picked for you.
+
 ## `state` `{ character }`
 
 One consistent read of the character, and the cursor to `wait` from. The name matches

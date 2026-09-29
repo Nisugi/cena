@@ -117,14 +117,14 @@ impl Agent {
     pub(crate) fn seat(
         &self,
         id: SessionId,
-        character: &str,
+        (game, character): (&str, &str),
         handle: &SessionHandle,
         observer: SessionObserver,
         (database, recording): (Option<PathBuf>, bool),
     ) {
         self.characters.seat(
             id,
-            character,
+            (game, character),
             observer,
             handle.agent_door(),
             database,

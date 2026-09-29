@@ -283,7 +283,7 @@ async fn an_mcp_client_reads_a_character_behind_the_token() {
     let (handle, observer) = stunned_on_look().await;
     let characters = Characters::default();
     let door = handle.agent_door();
-    characters.seat(SessionId(1), "Nisugi", observer, door, None, None);
+    characters.seat(SessionId(1), ("GS3", "Nisugi"), observer, door, None, None);
     handle.set_agent_level(Level::Observe);
     let stop = CancellationToken::new();
     let router = cena_agent::router(characters, "secret".to_owned(), &stop);
@@ -399,7 +399,14 @@ async fn seated() -> Option<(
     let (handle, observer) = stunned_on_look().await;
     let characters = Characters::default();
     let door = handle.agent_door();
-    characters.seat(SessionId(1), "Nisugi", observer.clone(), door, None, None);
+    characters.seat(
+        SessionId(1),
+        ("GS3", "Nisugi"),
+        observer.clone(),
+        door,
+        None,
+        None,
+    );
     let stop = CancellationToken::new();
     let router = cena_agent::router(characters, "secret".to_owned(), &stop);
     let client = Client::connect(router, "secret").await?;

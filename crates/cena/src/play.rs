@@ -361,7 +361,7 @@ impl Table {
         if let Some(agent) = &self.agent {
             agent.seat(
                 id,
-                character,
+                (game, character),
                 &hosted.handle,
                 hosted.observer.clone(),
                 (
