@@ -43,6 +43,7 @@
 //! frontend's rendering. [`LogLine`] carries the text and the stream, which is
 //! what a reader in 2030 needs, and no styling at all.
 
+pub mod archive;
 pub mod channel;
 pub mod feed;
 pub mod reader;

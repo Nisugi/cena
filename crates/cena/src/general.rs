@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 use cena_behavior::settings;
 use cena_session::SessionHandle;
 use cena_session::command::claimant;
+use cena_session::player_log::archive::Archive;
 use cena_session::player_log::feed::{LogSettings, SECTION as LOG_SECTION};
 use cena_session::player_log::{Capture, tap};
 use cena_session::settings_store::{self, SettingsFile};
@@ -157,17 +158,34 @@ fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
 }
 
 fn log_rows(log: &LogSettings) -> Vec<Row> {
+    let archive = Row {
+        key: ARCHIVE.to_owned(),
+        label: "Archive old days".to_owned(),
+        help: "Gzip each finished month or week (Eastern, as the game keeps time) into one file. \
+               Today's log stays plain text, and ;history reads archives as it reads the rest."
+            .to_owned(),
+        kind: RowKind::Choice(
+            [
+                (Archive::Monthly, "Every month"),
+                (Archive::Weekly, "Every week, Sunday to Saturday"),
+                (Archive::Off, "Never"),
+            ]
+            .iter()
+            .map(|(choice, called)| (choice.word().to_owned(), (*called).to_owned()))
+            .collect(),
+        ),
+        value: Value::Text(log.archive.unwrap_or_default().word().to_owned()),
+        here: log.archive.is_some(),
+        from: None,
+    };
     let default = Capture::default();
     let named = log
         .feeds
         .keys()
         .filter(|feed| FEEDS.iter().all(|(known, _)| known != feed))
         .map(|feed| (feed.as_str(), "a stream the file names"));
-    FEEDS
-        .iter()
-        .copied()
-        .chain(named)
-        .map(|(feed, what)| {
+    std::iter::once(archive)
+        .chain(FEEDS.iter().copied().chain(named).map(|(feed, what)| {
             toggle(
                 feed,
                 &format!("Log {feed}"),
@@ -175,8 +193,23 @@ fn log_rows(log: &LogSettings) -> Vec<Row> {
                 log.feeds.get(feed).copied(),
                 default.wants(feed),
             )
-        })
+        }))
         .collect()
+}
+
+/// The *Player log* page's key for how old days are kept, beside the feeds.
+const ARCHIVE: &str = "archive";
+
+/// How `login`'s (`GAME:Name`) closed days are kept, as its settings file
+/// says; the default when it says nothing or cannot be read, which is also
+/// what the page shows then.
+pub(crate) fn archive_choice(dir: &Path, login: &str) -> Archive {
+    crate::pages::who(login)
+        .ok()
+        .and_then(|(instance, name)| load(dir, instance, name).ok())
+        .and_then(|file| section::<LogSettings>(&file, LOG_SECTION).ok())
+        .and_then(|log| log.archive)
+        .unwrap_or_default()
 }
 
 fn record_rows(record: Record) -> Vec<Row> {
@@ -267,6 +300,23 @@ fn changed(
                     "off"
                 }
             )
+        }
+        (LOG, ARCHIVE) => {
+            let mut log: LogSettings = section(&file, LOG_SECTION)?;
+            log.archive = match to {
+                None => None,
+                Some(word) => Some(Archive::from_word(word).ok_or_else(|| {
+                    format!("`{word}` is not a choice: say monthly, weekly or off.")
+                })?),
+            };
+            put(&mut file, LOG_SECTION, &log)?;
+            match log.archive.unwrap_or_default() {
+                Archive::Off => "Old days stay plain text.".to_owned(),
+                choice => format!(
+                    "Old days are archived {}, from the next login.",
+                    choice.word()
+                ),
+            }
         }
         (LOG, feed) => {
             let mut log: LogSettings = section(&file, LOG_SECTION)?;
@@ -474,6 +524,32 @@ mod tests {
             value(&pages, GENERAL, "symbol"),
             Some(Value::Text(";".to_owned()))
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The archive choice: monthly until changed, saved where the login's
+    /// sweep reads it, a word that is not a choice refused, and back to
+    /// monthly when put back.
+    #[test]
+    fn the_archive_choice_is_monthly_until_changed_and_read_at_login() {
+        let dir = scratch("archive");
+        let login = format!("{DEFAULT_GAME_CODE}:Nisugi");
+        let pages = super::pages(&dir, prime(), "Nisugi");
+        assert_eq!(
+            value(&pages, LOG, ARCHIVE),
+            Some(Value::Text("monthly".to_owned()))
+        );
+        assert_eq!(archive_choice(&dir, &login), Archive::Monthly);
+
+        let kept = kept(&dir);
+        kept.change(LOG, ARCHIVE, Some("Weekly")).expect("a choice");
+        assert_eq!(archive_choice(&dir, &login), Archive::Weekly);
+        assert!(row(&super::pages(&dir, prime(), "Nisugi"), LOG, ARCHIVE).is_some_and(|r| r.here));
+        assert!(kept.change(LOG, ARCHIVE, Some("yearly")).is_err());
+        assert_eq!(archive_choice(&dir, &login), Archive::Weekly, "unchanged");
+
+        kept.change(LOG, ARCHIVE, None).expect("put back");
+        assert_eq!(archive_choice(&dir, &login), Archive::Monthly);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

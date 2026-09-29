@@ -334,8 +334,14 @@ async fn the_characters_own_settings_file_switches_feeds() {
     let _ = std::fs::remove_dir_all(&dir);
     let mut file = SettingsFile::new("Prime", "Nisugi");
     let feeds = [("inv".to_owned(), true), ("thoughts".to_owned(), false)].into();
-    file.set_section("player_log", &LogSettings { feeds })
-        .expect("set");
+    file.set_section(
+        "player_log",
+        &LogSettings {
+            feeds,
+            archive: None,
+        },
+    )
+    .expect("set");
     settings_store::save(&dir, &file).expect("save");
 
     let wire = format!(
@@ -375,8 +381,14 @@ async fn a_supervised_session_reads_the_settings_file_too() {
     let _ = std::fs::remove_dir_all(&dir);
     let mut file = SettingsFile::new("Prime", "Nisugi");
     let feeds = [("inv".to_owned(), true)].into();
-    file.set_section("player_log", &LogSettings { feeds })
-        .expect("set");
+    file.set_section(
+        "player_log",
+        &LogSettings {
+            feeds,
+            archive: None,
+        },
+    )
+    .expect("set");
     settings_store::save(&dir, &file).expect("save");
 
     let wire = format!("<app char=\"Nisugi\" game=\"Prime\" title=\"x\"/>\n{INV}");

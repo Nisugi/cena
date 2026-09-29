@@ -349,9 +349,21 @@ fn days(root: &Path, character: &str) -> std::io::Result<Vec<String>> {
         days.len(),
         writer::dir(root, character).display()
     )];
+    // A day may be two files (a cut where an Eastern week or month begins),
+    // or in an archive, where only the whole archive has a size.
+    let plain = writer::days(root, character)?;
     for day in days.iter().take(DAYS_SHOWN) {
-        let size = std::fs::metadata(writer::day_path(root, character, day)).map_or(0, |m| m.len());
-        lines.push(format!("  {day}  {:>6} KB", size.div_ceil(1024)));
+        let sizes: Vec<u64> = plain
+            .iter()
+            .filter(|path| writer::day_of(path).as_deref() == Some(day.as_str()))
+            .map(|path| std::fs::metadata(path).map_or(0, |m| m.len()))
+            .collect();
+        if sizes.is_empty() {
+            lines.push(format!("  {day}  archived"));
+        } else {
+            let size: u64 = sizes.iter().sum();
+            lines.push(format!("  {day}  {:>6} KB", size.div_ceil(1024)));
+        }
     }
     if days.len() > DAYS_SHOWN {
         lines.push(format!("  and {} more", days.len() - DAYS_SHOWN));

@@ -602,6 +602,7 @@ dependencies = [
  "cena-model",
  "cena-platform",
  "cena-protocol",
+ "flate2",
  "regex",
  "rusqlite",
  "serde",
