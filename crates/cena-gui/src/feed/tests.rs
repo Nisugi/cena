@@ -336,6 +336,9 @@ async fn the_live_prompt_settles_as_roundtime_ends() {
     let _ = script
         .events
         .send(observed(2, Event::Frame(Box::new(prompt))));
+    let _ = script
+        .events
+        .send(observed(3, Event::Prompt("R>".to_owned())));
     settle().await;
     let last = lock(&seat.story)
         .lines

@@ -145,10 +145,7 @@ fn banners_are_kept_a_while_and_only_the_newest_few() {
 }
 
 fn prompt(text: &str) -> Event {
-    Event::Frame(Box::new(Frame::Prompt {
-        time: "1000".to_owned(),
-        text: text.to_owned(),
-    }))
+    Event::Prompt(text.to_owned())
 }
 
 /// A prompt follows what the game said, and shows again when it changes
@@ -188,6 +185,35 @@ fn a_prompt_follows_what_the_game_said() {
         ]
     );
     assert_eq!(story.heard, 2, "a prompt is not a line heard");
+}
+
+/// A blank line earns no prompt: a chunk with nothing to read shows none
+/// unless the prompt changed (the author, 2026-09-29: *"throw away prompts
+/// that come in and do not have any visible text to show unless the prompt
+/// holds a change"*). And the story takes the prompt a viewer shows, not the
+/// game's frame, which comes before the player's Lich's lines.
+#[test]
+fn a_blank_line_or_a_bare_frame_earns_no_prompt() {
+    let mut story = Story::default();
+    for event in [
+        said("", "You swing."),
+        prompt(">"),
+        said("", "   "),
+        prompt(">"),
+        said("", ""),
+        prompt("R>"),
+        Event::Frame(Box::new(Frame::Prompt {
+            time: "1000".to_owned(),
+            text: "HR>".to_owned(),
+        })),
+    ] {
+        story.hear(&observed(0, event), None);
+    }
+    let prompts: Vec<String> = texts(&story)
+        .into_iter()
+        .filter(|text| text.ends_with('>'))
+        .collect();
+    assert_eq!(prompts, [">", "R>"], "after a blank line, only a change");
 }
 
 /// The live prompt drops its `R` once roundtime has run out, the game
