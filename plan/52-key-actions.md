@@ -7,7 +7,10 @@ thing we tackle. We need to come up with a list of actions that we should be abl
 those keybinds. Leaving them fully customizable of course."*
 
 This file is the list and the defaults, measured against what players already press, with
-the questions that are the author's (§6). Nothing here is built.
+the questions that are the author's (§6). The first seven were **ANSWERED the same day**
+(§6), which moved Tab to targeting, left Hydra's own actions without default keys, and
+added macro sets per character. Three follow from the answers (§6, 8-10). Nothing here is
+built.
 
 ---
 
@@ -58,9 +61,9 @@ Where they disagree, and what this file chooses:
 | Shift+PgUp/PgDn | a line | (Alt+PgUp/PgDn a line) | **Wrayth's** |
 | Ctrl+PgUp/PgDn | top and bottom | the next and last Find match | **Wrayth's**; Find keeps F3 |
 | Ctrl+R | rest mode (anti-idle) | resend the last command | **neither by default**: Ctrl+Enter resends, as Wrayth does |
-| Tab | cycle windows | cycle windows | cycle windows (§6 question 3) |
+| Tab / Shift+Tab | cycle windows | cycle windows | **the next and last target** (the author, §6 answer 3) |
 | Esc | not bound; Wizard clears the line; Genie stops scripts | clears Find | closes what is open, else clears the line |
-| Shift+Esc | pause the script | — | **stop** (`;stop`): Wrayth's key for "halt the automation" (§6 question 4) |
+| Shift+Esc | pause the script | — | **nothing**: Hydra's own actions get no default key (the author, §6) |
 
 **Vellum's lessons, kept:** one table of actions is the only source of truth (Vellum has
 two default sources that disagree: its code's fallback binds Ctrl+K and its shipped file
@@ -70,32 +73,54 @@ arrives beneath the keys.
 
 ## 2. The shape
 
-- **A key does one of three things**: sends lines, **puts text in the input** without
-  sending it, or **performs an action**. Wrayth has all three: `\r` sends, a macro without
-  it types (`Mnstr.xml`'s `prep 111`), and `{Action}` acts.
-- **Several lines, one key.** The author's own F keys send two and three commands
-  (`stance off\r610`, `stance off\rraise bow\rweapon barrage`). R10's rule holds per line:
-  a key sends a **list** of lines, each one command, in order.
-- **Written in the one file**, so a key is bound once:
+- **A macro is a key bound to one of three things** (the author, §6 answer 1: *"a macro
+  is a keybind to send one or more commands ... send to game, fill command input, or
+  perform hydra action"*): **send** one or more commands to the game, **fill** the command
+  input without sending, or **perform** a Hydra action. Wrayth has all three: `\r` sends,
+  a macro without it types (`Mnstr.xml`'s `prep 111`), and `{Action}` acts.
+- **Several commands, split as `VellumFE` splits them** (`reference/VellumFE/src/core/app_core/commands.rs:180-238`):
+  a send macro's text is cut at each `\r` into commands, each sent in order and each one
+  command, so R10's rule holds per command. Empty pieces are dropped. A piece that is
+  exactly `s` and a number of seconds (`s1.5`) waits that long before the rest, and waits
+  add up; nothing else in a piece is special. Unlike Vellum, a trailing `\r` means nothing:
+  the macro's kind, not its last character, says whether it is sent (Vellum's own book
+  and code disagree on this, `reference/VellumFE/book/src/customization/keybinds.md:20-24`
+  against `src/config/keybinds.rs:131-134`).
+- **Written in TOML**, where `\r` in a quoted string is the character itself:
 
   ```toml
   [keys]
-  F1 = "incant 610"                           # one line
-  F2 = ["stance off", "raise bow", "weapon barrage"]  # lines, in order
-  F3 = { type = "prep 111 " }                 # into the input, not sent
-  "Ctrl+Enter" = { action = "repeat_last" }   # an action
-  "Ctrl+F" = { action = "find" }
-  "Shift+Esc" = ""                            # a default unbound
+  F1 = "incant 610"                              # send: one command
+  F2 = "stance off\rraise bow\rweapon barrage"   # send: three, in order
+  F9 = "prep 118\rs1\rcast"                      # send, waiting a second
+  F3 = { fill = "prep 111 " }                    # into the input, not sent
+  "Ctrl+F" = { action = "find" }                 # a Hydra action
+  NumpadAdd = ""                                 # a default unbound
   ```
 
-- **Defaults live in the code, and the file holds only the player's changes.** The
-  *Keys* page shows every key in effect and whether it is the default or the player's,
-  as `plan/50` asked of every setting (*"the value in effect and where it came from"*).
-  An empty string unbinds a default. New defaults in a later Hydra reach players who
+- **Defaults live in the code** (§6 answer 2), and the files hold only what the player
+  added or changed. The *Keys* page shows every key in effect and where it came from, as
+  `plan/50` asked of every setting (*"the value in effect and where it came from"*). An
+  empty string unbinds a default. New defaults in a later Hydra reach every player who
   never changed that key.
+- **Macros are the character's, with a switch to make one global** (§6 answer 7: *"The
+  macro is character by default with a global toggle"*). A character's own are kept in
+  its own keys file beside its settings; the global ones in `keybinds.toml`, as today.
+- **Ten macro sets, 0 to 9, as Wrayth has.** One set is chosen at a time, per character,
+  and kept. **Hydra's defaults are always active unless a macro in the chosen set binds
+  the same key** (the author: *"Default macros are always active unless one of the macros
+  in your macro set overwrites it"*). For a key press, the first that binds the key wins:
+
+  1. the chosen set: the character's own macro, then a global one;
+  2. Hydra's defaults.
+
+  Whether set 0 is one more set or always active under the chosen one, as Wrayth's
+  *(default)* set appears to be, is §6 question 8.
 - **An action acts on the play window that has the keyboard.** Scrolling, Find and tabs
-  act on **the window in use**: the last window clicked in the play window, the story until
-  one is. It is marked, so the player sees what a key will act on.
+  act on **the window in use**: the window last clicked in the play window, the story
+  until one is (§6 answer 3: *"click only for choosing the window"*). It is marked, so the
+  player sees what a key will act on. `next_window` and `previous_window` exist for a
+  player who wants Wrayth's Tab back, with no default key.
 
 ## 3. The actions
 
@@ -136,9 +161,9 @@ bound should not look bindable.
 
 | Action | Does | Default |
 |---|---|---|
-| `next_window` / `previous_window` | make the next window the one in use | **Tab** / **Shift+Tab** |
+| `next_window` / `previous_window` | make the next window the one in use | none: a click chooses it (§6 answer 3) |
 | `next_tab` / `previous_tab` | the next tab of the window in use | Ctrl+Tab / Ctrl+Shift+Tab |
-| `next_unread_tab` | the first tab, anywhere in the play window, with lines unread | none (§6 question 5); Ctrl+U is the text box's |
+| `next_unread_tab` | the first tab, anywhere in the play window, with lines unread | none (§6 answer 5) |
 
 ### Targeting
 
@@ -147,21 +172,24 @@ The game says what may be attacked: the `dDBTarget` list, already read into the 
 
 | Action | Does | Default |
 |---|---|---|
-| `target_next` / `target_previous` | `target #<id>` of the next or last creature in the game's list, wrapping | Alt+] / Alt+[ (Vellum's, commented out in its file) |
-| `target_clear` | `target clear` | none; a line does it |
+| `target_next` / `target_previous` | `target #<id>` of the next or last creature in the game's list, wrapping | **Tab** / **Shift+Tab** (the author, §6 answer 3) |
+| `target_clear` | `target clear` | none; a macro does it |
 
 Vellum orders by where each creature is drawn on its creature field. Hydra has no field
-yet (`plan/49` Stage G), so the game's order is the one there is (§6 question 6).
+yet (`plan/49` Stage G), so the game's order is the one used (§6 answer 6).
 
 ### Hydra
 
-| Action | Does | Default |
-|---|---|---|
-| `stop` | `;stop`, as the top bar's Stop | **Shift+Esc** (Wrayth's *pause script*) |
-| `drawer_top` / `_bottom` / `_left` / `_right` | open or shut that drawer (`plan/49` Stage E) | Ctrl+Alt+Up / Down / Left / Right |
-| `character_1` … `character_9` | the play window of the hub's first to ninth character | Ctrl+1 … Ctrl+9 |
-| `settings` | the settings menu | Ctrl+, |
-| `lock` / `arrange` | the top bar's two switches | none |
+No default keys (the author: *"don't give default binds to those hydra actions"*).
+
+| Action | Does |
+|---|---|
+| `stop` | what the top bar's Stop does, `;stop`: the running behaviors stop (the hunt with its errands, travel, `;foreach` and `;multi`, each registered in `crates/cena/src/commands.rs`, `stops`). Not a script: see §6 question 9 |
+| `drawer_top` / `_bottom` / `_left` / `_right` | open or shut that drawer (`plan/49` Stage E) |
+| `character_1` … `character_9` | the play window of the hub's first to ninth character |
+| `settings` | the settings menu |
+| `lock` / `arrange` | the top bar's two switches |
+| `macro_set_0` … `macro_set_9` | choose that macro set for this character; Wrayth's are Alt+0 to Alt+9 (§6 question 10) |
 
 ### Lines bound by default (not actions)
 
@@ -175,43 +203,67 @@ F1 to F12, Alt and Ctrl with letters, and every other numpad chord are left to t
 
 ## 4. Importing a Wrayth key set
 
-`;keys import <Wrayth settings file>` reads a `<macros>` set (`<keys id name><k key
-action/>`), as `;trigger import` reads highlights (`plan/45` Stage 4): a `{Token}` as its
-action (`{HistoryPrev}` is `history_back`, `{RepeatLast}` is `repeat_last`, `{PageUp}` is
-`scroll_page_up`, `{CycleWindows}` is `next_window`...), text ending in `\r` as lines split
-on `\r`, text without it as `type`, and `\x` (clear the line first) dropped, since a sent
-line never touches the input. A token Hydra has no action for (`{MacroSet}`, `{Rest}`,
-`{ToggleMusic}`), `@` and `\?` are said, not silently lost. The fixture comes from
+`;keys import <Wrayth settings file>` reads its `<macros>`, as `;trigger import` reads
+highlights (`plan/45` Stage 4), each Wrayth set into the Hydra set of the same number
+(`<keys id name><k key action/>`): a `{Token}` as its action (`{HistoryPrev}` is
+`history_back`, `{RepeatLast}` is `repeat_last`, `{PageUp}` is `scroll_page_up`,
+`{CycleWindows}` is `next_window`, `{MacroSet}3` is `macro_set_3`...), text ending in
+`\r` as a send macro, text without it as a fill, `\p` as `s1`, and `\x` (clear the line
+first) dropped, since a sent command never touches the input. A token Hydra has no
+action for (`{Rest}`, `{ToggleMusic}`), `@` and `\?` are said, not silently lost. The fixture comes from
 `Mnstr.xml` or `NewLayoutWrayth.xml`: the committed Wrayth fixture is cut from
 `Nisugi3.xml`, which has no `<macros>` (`crates/cena-behavior/tests/fixtures/wrayth.xml`).
 
 ## 5. Steps, once §6 is answered
 
-1. The binding's three kinds, lists of lines, defaults in code with the file on top, and
-   the *Keys* page showing where each key comes from. The numpad defaults.
-2. Sending: `send_or_repeat`, the repeats, the history as actions, `clear_input`.
-3. The window in use, and scrolling.
-4. Tabs and windows.
-5. Find: the bar, its matches, and its keys.
-6. Targeting.
-7. Hydra's own: stop, drawers, characters, settings.
-8. `;keys import`.
+1. A macro's three kinds, a send macro split at `\r` with its waits, defaults in code
+   with the files on top, and the *Keys* page showing where each key comes from. The
+   numpad defaults.
+2. Macros per character with the global switch, and the ten sets.
+3. Sending: `send_or_repeat`, the repeats, the history as actions, `clear_input`.
+4. The window in use, and scrolling.
+5. Tabs and windows.
+6. Find: the bar, its matches, and its keys.
+7. Targeting, on Tab.
+8. Hydra's own: stop, drawers, characters, settings, the sets.
+9. `;keys import`.
 
-## 6. Open, for the author
+## 6. For the author
 
-1. **Several lines, one key, and `type`.** A key sending a list of lines, each one
-   command, and a key that only fills the input: yes? A pause between lines (Wrayth's
-   `\p`, Vellum's `s1.5`) is left out until asked for.
-2. **Defaults in code, the file holding only changes**, and an empty string unbinding
-   one: yes? The other way, writing a full file on first run as Vellum does, leaves every
-   later default out of every existing file.
-3. **Tab** makes the next window the one in use (Wrayth, Vellum), so Page Up, Find and
-   Ctrl+Tab act on it. Or should Tab do nothing, and the window in use be only the one
-   last clicked?
-4. **Shift+Esc stops everything Hydra is doing** on the character. Wrayth's key for it
-   pauses a script; stop is the nearest thing Hydra has. Right key, and stop rather than
-   pause?
-5. **`next_unread_tab`'s key.** Nothing agrees; Vellum leaves it unbound. Leave it so?
-6. **Target order**: the game's own list, until a creature field exists?
-7. **One set of keys for every character**, as today, or a character's own on top?
-   Wrayth has ten sets switched with Alt+0 to Alt+9; nobody has asked for that here.
+The first seven were asked 2026-09-28 and answered the same day, the author's words
+quoted.
+
+1. ~~Several commands, one key, and filling the input.~~ **ANSWERED**: *"yes, a macro is a
+   keybind to send one or more commands. You can take notes from vellum on sending
+   multiple lines and how to split them. Yes a keybind should have 3 modes, send to game,
+   fill command input, or perform hydra action."* §2 splits as Vellum does, with its wait.
+2. ~~Defaults in code.~~ **ANSWERED**: *"yes defaults can live in code"*.
+3. ~~Tab and the window in use.~~ **ANSWERED**: *"click only for choosing the window and
+   tab for target next, shift + tab for target previous"*. Also: *"I don't like tab for
+   picking the window in use, you can click to pick the window in use or change the
+   keybind to tab if that's what you want."*
+4. ~~Shift+Esc.~~ **ANSWERED**: *"I guess it could stop the behavior"*, and *"don't give
+   default binds to those hydra actions"*: `stop` stops the behaviors, with no key.
+5. ~~`next_unread_tab`'s key.~~ **ANSWERED**: none.
+6. ~~Target order.~~ **ANSWERED**: the game's list.
+7. ~~One set of keys or a character's own.~~ **ANSWERED**: *"macros should be per
+   character. You have the default set everyone gets, then they can add their own
+   macros. The macro is character by default with a global toggle. Then add in macro sets
+   like wrayth has. 0-9. Default macros are always active unless one of the macros in
+   your macro set overwrites it."*
+
+Following from those answers, open:
+
+8. **Set 0.** Is it one set among ten, chosen like the others, with only Hydra's defaults
+   under it? Or always active beneath the chosen set, as Wrayth's *(default)* set appears
+   to be (the author's exports keep the numpad and history there and the spells in set
+   3, which is chosen)? Always active means a player's own everyday keys, a numpad peer
+   say, need writing once; one among ten means they need writing into every set used.
+   Recommended: always active, so the order in §2 becomes the chosen set, then set 0,
+   then Hydra's defaults.
+9. **Scripts.** Hydra runs scripts now: a Ruby runner per character (`plan/46`) and the
+   player's own Lich (`plan/51`). `;stop` stops neither. Should the `stop` action stop the
+   behaviors only, as asked, or the character's scripts too?
+10. **Keys for the sets.** Choosing a set is a Hydra action, so it has no default key by
+    the rule above; Wrayth's players know Alt+0 to Alt+9. Leave them unbound, or give
+    these ten Wrayth's keys?
