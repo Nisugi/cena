@@ -274,34 +274,48 @@ pub fn lines(
 ///
 /// The words are not one of these.
 pub fn edit(profile: &mut CasterProfile, words: &[&str]) -> Result<String, String> {
+    // A name is kept in lower case and looked up in it (`lines`), whatever
+    // case it is typed in: `alias clear Boom` removed nothing and said it
+    // had, and a verb set for `Boom` was never found for `boom` (the review
+    // of 2026-09-29).
+    let key = |name: &str| name.to_ascii_lowercase();
     match words {
         ["alias", "clear", name] => {
-            profile.alias.remove(*name);
+            profile
+                .alias
+                .remove(&key(name))
+                .ok_or_else(|| format!("no alias {name}"))?;
             Ok(format!("removed alias {name}"))
         }
         ["alias", spell, name] => {
             let n: u16 = spell.parse().map_err(|_| format!("no spell {spell}"))?;
-            profile.alias.insert(name.to_ascii_lowercase(), n);
+            profile.alias.insert(key(name), n);
             Ok(format!("{name} casts {n}"))
         }
         ["verb", spell, "clear"] => {
-            profile.verbs.remove(*spell);
+            profile
+                .verbs
+                .remove(&key(spell))
+                .ok_or_else(|| format!("no verb is set for {spell}"))?;
             Ok(format!("{spell} casts with the default verb"))
         }
         ["verb", spell, verb] => {
             Verb::parse(verb).ok_or("the verbs are cast, channel and evoke")?;
-            profile.verbs.insert((*spell).to_owned(), (*verb).to_owned());
+            profile.verbs.insert(key(spell), (*verb).to_owned());
             Ok(format!("{spell} is sent with {verb}"))
         }
         ["stance", spell, "clear"] => {
-            profile.stance.remove(*spell);
+            profile
+                .stance
+                .remove(&key(spell))
+                .ok_or_else(|| format!("no stance is set for {spell}"))?;
             Ok(format!("{spell} takes no stance"))
         }
         ["stance", spell, stance] => {
             if !STANCES.contains(stance) {
                 return Err(format!("the stances are {}", STANCES.join(", ")));
             }
-            profile.stance.insert((*spell).to_owned(), (*stance).to_owned());
+            profile.stance.insert(key(spell), (*stance).to_owned());
             Ok(format!("{spell} is cast from {stance}"))
         }
         ["set", option, value @ ("on" | "off")] => {

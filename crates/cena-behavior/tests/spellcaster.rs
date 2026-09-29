@@ -93,3 +93,37 @@ fn the_menus_table_is_every_setting() {
         cena_behavior::settings::names(cena_behavior::spellcaster::TABLE)
     );
 }
+
+/// A name is one name in any case: set, used and cleared.
+#[test]
+fn an_alias_and_its_verb_are_found_and_cleared_in_any_case() {
+    let state = GameState::default();
+    let mut profile = CasterProfile::default();
+    assert!(edit(&mut profile, &["alias", "901", "Boom"]).is_ok());
+    assert!(edit(&mut profile, &["verb", "Boom", "evoke"]).is_ok());
+    assert!(edit(&mut profile, &["stance", "BOOM", "offensive"]).is_ok());
+    assert_eq!(
+        lines(&profile, &state, &["boom"]),
+        Ok(vec![
+            "stance offensive".to_owned(),
+            "incant 901 evoke".to_owned(),
+            "stance guarded".to_owned()
+        ]),
+        "the verb and the stance set for Boom are boom's"
+    );
+    assert!(edit(&mut profile, &["stance", "Boom", "clear"]).is_ok());
+    assert!(edit(&mut profile, &["verb", "bOOm", "clear"]).is_ok());
+    assert_eq!(
+        lines(&profile, &state, &["Boom"]),
+        Ok(vec!["incant 901".to_owned()])
+    );
+    assert!(edit(&mut profile, &["alias", "clear", "BOOM"]).is_ok());
+    assert!(
+        lines(&profile, &state, &["boom"]).is_err(),
+        "cleared, not said to be and left"
+    );
+    assert!(
+        edit(&mut profile, &["alias", "clear", "boom"]).is_err(),
+        "nothing to clear is said so"
+    );
+}
