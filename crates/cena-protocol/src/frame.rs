@@ -44,7 +44,7 @@
 //! to handshake with. It has no variant of its own. (CORRECTED 2026-09-29:
 //! this said it fell through to [`Frame::UnknownTag`]. It is in
 //! `KNOWN_WIRE_TAGS` and `parser/thin.rs` types it as
-//! [`Frame::WindowHints`], since the Lich relay of `plan/51` can send it.)
+//! [`Frame::WindowHints`].)
 //!
 //! # The arithmetic, stated so it can be checked
 //!
