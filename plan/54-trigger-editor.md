@@ -1,6 +1,6 @@
 # 54 — The trigger editor
 
-**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`.**
+**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Step 1 BUILT 2026-09-29.**
 
 M8 built triggers whole (`plan/45`) and left one door: the file, `;trigger`, and a Wrayth
 import. The author, choosing one file (`plan/45` §1 row 3): *"players won't be accessing the
@@ -89,6 +89,17 @@ settings menu's pages do.
    the hub; the list by category with each category's switch and count, search, a trigger's
    own switch, the kinds' switches, the refused with their reasons, a held send with
    *Approve*.
+
+   > **BUILT 2026-09-29.** `crates/cena-ui/src/triggers.rs` (`Book`, `Entry`, `Change`);
+   > `HubRequest::Triggers` and `HubRequest::Trigger`; the binary's
+   > `crates/cena/src/triggers/book.rs` reads the file into the book and makes a change
+   > through `edit.rs`, then tells every running character, as "the Triggers window",
+   > so each reads the file again (`Changes`, `plan/45` Stage 6). The writer's list gained
+   > each trigger's line of what it does, its held send and its origin, and
+   > `edit::switches` reads the master switches. The window: `crates/cena-gui/src/triggers.rs`
+   > and `app/triggers.rs`, placed as every window is (`placement.rs`); *Triggers* beside
+   > *Settings* on the hub and the play window. Removing asks again first. Ten GUI images
+   > changed, each only by the new button.
 2. **The form.** When (text or regex, match case, whole words, stream; an event, with its
    names; a condition's guard words, with the vocabulary offered; only-if), Do (every response
    of `Rule`, the line's greyed for a condition), For whom (everyone or named characters, and

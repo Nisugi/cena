@@ -49,6 +49,24 @@ pub struct Listed {
     pub enabled: bool,
     /// Why it cannot be used, when it cannot.
     pub refused: Option<String>,
+    /// What it watches and what it does, in a line: `"You are stunned" ->
+    /// look, sound` (the trigger editor's list, `plan/54` step 1).
+    pub summary: String,
+    /// Its send, while it waits for the player's approval: it came from
+    /// elsewhere (`plan/45` §1 row 1).
+    pub held: Option<String>,
+    /// Where it came from, when an import brought it.
+    pub origin: Option<String>,
+}
+
+/// The master switches (`plan/45` §5a): each category and each kind of
+/// response, on or off. A category no switch names is on.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Switches {
+    /// Every category a trigger has or a switch names, sorted.
+    pub categories: Vec<(String, bool)>,
+    /// Each of [`KINDS`], in its order.
+    pub kinds: Vec<(&'static str, bool)>,
 }
 
 /// A new trigger `name` on `words`, making them bold: a trigger must do
@@ -217,10 +235,99 @@ pub fn list(text: &str) -> Result<Vec<Listed>, String> {
                 .iter()
                 .find(|refused| refused.name == *name)
                 .map(|refused| refused.why.clone()),
+            summary: summary(value),
+            held: loaded
+                .held
+                .iter()
+                .any(|held| held.name == *name)
+                .then(|| value.get("send").and_then(Value::as_str).map(str::to_owned))
+                .flatten(),
+            origin: value
+                .get("origin")
+                .and_then(Value::as_str)
+                .map(str::to_owned),
         })
         .collect();
     listed.sort_by(|a, b| (&a.category, &a.name).cmp(&(&b.category, &b.name)));
     Ok(listed)
+}
+
+/// The master switches, as the file sets them.
+///
+/// # Errors
+///
+/// The file is not TOML.
+pub fn switches(text: &str) -> Result<Switches, String> {
+    let (_, table) = settings::split(text)?;
+    let set = |name: &str| -> std::collections::BTreeMap<String, bool> {
+        table
+            .get(name)
+            .and_then(Value::as_table)
+            .map(|switches| {
+                switches
+                    .iter()
+                    .filter_map(|(key, on)| on.as_bool().map(|on| (key.clone(), on)))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let mut categories = set("categories");
+    if let Some(Value::Table(triggers)) = table.get("trigger") {
+        for trigger in triggers.values() {
+            let category = category(trigger);
+            if !category.is_empty() {
+                categories.entry(category.to_owned()).or_insert(true);
+            }
+        }
+    }
+    let kinds = set("responses");
+    Ok(Switches {
+        categories: categories.into_iter().collect(),
+        kinds: KINDS
+            .iter()
+            .map(|kind| (*kind, kinds.get(*kind).copied().unwrap_or(true)))
+            .collect(),
+    })
+}
+
+/// What a trigger's table watches and does, in a line.
+fn summary(trigger: &Value) -> String {
+    let get = |key: &str| trigger.get(key);
+    let words = |value: &Value| match value {
+        Value::String(text) => text.clone(),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| {
+                item.as_str()
+                    .map_or_else(|| item.to_string(), str::to_owned)
+            })
+            .collect::<Vec<_>>()
+            .join(" and "),
+        other => other.to_string(),
+    };
+    let mut when = Vec::new();
+    if let Some(text) = get("text") {
+        when.push(format!("\"{}\"", words(text)));
+    }
+    if let Some(regex) = get("regex") {
+        when.push(format!("/{}/", words(regex)));
+    }
+    if let Some(event) = get("event") {
+        when.push(format!("on {}", words(event)));
+    }
+    if let Some(condition) = get("condition") {
+        when.push(format!("when {}", words(condition)));
+    }
+    let does: Vec<&str> = KINDS
+        .iter()
+        .copied()
+        .filter(|kind| match get(kind) {
+            Some(Value::Boolean(on)) => *on,
+            Some(_) => true,
+            None => false,
+        })
+        .collect();
+    format!("{} -> {}", when.join(" "), does.join(", "))
 }
 
 /// What an import did to the file.

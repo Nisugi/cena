@@ -52,6 +52,8 @@ pub enum HubAction {
     Open(u32),
     /// Open the settings menu (`plan/50` §7 step 1).
     Settings,
+    /// Open the trigger editor (`plan/54`).
+    Triggers,
     /// Switch this session's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(u32, bool),
     /// Open this session's log window (`plan/25` step 8).
@@ -145,6 +147,9 @@ impl Hub {
                 let shut = ui.button("Shut down");
                 if ui.button("Settings").clicked() {
                     asked = Some(HubAction::Settings);
+                }
+                if ui.button("Triggers").clicked() {
+                    asked = Some(HubAction::Triggers);
                 }
                 if shut.clicked() {
                     if playing {

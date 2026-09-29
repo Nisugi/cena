@@ -179,3 +179,33 @@ fn approve_names_the_line_it_lets_send() {
             .contains("sends nothing")
     );
 }
+
+/// The trigger editor's list (`plan/54` step 1): what each trigger watches
+/// and does in a line, a send waiting on approval, where it came from; and
+/// every category and kind with its switch.
+#[test]
+fn the_list_says_what_each_does_and_the_switches_are_read() {
+    let text = "[categories]\nIgnores = false\n\n[responses]\nsound = false\n\n\
+                [trigger.theirs]\ncategory = 'Combat'\ntext = 'webbed'\nsend = 'stand'\norigin = 'a shared file'\n\n\
+                [trigger.spam]\ncategory = 'Ignores'\nregex = 'gestures'\nsquelch = true\n\n\
+                [trigger.low]\ncondition = '!health_at_least 30'\nflag = { name = 'low' }\n";
+    let listed = edit::list(text).unwrap();
+    let theirs = listed.iter().find(|row| row.name == "theirs").unwrap();
+    assert_eq!(theirs.summary, "\"webbed\" -> send");
+    assert_eq!(theirs.held.as_deref(), Some("stand"));
+    assert_eq!(theirs.origin.as_deref(), Some("a shared file"));
+    let spam = listed.iter().find(|row| row.name == "spam").unwrap();
+    assert_eq!(spam.summary, "/gestures/ -> squelch");
+    assert_eq!(spam.held, None);
+    let low = listed.iter().find(|row| row.name == "low").unwrap();
+    assert_eq!(low.summary, "when !health_at_least 30 -> flag");
+
+    let switches = edit::switches(text).unwrap();
+    assert_eq!(
+        switches.categories,
+        [("Combat".to_owned(), true), ("Ignores".to_owned(), false)]
+    );
+    assert!(switches.kinds.contains(&("sound", false)));
+    assert!(switches.kinds.contains(&("look", true)));
+    assert_eq!(switches.kinds.len(), edit::KINDS.len());
+}
