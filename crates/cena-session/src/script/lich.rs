@@ -38,9 +38,12 @@
 //!   Lich's hooks, as a Lich script's `put` never meets them: an alias
 //!   turning a line into a `;multi` of itself would otherwise never end.
 //!
-//! The symbol both use (`plan/51` §6, question 3): *"if they're running lich
-//! would probably change hydra's command character to . or something"*; until
-//! then the line is Hydra's, and Lich's commands are out of reach.
+//! Both symbols start as `;` (Hydra's [`DEFAULT_SYMBOL`]), and Hydra's is
+//! tried first, so while they are the same a line with `;` is Hydra's and
+//! Lich's commands are out of reach; the relay warns of it as Lich starts. A
+//! player running Lich gives Hydra another (`plan/51` §6, question 3): *"if
+//! they're running lich would probably change hydra's command character to
+//! . or something"*.
 //!
 //! # Kept up, and let go
 //!

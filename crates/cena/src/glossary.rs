@@ -97,6 +97,10 @@
 //!   runner**, the process that runs one character's scripts
 //!   ([`Runners`](cena_agent::scripts::Runners)). Say "script runner" for the
 //!   second.
+//! - **relay** is `;to` and `;all`, a line typed on one character and sent
+//!   on another ([`relay`](crate::relay)), and the **Lich relay**, the
+//!   player's own Lich run against Hydra's connection
+//!   ([`cena_agent::lich`]). Say "the Lich relay" for the second.
 //!
 //! # The wire and the model
 //!
@@ -256,7 +260,9 @@
 //!
 //! `plan/46`, M7b: the player's own programs, out of process, in their own
 //! language. A script is not a behavior, which is Hydra's own and curated,
-//! and not an agent, which has a level and a denylist.
+//! and not an agent, which has a level and a denylist. The player's own Lich
+//! is the other way their scripts run: through the Lich relay (`plan/51`),
+//! Lich's scripts in Lich, with Hydra keeping the connection.
 //!
 //! | Term | Means | Not |
 //! |---|---|---|
@@ -267,6 +273,9 @@
 //! | **Hook** | a script's say in what the player is shown of a line (a **display hook**) or what the player's typing becomes (an **input hook**): Lich's `DownstreamHook` and `UpstreamHook`, answered by its script runner within [`HOOK_DEADLINE`](cena_session::script::HOOK_DEADLINE), past which the line goes as it came. Only the showing and the typing wait on one ([`script::Door::hook_lines`](cena_session::script::Door::hook_lines), [`hook_typing`](cena_session::script::Door::hook_typing)) | trigger, which is the player's own; squelch, which a trigger does |
 //! | **Checker** | what reads one of the player's scripts and says which of its lines will not work under Hydra, and why, by Ruby's own parser against the runner's own names: `;scripts check`, [`scripts::checker`](cena_agent::scripts::checker). Run over both script collections, it made `inventory/14-what-runs.md` | census, which measured the collections for `plan/46` from Python |
 //! | **Script door** | the only way a script runner acts on a session: listen, send a line as typed, say, start a built-in, and hook what is shown and typed ([`script::Door`](cena_session::script::Door)); `cena-agent` holds it and never the handle | door alone, which is the agent's and checks a level |
+//! | **Lich relay** | the player's own Lich for one character, off until `;lich on`: Hydra runs it in pipe mode against a loopback port it holds and keeps the game's connection, hands it the game's bytes and what the player types, sends its lines as [`Origin::Lich`](cena_session::Origin::Lich), and shows what it shows in the game's place ([`cena_agent::lich`], [`script::lich`](cena_session::script::lich), `plan/51`) | relay alone, which is `;to` and `;all`; a script runner, which is Hydra's Ruby and not the player's Lich |
+//! | **Lich door** | the only way the player's Lich acts on a session: the game's bytes copied to it, the lines typed for it, its lines sent, and what it showed carried back ([`LichDoor`](cena_session::script::lich::LichDoor)) | script door |
+//! | **Lich's symbol** | `;` ([`LICH_SYMBOL`](cena_session::script::lich::LICH_SYMBOL)): a line starting with it is the player's Lich's, never the game's. Hydra's own command symbol also starts as `;` and is tried first, so a player running Lich gives Hydra another, `.` | the command symbol, which is Hydra's |
 //!
 //! # Names
 //!
