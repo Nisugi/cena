@@ -13,8 +13,10 @@
 //! Ctrl with an Enter repeats the last command and Alt the one before it,
 //! Up and Down walk what was typed, and Escape clears the input. The window
 //! in use scrolls with the page keys (step 4): a page, with Shift a line,
-//! with Ctrl to the oldest or newest line. Each later step of the plan adds
-//! the keys of the actions it builds.
+//! with Ctrl to the oldest or newest line. Ctrl+Tab turns the tabs of the
+//! window in use, with Shift back (step 5); choosing the window has no key,
+//! a click chooses it (§6 answer 3). Each later step of the plan adds the
+//! keys of the actions it builds.
 
 use std::collections::BTreeMap;
 
@@ -68,6 +70,12 @@ const SCROLLING: [(&str, u8, Action); 8] = [
     ("PageDown", CTRL, Action::ScrollBottom),
 ];
 
+/// The tabs' keys, and the modifiers held.
+const TABS: [(&str, u8, Action); 2] = [
+    ("Tab", CTRL, Action::NextTab),
+    ("Tab", CTRL | SHIFT, Action::PreviousTab),
+];
+
 /// Every key Hydra binds, and what each does.
 pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     let chord = |key: &str, held: u8| Chord {
@@ -82,7 +90,7 @@ pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     for (key, line) in MARKS {
         keys.insert(chord(key, 0), Macro::Send(line.to_owned()));
     }
-    for (key, held, action) in SENDING.into_iter().chain(SCROLLING) {
+    for (key, held, action) in SENDING.into_iter().chain(SCROLLING).chain(TABS) {
         keys.insert(chord(key, held), Macro::Act(action));
     }
     for set in 0..super::SETS {
@@ -106,8 +114,8 @@ mod tests {
         let defaults = defaults();
         assert_eq!(
             defaults.len(),
-            52,
-            "eleven walks, eleven peers, four marks, eight sending, eight scrolling, ten sets"
+            54,
+            "eleven walks, eleven peers, four marks, eight sending, eight scrolling, two tabs, ten sets"
         );
         for (chord, made) in &defaults {
             let written = chord.written();

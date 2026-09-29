@@ -65,6 +65,16 @@ pub enum Action {
     ScrollTop,
     /// To its newest line.
     ScrollBottom,
+    /// Make the next window the one in use (`plan/52` step 5).
+    NextWindow,
+    /// The window before.
+    PreviousWindow,
+    /// Show the next tab of the window in use's stack.
+    NextTab,
+    /// The tab before.
+    PreviousTab,
+    /// Show the first tab, anywhere in the play window, with lines unread.
+    NextUnreadTab,
 }
 
 /// Each set's action's name in the keybinds file.
@@ -97,7 +107,7 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 29] = [
         Self::SendOrRepeat,
         Self::RepeatLast,
         Self::RepeatSecondLast,
@@ -110,6 +120,11 @@ impl Action {
         Self::ScrollLineDown,
         Self::ScrollTop,
         Self::ScrollBottom,
+        Self::NextWindow,
+        Self::PreviousWindow,
+        Self::NextTab,
+        Self::PreviousTab,
+        Self::NextUnreadTab,
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -143,6 +158,11 @@ impl Action {
             Self::ScrollLineDown => "scroll_line_down",
             Self::ScrollTop => "scroll_top",
             Self::ScrollBottom => "scroll_bottom",
+            Self::NextWindow => "next_window",
+            Self::PreviousWindow => "previous_window",
+            Self::NextTab => "next_tab",
+            Self::PreviousTab => "previous_tab",
+            Self::NextUnreadTab => "next_unread_tab",
         }
     }
 
@@ -165,6 +185,11 @@ impl Action {
             Self::ScrollLineDown => "Scroll forward a line",
             Self::ScrollTop => "Scroll to the oldest line",
             Self::ScrollBottom => "Scroll to the newest line",
+            Self::NextWindow => "Use the next window",
+            Self::PreviousWindow => "Use the window before",
+            Self::NextTab => "Show the next tab",
+            Self::PreviousTab => "Show the tab before",
+            Self::NextUnreadTab => "Show a tab with lines unread",
         }
     }
 

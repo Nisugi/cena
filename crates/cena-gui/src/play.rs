@@ -174,6 +174,9 @@ pub(crate) struct Play {
     /// which the scrolling keys act on (`plan/52` step 4). The story until
     /// one is, or once the one clicked is gone.
     in_use: Option<u32>,
+    /// The tabs not showing that have lines unread, by placed id, in the
+    /// order they were drawn: what `next_unread_tab` shows (step 5).
+    unread_tabs: Vec<u32>,
 }
 
 /// Lines of history kept for up and down.
@@ -218,6 +221,7 @@ impl Play {
             back: None,
             filled: None,
             in_use: None,
+            unread_tabs: Vec::new(),
         }
     }
 
@@ -341,6 +345,8 @@ impl Play {
         let response = ui.add(
             egui::TextEdit::singleline(&mut self.input)
                 .id(id)
+                // Tab is the keys', never egui's to move the keyboard on.
+                .lock_focus(true)
                 .hint_text("Type a command")
                 .desired_width(f32::INFINITY),
         );

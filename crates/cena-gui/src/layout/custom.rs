@@ -286,8 +286,63 @@ pub(crate) fn tabs_and_body(at: Rect, tabs: usize) -> (Vec<Rect>, Rect) {
         .collect();
     (rects, body)
 }
-/// Every widget placed in a layout (moved here from `layout.rs` at its cap).
+/// Every widget placed in a layout, and its tabs turned (moved here from
+/// `layout.rs` at its cap).
 impl Layout {
+    /// Every widget showing, in the order the windows are drawn: a
+    /// standalone one, and the tab showing in each cell.
+    pub(crate) fn showing(&self) -> Vec<u32> {
+        self.holders
+            .iter()
+            .flat_map(|holder| match &holder.holds {
+                Holds::One(placed) => vec![placed.id],
+                Holds::Custom(custom) => custom
+                    .cells
+                    .iter()
+                    .filter_map(|cell| cell.shown().map(|placed| placed.id))
+                    .collect(),
+            })
+            .collect()
+    }
+
+    /// The cell whose tabs hold widget `placed`, and where in them it is.
+    fn cell_of(&mut self, placed: u32) -> Option<(&mut Cell, usize)> {
+        self.holders
+            .iter_mut()
+            .filter_map(|holder| match &mut holder.holds {
+                Holds::Custom(custom) => Some(custom),
+                Holds::One(_) => None,
+            })
+            .flat_map(|custom| custom.cells.iter_mut())
+            .find_map(|cell| {
+                let at = cell.tabs.iter().position(|tab| tab.id == placed)?;
+                Some((cell, at))
+            })
+    }
+
+    /// The tab after widget `placed` in its stack shown, or the one before
+    /// (`forward` or not), round from the last to the first: which shows
+    /// now. `None` for a widget in no custom window.
+    pub(crate) fn turn_tab(&mut self, placed: u32, forward: bool) -> Option<u32> {
+        let (cell, at) = self.cell_of(placed)?;
+        let tabs = cell.tabs.len();
+        cell.showing = if forward {
+            (at + 1) % tabs
+        } else {
+            (at + tabs - 1) % tabs
+        };
+        cell.shown().map(|shown| shown.id)
+    }
+
+    /// Show the tab that is widget `placed`; whether it is one.
+    pub(crate) fn show_tab(&mut self, placed: u32) -> bool {
+        let Some((cell, at)) = self.cell_of(placed) else {
+            return false;
+        };
+        cell.showing = at;
+        true
+    }
+
     /// Every widget placed here, standalone or in a custom window, showing
     /// or a tab behind another.
     pub(crate) fn placed(&self) -> Vec<&Placed> {

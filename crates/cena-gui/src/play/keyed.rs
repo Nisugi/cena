@@ -79,7 +79,50 @@ impl Play {
             Action::ScrollLineDown => scroll(Scroll::LineDown),
             Action::ScrollTop => scroll(Scroll::Top),
             Action::ScrollBottom => scroll(Scroll::Bottom),
+            Action::NextWindow => self.next_window(true),
+            Action::PreviousWindow => self.next_window(false),
+            Action::NextTab => self.turn_tab(true),
+            Action::PreviousTab => self.turn_tab(false),
+            Action::NextUnreadTab => self.unread_tab(),
             Action::Stop | Action::Settings | Action::Set(_) => None,
         }
+    }
+
+    /// The window after the one in use made the one in use, or the one
+    /// before (`forward` or not), round the windows showing (step 5).
+    fn next_window(&mut self, forward: bool) -> Option<String> {
+        let showing = self.layout.as_ref()?.showing();
+        let at = self
+            .in_use()
+            .and_then(|id| showing.iter().position(|shown| *shown == id))
+            .unwrap_or(0);
+        let count = showing.len();
+        let next = if forward {
+            (at + 1) % count.max(1)
+        } else {
+            (at + count - 1) % count.max(1)
+        };
+        self.in_use = showing.get(next).copied();
+        None
+    }
+
+    /// The next tab of the window in use's stack shown, or the one before;
+    /// it is the window in use now.
+    fn turn_tab(&mut self, forward: bool) -> Option<String> {
+        let in_use = self.in_use()?;
+        let shown = self.layout.as_mut()?.turn_tab(in_use, forward)?;
+        self.in_use = Some(shown);
+        self.save();
+        None
+    }
+
+    /// The first tab with lines unread shown, and in use.
+    fn unread_tab(&mut self) -> Option<String> {
+        let tab = *self.unread_tabs.first()?;
+        if self.layout.as_mut()?.show_tab(tab) {
+            self.in_use = Some(tab);
+            self.save();
+        }
+        None
     }
 }

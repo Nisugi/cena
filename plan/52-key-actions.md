@@ -375,6 +375,27 @@ The author: *"do steps 4-10"*. The window in use, and §3's scrolling table:
   room is pressed, then the room scrolling and the story not (`play/tests/in_use.rs`).
   Ten mutants, all caught.
 
+### Step 5, BUILT 2026-09-29
+
+§3's tabs and windows:
+
+- **`next_tab` and `previous_tab`** (Ctrl+Tab, Ctrl+Shift+Tab) turn the stack the window
+  in use is a tab of, round from the last to the first, and the tab shown is in use
+  (`layout/custom.rs`, `Layout::turn_tab`). A widget alone turns to itself.
+- **`next_window` and `previous_window`**, with no key (§6 answer 3), make the next
+  widget showing the one in use, in the order the windows are drawn, round
+  (`Layout::showing`).
+- **`next_unread_tab`**, with no key (§6 answer 5), shows the first tab not showing that
+  counts lines unread, as drawn, and puts it in use.
+- **Tab never moves the keyboard off the command input**: egui moves focus on Tab and
+  Shift+Tab before any of Hydra's code sees the key (`egui/src/memory/mod.rs:580` in the
+  fork), so the input keeps it (`lock_focus`), and Tab is the keys' alone (step 7's
+  targeting).
+- *Tests:* a stack turned both ways and in use, back from the first tab of three to the
+  last, the window after and before, the tab with lines unread
+  (`play/tests/tabs.rs`). Five mutants: four caught, and the fifth, a stack of one not
+  turned, was equivalent and its guard removed.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

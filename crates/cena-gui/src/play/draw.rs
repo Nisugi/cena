@@ -37,6 +37,8 @@ pub(super) struct Drawing<'a> {
     /// The widget pressed in this frame, by placed id: the window in use
     /// from now.
     pub(super) pressed: Option<u32>,
+    /// The tabs not showing that have lines unread, by placed id.
+    pub(super) unread: Vec<u32>,
 }
 
 impl Drawing<'_> {
@@ -229,7 +231,10 @@ pub(super) fn holder(
                 for (index, (tab, rect)) in cell.tabs.iter().zip(tabs).enumerate() {
                     let showing = index == cell.showing;
                     let name = match unread(drawing.read, tab, &drawing.seen).filter(|_| !showing) {
-                        Some(unread) => format!("{} {unread}", tab.widget.name()),
+                        Some(unread) => {
+                            drawing.unread.push(tab.id);
+                            format!("{} {unread}", tab.widget.name())
+                        }
                         None => tab.widget.name().into_owned(),
                     };
                     let mut child =
