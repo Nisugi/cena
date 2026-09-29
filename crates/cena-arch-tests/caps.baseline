@@ -429,3 +429,7 @@ crates/cena-session/src/script.rs 350
 # is the player's Lich's door (plan/51, the relay); what Lich shows is script/lich/text.rs,
 # and what a Lich started late is handed, script/lich/kept.rs. 500 lines, so 500 + 50.
 crates/cena-session/src/script/lich.rs 550
+# NEW SPLIT PARENT, 2026-09-28, capped at birth (plan/52 step 1). crates/cena-gui/src/app/tests.rs
+# is the window's tests, the keys' moved to app/tests/pressed.rs when macros took it past 800:
+# 677 lines, so 750.
+crates/cena-gui/src/app/tests.rs 750

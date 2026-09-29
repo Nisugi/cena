@@ -33,6 +33,7 @@ mod widget;
 
 pub use app::{App, TITLE, run};
 pub use hub::{CardWidth, Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
-pub use keys::page::{KeyChange, KeysView};
+pub use keys::page::{KeyChange, KeyRow, KeysView};
+pub use keys::{Action, Macro};
 pub use menu::{Menu, MenuAsked, MenuView, roster_name, typed};
 pub use sessions::Sessions;

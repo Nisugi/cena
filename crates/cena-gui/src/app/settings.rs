@@ -16,7 +16,7 @@ impl App {
             return;
         }
         let own = [self.own.page()];
-        let bound = self.keys.listed();
+        let bound = self.keys.rows();
         let widgets = self
             .shown_play()
             .map(|session| {

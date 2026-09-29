@@ -245,6 +245,38 @@ action for (`{Rest}`, `{ToggleMusic}`), `@` and `\?` are said, not silently lost
 8. Hydra's own: stop, drawers, characters, settings, the sets.
 9. `;keys import`.
 
+### Step 1, BUILT 2026-09-28
+
+The author: *"go for it"*. In `crates/cena-gui/src/keys/`:
+
+- **What a key does** (`binding.rs`): `Macro::Send`, `Fill` or `Act`. A send macro is cut
+  at each `\r` (a line end too, which a TOML multi-line string holds) into commands, each
+  checked as one line, empty pieces dropped; `s` and a number of seconds is a wait, up to
+  a minute, so a slip (`s600`) cannot hold a character's commands. Nothing sends unless a
+  command is in it. `s` alone is `south`, not a wait.
+- **Actions arrive with their steps.** Step 1 has two, `stop` and `settings`, what the top
+  bar's buttons ask; the rest are named in the step that makes them do something, so the
+  file never takes an action that does nothing.
+- **Hydra's defaults in the code** (`defaults.rs`): the numpad walks, Shift with it
+  peers, and `+ - * /` are `look`, `info`, `exp`, `health`, 26 keys in all. The file holds
+  only changes (`keys.rs`, `Keybinds`), `""` unbinding a default; the writer writes `""`
+  when a default is removed or moved away, and deletes the player's line when it is
+  restored (`write.rs`).
+- **The *Keys* page** (`page.rs`) lists every key in effect, Hydra's among them: its kind,
+  what it does, where that came from in a word (*yours*, *Hydra's*, *changed*,
+  *unbound*, Hydra's default when the pointer rests on it), and *Restore* and *Remove*.
+  A command break is typed `\r`, as Wrayth's and `VellumFE`'s players write it. *Add a
+  key* moved above the list, which Hydra's own keys make long.
+- **Done by the app** (`crates/cena-gui/src/app/keyed.rs`): commands sent on the window's
+  character as if typed, those after a wait kept and sent when due, a frame asked for
+  then; a fill puts its text in the command input with the cursor at the end
+  (`Play::fill`); an action asks what the window's button asks.
+- **To measure live**: whether Shift with a numpad key reaches Hydra as Shift on Windows
+  with NumLock on (§3); nothing here can.
+- *Tests:* the macro's cutting and kinds, the defaults all ones the file would take, the
+  file over the defaults, the writer's `""` and restore, the waits, a fill and an action
+  pressed in the app, the page's *Restore* and *Remove*. Eight mutants, all caught.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

@@ -200,39 +200,6 @@ fn windows_drawn_twice(events: &Given) -> egui::Context {
     context
 }
 
-/// A bound key pressed on a frame egui draws twice still sends its line:
-/// the key is in the first pass alone, and what that pass asked was lost
-/// with it.
-#[test]
-fn a_key_on_a_frame_drawn_twice_still_sends() {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .build()
-        .expect("a runtime");
-    let sessions = Sessions::new(runtime.handle().clone());
-    let seat = sessions.seat_for_test(handle(), "Ashryn");
-    let mut app = App::new(sessions);
-    app.keys = Keybinds::read("[keys]\nF5 = \"look\"\n").0;
-    let press = egui::Event::Key {
-        key: egui::Key::F5,
-        physical_key: None,
-        pressed: true,
-        repeat: false,
-        modifiers: egui::Modifiers::NONE,
-    };
-    let play = egui::ViewportId::from_hash_of(("play", seat.id.0));
-    let context = windows_drawn_twice(&Arc::new(std::sync::Mutex::new(Some((play, vec![press])))));
-    let _ = context.run_ui(egui::RawInput::default(), |ui| app.draw(ui));
-    let typed: Vec<String> = lock(&seat.story)
-        .lines
-        .iter()
-        .filter_map(|(_, shown)| match shown {
-            crate::story::Shown::Typed { line, .. } => Some(line.clone()),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(typed, ["look"]);
-}
-
 /// A line typed and entered on a frame egui draws twice still goes: the
 /// Enter is in the first pass alone, and the window's ask to send was lost
 /// with it.
@@ -353,85 +320,6 @@ fn a_play_window_closes_with_its_session_when_asked() {
     assert!(
         harness.query_by_role(Role::TextInput).is_some(),
         "opened again, it stays"
-    );
-}
-
-/// A key bound on the *Keys* page is written to the keybinds file and
-/// binds at once; while the page waits for a key, a numpad press goes
-/// to it and to no play window.
-#[test]
-fn a_key_bound_in_the_menu_binds_at_once() {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .build()
-        .expect("a runtime");
-    let data = std::env::temp_dir().join(format!("cena-app-keys-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&data);
-    let app = App::keeping(Sessions::new(runtime.handle().clone()), &data);
-    let mut harness = Harness::builder()
-        .with_size((1200.0, 900.0))
-        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
-    harness.state_mut().menu.open_for(None);
-    harness.run();
-    harness.get_by_label("Keys").click();
-    harness.run();
-    harness.get_by_label("Add a key").click();
-    harness.run();
-    assert!(harness.state().menu.waiting_for_key());
-    let press = eframe::NumpadKeyEvent {
-        physical_key: winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Numpad8),
-        consumed: true,
-        numlock_on: Some(true),
-        pressed: true,
-        repeat: false,
-        modifiers: egui::Modifiers::NONE,
-        character: None,
-    };
-    harness.state_mut().numpad.push("stale".to_owned());
-    harness.state_mut().numpad_pressed(&[press]);
-    assert_eq!(harness.state().numpad_for_menu.as_deref(), Some("Numpad8"));
-    assert!(harness.state().numpad.is_empty(), "no play window's");
-    harness.run();
-    assert!(!harness.state().menu.waiting_for_key());
-
-    harness
-        .state_mut()
-        .menu_asked(MenuAsked::Key(crate::KeyChange::Bind {
-            key: "Numpad8".to_owned(),
-            line: "north".to_owned(),
-            was: None,
-        }));
-    let north = keys::Chord::parse("Numpad8").expect("a key");
-    assert_eq!(harness.state().keys.line(&north), Some("north"));
-    assert!(
-        std::fs::read_to_string(keys::path(&data))
-            .is_ok_and(|text| text.contains("\"Numpad8\" = \"north\"")),
-    );
-    let _ = std::fs::remove_dir_all(&data);
-}
-
-/// A bound key sends its line on the character whose window has it, as
-/// if typed there; the command input never sees the key.
-#[test]
-fn a_bound_key_sends_on_its_window() {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .build()
-        .expect("a runtime");
-    let sessions = Sessions::new(runtime.handle().clone());
-    sessions.seat_for_test(handle(), "Ashryn");
-    let mut app = App::new(sessions);
-    app.keys = Keybinds::read("[keys]\nF5 = \"look\"\n").0;
-    let mut harness = Harness::builder()
-        .with_size((1200.0, 900.0))
-        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
-    harness.run();
-    harness.key_press(egui::Key::F5);
-    harness.run();
-    harness.run();
-    assert!(harness.query_by_label(">look").is_some());
-    assert_eq!(
-        harness.get_by_role(Role::TextInput).value().as_deref(),
-        Some(""),
-        "the input never saw it"
     );
 }
 
@@ -785,3 +673,5 @@ fn a_line_of_two_commands_is_refused() {
         "{said:?}"
     );
 }
+
+mod pressed;

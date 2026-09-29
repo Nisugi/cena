@@ -155,6 +155,9 @@ pub(crate) struct Play {
     history: Vec<String>,
     /// Where up and down have reached in the history.
     back: Option<usize>,
+    /// A key filled the input (`plan/52` §2): where its cursor goes, the
+    /// end, as the input takes the keyboard.
+    filled: Option<usize>,
 }
 
 /// Lines of history kept for up and down.
@@ -196,7 +199,16 @@ impl Play {
             input: String::new(),
             history: Vec::new(),
             back: None,
+            filled: None,
         }
+    }
+
+    /// Put `text` in the command input, not sent: a fill macro's key
+    /// (`plan/52` §2).
+    pub(crate) fn fill(&mut self, text: &str) {
+        text.clone_into(&mut self.input);
+        self.back = None;
+        self.filled = Some(self.input.chars().count());
     }
 
     /// The command input's id.
@@ -302,6 +314,15 @@ impl Play {
                 .hint_text("Type a command")
                 .desired_width(f32::INFINITY),
         );
+        if let Some(end) = self.filled.take() {
+            let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
+            let end = egui::text::CCursor::new(end);
+            state
+                .cursor
+                .set_char_range(Some(egui::text::CCursorRange::one(end)));
+            state.store(ui.ctx(), id);
+            response.request_focus();
+        }
         if response.has_focus() {
             let (up, down) = ui.input(|input| {
                 (

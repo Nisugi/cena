@@ -1,7 +1,7 @@
 //! The settings menu's board, card and pages (`mod.rs` says why they are
 //! shared).
 
-use cena_gui::{KeysView, Menu, MenuAsked, MenuView};
+use cena_gui::{KeyRow, KeysView, Menu, MenuAsked, MenuView};
 use cena_ui::settings::{Page, Row, RowKind, Value};
 use cena_ui::{HubRequest, RosterCard};
 
@@ -13,7 +13,7 @@ pub struct Board {
     pub pages: Option<(String, Vec<Page>)>,
     pub said: Option<String>,
     pub own: Vec<Page>,
-    pub bound: Vec<(String, String)>,
+    pub bound: Vec<KeyRow>,
     pub numpad_always: bool,
     pub numpad: Option<String>,
     pub widgets: Vec<Page>,

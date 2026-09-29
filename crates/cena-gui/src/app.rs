@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 use cena_ui::LifecycleView;
 
 use crate::hub::{HubAction, HubView};
-use crate::keys::{self, Keybinds};
+use crate::keys::{self, Keybinds, Macro};
 use crate::layout::Library;
 use crate::own::Own;
 use crate::play::{Asked, Play, PlayView};
@@ -55,8 +55,11 @@ pub struct App {
     keys_said: Vec<String>,
     /// The fork is to be told again which numpad keys to catch.
     catch_again: bool,
-    /// Numpad lines this frame, for the play window with the keyboard.
-    numpad: Vec<String>,
+    /// Numpad macros this frame, for the play window with the keyboard.
+    numpad: Vec<Macro>,
+    /// Commands a key's macro sends once a wait in it is over
+    /// (`keyed.rs`).
+    later: Vec<keyed::Later>,
     /// `NumLock`, as the last numpad press showed it.
     numlock: Option<bool>,
     /// The settings menu, the one every way in opens (`plan/50` §7).
@@ -94,6 +97,7 @@ impl App {
             keys_said: Vec::new(),
             catch_again: true,
             numpad: Vec::new(),
+            later: Vec::new(),
             numlock: None,
             menu: Menu::default(),
             own: Own::default(),
@@ -126,13 +130,17 @@ impl App {
             return;
         };
         let (keys, problems) = Keybinds::load(file);
-        self.keys_said = std::iter::once(if keys.len() == 0 {
-            format!(
-                "No keys bound: bind them here, or write them in {}.",
+        self.keys_said = std::iter::once(match keys.changed() {
+            0 => format!(
+                "{} keys bound, all Hydra's: change them here, and the changes are kept in {}.",
+                keys.len(),
                 file.display()
-            )
-        } else {
-            format!("{} keys bound, from {}.", keys.len(), file.display())
+            ),
+            changed => format!(
+                "{} keys bound, {changed} of them yours, from {}.",
+                keys.len(),
+                file.display()
+            ),
         })
         .chain(problems)
         .collect();
@@ -194,6 +202,9 @@ impl App {
             && let Err(why) = self.own.keep_width(self.hub.card_width)
         {
             self.menu.tell(why);
+        }
+        if let Some(next) = self.send_due(&seats, Instant::now()) {
+            ui.ctx().request_repaint_after(next);
         }
         for seat in &seats {
             match self.play(ui.ctx(), seat, &seats) {
@@ -275,16 +286,23 @@ impl App {
         // asked for, and waited for pages that never came (the author,
         // 2026-09-28: "when clicking on settings for the first time it only
         // shows widget settings").
-        let (mut asked, mut bound, mut closed) = (None, Vec::new(), false);
+        let (mut asked, mut sends, mut closed) = (None, Vec::new(), false);
         context.show_viewport_immediate(
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             builder,
             |ui, _class| {
                 closed |= ui.input(|input| input.viewport().close_requested());
                 // Taken before anything draws, so no widget sees a bound key.
-                bound.extend(ui.ctx().input_mut(|input| keys.take(input)));
+                let mut pressed = ui.ctx().input_mut(|input| keys.take(input));
                 if ui.input(|input| input.focused) {
-                    bound.append(numpad);
+                    pressed.append(numpad);
+                }
+                for made in pressed {
+                    match made {
+                        Macro::Fill(text) => window.play.fill(&text),
+                        Macro::Act(action) => asked = asked.take().or(Some(keyed::asked(action))),
+                        send @ Macro::Send(_) => sends.push(send),
+                    }
                 }
                 let story = lock(&seat.story);
                 let view = PlayView {
@@ -310,8 +328,14 @@ impl App {
         if let Some(after) = clocks_run(snapshot.as_deref(), &seat.story) {
             context.request_repaint_after(after);
         }
-        for line in bound {
-            self.sessions.send(seat, line);
+        let now = Instant::now();
+        for made in sends {
+            self.send_macro(seat, &made, now);
+        }
+        // A command kept for after a wait: the next frame asks for the one
+        // it is due in (`send_due`).
+        if !self.later.is_empty() {
+            context.request_repaint();
         }
         match asked {
             Some(Asked::ReloadKeys) => self.read_keys(),
@@ -412,7 +436,7 @@ impl App {
         self.numpad_for_menu = None;
         self.numpad = pressed
             .iter()
-            .filter_map(|event| keys::numpad_line(&self.keys, event))
+            .filter_map(|event| keys::numpad_macro(&self.keys, event))
             .collect();
     }
 }
@@ -468,6 +492,7 @@ pub fn run(sessions: Sessions) -> eframe::Result {
     )
 }
 
+mod keyed;
 mod settings;
 #[cfg(test)]
 mod tests;
