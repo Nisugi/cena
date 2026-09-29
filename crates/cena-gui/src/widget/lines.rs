@@ -364,6 +364,7 @@ mod tests {
                     hunt: None,
                     who: None,
                     open: &[],
+                    minimap: None,
                 };
                 let chosen = Chosen {
                     lines: Some(lines),
@@ -430,6 +431,7 @@ mod tests {
                         hunt: None,
                         who: None,
                         open: &[],
+                        minimap: None,
                     };
                     let chosen = Chosen {
                         lines: Some(Lines {
@@ -504,6 +506,7 @@ mod tests {
                         hunt: None,
                         who: None,
                         open: &open,
+                        minimap: None,
                     };
                     let _ = Widget::Story.draw_with(ui, &seen, Id::new("p"), &Chosen::default());
                 });
@@ -542,6 +545,7 @@ mod tests {
                     hunt: None,
                     who: None,
                     open: &[],
+                    minimap: None,
                 };
                 let _ = Widget::Story.draw_with(ui, &seen, Id::new("b"), &Chosen::default());
             });

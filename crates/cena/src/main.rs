@@ -40,6 +40,7 @@
 mod agent;
 mod architecture;
 mod ask;
+mod atlas;
 mod attention;
 mod batch;
 mod combat;

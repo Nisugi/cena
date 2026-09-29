@@ -38,6 +38,7 @@ fn story_of<'a>(lines: usize) -> Harness<'a, Story> {
                 hunt: None,
                 who: None,
                 open: &[],
+                minimap: None,
             };
             let _ = Widget::Story.draw_with(ui, &seen, egui::Id::new("s"), &Chosen::default());
         },
@@ -197,6 +198,7 @@ fn the_split_as_drawn() {
                     hunt: None,
                     who: None,
                     open: &[],
+                    minimap: None,
                 };
                 let _ = Widget::Story.draw_with(ui, &seen, egui::Id::new("s"), &Chosen::default());
             },
@@ -318,6 +320,7 @@ fn a_catalog_widget_takes_its_key() {
                 hunt: None,
                 who: None,
                 open: &[],
+                minimap: None,
             };
             let _ = Widget::Room.draw_with(ui, &seen, egui::Id::new("r"), &Chosen::default());
         },

@@ -50,6 +50,7 @@ impl Scene {
             story: &self.story,
             now: Instant::now(),
             hunt: self.hunt.as_ref(),
+            minimap: None,
             numlock: None,
             set: 0,
             keys: &[],

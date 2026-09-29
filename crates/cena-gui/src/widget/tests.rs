@@ -20,6 +20,7 @@ fn drawn<'a>(snapshot: Option<Snapshot>, hunt: Option<HuntView>) -> Harness<'a, 
                 hunt: hunt.as_ref(),
                 who: None,
                 open: &[],
+                minimap: None,
             };
             for widget in Widget::all() {
                 let height = widget.size().y.min(120.0);
@@ -148,6 +149,7 @@ fn a_one_line_widget_stays_one_line() {
                 hunt: None,
                 who: None,
                 open: &[],
+                minimap: None,
             };
             let mut heights = seen_heights
                 .lock()
@@ -363,6 +365,7 @@ fn indicators_and_effects_as_drawn() {
                 hunt: None,
                 who: None,
                 open: &[],
+                minimap: None,
             };
             ui.horizontal(|ui| {
                 for indicator in [
@@ -403,6 +406,7 @@ fn compass<'a>(
                 hunt: None,
                 who,
                 open: &[],
+                minimap: None,
             };
             if let Some(super::Clicked::Send(line)) =
                 Widget::Compass.draw(ui, &seen, Id::new("compass"))
@@ -524,6 +528,7 @@ fn the_compass_and_combat_as_drawn() {
                 hunt: None,
                 who: None,
                 open: &[],
+                minimap: None,
             };
             ui.horizontal(|ui| {
                 ui.allocate_ui(egui::vec2(160.0, 120.0), |ui| {
@@ -563,6 +568,7 @@ fn a_streams_widget_shows_its_lines() {
         hunt: None,
         who: None,
         open: &[],
+        minimap: None,
     };
     assert_eq!(thoughts.count(&seen), Some(1));
     assert_eq!(speech.count(&seen), Some(0));
@@ -577,6 +583,7 @@ fn a_streams_widget_shows_its_lines() {
                 hunt: None,
                 who: None,
                 open: &[],
+                minimap: None,
             };
             ui.allocate_ui(egui::vec2(280.0, 80.0), |ui| {
                 let _ = thoughts.draw(ui, &seen, Id::new("thoughts"));

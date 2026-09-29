@@ -40,4 +40,4 @@ pub use keys::file::Whose;
 pub use keys::page::{KeyChange, KeyRow, KeysView, Place};
 pub use keys::{Action, Macro};
 pub use menu::{Menu, MenuAsked, MenuView, roster_name, typed};
-pub use sessions::Sessions;
+pub use sessions::{Minimap, Sessions};

@@ -39,9 +39,15 @@ impl MapContext {
 
 /// Freeze both successful and failed loads until restart. All characters and
 /// travel desks use these same bytes, even if the file is replaced on disk.
+///
+/// The map is the one Hydra ships, hydra-mapper's `gs.map` built in (the
+/// author, 2026-09-29: *"Hydra is going to embed the gs.map from the
+/// mapper"*); `CENA_MAP` names another file to use instead, a map being
+/// curated in the mapper, say.
 pub(crate) fn load() -> ConfiguredMap {
-    let path = std::env::var_os(crate::travel::MAP_ENV)
-        .ok_or_else(|| "No map. Set CENA_MAP to a combined map file and restart.".to_owned())?;
+    let Some(path) = std::env::var_os(crate::travel::MAP_ENV) else {
+        return MapContext::decode(cena_gs_map::GS_MAP).map(Arc::new);
+    };
     let bytes = std::fs::read(path).map_err(|error| format!("Cannot read CENA_MAP: {error}"))?;
     MapContext::decode(&bytes).map(Arc::new)
 }

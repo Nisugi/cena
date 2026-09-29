@@ -38,7 +38,8 @@ use cena_behavior::travel::{Command, Desk, Map, Travelled, parse_command};
 use cena_session::command::claimant;
 use cena_session::{Notice, NoticeKind, SessionHandle, SessionObserver};
 
-/// Where the combined map is. No default: a wrong map is worse than none.
+/// A map file to use instead of the one Hydra ships (`map_context::load`),
+/// for a map being curated in the mapper.
 ///
 /// ```text
 /// $env:CENA_MAP = "E:\Gemstone\data\cena_data\gs.map"

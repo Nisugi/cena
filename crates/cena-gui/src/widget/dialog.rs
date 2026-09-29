@@ -187,6 +187,7 @@ mod tests {
                     hunt: None,
                     who: None,
                     open: &[],
+                    minimap: None,
                 };
                 let clicked = widget.draw(ui, &seen, Id::new("dialog"));
                 let line = match clicked {

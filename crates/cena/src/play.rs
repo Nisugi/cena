@@ -89,6 +89,9 @@ struct Started {
 /// characters while Hydra runs (`plan/29` step 5c).
 struct Table {
     map: crate::map_context::ConfiguredMap,
+    /// Every area of the map, laid out at launch for the minimap
+    /// (`plan/53` §7); `None` without a map.
+    atlas: Option<Arc<crate::atlas::Atlas>>,
     /// Behind an `Arc` so each character's `;to` and `;all` can look it up
     /// (`relay.rs`), holding it weakly.
     host: Arc<tokio::sync::Mutex<Host>>,
@@ -164,7 +167,14 @@ pub(crate) async fn serve(
     let dir = cena_session::character_store::data_dir();
     eprintln!();
     let map = crate::map_context::load();
+    // Only a window draws the minimap: headless and Despana lay out nothing.
+    let atlas = map
+        .as_ref()
+        .ok()
+        .filter(|_| gui.is_some())
+        .map(|context| crate::atlas::Atlas::start(&context.map, &context.sha256, &dir));
     let table = Arc::new(Table {
+        atlas,
         host: Arc::new(tokio::sync::Mutex::new(Host::new())),
         started: std::sync::Mutex::default(),
         // One listener for every character, each with its own page; each
@@ -387,7 +397,20 @@ impl Table {
             );
         }
         if let Some(gui) = &self.gui {
-            gui.attach(character, game, hosted.observer.clone(), &hosted.handle);
+            let minimap = match (&self.map, &self.atlas) {
+                (Ok(context), Some(atlas)) => Some(crate::atlas::minimap(
+                    Arc::clone(&context.map),
+                    Arc::clone(atlas),
+                )),
+                _ => None,
+            };
+            gui.attach(
+                character,
+                game,
+                hosted.observer.clone(),
+                &hosted.handle,
+                minimap,
+            );
         }
     }
 

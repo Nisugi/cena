@@ -21,6 +21,11 @@ use cena_ui::{
 use tokio_util::sync::CancellationToken;
 
 use crate::feed;
+
+/// Where a character is on the map, from its game state: the binary's
+/// answer (`plan/53` §7 steps 4-5), which alone holds the map and its
+/// layout. Asked each time the character's feed takes a snapshot.
+pub type Minimap = Arc<dyn Fn(&cena_session::GameState) -> cena_ui::MinimapView + Send + Sync>;
 use crate::story::Story;
 
 /// The sessions the window shows. Cloneable, and usable from the binary's
@@ -85,6 +90,11 @@ impl Wake {
 
 /// One character as the window holds it.
 pub(crate) struct Seat {
+    /// Where it is on the map, from the binary (`plan/53` §7 step 5);
+    /// `None` without a map.
+    pub(crate) minimap: Option<Minimap>,
+    /// That, as its feed last worked it out from a snapshot.
+    pub(crate) where_now: Mutex<Option<cena_ui::MinimapView>>,
     /// Its card on the hub, as its feed last saw it.
     pub(crate) card: Mutex<SessionCard>,
     /// The character as its feed last saw it, for its play window.
@@ -116,6 +126,8 @@ impl Seat {
                 game: game.to_owned(),
                 ..SessionCard::of(id.0.to_string(), name.to_owned(), None)
             }),
+            minimap: None,
+            where_now: Mutex::default(),
             snapshot: Mutex::default(),
             story: Mutex::default(),
             hunt: Mutex::default(),
@@ -198,14 +210,21 @@ impl Sessions {
 
     /// Show `handle`'s session as `name`, the character, and start following
     /// it. Replaces an earlier attachment of the same session.
+    ///
+    /// `minimap` says where the character is on the map, from its game
+    /// state; `None` without a map.
     pub fn attach(
         &self,
         name: &str,
         game: &str,
         observer: SessionObserver,
         handle: &SessionHandle,
+        minimap: Option<Minimap>,
     ) {
-        let seat = Arc::new(Seat::new(handle.clone(), name, game));
+        let seat = Arc::new(Seat {
+            minimap,
+            ..Seat::new(handle.clone(), name, game)
+        });
         {
             let mut seats = self.seats();
             if let Some(old) = seats.iter().position(|old| old.id == seat.id) {

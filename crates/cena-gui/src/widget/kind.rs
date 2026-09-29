@@ -104,6 +104,8 @@ pub(crate) enum Widget {
     /// One of the game's own dialogs, by its id: the Betrayer panel, the
     /// combat panel, one an event adds; offered once the game has sent it.
     Dialog(String),
+    /// The area the character is in, laid out, following it (`plan/53`).
+    Minimap,
     /// Everything the model holds for the character, as it prints itself:
     /// for troubleshooting (the author, 2026-09-27).
     GameState,
@@ -165,7 +167,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 39] = [
+    const PLAIN: [Widget; 40] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -185,6 +187,7 @@ impl Widget {
         Widget::Exits,
         Widget::Hydra,
         Widget::Hunt,
+        Widget::Minimap,
         Widget::GameState,
         Widget::Stance,
         Widget::Encumbrance,
@@ -230,6 +233,7 @@ impl Widget {
             Widget::Exits => "Exits",
             Widget::Hydra => "Hydra",
             Widget::Hunt => "Hunt",
+            Widget::Minimap => "Minimap",
             Widget::GameState => "Game state",
             Widget::Stance => "Stance",
             Widget::Encumbrance => "Encumbrance",
@@ -301,6 +305,7 @@ impl Widget {
             | Widget::Exits
             | Widget::Hydra
             | Widget::Hunt
+            | Widget::Minimap
             | Widget::GameState => Group::Hydra,
         }
     }
@@ -364,6 +369,7 @@ impl Widget {
             Widget::Hydra | Widget::Stream(_) => (320.0, 120.0),
             Widget::Hunt => (260.0, 90.0),
             Widget::GameState => (380.0, 420.0),
+            Widget::Minimap => (260.0, 220.0),
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Room => (320.0, 160.0),
             Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),

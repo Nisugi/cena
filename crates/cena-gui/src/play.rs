@@ -105,6 +105,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) now: Instant,
     /// What its hunt is doing, when one runs.
     pub(crate) hunt: Option<&'a HuntView>,
+    /// Where it is on the map, when there is one.
+    pub(crate) minimap: Option<&'a cena_ui::MinimapView>,
     /// `NumLock`, once a numpad press has shown it.
     pub(crate) numlock: Option<bool>,
     /// The macro set the character uses over set 0; 0 for none.

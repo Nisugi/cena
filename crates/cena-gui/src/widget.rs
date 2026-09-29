@@ -20,6 +20,7 @@ pub(crate) mod find;
 mod kind;
 mod lines;
 mod lists;
+mod minimap;
 mod room;
 mod split;
 mod state;
@@ -53,6 +54,9 @@ pub(crate) struct Seen<'a> {
     /// The streams a widget in this window shows, whose lines the story
     /// then leaves out (`plan/49` Stage B step 4).
     pub(crate) open: &'a [String],
+    /// Where it is on the map, as the minimap draws it (`plan/53`); `None`
+    /// without a map.
+    pub(crate) minimap: Option<&'a cena_ui::MinimapView>,
 }
 
 /// Another character running in this Hydra, as a widget that follows it

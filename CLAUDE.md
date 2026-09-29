@@ -193,7 +193,8 @@ author runs it (see Credentials). Run options are arguments, not env vars: an en
 once in a shell drove the character on every later run. M1's `--demo` and the measurement
 probes were removed at M6 (`plan/30` §2).
 The environment variables that remain are paths and secrets, not run options: `CENA_MAP`
-(travel's converted map file, `crates/cena/src/travel.rs:47`), `CENA_DATA_DIR` (character
+(a map file to use instead of the one Hydra ships, hydra-mapper's `gs.map` built in since
+`plan/53` §7; `crates/cena/src/travel.rs:47`), `CENA_DATA_DIR` (character
 stores, `crates/cena-session/src/character_store.rs:64`; unset, `data` in Hydra's own folder in
 the player's application data, `%APPDATA%\Hydra` on Windows, since `plan/50` §7 step 7), `CENA_LOG_DIR`, `CENA_LOG_LINES`
 and `CENA_LOG_TIMESTAMPS` (the log sink, `crates/cena-platform/src/sink/config.rs`), and

@@ -445,3 +445,7 @@ crates/cena-gui/src/triggers.rs 100
 # NEW SPLIT PARENT, 2026-09-29, capped at birth (plan/54 step 3). crates/cena-ui/src/triggers.rs
 # is the trigger editor's view types; turning a form into a table and a rule is triggers/table.rs: 226 lines, so 300.
 crates/cena-ui/src/triggers.rs 300
+# NEW SPLIT PARENT, 2026-09-29, capped at birth (plan/53 §7). crates/cena/src/atlas.rs
+# is the minimap's areas: a facade over atlas/scene.rs (one area laid out), service.rs
+# (every area at launch, kept) and follow.rs (each character's place): 12 lines, so 100.
+crates/cena/src/atlas.rs 100

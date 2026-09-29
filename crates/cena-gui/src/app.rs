@@ -358,6 +358,7 @@ impl App {
         }
         let snapshot = lock(&seat.snapshot).clone();
         let hunt = lock(&seat.hunt).clone();
+        let minimap = lock(&seat.where_now).clone();
         let others: Vec<Character> = seats
             .iter()
             .filter(|other| other.id != seat.id)
@@ -404,6 +405,7 @@ impl App {
                     story: &story,
                     now: Instant::now(),
                     hunt: hunt.as_ref(),
+                    minimap: minimap.as_ref(),
                     numlock,
                     keys: &keys_said,
                     set: chosen,

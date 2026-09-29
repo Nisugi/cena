@@ -121,6 +121,7 @@ impl Play {
             hunt: view.hunt,
             who: None,
             open: &open,
+            minimap: view.minimap,
         };
         let ((drawn, insides), released) = self.draw_windows(&context, area, seen, view.others);
         if let (Some(out), Some(layout)) = (released, self.layout.as_mut()) {

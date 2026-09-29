@@ -323,6 +323,8 @@ fn drawn(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
                 snapshot: other.snapshot.as_deref(),
                 hunt: other.hunt.as_ref(),
                 who: Some(&other.name),
+                // Another character's place is not followed yet.
+                minimap: None,
                 ..drawing.seen
             };
             // Another character's widget sends nothing on this one's.
