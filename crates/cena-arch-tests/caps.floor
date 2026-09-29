@@ -246,3 +246,6 @@ crates/cena-session/src/script/lich.rs 550
 # is the window's tests, the keys' moved to app/tests/pressed.rs when macros took it past 800:
 # 677 lines, so 750.
 crates/cena-gui/src/app/tests.rs 750
+# NEW SPLIT PARENT, 2026-09-29, capped at birth (the author's split scrollback). crates/cena-gui/src/widget/split.rs
+# is a text widget's two panes, its tests in widget/split/tests.rs beside it: 239 lines, so 300.
+crates/cena-gui/src/widget/split.rs 300

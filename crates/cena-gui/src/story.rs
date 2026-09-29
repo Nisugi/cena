@@ -80,6 +80,8 @@ pub(crate) struct Story {
     since_prompt: bool,
     /// The connection the last event came on.
     generation: Option<Generation>,
+    /// Lines dropped from the front, ever: the first kept line's number.
+    pub(crate) dropped: u64,
 }
 
 impl Story {
@@ -164,6 +166,7 @@ impl Story {
         self.lines.push_back((Stamp::now(), shown));
         while self.lines.len() > MAX_STORY {
             self.lines.pop_front();
+            self.dropped += 1;
         }
     }
 }

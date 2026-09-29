@@ -60,7 +60,7 @@ pub(super) fn draw(
         Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
         Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
         Widget::Story => {
-            return super::lines::story(ui, &seen.story.lines, seen.open, (id, lines));
+            return super::lines::story(ui, seen.story, seen.open, (id, lines));
         }
         Widget::Stream(stream_id) => {
             return super::lines::stream(ui, seen, stream_id, (id, lines));

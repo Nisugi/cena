@@ -19,6 +19,7 @@ mod kind;
 mod lines;
 mod lists;
 mod room;
+mod split;
 mod state;
 mod status;
 
