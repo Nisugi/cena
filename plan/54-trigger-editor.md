@@ -1,6 +1,6 @@
 # 54 — The trigger editor
 
-**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Steps 1-3 BUILT 2026-09-29.**
+**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Steps 1-4 BUILT 2026-09-29.**
 
 M8 built triggers whole (`plan/45`) and left one door: the file, `;trigger`, and a Wrayth
 import. The author, choosing one file (`plan/45` §1 row 3): *"players won't be accessing the
@@ -136,6 +136,16 @@ settings menu's pages do.
 4. **From the story, and against the log.** A story line's right-click: *Make a trigger from
    this line*. *What would this have caught?*: the form's trigger over today's player log
    (`plan/25`'s reader), the lines it matches.
+   > **BUILT 2026-09-29.** The story notes the line under the pointer as it draws it, with
+   > the frame it was seen in (`crates/cena-gui/src/widget/lines.rs`, `line_under`); a
+   > right-click there puts *Make a trigger from this line* first in the play window's menu,
+   > which opens the editor on a new trigger for those words, bold, named for them, and the
+   > line already in the live test. *What would it have caught?*
+   > (`crates/cena-gui/src/triggers/catch.rs`): a roster character and the last 1, 7 or 30
+   > days, the form's rule alone through the real matcher over that character's log, the
+   > lines it matches, newest first, capped at the reader's 1000; run by
+   > `Sessions::check_log` off the window's thread, the log flushed first when the
+   > character is playing.
 5. **The import popup** (§1 row 2): `;trigger import` with a window open asks first.
 
 Each step leaves the tree green and is committed alone.

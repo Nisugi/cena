@@ -6,6 +6,7 @@
 //! character, and gives the window the file again. Nothing here reads or
 //! writes the file.
 
+pub(crate) mod catch;
 mod editor;
 mod form;
 mod test;

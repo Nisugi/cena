@@ -101,15 +101,46 @@ impl Lines {
             }
         };
         let job = text::job(&all, ui.style());
-        if all.iter().any(|run| run.link.is_some()) {
-            return text::linked(ui, job, &all).map(|acted| match acted {
-                text::Acted::Clicked(link, at) => Clicked::Link(link, at),
-                text::Acted::Quietly(line) => Clicked::Quietly(line),
-            });
-        }
-        ui.label(job);
-        None
+        let drawn = ui.scope(|ui| {
+            if all.iter().any(|run| run.link.is_some()) {
+                return text::linked(ui, job, &all).map(|acted| match acted {
+                    text::Acted::Clicked(link, at) => Clicked::Link(link, at),
+                    text::Acted::Quietly(line) => Clicked::Quietly(line),
+                });
+            }
+            ui.label(job);
+            None
+        });
+        note_under(ui, drawn.response.rect, runs);
+        drawn.inner
     }
+}
+
+/// Where the line under the pointer is noted, for the play window's
+/// right-click: *Make a trigger from this line* (`plan/54` step 4).
+const UNDER: &str = "story-line-under-pointer";
+
+/// Note `runs`' words as the line under the pointer, if it is, drawn at
+/// `rect`: with the frame it was seen in, so a line scrolled away is not
+/// offered later.
+fn note_under(ui: &egui::Ui, rect: egui::Rect, runs: &[StyledRun]) {
+    let context = ui.ctx();
+    if context
+        .pointer_latest_pos()
+        .is_some_and(|at| rect.contains(at) && ui.clip_rect().contains(at))
+    {
+        let frame = context.cumulative_frame_nr();
+        let words = plain(runs).into_owned();
+        context.data_mut(|data| data.insert_temp(egui::Id::new(UNDER), (frame, words)));
+    }
+}
+
+/// The story line under the pointer this frame or the last, as its words.
+pub(crate) fn line_under(context: &egui::Context) -> Option<String> {
+    let (frame, words) =
+        context.data(|data| data.get_temp::<(u64, String)>(egui::Id::new(UNDER)))?;
+    (context.cumulative_frame_nr().saturating_sub(frame) <= 1 && !words.trim().is_empty())
+        .then_some(words)
 }
 
 /// The story, a stream's lines left out while a widget of it is `open`,

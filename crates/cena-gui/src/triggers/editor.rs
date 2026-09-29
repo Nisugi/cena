@@ -24,6 +24,28 @@ pub(crate) struct Editor {
     folded: BTreeSet<String>,
     /// The live test's line (`plan/54` step 3).
     test: super::test::Test,
+    /// A trigger to start editing once the file is read: a story line's.
+    pending: Option<Form>,
+    /// *What would it have caught?*: whose log, how many days, what is
+    /// asked and what came back (`plan/54` step 4).
+    catch: Catching,
+}
+
+/// The editor's *What would it have caught?*.
+#[derive(Debug, Default)]
+struct Catching {
+    /// Whose log; the first roster character until one is chosen.
+    character: String,
+    /// How many days back.
+    days: usize,
+    /// A check to hand to the window, once asked.
+    asked: Option<super::catch::Ask>,
+    /// Where its answer lands.
+    inbox: super::catch::Inbox,
+    /// A check was asked and has not answered.
+    waiting: bool,
+    /// What the last check found.
+    caught: Option<super::catch::Caught>,
 }
 
 /// A trigger being edited.
@@ -107,6 +129,33 @@ impl Editor {
         self.draft.as_mut().map(|draft| &mut draft.form)
     }
 
+    /// A check the player asked for, taken, for the window to run with its
+    /// answer's inbox.
+    pub(crate) fn take_check(&mut self) -> Option<(super::catch::Ask, super::catch::Inbox)> {
+        let ask = self.catch.asked.take()?;
+        self.catch.waiting = true;
+        Some((ask, std::sync::Arc::clone(&self.catch.inbox)))
+    }
+
+    /// Start a new trigger on `line`'s words, from a story line's
+    /// right-click (`plan/54` step 4): the words, bold, named for them, and
+    /// the line in the live test, so what it does is seen at once.
+    pub(crate) fn start_from(&mut self, line: &str) {
+        let words = line.trim();
+        let name: String = words.chars().take(40).collect();
+        self.pending = Some(Form {
+            name: name.trim().to_owned(),
+            text: words.to_owned(),
+            look: Some(cena_ui::triggers::Look {
+                bold: true,
+                span: "match".to_owned(),
+                ..cena_ui::triggers::Look::default()
+            }),
+            ..Form::default()
+        });
+        words.clone_into(&mut self.test.line);
+    }
+
     /// Open it, and whether it was shut: a window opening asks for the file.
     pub(crate) fn open(&mut self) -> bool {
         !std::mem::replace(&mut self.open, true)
@@ -128,6 +177,9 @@ impl Editor {
             ui.label("Reading the triggers file...");
             return asked;
         };
+        if let Some(form) = self.pending.take() {
+            self.edit(None, form, book);
+        }
         // A save that has landed: the draft is that trigger now.
         if let Some(draft) = &mut self.draft
             && draft.saved_in(book)
@@ -393,6 +445,7 @@ impl Editor {
                 }
             }
         });
+        catch(ui, &mut self.catch, &draft.form, characters);
         let Some(entry) = entry else { return };
         let name = entry.name.clone();
         ui.add_space(8.0);
@@ -474,4 +527,85 @@ fn off_for(ui: &mut egui::Ui, entry: &Entry, characters: &[String], asked: &mut 
             .small(),
         );
     }
+}
+
+/// *What would it have caught?*: the form over a character's log, the lines
+/// it matches.
+fn catch(ui: &mut egui::Ui, catch: &mut Catching, form: &Form, characters: &[String]) {
+    if let Some(caught) = crate::sessions::lock(&catch.inbox).take() {
+        catch.waiting = false;
+        catch.caught = Some(caught);
+    }
+    if catch.character.is_empty()
+        && let Some(first) = characters.first()
+    {
+        catch.character.clone_from(first);
+    }
+    if catch.days == 0 {
+        catch.days = 7;
+    }
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        ui.label("What would it have caught in");
+        egui::ComboBox::from_id_salt("trigger-catch-who")
+            .selected_text(catch.character.as_str())
+            .show_ui(ui, |ui| {
+                for name in characters {
+                    ui.selectable_value(&mut catch.character, name.clone(), name);
+                }
+            });
+        ui.label("'s log over");
+        egui::ComboBox::from_id_salt("trigger-catch-days")
+            .selected_text(match catch.days {
+                1 => "the last day".to_owned(),
+                days => format!("the last {days} days"),
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut catch.days, 1, "the last day");
+                ui.selectable_value(&mut catch.days, 7, "the last 7 days");
+                ui.selectable_value(&mut catch.days, 30, "the last 30 days");
+            });
+        let can = !catch.character.is_empty() && !catch.waiting;
+        if ui.add_enabled(can, egui::Button::new("Check")).clicked() {
+            catch.asked = Some(super::catch::Ask {
+                character: catch.character.clone(),
+                days: catch.days,
+                form: form.clone(),
+            });
+        }
+        if catch.waiting {
+            ui.spinner();
+        }
+    });
+    let Some(caught) = &catch.caught else { return };
+    if let Some(why) = &caught.why {
+        ui.colored_label(ui.visuals().error_fg_color, why.as_str());
+        return;
+    }
+    let more = if caught.more {
+        "; more past the first 1000"
+    } else {
+        ""
+    };
+    ui.label(format!(
+        "{} lines in {} days{more}, newest first:",
+        caught.lines.len(),
+        caught.days
+    ));
+    egui::ScrollArea::vertical()
+        .id_salt("trigger-caught")
+        .max_height(180.0)
+        .show(ui, |ui| {
+            for entry in caught.lines.iter().take(200) {
+                let at = entry.at.get(..8).unwrap_or(&entry.at);
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{} {at} [{}] {}",
+                        entry.day, entry.stream, entry.text
+                    ))
+                    .monospace()
+                    .small(),
+                );
+            }
+        });
 }
