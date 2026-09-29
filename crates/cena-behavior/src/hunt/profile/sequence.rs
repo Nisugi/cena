@@ -101,3 +101,45 @@ impl Serialize for Sequence {
         .serialize(serializer)
     }
 }
+
+/// Sequences that come back to themselves, each said once: `a names itself`
+/// or `a comes back to itself through b`.
+///
+/// A step naming a sequence is played as that sequence, a sequence's own
+/// steps among them, so one may hold another. One that holds itself, or two
+/// that hold each other, never reach a line to send: the engine laid the
+/// steps out again every turn, the queue grew without end, and the hunt beat
+/// on as if it were working (the review of 2026-09-29).
+pub(super) fn circles(sequences: &std::collections::BTreeMap<String, Sequence>) -> Vec<String> {
+    let mut out = Vec::new();
+    for name in sequences.keys() {
+        // Every sequence reached from `name`, and the one each was reached by.
+        let mut through: Vec<(&str, &str)> = Vec::new();
+        let mut next = vec![name.as_str()];
+        while let Some(at) = next.pop() {
+            let named = sequences
+                .get(at)
+                .into_iter()
+                .flat_map(|sequence| &sequence.steps)
+                .filter(|step| step.held.is_none())
+                .filter_map(|step| sequences.get_key_value(&step.send))
+                .map(|(held, _)| held.as_str());
+            for held in named {
+                if held == name {
+                    out.push(if at == name {
+                        format!("sequence {name} names itself")
+                    } else {
+                        format!("sequence {name} comes back to itself through {at}")
+                    });
+                    next.clear();
+                    break;
+                }
+                if !through.iter().any(|(seen, _)| *seen == held) {
+                    through.push((held, at));
+                    next.push(held);
+                }
+            }
+        }
+    }
+    out
+}

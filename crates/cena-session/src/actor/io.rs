@@ -59,6 +59,23 @@ fn is_exit_intent(line: &str) -> bool {
 }
 
 impl<S: ByteSource> SessionActor<S> {
+    /// Whether a `quit` from `origin` may log the character out.
+    ///
+    /// The author, 2026-09-29, of players who idle out on a timer: *"I think
+    /// we allow it at higher permission levels."* So the player, their own
+    /// scripts and triggers (an imported trigger's send is already held until
+    /// approved, `plan/45` §1 row 1) and their own Lich may; an agent only
+    /// while it holds the authority, which its `takeover` level gives it; and
+    /// Hydra's own behaviors never, whatever they hold.
+    fn may_quit(&self, origin: crate::command::Origin) -> bool {
+        use crate::command::Origin;
+        match origin {
+            Origin::Manual | Origin::Script | Origin::Trigger | Origin::Lich => true,
+            Origin::Agent(Some(token)) => self.queue.authority() == Some(token),
+            Origin::Agent(None) | Origin::Behavior(_) => false,
+        }
+    }
+
     /// Write one message, bounded by [`WRITE_DEADLINE`] **and by the cancel
     /// token**.
     ///
@@ -167,6 +184,14 @@ impl<S: ByteSource> SessionActor<S> {
                 // Live since M4: `cena-web` sends typed lines through
                 // `send_manual_at`, so a player typing `quit` reaches here.
                 if is_exit_intent(&envelope.line) {
+                    // Who may log the character out: checked here because this
+                    // path runs before `admit` (the review of 2026-09-29).
+                    if !self.may_quit(envelope.origin) {
+                        let _ = envelope
+                            .reply
+                            .send(Outcome::Refused(crate::command::Refusal::Permanent));
+                        return None;
+                    }
                     if envelope
                         .revocable
                         .as_ref()
@@ -246,6 +271,26 @@ impl<S: ByteSource> SessionActor<S> {
                 // Returned before `send_now`, so no prompt is booked for a
                 // line that never went out.
                 if reply.is_closed() {
+                    return None;
+                }
+                // A `quit` sent at once -- Lich's, above all, whose `put`
+                // comes this way -- is a quit, not a write the server answers
+                // by closing and the supervisor answers by logging straight
+                // back in (the review of 2026-09-29).
+                if generation == self.generation && is_exit_intent(&line) {
+                    if !self.may_quit(origin) {
+                        let _ = reply.send(crate::command::Sent::Refused(
+                            crate::command::Refusal::Permanent,
+                        ));
+                        return None;
+                    }
+                    let (tx, _rx) = tokio::sync::oneshot::channel();
+                    let ok = self.begin_quit(QUIT_EOF_DEADLINE, tx).await;
+                    // The connection is ending: nothing more goes on it.
+                    let _ = reply.send(crate::command::Sent::Dead);
+                    if !ok {
+                        return Some(super::EndReason::Cancelled);
+                    }
                     return None;
                 }
                 let outcome = self.send_now(&line, origin, generation, gate).await;

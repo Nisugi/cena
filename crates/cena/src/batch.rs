@@ -71,36 +71,45 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
             }
             Command::Run(job) => {
                 let desk = desk(job.kind());
+                let stopping = Arc::clone(&desk);
+                let stopper: crate::commands::Stopper = Arc::new(move || stopping.stop());
                 let (handle, observer, hydra) = (told.clone(), observer.clone(), hydra.clone());
-                Some(Took::Started(tokio::spawn(async move {
-                    match observer.subscribe().await {
-                        Ok((snapshot, events)) => {
-                            // Rejoinable, so a lag is recovered from, not
-                            // decided through (the crate review, R1).
-                            let joined = (
-                                snapshot,
-                                cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
-                            );
-                            if let Some(run) = desk.run(&handle, joined, job, hydra) {
-                                let _ = run.await;
+                Some(Took::Stoppable(
+                    tokio::spawn(async move {
+                        match observer.subscribe().await {
+                            Ok((snapshot, events)) => {
+                                // Rejoinable, so a lag is recovered from, not
+                                // decided through (the crate review, R1).
+                                let joined = (
+                                    snapshot,
+                                    cena_behavior::travel::Heard::rejoinable(
+                                        observer.clone(),
+                                        events,
+                                    ),
+                                );
+                                if let Some(run) = desk.run(&handle, joined, job, hydra) {
+                                    let _ = run.await;
+                                }
                             }
+                            Err(e) => handle.say(Notice::line(
+                                NoticeKind::Error,
+                                format!(
+                                    "{}: I could not read the session -- {e:?}.",
+                                    job.kind().name()
+                                ),
+                            )),
                         }
-                        Err(e) => handle.say(Notice::line(
-                            NoticeKind::Error,
-                            format!(
-                                "{}: I could not read the session -- {e:?}.",
-                                job.kind().name()
-                            ),
-                        )),
-                    }
-                })))
+                    }),
+                    stopper,
+                ))
             }
         }
     }));
 }
 
 /// How a batch runs a Hydra command: routed as a typed one is, and waited
-/// for until what it started is over.
+/// for until what it started is over. A batch stopped while it waits drops
+/// the wait, and stops what it started as it goes.
 fn through(commands: Commands) -> Hydra {
     Arc::new(move |line: &str| {
         let took = commands.route(line);
@@ -112,9 +121,35 @@ fn through(commands: Commands) -> Hydra {
                     let _ = task.await;
                     Ran::Done
                 }
+                Some(Took::Stoppable(task, stop)) => {
+                    let unless_over = StopUnlessOver(Some(stop));
+                    let _ = task.await;
+                    drop(unless_over.over());
+                    Ran::Done
+                }
             }
         })
     })
+}
+
+/// Stops what a batch's Hydra command started if the batch lets go of it
+/// before it is over: dropped mid-wait, which is how a stopped batch ends.
+struct StopUnlessOver(Option<crate::commands::Stopper>);
+
+impl StopUnlessOver {
+    /// It is over: nothing to stop.
+    fn over(mut self) -> Self {
+        self.0 = None;
+        self
+    }
+}
+
+impl Drop for StopUnlessOver {
+    fn drop(&mut self) {
+        if let Some(stop) = self.0.take() {
+            let _ = stop();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -257,5 +292,52 @@ mod tests {
                 .any(|s| s.contains("no item type matches 'small'"))
         );
         assert!(transcript.lines().is_empty(), "{:?}", transcript.lines());
+    }
+
+    /// A batch stopped while it waits on what its Hydra command started stops
+    /// that too, and nothing it did not start (the review of 2026-09-29).
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_stopped_multi_stops_what_it_started() {
+        let (source, _transcript) = AnsweringSource::logged_in(PROMPT);
+        let session = Session::new(source);
+        let handle = session.handle();
+        let observer = session.observer();
+        let (_, waiting) = session.subscribe();
+        let commands = Commands::install(&handle);
+        open(&handle, &observer, &commands);
+        let stopped = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let told_to_stop = Arc::clone(&stopped);
+        // A stand-in walk that never arrives, and says when it is stopped.
+        commands.travel(Arc::new(move |line: &str| {
+            if !line.starts_with("go2") {
+                return None;
+            }
+            let told_to_stop = Arc::clone(&told_to_stop);
+            let stop: crate::commands::Stopper = Arc::new(move || {
+                told_to_stop.store(true, std::sync::atomic::Ordering::Relaxed);
+                true
+            });
+            Some(Took::Stoppable(tokio::spawn(std::future::pending()), stop))
+        }));
+        tokio::spawn(session.into_actor().run());
+        ready(waiting).await;
+
+        let typed = handle
+            .send_manual_at(handle.generation(), ".multi 1,.go2 bank,look", DEADLINE)
+            .await;
+        assert_eq!(typed, Outcome::Handled);
+        pass(Duration::from_secs(2)).await;
+        assert!(
+            !stopped.load(std::sync::atomic::Ordering::Relaxed),
+            "guard: the walk runs while the batch waits on it"
+        );
+        handle
+            .send_manual_at(handle.generation(), ".multi stop", DEADLINE)
+            .await;
+        pass(Duration::from_secs(12)).await;
+        assert!(
+            stopped.load(std::sync::atomic::Ordering::Relaxed),
+            "the batch let go of the walk and left it running"
+        );
     }
 }

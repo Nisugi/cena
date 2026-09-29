@@ -63,7 +63,7 @@ produced, as under Lich. So a `state`'s `cursor` is later than the lines after i
 snapshot's. Lines with no prompt after them go without a `state` after a quarter of a second.
 
 **`lagged: true`** in the answer means events after `since` were let go for room (the last 4096
-are kept; never a `typed` or an `input`). Its events then begin with one `state` carrying every
+are kept; never a `typed`, an `input` or an `ended`). Its events then begin with one `state` carrying every
 field as of the last `state` let go, so the copy is whole again; lines let go are gone.
 **`closed: true`**: the character's session ended, or the runner was dismissed;
 nothing more will come.

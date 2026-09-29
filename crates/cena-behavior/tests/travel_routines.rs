@@ -478,3 +478,19 @@ async fn an_expired_pass_prices_nothing() {
     );
     session.cancel();
 }
+
+/// A switch is read one way wherever it is read: on as go2's own command
+/// line takes it, off for anything else and when it is not set.
+#[test]
+fn a_switch_is_on_by_any_of_go2s_words_and_off_otherwise() {
+    use cena_behavior::travel::settings::{GET_SILVERS, on};
+    let set =
+        |value: &str| std::collections::HashMap::from([(GET_SILVERS.to_owned(), value.to_owned())]);
+    for word in ["true", "yes", "on", "Yes", " TRUE "] {
+        assert!(on(&set(word), GET_SILVERS), "{word:?} is on");
+    }
+    for word in ["false", "no", "off", "", "wl,imt"] {
+        assert!(!on(&set(word), GET_SILVERS), "{word:?} is off");
+    }
+    assert!(!on(&std::collections::HashMap::new(), GET_SILVERS));
+}

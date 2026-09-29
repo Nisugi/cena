@@ -292,6 +292,10 @@ impl Hunt {
         }
         let line = match (recovery.how, recovery.noun.as_deref()) {
             (Disarm::Knocked, _) if state.status.known().kneeling() != Some(true) => {
+                // A try as the search is: a kneel the game refuses, stunned
+                // or webbed, or one it never reports, went out every turn
+                // with nothing to end it (the review of 2026-09-29).
+                recovery.tries += 1;
                 "kneel".to_owned()
             }
             (Disarm::Knocked, _) | (Disarm::Telekinetic | Disarm::Webbed, None) => {

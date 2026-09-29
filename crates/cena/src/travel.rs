@@ -153,10 +153,16 @@ fn open_travel(
         let command = travel_command(&handler, line)?;
         let (travel, handle) = (Arc::clone(&travel), handler.clone());
         let observer = observer.clone();
-        // Over when the walk is: `;multi` waits for it (`crate::commands`).
-        Some(Took::Started(tokio::spawn(async move {
-            run_fresh(&travel, &handle, &observer, command).await;
-        })))
+        // Over when the walk is: `;multi` waits for it, and stops it when it
+        // is stopped (`crate::commands`).
+        let controls = crate::commands::Controls::default();
+        let stopper = controls.stopper();
+        Some(Took::Stoppable(
+            tokio::spawn(async move {
+                run_fresh(&travel, &handle, &observer, command, controls).await;
+            }),
+            stopper,
+        ))
     }));
     let symbol = handle.command_symbol().unwrap_or(claimant::DEFAULT_SYMBOL);
     eprintln!("[travel] ready: {symbol}go2 bank, {symbol}go2 targets, {symbol}route2 bank");
@@ -207,6 +213,7 @@ async fn run_fresh(
     handle: &SessionHandle,
     observer: &SessionObserver,
     command: Command,
+    controls: crate::commands::Controls,
 ) {
     match observer.subscribe().await {
         Ok((snapshot, events)) => {
@@ -216,8 +223,9 @@ async fn run_fresh(
                 snapshot,
                 cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
             );
-            if let Some(walk) = travel.run(handle, joined, command) {
-                walked(walk.await);
+            if let Some(walk) = travel.underway(handle, joined, command) {
+                controls.set(walk.steering);
+                walked(walk.task.await);
             }
         }
         Err(e) => handle.say(Notice::line(

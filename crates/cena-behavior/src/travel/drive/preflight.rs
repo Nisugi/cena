@@ -42,10 +42,7 @@ use super::{Cx, Driver, Ended};
 const HINTERWILDS_WAYS: [u32; 2] = [29860, 22154];
 
 fn is_on(cx: &Cx<'_>, setting: &str) -> bool {
-    cx.notes
-        .settings
-        .get(setting)
-        .is_some_and(|is| is == "true")
+    crate::travel::settings::on(&cx.notes.settings, setting)
 }
 
 impl<N: FnMut() -> CommandId> Driver<'_, N> {

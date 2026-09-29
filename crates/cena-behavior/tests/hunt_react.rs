@@ -94,6 +94,25 @@ fn ten_failed_searches_end_the_hunt() {
     );
 }
 
+/// A kneel the game never answers with kneeling is a try as a search is:
+/// ten, and the hunt ends disarmed, where it knelt every turn for good.
+#[test]
+fn a_kneel_that_never_takes_is_counted_with_the_searches() {
+    let mut hunt = Hunt::new(Profile::parse(PROFILE).unwrap(), 1);
+    let state = standing(1_000);
+    hunt.incidents(&[knocked()]);
+    for second in 0..10 {
+        assert_eq!(
+            hunt.tick(&state, here(), Some(1_000 + second)),
+            send("kneel")
+        );
+    }
+    assert_eq!(
+        hunt.tick(&state, here(), Some(1_020)),
+        Said::Done(Ending::Disarmed)
+    );
+}
+
 #[test]
 fn a_weapon_reaction_is_taken_unless_switched_off() {
     let state = standing(1_000);

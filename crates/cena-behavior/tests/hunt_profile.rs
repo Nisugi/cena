@@ -384,3 +384,50 @@ fn the_profiles_are_listed_by_name() {
     write(&chain::profiles_dir(&dir).join("notes.txt"), "").unwrap();
     assert_eq!(chain::profile_names(&dir).unwrap(), ["alpha", "zeta"]);
 }
+
+/// A sequence may hold another; one that holds itself, or two that hold
+/// each other, is refused before the hunt begins.
+#[test]
+fn a_sequence_that_comes_back_to_itself_is_a_problem() {
+    let with = |sequences: &str| {
+        let text = format!(
+            "[[targets]]
+any = true
+routine = \"a\"
+
+[routines]
+a = [\"open\"]
+
+[sequences]
+{sequences}"
+        );
+        Profile::parse(&text).map(|profile| profile.problems())
+    };
+    assert_eq!(
+        with(
+            "open = [\"store weapon\", \"close\"]
+close = [\"ready weapon\"]
+"
+        ),
+        Ok(Vec::new()),
+        "one inside another is no circle"
+    );
+    assert_eq!(
+        with(
+            "open = [\"store weapon\", \"open\"]
+"
+        ),
+        Ok(vec!["sequence open names itself".to_owned()])
+    );
+    assert_eq!(
+        with(
+            "open = [\"close\"]
+close = [\"kick\", \"open\"]
+"
+        ),
+        Ok(vec![
+            "sequence close comes back to itself through open".to_owned(),
+            "sequence open comes back to itself through close".to_owned(),
+        ])
+    );
+}

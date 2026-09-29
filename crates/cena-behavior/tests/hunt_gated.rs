@@ -348,4 +348,16 @@ fn an_assault_the_attack_type_refuses_swaps_once_and_goes_again() {
         "kick",
         "refused again: not swapped back"
     );
+    // The kick is answered, and the routine comes round to the assault
+    // again, with the bow changed for another at a rest, say: refused, it
+    // swaps as the first time. One swap was not the hunt's last.
+    h.replied(["You attempt to kick a kobold!"], Some(1_002));
+    assert_eq!(tick(&mut h, &kobold(1_010)), "weapon barrage #42");
+    h.heard(refusal, Some(1_010));
+    h.replied([refusal], Some(1_010));
+    assert_eq!(
+        ticks(&mut h, &kobold(1_010), 2),
+        ["swap", "weapon barrage #42"],
+        "a later assault refused swaps again"
+    );
 }

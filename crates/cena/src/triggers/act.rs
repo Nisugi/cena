@@ -12,6 +12,13 @@
 //! of the old (the crate review of 2026-09-28, R2). It is not said either:
 //! the connection's end was, as a send it interrupted is not.
 //!
+//! **A trigger acts for its own character only** (the author, 2026-09-29: *"I
+//! would expect each character to be set up to fend for themselves, and so
+//! they should have their own trigger"*). A send of `;all` or `;to`, or a
+//! `;multi` holding one, is not sent and is said: through the relay it would
+//! have gone out on every character as the player's own typing, each marked
+//! attended (the review of the same day).
+//!
 //! [`Event::Act`]: cena_session::Event::Act
 
 use cena_session::command::claimant::Claimed;
@@ -26,6 +33,19 @@ pub(super) async fn send(
     line: &str,
 ) {
     if handle.generation() != generation {
+        return;
+    }
+    let symbol = handle
+        .command_symbol()
+        .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
+    if let Some(word) = reaches_others(line, symbol) {
+        handle.say(Notice::line(
+            NoticeKind::Warn,
+            format!(
+                "Trigger `{trigger}`: `{}` not sent: a trigger acts for its own character,                  never through {symbol}{word}.",
+                line.trim()
+            ),
+        ));
         return;
     }
     let said = match handle.typed(line) {
@@ -47,6 +67,21 @@ pub(super) async fn send(
     if let Some(said) = said {
         handle.say(Notice::line(NoticeKind::Warn, said));
     }
+}
+
+/// The word, `all` or `to`, when `line` or any part of it is a Hydra
+/// command that sends on other characters.
+fn reaches_others(line: &str, symbol: char) -> Option<&'static str> {
+    line.split(',').find_map(|part| {
+        let word = part
+            .trim()
+            .strip_prefix(symbol)?
+            .split_whitespace()
+            .next()?;
+        ["all", "to"]
+            .into_iter()
+            .find(|other| word.eq_ignore_ascii_case(other))
+    })
 }
 
 #[cfg(test)]
@@ -92,6 +127,7 @@ mod tests {
         send(&handle, now, "stun", "stand").await;
         send(&handle, now, "sort", ".sorter on").await;
         send(&handle, now, "odd", ".frobnicate").await;
+        send(&handle, now, "fan", ".all kneel").await;
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         assert_eq!(
@@ -110,6 +146,13 @@ mod tests {
                 .iter()
                 .any(|notice| notice.contains("Trigger `odd`") && notice.contains(".frobnicate")),
             "{notices:?}"
+        );
+        assert!(
+            notices
+                .iter()
+                .any(|notice| notice.contains("Trigger `fan`")
+                    && notice.contains("never through .all")),
+            "a trigger's .all is said, and sends nothing: {notices:?}"
         );
     }
 
@@ -248,5 +291,15 @@ mod tests {
                 .any(|notice| notice.contains("Trigger `stun`") && notice.contains("not sent")),
             "{notices:?}"
         );
+    }
+
+    #[test]
+    fn a_send_that_would_reach_other_characters_is_named() {
+        assert_eq!(reaches_others(".all stand", '.'), Some("all"));
+        assert_eq!(reaches_others("  .TO baelor look", '.'), Some("to"));
+        assert_eq!(reaches_others(".multi 2,look,.all stand", '.'), Some("all"));
+        assert_eq!(reaches_others(".sorter on", '.'), None);
+        assert_eq!(reaches_others("say all is well", '.'), None);
+        assert_eq!(reaches_others(".alls", '.'), None, "a word, not a prefix");
     }
 }

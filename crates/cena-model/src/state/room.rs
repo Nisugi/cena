@@ -550,6 +550,11 @@ impl super::GameState {
             self.room = Room::entering(id.map(str::to_owned));
             // The creature roster is room contents too (`xmlparser.rb:410`).
             self.creatures.on_nav();
+            // So is a shop's `order` menu: its numbers are that shop's, and
+            // kept after a move they order the last shop's item at the next
+            // one (`;heal stock` at a second herbalist, the review of
+            // 2026-09-29).
+            self.order_menu = super::order_menu::OrderMenu::default();
             // **The arrival counter**, which is how a consumer tells two
             // same-text rooms apart. `XMLData.room_id` is an MD5 of the
             // title, description and exits for a room with no UID

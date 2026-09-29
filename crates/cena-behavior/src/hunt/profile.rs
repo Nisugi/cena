@@ -600,7 +600,8 @@ impl Profile {
 
     /// What is wrong with a profile that read cleanly: a stance word the
     /// game would refuse, a target with no creature or two, a target whose
-    /// routine is not written, a routine with no steps. Empty when nothing is.
+    /// routine is not written, a routine with no steps, a sequence that comes
+    /// back to itself. Empty when nothing is.
     #[must_use]
     pub fn problems(&self) -> Vec<String> {
         let mut out = self.group.problems();
@@ -661,6 +662,7 @@ impl Profile {
                 out.push(format!("routine {name} has no steps"));
             }
         }
+        out.extend(sequence::circles(&self.sequences));
         out
     }
 

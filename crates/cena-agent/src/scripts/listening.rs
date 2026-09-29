@@ -190,8 +190,17 @@ impl Listening {
         let at = inner.last;
         inner.entries.push_back(Entry { at, event });
         while inner.entries.len() > KEPT {
+            // A built-in's ending stays with them: a script waits on it
+            // with no limit (`Runs.wait` in the runner), a read that lagged
+            // is given the copy again and never an ending let go, so one
+            // dropped in a hunt's flood left `Script.run('go2', ...)` waiting
+            // for the life of the runner (the review of 2026-09-29). There
+            // is one for each built-in a script started.
             let Some(oldest) = inner.entries.iter().position(|entry| {
-                !matches!(entry.event, Event::Typed { .. } | Event::Input { .. })
+                !matches!(
+                    entry.event,
+                    Event::Typed { .. } | Event::Input { .. } | Event::Ended { .. }
+                )
             }) else {
                 break;
             };
@@ -313,6 +322,29 @@ mod tests {
             Some(&Event::Typed {
                 line: "k trollspeak".into()
             })
+        );
+    }
+
+    /// A built-in's ending is never let go for room: the script that
+    /// started it is waiting on it.
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_flood_never_drops_a_built_ins_ending() {
+        let ended = Event::Ended {
+            run: 7,
+            work: "completed".into(),
+            reason: "arrived".into(),
+            left: Vec::new(),
+        };
+        let log = Listening::default();
+        log.push(ended.clone());
+        for cursor in 0..KEPT as u64 + 10 {
+            log.push(line(cursor));
+        }
+        let heard = log.listen(0, Duration::ZERO).await;
+        assert!(heard.lagged, "lines went for room");
+        assert!(
+            heard.events.iter().any(|entry| entry.event == ended),
+            "and the ending did not"
         );
     }
 
