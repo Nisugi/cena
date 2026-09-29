@@ -86,6 +86,8 @@ pub(crate) enum Widget {
     Effects(Category),
     /// The room's ways out, as a compass rose.
     Compass,
+    /// The injury doll: each hurt part, wound over scar (`plan/55`).
+    Injuries,
     /// Who is fighting in the room: friends and foes.
     Combat,
     /// One of the game's streams, by its id: thoughts, speech, logons, ...
@@ -167,7 +169,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 40] = [
+    const PLAIN: [Widget; 41] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -202,6 +204,7 @@ impl Widget {
         Widget::Resources,
         Widget::Objectives,
         Widget::Compass,
+        Widget::Injuries,
         Widget::Combat,
         Widget::Spellbook,
         Widget::Reserve,
@@ -248,6 +251,7 @@ impl Widget {
             Widget::Resources => "Resources",
             Widget::Objectives => "Objectives",
             Widget::Compass => "Compass",
+            Widget::Injuries => "Injuries",
             Widget::Combat => "Combat",
             Widget::Spellbook => "Spellbook",
             Widget::Reserve => "Reserve",
@@ -283,6 +287,7 @@ impl Widget {
             | Widget::ExperienceTotals
             | Widget::Prepared
             | Widget::Compass
+            | Widget::Injuries
             | Widget::Combat
             | Widget::Reserve
             | Widget::Pulse => Group::Graphics,
@@ -381,6 +386,7 @@ impl Widget {
             Widget::Objectives | Widget::Effects(_) => (300.0, 100.0),
             Widget::Indicator(_) => (100.0, LINE),
             Widget::Compass => (160.0, 120.0),
+            Widget::Injuries => (180.0, 240.0),
             Widget::Combat | Widget::Dialog(_) => (260.0, 140.0),
             Widget::Roundtime | Widget::CastTime | Widget::Aim => (110.0, LINE),
             Widget::Health

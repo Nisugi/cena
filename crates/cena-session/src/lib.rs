@@ -69,7 +69,7 @@ pub use cena_model::{ChunkLine, GameState, Hand, Room, RoomItem, UnknownTag};
 // The creature a hunt reads and the status words it asks about: `plan/30`
 // section 1's table of what the model answers a hunter with. Beside the
 // other model vocabulary re-exported for behaviors, on the same terms.
-pub use cena_model::{Able, CreatureInstance, Effect, Injuries, StatusName};
+pub use cena_model::{Able, CreatureInstance, Effect, Injuries, Injury, StatusName};
 // The rest of what the hunt's guards ask of a creature (`plan/33`): the part
 // a wound is on and the unarmed position. Its `<crtrStatus>` flags are
 // `creature::status::Classification`, reached through `creature` above.
