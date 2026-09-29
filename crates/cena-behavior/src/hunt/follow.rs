@@ -294,7 +294,18 @@ impl Hunt {
         let refused = lines
             .iter()
             .any(|line| line.contains("can not be used with attack as the attack type"));
-        let swap = refused && !std::mem::replace(&mut self.follow.swapped, refused);
+        // Once for the step now going, and again for a later one: the flag
+        // goes when a line that is neither the swap nor made to wait is
+        // answered without the refusal. (`refused && !replace(..)` never
+        // reached the replace unless refused, so the first swap of a hunt
+        // was its last: the review of 2026-09-29.)
+        let swapping = matches!(&self.follow.resend, Some(Resend::Line(line)) if line == "swap");
+        let swap = refused && !self.follow.swapped;
+        if refused {
+            self.follow.swapped = true;
+        } else if !swapping && !waited {
+            self.follow.swapped = false;
+        }
         if swap {
             self.followups.push_back("swap".to_owned());
         }
