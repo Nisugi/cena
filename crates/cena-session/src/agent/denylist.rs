@@ -17,7 +17,7 @@
 //! as there, a line that starts with the command symbol is a Hydra command,
 //! which an agent runs through `perform` at its own level.
 //!
-//! # Two holes, each closed on a documented case
+//! # Three holes, each closed on a documented case
 //!
 //! - **`put` with no container drops.** The wiki's own example
 //!   (`reference/wiki_clean/Verb_DROP.txt`): `>put my topaz` answers *You
@@ -30,6 +30,14 @@
 //!   `o`, `s`, `se`, `u`), which move the character and are what they look
 //!   like. Which verb the game would take an abbreviation for is the game's;
 //!   nothing here guesses, so any denied verb it could be is enough.
+//! - **`_drag` onto `drop` drops.** `_drag #<item> <onto>` is the markup's
+//!   own move, and Hydra sends `_drag #<item> drop` itself to put an item on
+//!   the ground (`cena-behavior`'s `batch/build.rs` and `travel/routines/
+//!   day_pass.rs`; the GUI's carry to the floor). A `_drag` whose destination
+//!   is `drop`, or could be, or names the ground, is denied as a drop (the
+//!   integrated crate review of 2026-09-28, I4). A `_drag` to a hand
+//!   (`left`, `right`) or into a container (`#<id>`, `my cloak`) goes, as a
+//!   `put` into a container does: Hydra's own behaviors stow with it.
 //!
 //! **What this is not**: a sandbox. It refuses the verbs that give things
 //! away or destroy them, as LAB's does, and it is not a list of what is
@@ -112,7 +120,18 @@ pub fn refused(line: &str, symbol: char) -> Option<String> {
     if begins("put") {
         return put(&words[1..]);
     }
+    if first == "_drag" {
+        return drag(words.get(2..).unwrap_or_default());
+    }
     None
+}
+
+/// Why a `_drag` whose destination is `onto` (the words after the item) is
+/// a drop, if it is.
+fn drag(onto: &[&str]) -> Option<String> {
+    onto.iter()
+        .any(|word| "drop".starts_with(word) || GROUND.contains(word))
+        .then(|| "a `_drag` onto `drop` or the ground drops what it drags".to_owned())
 }
 
 /// Why a `put` with `rest` after its verb is a drop, if it is.
@@ -192,6 +211,10 @@ mod tests {
             "tr Nerten",
             "unm sword",
             "set nomark off",
+            "_drag #123 drop",
+            "_DRAG  #123   DROP",
+            "_drag #123 dro",
+            "_drag #123 ground",
         ] {
             assert!(denied(line), "{line:?}");
         }
@@ -218,6 +241,10 @@ mod tests {
             "set nomarkeddrop on",
             "attack troll",
             "go gate",
+            "_drag #123 #456",
+            "_drag #123 right",
+            "_drag #123 left",
+            "_drag #77 my cloak",
         ] {
             assert!(!denied(line), "{line:?}: {:?}", refused(line, ';'));
         }

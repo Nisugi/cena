@@ -203,7 +203,8 @@ of drop, discard, trash, sell, give, offer, exchange, trade, mail, place, throw,
 destroy, sacrifice, unmark -- except the directions `d`, `e`, `o`, `s`, `se`, `u`, since the
 game takes abbreviations; `mark ... remove`; `set nomarkeddrop` or `set saferdrop` not `on`;
 and a `put` that names no container, or puts on the ground, the floor or the room (`put my
-topaz` drops it). Refused as `{"refused": "request", "why": "never sent: ..."}`. The list is
+topaz` drops it); and a `_drag` onto `drop` (or a start of it) or the ground (`_drag #123
+drop` drops it), while a `_drag` to a hand or into a container goes. Refused as `{"refused": "request", "why": "never sent: ..."}`. The list is
 not a statement of what is safe.
 
 ## `take_over` `{ character, because, request_id, expected_generation }`

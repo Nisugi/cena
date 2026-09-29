@@ -1,5 +1,7 @@
 # Cena crate review — 2026-09-28
 
+> Historical pre-integration review. For the current integrated workspace, including the new agent crate and fixes to the findings below, see [the integrated review](crate-review-integrated-2026-09-28.md). The open-finding count below describes the earlier worktree, not the merged implementation.
+
 ## Assessment and scope
 
 The new settings and widget work makes Hydra substantially easier to configure. The remaining concern is whether the controls and automation consistently act on the state and character they present. This review identifies **14 current findings: six P1 and eight P2**, including **three newly identified defects** in the GUI/UI integration. The eleven findings from the September 27 review remain open in the inspected implementation, with changed locations and expanded exposure noted below.
