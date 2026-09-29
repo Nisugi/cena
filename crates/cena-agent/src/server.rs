@@ -19,7 +19,6 @@ use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig};
 use rmcp::{ErrorData, ServerHandler, schemars, tool, tool_handler, tool_router};
 use serde::Deserialize;
-use tokio_util::sync::CancellationToken;
 
 use cena_session::Generation;
 use cena_session::agent::{
@@ -27,7 +26,7 @@ use cena_session::agent::{
 };
 use cena_session::operation::Control;
 
-use crate::characters::{Characters, Seat, subscribe};
+use crate::characters::{Characters, Seat, read};
 use crate::happenings::{self, Happening, KINDS, LINES_RETURNED, LONGEST_WAIT, Log};
 use crate::projection::project;
 use crate::{PROTOCOL, records};
@@ -231,7 +230,7 @@ impl Agent {
                 }));
                 continue;
             }
-            let snapshot = subscribe(&seat.observer, &CancellationToken::new()).await;
+            let snapshot = read(&seat.observer).await;
             listed.push(serde_json::json!({
                 "character": label,
                 "level": level.word(),
@@ -254,11 +253,9 @@ impl Agent {
             Ok(seat) => seat,
             Err(refused) => return Ok(refused),
         };
-        let (snapshot, _) = subscribe(&seat.observer, &CancellationToken::new())
-            .await
-            .ok_or_else(|| {
-                ErrorData::internal_error(format!("{} has no session to read", seat.name), None)
-            })?;
+        let (snapshot, _) = read(&seat.observer).await.ok_or_else(|| {
+            ErrorData::internal_error(format!("{} has no session to read", seat.name), None)
+        })?;
         json(&project(&seat.name, &snapshot))
     }
 

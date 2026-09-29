@@ -171,6 +171,28 @@ pub async fn subscribe(
     }
 }
 
+/// How long a tool waits on a session for a copy of it: a `wait`'s own
+/// longest.
+pub const READ_DEADLINE: Duration = Duration::from_secs(30);
+
+/// [`subscribe`] for a tool answering a request: `None` too when the
+/// session has not answered in [`READ_DEADLINE`].
+///
+/// `subscribe` tries again for as long as the session is busy, until it is
+/// stopped, and the tools gave it a token nothing stops: with the session's
+/// actor wedged, `state`, `characters`, `spell`, `route` and `seconds` never
+/// answered, where `wait` answers in thirty seconds (the review of
+/// 2026-09-29).
+pub async fn read(
+    observer: &SessionObserver,
+) -> Option<(Snapshot, broadcast::Receiver<ObservedEvent>)> {
+    let stop = CancellationToken::new();
+    tokio::time::timeout(READ_DEADLINE, subscribe(observer, &stop))
+        .await
+        .ok()
+        .flatten()
+}
+
 /// The session's own events that are happenings as they are.
 fn direct(event: &Event) -> Option<Happening> {
     match event {
@@ -319,10 +341,19 @@ async fn watch(seat: Seat) {
         };
         // The events up to the new snapshot's fence are still in the old
         // receiver: take their direct happenings before letting it go.
-        while let Ok(event) = events.try_recv() {
-            if event.cursor > snapshot.cursor {
-                break;
-            }
+        // Some lost on the way are said to have been, as the script's
+        // watch says it (`scripts/watch.rs`): this stopped at a loss,
+        // silently, and an `approval` among them was never heard of (the
+        // review of 2026-09-29).
+        loop {
+            let event = match events.try_recv() {
+                Ok(event) if event.cursor <= snapshot.cursor => event,
+                Err(broadcast::error::TryRecvError::Lagged(_)) => {
+                    gap = true;
+                    continue;
+                }
+                Ok(_) | Err(_) => break,
+            };
             if let Some(happening) = direct(&event.event) {
                 keeper.keep(event.cursor, happening);
             }

@@ -319,8 +319,7 @@ impl Scripting {
         let Some(spell) = spell else {
             return json(&serde_json::json!({ "spell": null }));
         };
-        let stop = tokio_util::sync::CancellationToken::new();
-        let (snapshot, _) = crate::characters::subscribe(&seat.observer, &stop)
+        let (snapshot, _) = crate::characters::read(&seat.observer)
             .await
             .ok_or_else(|| ErrorData::internal_error("the character has no session", None))?;
         let state = &snapshot.state;

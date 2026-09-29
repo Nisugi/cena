@@ -216,8 +216,7 @@ impl Scripting {
 
 /// The character as a walker, now.
 async fn walker(seat: &Seat, atlas: &Atlas) -> Result<Walker, ErrorData> {
-    let stop = tokio_util::sync::CancellationToken::new();
-    let (snapshot, _) = crate::characters::subscribe(&seat.observer, &stop)
+    let (snapshot, _) = crate::characters::read(&seat.observer)
         .await
         .ok_or_else(|| ErrorData::internal_error("the character has no session", None))?;
     Ok((atlas.walker)(&seat.character, &snapshot.state))

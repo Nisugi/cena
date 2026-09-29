@@ -133,6 +133,9 @@ impl Runners {
         // published as heard.
         door.listen(true);
         let Some((snapshot, events)) = crate::characters::subscribe(observer, &stop).await else {
+            // Nobody is listening after all: the session is not left
+            // publishing every line as heard for no runner.
+            door.listen(false);
             return Err(format!("{character} has no session to listen to"));
         };
         let (ends, ended) = mpsc::unbounded_channel();
