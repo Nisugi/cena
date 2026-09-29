@@ -545,24 +545,25 @@ impl<S: ByteSource> SessionActor<S> {
         let Some(dir) = self.menu_dir.clone() else {
             return;
         };
-        match crate::menu_store::merge_and_save(&dir, &self.state.learned_commands) {
-            // `None` is the ordinary case on a current install: the pushed
-            // rows match the shipped table, so there is nothing novel to
-            // record and no file is created.
-            Ok(None) => {}
-            Ok(Some(path)) => {
-                self.log(&format!(
+        let learned = self.state.learned_commands.clone();
+        // Off this task, in order with the character store (`saves.rs`).
+        self.saves.queue(
+            move || match crate::menu_store::merge_and_save(&dir, &learned) {
+                // `None` is the ordinary case on a current install: the pushed
+                // rows match the shipped table, so there is nothing novel to
+                // record and no file is created.
+                Ok(None) => None,
+                Ok(Some(path)) => Some(format!(
                     "learned menu commands written to {}",
                     path.display()
-                ));
-            }
-            Err(err) => {
-                self.log(&format!(
+                )),
+                Err(err) => Some(format!(
                     "could not write learned menu commands to {}: {err}",
                     dir.display()
-                ));
-            }
-        }
+                )),
+            },
+        );
+        self.log_saves();
     }
 
     pub(super) fn ingest(&mut self, chunk: &[u8]) {

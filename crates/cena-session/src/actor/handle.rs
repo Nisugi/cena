@@ -123,6 +123,7 @@ impl<S: ByteSource> Session<S> {
                 menu_dir: None,
                 player_log: None,
                 persistence: Box::default(),
+                saves: super::saves::Saves::default(),
                 combat_refusals_logged: 0,
                 ledger_refusals_logged: 0,
                 cancel: cancel.clone(),

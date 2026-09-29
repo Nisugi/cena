@@ -110,6 +110,7 @@ mod lich_text;
 mod line;
 mod owed;
 mod readiness;
+mod saves;
 
 pub(crate) use bounds::{COMMAND_CHANNEL_BOUND, EVENT_CHANNEL_BOUND};
 pub use cena_model::line::Line;
@@ -262,6 +263,9 @@ pub struct SessionActor<S: ByteSource> {
     /// See `run`'s timer arm for what this costs `run`'s future and why the
     /// `large_futures` warnings it produces are left alone.
     pub(crate) persistence: Box<crate::dirty_groups::Persistence>,
+    /// The character store's and the menu dictionary's writes, made off
+    /// this task in the order asked (`saves.rs`).
+    saves: saves::Saves,
     /// Where the learned menu dictionary is written, if anywhere.
     ///
     /// **`Option`, for the reason `sink` is**: a session without one behaves
@@ -396,6 +400,7 @@ impl<S: ByteSource> SessionActor<S> {
             menu_dir: None,
             player_log: None,
             persistence: Box::default(),
+            saves: saves::Saves::default(),
             combat_refusals_logged: 0,
             ledger_refusals_logged: 0,
             cancel,

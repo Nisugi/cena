@@ -147,6 +147,10 @@ impl<S: ByteSource> SessionActor<S> {
         // the only way to lose facts is a crash, and the facts a crash could
         // lose are re-taught by a sync.
         self.save_character();
+        // Made off this task, and waited for here: the facts are on disk
+        // before anyone is told the session ended.
+        self.saves.finish().await;
+        self.log_saves();
         // **`Closed` means the session is over, so it is published only when
         // it is** (review finding 2). A supervised connection that was LOST is
         // not the end of anything: the supervisor is about to publish
@@ -389,29 +393,39 @@ impl<S: ByteSource> SessionActor<S> {
 
         let groups = self.persistence.groups.drain();
         let now = std::time::SystemTime::now();
-        // Start from what is stored so untouched groups keep their stamps.
-        let mut snapshot =
-            crate::character_store::load(&dir, &instance, &name).unwrap_or_else(|_| {
-                cena_model::state::character::snapshot::CharacterSnapshot::new(&instance, &name)
-            });
-        let mut updated_at = snapshot.updated_at.clone();
-        for group in &groups {
-            updated_at.insert(*group, now);
-        }
-        snapshot = cena_model::state::character::snapshot::CharacterSnapshot::of(
+        // Taken now, as the character is; read, merged and written off this
+        // task, in order with every other save (`saves.rs`).
+        let mut snapshot = cena_model::state::character::snapshot::CharacterSnapshot::of(
             &name,
             &instance,
             &self.state.character,
-            updated_at,
+            std::collections::BTreeMap::new(),
         );
+        self.saves.queue(move || {
+            // Start from what is stored so untouched groups keep their stamps.
+            let mut updated_at = crate::character_store::load(&dir, &instance, &name)
+                .map(|stored| stored.updated_at)
+                .unwrap_or_default();
+            for group in &groups {
+                updated_at.insert(*group, now);
+            }
+            snapshot.updated_at = updated_at;
+            Some(match crate::character_store::save(&dir, &snapshot) {
+                Ok(path) => format!(
+                    "character store: wrote {} group(s) to {}",
+                    groups.len(),
+                    path.display()
+                ),
+                Err(err) => format!("character store: write failed: {err}"),
+            })
+        });
+        self.log_saves();
+    }
 
-        match crate::character_store::save(&dir, &snapshot) {
-            Ok(path) => self.log(&format!(
-                "character store: wrote {} group(s) to {}",
-                groups.len(),
-                path.display()
-            )),
-            Err(err) => self.log(&format!("character store: write failed: {err}")),
+    /// Log what the saves made so far had to say.
+    pub(super) fn log_saves(&mut self) {
+        for line in self.saves.heard() {
+            self.log(&line);
         }
     }
 
