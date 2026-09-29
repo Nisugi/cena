@@ -188,3 +188,29 @@ fn a_caught_key_on_the_input_waits_for_a_menu() {
         "the menu shut, cleared"
     );
 }
+
+/// Tab and Shift+Tab are the keys' -- they target -- and never move the
+/// keyboard off the command input, as egui would.
+#[test]
+fn tab_keeps_the_keyboard_on_the_input() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
+    harness.run();
+    harness.get_by_role(Role::TextInput).type_text("hi");
+    harness.run();
+    harness.key_press(egui::Key::Tab);
+    harness.run();
+    harness.key_press_modifiers(egui::Modifiers::SHIFT, egui::Key::Tab);
+    harness.run();
+    assert!(
+        harness.get_by_role(Role::TextInput).is_focused(),
+        "still typing"
+    );
+    assert_eq!(input(&harness).as_deref(), Some("hi"), "no tab typed");
+}

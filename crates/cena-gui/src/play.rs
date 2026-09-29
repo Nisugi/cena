@@ -181,6 +181,9 @@ pub(crate) struct Play {
     find: Option<find::FindBar>,
     /// Where each widget showing was drawn last, by placed id.
     shown_rects: Vec<(u32, egui::Rect)>,
+    /// What the game last listed as ones to attack, in its order, and the
+    /// one targeted (step 7).
+    targets: (Vec<i64>, Option<i64>),
 }
 
 /// Lines of history kept for up and down.
@@ -228,6 +231,7 @@ impl Play {
             unread_tabs: Vec::new(),
             find: None,
             shown_rects: Vec::new(),
+            targets: (Vec::new(), None),
         }
     }
 
@@ -316,6 +320,10 @@ impl Play {
         });
         let area = ui.available_rect_before_wrap();
         self.ask_find(ui.ctx());
+        if let Some(snapshot) = view.snapshot {
+            let targeting = &snapshot.state.targeting;
+            self.targets = (targeting.ids().to_vec(), targeting.current());
+        }
         changed |= self.arrange(ui, view);
         let received: Vec<&str> = view.story.streams.ids().collect();
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);

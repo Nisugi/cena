@@ -16,7 +16,9 @@
 //! with Ctrl to the oldest or newest line. Ctrl+Tab turns the tabs of the
 //! window in use, with Shift back (step 5); choosing the window has no key,
 //! a click chooses it (§6 answer 3). Ctrl+F finds, F3 the one found before
-//! and Shift+F3 the one after (step 6). Each later step of the plan adds the
+//! and Shift+F3 the one after (step 6). Tab targets the next creature and
+//! Shift+Tab the one before (step 7; the author: *"I prefer tab for
+//! targetting"*). Each later step of the plan adds the
 //! keys of the actions it builds.
 
 use std::collections::BTreeMap;
@@ -71,13 +73,15 @@ const SCROLLING: [(&str, u8, Action); 8] = [
     ("PageDown", CTRL, Action::ScrollBottom),
 ];
 
-/// The tabs' keys and Find's, and the modifiers held.
-const TABS: [(&str, u8, Action); 5] = [
+/// The tabs' keys, Find's and the targets', and the modifiers held.
+const TABS: [(&str, u8, Action); 7] = [
     ("Tab", CTRL, Action::NextTab),
     ("Tab", CTRL | SHIFT, Action::PreviousTab),
     ("KeyF", CTRL, Action::Find),
     ("F3", 0, Action::FindNext),
     ("F3", SHIFT, Action::FindPrevious),
+    ("Tab", 0, Action::TargetNext),
+    ("Tab", SHIFT, Action::TargetPrevious),
 ];
 
 /// Every key Hydra binds, and what each does.
@@ -118,8 +122,8 @@ mod tests {
         let defaults = defaults();
         assert_eq!(
             defaults.len(),
-            57,
-            "eleven walks, eleven peers, four marks, eight sending, eight scrolling, two tabs, three finding, ten sets"
+            59,
+            "eleven walks, eleven peers, four marks, eight sending, eight scrolling, two tabs, three finding, two targets, ten sets"
         );
         for (chord, made) in &defaults {
             let written = chord.written();

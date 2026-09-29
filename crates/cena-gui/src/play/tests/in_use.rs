@@ -154,3 +154,28 @@ fn the_find_bar_as_drawn() {
     harness.run_steps(8);
     harness.snapshot("find");
 }
+
+/// Tab and Shift+Tab's actions target the creature after and before the one
+/// the game says is targeted, round its list (`plan/52` step 7).
+#[test]
+fn the_targets_go_round_the_games_list() {
+    let mut harness = harness();
+    let targeting = &mut harness.state_mut().snapshot.state.targeting;
+    targeting.read("#101,#202,#303", Some("a kobold"));
+    harness.run();
+    let context = harness.ctx.clone();
+    let play = &mut harness.state_mut().play;
+    assert_eq!(
+        play.act(&context, Action::TargetNext).as_deref(),
+        Some("target #202")
+    );
+    assert_eq!(
+        play.act(&context, Action::TargetPrevious).as_deref(),
+        Some("target #303"),
+        "round, from the first"
+    );
+    assert_eq!(
+        play.act(&context, Action::TargetClear).as_deref(),
+        Some("target clear")
+    );
+}

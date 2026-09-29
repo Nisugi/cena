@@ -81,6 +81,13 @@ pub enum Action {
     FindNext,
     /// Go to the line found after.
     FindPrevious,
+    /// Target the next creature the game lists as one to attack, round
+    /// (`plan/52` step 7).
+    TargetNext,
+    /// The one before.
+    TargetPrevious,
+    /// Target nothing: `target clear`.
+    TargetClear,
 }
 
 /// Each set's action's name in the keybinds file.
@@ -113,7 +120,7 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 32] = [
+    pub const ALL: [Self; 35] = [
         Self::SendOrRepeat,
         Self::RepeatLast,
         Self::RepeatSecondLast,
@@ -134,6 +141,9 @@ impl Action {
         Self::Find,
         Self::FindNext,
         Self::FindPrevious,
+        Self::TargetNext,
+        Self::TargetPrevious,
+        Self::TargetClear,
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -175,6 +185,9 @@ impl Action {
             Self::Find => "find",
             Self::FindNext => "find_next",
             Self::FindPrevious => "find_previous",
+            Self::TargetNext => "target_next",
+            Self::TargetPrevious => "target_previous",
+            Self::TargetClear => "target_clear",
         }
     }
 
@@ -205,6 +218,9 @@ impl Action {
             Self::Find => "Find in the window in use",
             Self::FindNext => "Find the one before",
             Self::FindPrevious => "Find the one after",
+            Self::TargetNext => "Target the next creature",
+            Self::TargetPrevious => "Target the creature before",
+            Self::TargetClear => "Target nothing",
         }
     }
 

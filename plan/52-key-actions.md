@@ -420,6 +420,25 @@ The author: *"do steps 4-10"*. The window in use, and §3's scrolling table:
   which line is marked current in the pane that follows the newest, where the current
   one is not in sight.
 
+### Step 7, BUILT 2026-09-29
+
+§3's targeting, on the author's Tab (*"I prefer tab for targetting"*):
+
+- **`target_next` (Tab) and `target_previous` (Shift+Tab)** send `target #<id>` for the
+  creature after, or before, the one the game says is targeted, in the order of its own
+  `dDBTarget` list (§6 answer 6; `crates/cena-model/src/state/targeting.rs`), round
+  from the last to the first; the first, or the last, when none of them is; nothing
+  while the game lists none (`play/keyed.rs`, `target`). The line is sent as if typed,
+  and echoed.
+- **`target_clear`**, with no key, sends `target clear`.
+- **Tab stays on the command input**: the input holds Tab (step 5), and a targeting key
+  puts the keyboard back on it, since with nothing holding it egui gives Tab to the next
+  widget.
+- *Tests:* round the list both ways, none targeted, one gone, none listed, a player's
+  negative id; the play window's list as the game last sent it; Tab and Shift+Tab
+  leaving the keyboard and the line where they were (`app/tests/sending.rs`). Four
+  mutants, all caught.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

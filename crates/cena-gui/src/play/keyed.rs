@@ -96,6 +96,14 @@ impl Play {
                 self.step_find(context, false);
                 None
             }
+            Action::TargetNext | Action::TargetPrevious => {
+                // Tab keeps the keyboard on the input: with nothing holding
+                // it, egui gives it to the next widget.
+                context.memory_mut(|memory| memory.request_focus(self.input_id()));
+                let (ids, current) = &self.targets;
+                target(ids, *current, action == Action::TargetNext)
+            }
+            Action::TargetClear => Some("target clear".to_owned()),
             Action::Stop | Action::Settings | Action::Set(_) => None,
         }
     }
@@ -136,5 +144,56 @@ impl Play {
             self.save();
         }
         None
+    }
+}
+
+/// The line that targets the creature after `current` in `ids`, the
+/// game's list of ones to attack, or before it (`forward` or not), round
+/// from the last to the first: the first, or the last, when none of them is
+/// targeted. None while the game lists nothing.
+pub(super) fn target(ids: &[i64], current: Option<i64>, forward: bool) -> Option<String> {
+    let last = ids.len().checked_sub(1)?;
+    let at = current.and_then(|current| ids.iter().position(|id| *id == current));
+    let next = match (at, forward) {
+        (Some(at), true) if at < last => at + 1,
+        (_, true) => 0,
+        (Some(at), false) if at > 0 => at - 1,
+        (_, false) => last,
+    };
+    Some(format!("target #{}", ids[next]))
+}
+
+#[cfg(test)]
+mod tests {
+    /// The next creature after the one targeted, round; the one before;
+    /// the first or the last with none targeted; nothing with none listed.
+    #[test]
+    fn targets_go_round_the_games_list() {
+        let ids = [11, 22, 33];
+        let target = |current, forward| super::target(&ids, current, forward);
+        assert_eq!(target(Some(11), true).as_deref(), Some("target #22"));
+        assert_eq!(
+            target(Some(33), true).as_deref(),
+            Some("target #11"),
+            "round"
+        );
+        assert_eq!(target(Some(22), false).as_deref(), Some("target #11"));
+        assert_eq!(
+            target(Some(11), false).as_deref(),
+            Some("target #33"),
+            "round back"
+        );
+        assert_eq!(target(None, true).as_deref(), Some("target #11"));
+        assert_eq!(
+            target(Some(99), false).as_deref(),
+            Some("target #33"),
+            "gone: the last"
+        );
+        assert_eq!(super::target(&[], Some(11), true), None);
+        assert_eq!(
+            super::target(&[-5], None, true).as_deref(),
+            Some("target #-5"),
+            "a player's id is negative"
+        );
     }
 }
