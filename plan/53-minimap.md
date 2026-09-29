@@ -335,6 +335,38 @@ pictures (`svg.rs`) for the author to judge. **What tuned means is the author's 
    the answer is known (the author: *"A lot easier to optimize once you have the answer"*).
    Of the 236 against their direction, about 110 are in groups with an up or down inside
    them, two levels drawn on one sheet: floors, curated, later (§6).
+
+   **Then the author's corrections from Hinterwilds and Kraken's Fall's Atoll**, in
+   hydra-mapper `f8cc0b1`, the author's Atoll pins cleared first (the engine now does what
+   they did by hand):
+
+   - **A dot for each way in** (*"their room that leads to an outside room, shows up on the
+     map as a dot"*): folding the doorways had left only a thin outline on the street room.
+     Each way into a place left off the sheet is a dot beside its street room, on the side
+     its lines leave open, the place named when it holds 10 rooms or more
+     (`cena_map_layout::doors`, `hidden::ways_in`).
+   - **An island is tried beside its link before it is cut** (*"There's literally nothing
+     in the way of it going and attaching to the room above"*), its line bending round what
+     is in the way; a cut group's link is marks only when drawn over 3 steps, a hand's move
+     included.
+   - **Up and down after the compass exits, on a free side**: the Long Snow's encampment had
+     been drawn a second step north, its line back over the room between.
+   - **A ring grows to hold what hangs inside it** (*"why doesn't the path above stretch out
+     a little so the ruins can fit inside it?"*): the same columns each side and rows only
+     where needed, the least that fits (*"it should squish a group symmetrically"*). Doubling
+     the ring and squishing it back came out lopsided and was not kept.
+
+   | Rule, events aside | before | now: the baseline |
+   |---|---|---|
+   | exits against their direction | 236 | 236 |
+   | directionless lines crossing another | 153 | 128 |
+   | directionless lines lying along another | 63 | 50 |
+   | the other three | 0 | 0 |
+
+   **When the map is laid out** (the author, 2026-09-29: *"it just loads 1 map for all
+   characters yeah? So why not just load the entire thing right then and there"*): likely
+   every area at launch, from the disk cache, rebuilt in the background when stale, rather
+   than per area on first need as §2 says. Settled in Stage 2.
 3. **Directions** (rule 1): the 358 drawn against their bearing on data that could be
    satisfied, by a repair that is not local (the README's own diagnosis). The 309 in groups
    whose exits truly contradict are data: curated, or drawn as the least wrong.
