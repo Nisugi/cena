@@ -16,6 +16,7 @@ mod app;
 pub mod bar;
 mod calibration;
 mod carry;
+mod doll_art;
 mod feed;
 #[cfg(test)]
 mod fixture;

@@ -229,7 +229,7 @@ impl App {
             dolls: self
                 .list_pictures("dolls")
                 .into_iter()
-                .filter(|path| !crate::widget::doll::is_layer(path))
+                .filter(|path| !crate::doll_art::is_layer(path))
                 .collect(),
         };
         self.overlays = Some((now, found.clone()));

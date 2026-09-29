@@ -123,12 +123,17 @@ impl Calibrator {
             return;
         };
         let preview = self.preview();
+        let layers = crate::doll_art::layers(ui.ctx(), &self.picture);
         let (rect, response) = ui
             .allocate_ui(Vec2::new(300.0, 340.0), |ui| {
                 doll::drawn(
                     ui,
                     Some(&preview),
-                    Some((&texture, &self.calibration)),
+                    Some(doll::Over {
+                        texture: &texture,
+                        calibration: &self.calibration,
+                        layers: &layers,
+                    }),
                     egui::Sense::click(),
                 )
             })

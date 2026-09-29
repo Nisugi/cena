@@ -54,7 +54,30 @@ fn kept_at<T: Clone + Send + Sync + 'static>(
     now: Instant,
     read: impl FnOnce(&str) -> Option<T>,
 ) -> Option<T> {
-    let id = egui::Id::new((kind, path));
+    kept_watching_at(context, (kind, path), path, now, read)
+}
+
+/// What `read` makes of `watched`, kept by egui under `kind` and `key` and
+/// read again when `watched`'s modification time has changed: a folder's,
+/// for what is in it (`doll_art.rs`).
+pub(crate) fn kept_watching<T: Clone + Send + Sync + 'static>(
+    context: &egui::Context,
+    kind: &'static str,
+    key: &str,
+    watched: &str,
+    read: impl FnOnce(&str) -> Option<T>,
+) -> Option<T> {
+    kept_watching_at(context, (kind, key), watched, Instant::now(), read)
+}
+
+fn kept_watching_at<T: Clone + Send + Sync + 'static>(
+    context: &egui::Context,
+    (kind, key): (&'static str, &str),
+    path: &str,
+    now: Instant,
+    read: impl FnOnce(&str) -> Option<T>,
+) -> Option<T> {
+    let id = egui::Id::new((kind, key));
     let kept = context.data(|data| data.get_temp::<Kept<T>>(id));
     if let Some(kept) = &kept
         && now.saturating_duration_since(kept.looked) < LOOK_AGAIN
@@ -73,6 +96,14 @@ fn kept_at<T: Clone + Send + Sync + 'static>(
     };
     context.data_mut(|data| data.insert_temp(id, kept));
     fresh
+}
+
+/// Whether the picture at `path` has been read: for a test that a picture
+/// not shown is never decoded (`plan/55` §2d).
+#[cfg(test)]
+pub(crate) fn was_read(context: &egui::Context, path: &str) -> bool {
+    let id = egui::Id::new(("picture", path));
+    context.data(|data| data.get_temp::<Kept<egui::TextureHandle>>(id).is_some())
 }
 
 /// A PNG, or any picture the `image` crate reads, as a texture.

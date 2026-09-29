@@ -250,29 +250,6 @@ const fn part(id: &'static str, name: &'static str, anchor: (f32, f32), shape: S
     }
 }
 
-/// The levels an overlay is drawn for, as `VellumFE` names them in a file
-/// (`reference/VellumFE/src/config/skins.rs:644-669`).
-pub(crate) const LEVELS: [&str; 7] = [
-    "healthy", "injury1", "injury2", "injury3", "scar1", "scar2", "scar3",
-];
-
-/// Whether the file at `path` is one of a doll picture's overlays,
-/// `<picture>_<part>_<level>.png`, rather than a picture of its own.
-pub(crate) fn is_layer(path: &std::path::Path) -> bool {
-    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-        return false;
-    };
-    let mut pieces = stem.rsplitn(3, '_');
-    let (Some(level), Some(part), Some(_picture)) = (pieces.next(), pieces.next(), pieces.next())
-    else {
-        return false;
-    };
-    LEVELS.iter().any(|known| known.eq_ignore_ascii_case(level))
-        && PARTS
-            .iter()
-            .any(|known| known.id.eq_ignore_ascii_case(part))
-}
-
 /// What `part` shows among `injuries`: a folded foot counting as its leg,
 /// the worse of the two on each track.
 pub(crate) fn shown(injuries: &BTreeMap<String, Injury>, part: &Part) -> Option<Shown> {
@@ -332,8 +309,30 @@ pub(super) fn doll(
     let calibration = chosen
         .filter(|_| picture.is_some())
         .map(|path| crate::pictures::calibration(ui.ctx(), path));
-    let over = picture.as_ref().zip(calibration.as_ref());
+    let layers = chosen
+        .filter(|_| picture.is_some())
+        .map(|path| crate::doll_art::layers(ui.ctx(), path));
+    let over = match (&picture, &calibration, &layers) {
+        (Some(texture), Some(calibration), Some(layers)) => Some(Over {
+            texture,
+            calibration,
+            layers,
+        }),
+        _ => None,
+    };
     let _ = drawn(ui, injuries, over, egui::Sense::hover());
+}
+
+/// A doll picture as drawn: the picture, where its parts sit, and its
+/// overlays (`doll_art.rs`).
+#[derive(Clone, Copy)]
+pub(crate) struct Over<'a> {
+    /// The picture.
+    pub(crate) texture: &'a egui::TextureHandle,
+    /// Where its parts sit, and how its dots look.
+    pub(crate) calibration: &'a Calibration,
+    /// Its overlays, drawn in place of a part's dot.
+    pub(crate) layers: &'a crate::doll_art::Layers,
 }
 
 /// Draw the doll for `injuries` in what is left of `ui`: over a picture,
@@ -344,15 +343,15 @@ pub(super) fn doll(
 pub(crate) fn drawn(
     ui: &mut egui::Ui,
     injuries: Option<&BTreeMap<String, Injury>>,
-    over: Option<(&egui::TextureHandle, &Calibration)>,
+    over: Option<Over<'_>>,
     sense: egui::Sense,
 ) -> (Rect, egui::Response) {
     // Before the game has said, the body is drawn whole. (An empty map
     // allocates nothing.)
     let whole = BTreeMap::new();
     let injuries = injuries.unwrap_or(&whole);
-    let aspect = over.map_or(ASPECT, |(texture, _)| {
-        let [width, height] = texture.size();
+    let aspect = over.map_or(ASPECT, |over| {
+        let [width, height] = over.texture.size();
         #[expect(
             clippy::cast_precision_loss,
             reason = "a picture's size in pixels, far inside f32's exact range"
@@ -373,8 +372,13 @@ pub(crate) fn drawn(
     let at = |(x, y): (f32, f32)| rect.min + Vec2::new(x * rect.width(), y * rect.height());
     let scale = rect.height();
 
-    let dots = if let Some((texture, calibration)) = over {
-        let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+    let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+    let dots = if let Some(Over {
+        texture,
+        calibration,
+        ..
+    }) = over
+    {
         painter.image(texture.id(), rect, uv, Color32::WHITE);
         Dots {
             calibration: Some(calibration),
@@ -393,7 +397,15 @@ pub(crate) fn drawn(
     for part in &PARTS {
         let center = at(dots.anchor(part));
         let shows = shown(injuries, part);
-        if let Some(shows) = shows {
+        // The picture's own art for what the part shows, over all of the
+        // picture (`doll_art.rs`); a dot where it has none.
+        let level = shows.map_or(0, Shown::level);
+        let art = over
+            .and_then(|over| over.layers.get(&(part.id, level)))
+            .and_then(|path| crate::pictures::picture(ui.ctx(), path));
+        if let Some(art) = art {
+            painter.image(art.id(), rect, uv, Color32::WHITE);
+        } else if let Some(shows) = shows {
             dot(&painter, center, &dots, shows);
         }
         // Pointed at: a part's own shape on the body, its dot's
@@ -568,18 +580,6 @@ mod tests {
         harness.snapshot("injuries_hurt");
     }
 
-    /// A picture's overlays are not pictures of their own.
-    #[test]
-    fn an_overlay_file_is_told_from_a_picture() {
-        let is = |name: &str| super::is_layer(std::path::Path::new(name));
-        assert!(is("nisugi_chest_injury2.png"));
-        assert!(is("dwarf_ranger_leftArm_scar1.png"));
-        assert!(is("nisugi_nsys_healthy.png"));
-        assert!(!is("nisugi_bow.png"), "a variant, not an overlay");
-        assert!(!is("dwarf_ranger.png"));
-        assert!(!is("chest_injury2.png"), "no picture before the part");
-    }
-
     /// A picture of the test's own, calibrated beside it as `VellumFE`
     /// keeps its working copy: its dots where the calibration says, sized
     /// and faded as it says.
@@ -618,6 +618,44 @@ diameter = 0.1
             .build_ui(move |ui| super::doll(ui, Some(&hurt), Some(&look)));
         harness.run();
         harness.snapshot("injuries_picture");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The Doll plus: a picture with the chest's art for a middling wound
+    /// and for a scar. The wound's art is drawn in place of the chest's
+    /// dot; the head, with no art, keeps its dot; the scar's art, not
+    /// shown, is never read.
+    #[test]
+    fn a_parts_art_is_drawn_in_place_of_its_dot_and_art_not_shown_never_read() {
+        let dir = std::env::temp_dir().join(format!("cena-doll-plus-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("a folder");
+        let base = dir.join("plus.png");
+        image::RgbaImage::from_pixel(60, 120, image::Rgba([40, 60, 90, 255]))
+            .save(&base)
+            .expect("saved");
+        let mut art = image::RgbaImage::new(60, 120);
+        for y in 30..55 {
+            for x in 18..42 {
+                art.put_pixel(x, y, image::Rgba([40, 200, 60, 255]));
+            }
+        }
+        art.save(dir.join("plus_chest_injury2.png")).expect("saved");
+        let scar = dir.join("plus_chest_scar1.png");
+        art.save(&scar).expect("saved");
+        let look = super::DollLook {
+            picture: Some(base.to_string_lossy().into_owned()),
+        };
+        let hurt = injuries(&[("chest", 2, 1), ("head", 1, 0)]);
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size((180.0, 240.0))
+            .build_ui(move |ui| super::doll(ui, Some(&hurt), Some(&look)));
+        harness.run();
+        harness.snapshot("injuries_plus");
+        assert!(!crate::pictures::was_read(
+            &harness.ctx,
+            &scar.to_string_lossy()
+        ));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
