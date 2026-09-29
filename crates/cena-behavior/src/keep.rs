@@ -24,7 +24,6 @@ use serde::{Deserialize, Serialize};
 use cena_session::GameState;
 
 use crate::cast::{self, Casting};
-use crate::hunt::chain;
 
 /// Seconds before a spell cast and still down is tried again.
 const RETRY: u32 = 30;
@@ -85,7 +84,7 @@ impl KeepProfile {
     ///
     /// The text is not TOML, or names a key this does not know.
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        crate::profile_file::read(text)
     }
 
     /// The profile as a file's text.
@@ -94,15 +93,14 @@ impl KeepProfile {
     ///
     /// It cannot be written as TOML.
     pub fn to_toml(&self) -> Result<String, String> {
-        toml::to_string_pretty(self).map_err(|e| e.to_string())
+        crate::profile_file::written(self)
     }
 }
 
 /// The character's keep profile: `<data>/hunt/keep/<instance>_<character>.toml`.
 #[must_use]
 pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
-    let file = chain::file_name(&format!("{instance}_{character}"))?;
-    Some(dir.join("hunt").join("keep").join(format!("{file}.toml")))
+    crate::profile_file::path(dir, "keep", instance, character)
 }
 
 /// What to send next to keep the list up, or `None` when nothing is down

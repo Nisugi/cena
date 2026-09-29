@@ -9,8 +9,6 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::hunt::chain;
-
 /// eloot's own category names (`eloot.lic:683`, `all_loot_categories`),
 /// the words `take` may use beside the object-type table's. `breakable` and
 /// `lm trap` are in Nisugi's profile and in the type table, not in this list.
@@ -132,7 +130,7 @@ impl LootProfile {
     ///
     /// Not TOML, or a key this profile does not have.
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        crate::profile_file::read(text)
     }
 
     /// Write the profile as TOML.
@@ -141,7 +139,7 @@ impl LootProfile {
     ///
     /// A value TOML cannot hold, which no field here produces.
     pub fn to_toml(&self) -> Result<String, String> {
-        toml::to_string_pretty(self).map_err(|e| e.to_string())
+        crate::profile_file::written(self)
     }
 
     /// The profile with every setting written out: skinning's even when it
@@ -214,8 +212,7 @@ pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<Strin
 /// name.
 #[must_use]
 pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
-    let file = chain::file_name(&format!("{instance}_{character}"))?;
-    Some(dir.join("hunt").join("loot").join(format!("{file}.toml")))
+    crate::profile_file::path(dir, "loot", instance, character)
 }
 
 /// The loot profile's own settings as the settings menu shows them

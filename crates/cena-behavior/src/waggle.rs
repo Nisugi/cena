@@ -139,8 +139,7 @@ pub const TABLE: &[crate::settings::Key] = {
 /// The character's waggle profile: `<data>/hunt/waggle/<instance>_<character>.toml`.
 #[must_use]
 pub fn path(dir: &std::path::Path, instance: &str, character: &str) -> Option<std::path::PathBuf> {
-    let file = crate::hunt::chain::file_name(&format!("{instance}_{character}"))?;
-    Some(dir.join("hunt").join("waggle").join(format!("{file}.toml")))
+    crate::profile_file::path(dir, "waggle", instance, character)
 }
 
 impl WaggleProfile {
@@ -150,7 +149,7 @@ impl WaggleProfile {
     ///
     /// Not TOML, or a key this does not know.
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        crate::profile_file::read(text)
     }
 
     /// The profile as a file's text.
@@ -159,7 +158,7 @@ impl WaggleProfile {
     ///
     /// The profile cannot be written as TOML, which no field of it is.
     pub fn to_toml(&self) -> Result<String, String> {
-        toml::to_string_pretty(self).map_err(|e| e.to_string())
+        crate::profile_file::written(self)
     }
 }
 

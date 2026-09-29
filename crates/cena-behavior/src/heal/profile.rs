@@ -17,7 +17,6 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::hunt::chain;
 use crate::settings::{Key, KeyKind};
 
 /// How a character heals with herbs.
@@ -59,7 +58,7 @@ impl HealProfile {
     ///
     /// The text is not TOML, or names a key this does not know.
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        crate::profile_file::read(text)
     }
 
     /// The profile as a file's text.
@@ -68,7 +67,7 @@ impl HealProfile {
     ///
     /// The profile cannot be written as TOML.
     pub fn to_toml(&self) -> Result<String, String> {
-        toml::to_string_pretty(self).map_err(|e| e.to_string())
+        crate::profile_file::written(self)
     }
 }
 
@@ -141,8 +140,7 @@ pub const TABLE: &[Key] = &[
 /// `None` when the names cannot be a file name.
 #[must_use]
 pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
-    let file = chain::file_name(&format!("{instance}_{character}"))?;
-    Some(dir.join("hunt").join("heal").join(format!("{file}.toml")))
+    crate::profile_file::path(dir, "heal", instance, character)
 }
 
 #[cfg(test)]

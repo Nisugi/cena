@@ -586,7 +586,7 @@ impl Profile {
     /// with a guard Hydra does not know. The message names the key or the
     /// word.
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        crate::profile_file::read(text)
     }
 
     /// The profile as TOML, ready to write.
@@ -595,7 +595,7 @@ impl Profile {
     ///
     /// A value TOML cannot hold, which no field here is.
     pub fn to_toml(&self) -> Result<String, String> {
-        toml::to_string_pretty(self).map_err(|e| e.to_string())
+        crate::profile_file::written(self)
     }
 
     /// What is wrong with a profile that read cleanly: a stance word the

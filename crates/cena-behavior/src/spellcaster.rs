@@ -27,7 +27,6 @@ use serde::{Deserialize, Serialize};
 use cena_session::GameState;
 
 use crate::cast::{self, Casting, NotReady, Verb};
-use crate::hunt::chain;
 
 /// spellcaster's stances.
 const STANCES: &[&str] = &[
@@ -164,7 +163,7 @@ impl CasterProfile {
     ///
     /// Not TOML, or a key this does not know.
     pub fn parse(text: &str) -> Result<Self, String> {
-        toml::from_str(text).map_err(|e| e.to_string())
+        crate::profile_file::read(text)
     }
 
     /// The profile as a file's text.
@@ -173,15 +172,14 @@ impl CasterProfile {
     ///
     /// It cannot be written as TOML.
     pub fn to_toml(&self) -> Result<String, String> {
-        toml::to_string_pretty(self).map_err(|e| e.to_string())
+        crate::profile_file::written(self)
     }
 }
 
 /// The character's spellcaster profile: `<data>/hunt/sc/<instance>_<character>.toml`.
 #[must_use]
 pub fn path(dir: &Path, instance: &str, character: &str) -> Option<PathBuf> {
-    let file = chain::file_name(&format!("{instance}_{character}"))?;
-    Some(dir.join("hunt").join("sc").join(format!("{file}.toml")))
+    crate::profile_file::path(dir, "sc", instance, character)
 }
 
 /// The lines for `;sc <spell|alias> [target] [count]` (`cast`, `:318-395`).
