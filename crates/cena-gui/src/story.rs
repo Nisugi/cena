@@ -187,6 +187,7 @@ fn is_main(stream: &str) -> bool {
     stream.is_empty() || stream == MAIN
 }
 
+pub(crate) mod inbox;
 mod prompt;
 mod said;
 mod stamp;

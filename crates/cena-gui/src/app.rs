@@ -400,7 +400,9 @@ impl App {
                         send @ Macro::Send(_) => sends.push(send),
                     }
                 }
-                let story = lock(&seat.story);
+                // Held for the draw; the feed does not wait on it
+                // (`story/inbox.rs`).
+                let story = seat.story();
                 let view = PlayView {
                     name: &seat.name,
                     lifecycle: &lifecycle,

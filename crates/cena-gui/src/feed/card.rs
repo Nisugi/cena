@@ -6,12 +6,14 @@ use cena_session::{Snapshot, State};
 use cena_ui::{LifecycleView, SessionCard, SessionView};
 
 use crate::sessions::{Seat, Wake, lock};
+use crate::story::inbox::Heard;
 
 /// Put `snapshot` on the seat, and its card, and wake the window.
 pub(super) fn show(seat: &Seat, snapshot: Snapshot, window: &Wake) {
     // The feed wakes every 100 ms while a roundtime runs, so the live `R>`
     // is settled within a tick of its end.
-    lock(&seat.story).settle(&snapshot.state);
+    let snapshot = Arc::new(snapshot);
+    seat.tell_story(Heard::Settled(Arc::clone(&snapshot)));
     let view = SessionView::project(
         &snapshot.state,
         &snapshot.triggers,
@@ -21,7 +23,7 @@ pub(super) fn show(seat: &Seat, snapshot: Snapshot, window: &Wake) {
     if let Some(minimap) = &seat.minimap {
         *lock(&seat.where_now) = Some(minimap(&snapshot.state));
     }
-    *lock(&seat.snapshot) = Some(Arc::new(snapshot));
+    *lock(&seat.snapshot) = Some(snapshot);
     {
         let mut card = seat.card.lock().unwrap_or_else(PoisonError::into_inner);
         *card = SessionCard {

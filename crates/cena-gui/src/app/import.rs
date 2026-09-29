@@ -11,7 +11,7 @@ use cena_session::{Body, Notice, NoticeKind};
 use super::App;
 use crate::keys::page::{KeyChange, Place};
 use crate::keys::{Whose, wrayth, write};
-use crate::sessions::{Seat, lock};
+use crate::sessions::Seat;
 
 /// What `;keys` says when it is not given `import` and a file.
 const USAGE: &str = "keys import <Wrayth settings file>: its key sets into this character's keys; keys import global <file>: into every character's.";
@@ -51,7 +51,7 @@ impl App {
         } else {
             NoticeKind::Info
         };
-        lock(&seat.story).tell(Notice {
+        seat.story().tell(Notice {
             kind,
             body: Body::Lines(said),
         });

@@ -99,8 +99,12 @@ pub(crate) struct Seat {
     pub(crate) card: Mutex<SessionCard>,
     /// The character as its feed last saw it, for its play window.
     pub(crate) snapshot: Mutex<Option<Arc<Snapshot>>>,
-    /// Its story, messages and banners, kept by its feed.
+    /// Its story, messages and banners, kept by its feed. Taken through
+    /// [`Seat::story`], which puts in what the feed heard meanwhile.
     pub(crate) story: Mutex<Story>,
+    /// What the feed heard while the story was being drawn
+    /// (`story/inbox.rs`).
+    pub(crate) inbox: crate::story::inbox::Inbox,
     /// What its hunt is doing, as the binary last said; `None` while none
     /// runs (`plan/47` step 8).
     pub(crate) hunt: Mutex<Option<HuntView>>,
@@ -117,6 +121,25 @@ pub(crate) struct Seat {
 }
 
 impl Seat {
+    /// Give its story what the feed heard: at once while nothing holds the
+    /// story, and otherwise when it is next taken. Never waits on a draw.
+    pub(crate) fn tell_story(&self, heard: crate::story::inbox::Heard) {
+        self.inbox.put(heard);
+        let mut story = match self.story.try_lock() {
+            Ok(story) => story,
+            Err(std::sync::TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+            Err(std::sync::TryLockError::WouldBlock) => return,
+        };
+        self.inbox.hand_to(&mut story);
+    }
+
+    /// Its story, with everything the feed has heard in it.
+    pub(crate) fn story(&self) -> MutexGuard<'_, Story> {
+        let mut story = lock(&self.story);
+        self.inbox.hand_to(&mut story);
+        story
+    }
+
     /// A seat for `handle`'s session, named `name`, on the game `game`
     /// (its code), with nothing seen yet.
     pub(crate) fn new(handle: SessionHandle, name: &str, game: &str) -> Self {
@@ -130,6 +153,7 @@ impl Seat {
             where_now: Mutex::default(),
             snapshot: Mutex::default(),
             story: Mutex::default(),
+            inbox: crate::story::inbox::Inbox::default(),
             hunt: Mutex::default(),
             handle,
             stop: CancellationToken::new(),

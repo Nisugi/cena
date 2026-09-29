@@ -29,6 +29,8 @@ mod card;
 use card::lifecycle;
 use card::show;
 
+use crate::story::inbox::Heard;
+
 type Subscription = (Snapshot, broadcast::Receiver<ObservedEvent>);
 
 /// Follow `observer`'s session for `seat`, its merged lines into `merged`.
@@ -56,7 +58,7 @@ impl Ears {
     /// ([`cena_ui::Merger::offer`]).
     fn hear(&self, event: &ObservedEvent) {
         let state = lock(&self.seat.snapshot).clone();
-        lock(&self.seat.story).hear(event, state.as_ref().map(|snapshot| &snapshot.state));
+        self.seat.tell_story(Heard::Event(event.clone(), state));
         let Event::Line(line) = &event.event else {
             return;
         };
@@ -104,7 +106,7 @@ where
                     immediate
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {
-                    lock(&seat.story).missed();
+                    seat.tell_story(Heard::Missed);
                     true
                 }
                 Err(broadcast::error::RecvError::Closed) => { terminal = true; true }
@@ -124,7 +126,7 @@ where
             ears.hear(event);
         }
         if !whole {
-            lock(&seat.story).missed();
+            seat.tell_story(Heard::Missed);
         }
         seen = Seen::of(&snapshot);
         events = next;

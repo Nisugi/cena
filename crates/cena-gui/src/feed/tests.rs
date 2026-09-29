@@ -346,3 +346,37 @@ async fn the_live_prompt_settles_as_roundtime_ends() {
         .map(|(_, shown)| shown.clone());
     assert_eq!(last, Some(crate::story::Shown::Prompt(">".to_owned())));
 }
+
+/// **A feed never waits on a draw** (the crate review of 2026-09-28): while
+/// the window holds the story, what the feed hears is kept, and the story has
+/// it, in order, the next time it is taken.
+#[test]
+fn a_line_heard_while_the_story_is_drawn_waits_for_it_not_the_feed() {
+    let seat = Seat::new(handle(), "Nisugi", "GS3");
+    let ears = Ears {
+        seat: Arc::new(seat),
+        merged: Arc::default(),
+    };
+    let drawing = lock(&ears.seat.story);
+    // On this thread, a feed that waited on the lock would never return.
+    ears.hear(&observed(1, said("", "first")));
+    ears.hear(&observed(2, said("", "second")));
+    assert!(
+        drawing.lines.is_empty(),
+        "the draw sees the story as it took it"
+    );
+    drop(drawing);
+
+    let texts: Vec<String> = ears
+        .seat
+        .story()
+        .lines
+        .iter()
+        .map(|(_, shown)| format!("{shown:?}"))
+        .collect();
+    assert_eq!(texts.len(), 2, "{texts:?}");
+    assert!(
+        texts[0].contains("first") && texts[1].contains("second"),
+        "{texts:?}"
+    );
+}
