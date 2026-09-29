@@ -44,10 +44,7 @@ pub(super) fn step(action: Action) -> Step {
 
 /// `$go2_get_silvers`: whether the walker may fetch silver and buy.
 pub(super) fn may_buy(seen: &Seen<'_>) -> bool {
-    seen.walker
-        .settings
-        .get("get_silvers")
-        .is_some_and(|is| is == "true")
+    crate::travel::settings::on(&seen.walker.settings, crate::travel::settings::GET_SILVERS)
 }
 
 /// A thing the walker carries.

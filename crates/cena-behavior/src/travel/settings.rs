@@ -8,9 +8,27 @@
 //! menu keeps them beside these as words.
 //!
 //! Every value is kept as text in the travel file's settings, as go2 keeps
-//! them; a switch is on when it is `true`.
+//! them; a switch is on when it is `true`, or `yes` or `on` as go2's own
+//! command line takes them (`go2.lic:1263`), and [`on`] is the one reading
+//! of it.
+
+use std::collections::HashMap;
 
 use crate::settings::{Key, KeyKind};
+
+/// Whether the switch `name` is on in `settings`.
+///
+/// **The one reading.** Five places read a switch and two ways: four took
+/// `true` alone and the day pass took `yes` as well, so `get_silvers = yes`
+/// bought a Chronomage pass and no ferry's fare (the review of 2026-09-29).
+#[must_use]
+pub fn on<S: std::hash::BuildHasher>(settings: &HashMap<String, String, S>, name: &str) -> bool {
+    settings.get(name).is_some_and(|is| {
+        ["true", "yes", "on"]
+            .iter()
+            .any(|word| is.trim().eq_ignore_ascii_case(word))
+    })
+}
 
 /// Ask the urchin guides' status before a trip, so a route may use them.
 pub const USE_URCHINS: &str = "use_urchins";

@@ -531,10 +531,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 .as_ref()
                 .is_some_and(|status| status.as_str().contains("dead"))
         };
-        let stops = notes
-            .settings
-            .get("stop_for_dead")
-            .is_some_and(|is| is == "true");
+        let stops = crate::travel::settings::on(&notes.settings, "stop_for_dead");
         if stops && self.state.room.players.iter().any(dead) {
             self.halted = Some("someone here is dead, and `stop_for_dead` is on.".to_owned());
             return Err(Ended::Halted);

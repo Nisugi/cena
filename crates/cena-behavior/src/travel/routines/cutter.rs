@@ -380,12 +380,7 @@ impl Cutter {
     }
 
     fn buy(&mut self, seen: &Seen<'_>) -> Next {
-        if seen
-            .walker
-            .settings
-            .get(crate::travel::settings::GET_SILVERS)
-            .map(String::as_str)
-            != Some("true")
+        if !crate::travel::settings::on(&seen.walker.settings, crate::travel::settings::GET_SILVERS)
         {
             return Next::Stop(NO_TICKET.to_owned());
         }

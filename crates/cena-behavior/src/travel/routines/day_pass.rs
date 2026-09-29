@@ -462,11 +462,10 @@ impl DayPass {
             return Next::Put(format!("look #{id}"));
         }
         if seen.answered("don't have enough") {
-            let fetch = seen
-                .walker
-                .settings
-                .get("get_silvers")
-                .is_some_and(|is| is == "yes" || is == "true");
+            let fetch = crate::travel::settings::on(
+                &seen.walker.settings,
+                crate::travel::settings::GET_SILVERS,
+            );
             if fetch && !std::mem::replace(&mut self.banked, true) {
                 self.at = At::ToBank(0);
                 return self.bank(seen);
