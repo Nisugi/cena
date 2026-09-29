@@ -3,7 +3,7 @@
 //! and the combat panel. The claimed ones are not kept twice.
 
 use cena_model::GameState;
-use cena_model::state::dialogs::{MAX_DIALOGS, Part};
+use cena_model::state::dialogs::{MAX_DIALOGS, MAX_PARTS, Part};
 use cena_protocol::Parser;
 
 fn read(markup: &str) -> GameState {
@@ -124,4 +124,33 @@ fn the_dialogs_kept_are_bounded() {
     assert_eq!(state.dialogs.iter().count(), MAX_DIALOGS);
     assert!(state.dialogs.get("d0").is_none());
     assert!(state.dialogs.get(&format!("d{MAX_DIALOGS}")).is_some());
+}
+
+/// Past its bound a dialog takes no new part, and a part it has is still
+/// changed in place.
+#[test]
+fn a_dialogs_parts_are_bounded_and_the_ones_kept_still_change() {
+    use std::fmt::Write;
+    let mut markup = String::from("<dialogData id='wide'>");
+    for n in 0..MAX_PARTS + 5 {
+        let _ = write!(markup, "<label id='p{n}' value='{n}'/>");
+    }
+    markup.push_str(
+        "</dialogData>\n<dialogData id='wide'><label id='p0' value='changed'/></dialogData>\n",
+    );
+    let state = read(&markup);
+    let wide = state.dialogs.get("wide").expect("kept");
+    assert_eq!(wide.parts.len(), MAX_PARTS);
+    assert!(
+        !wide
+            .parts
+            .iter()
+            .any(|(id, _)| *id == format!("p{MAX_PARTS}")),
+        "the one past the bound is not taken"
+    );
+    assert_eq!(
+        wide.parts.first(),
+        Some(&("p0".to_owned(), Part::Label("changed".to_owned()))),
+        "full, and its first part still follows the game"
+    );
 }

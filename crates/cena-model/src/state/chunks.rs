@@ -17,8 +17,9 @@
 //! # What this owns, and what it does not
 //!
 //! It owns the buffer and the boundary. It does **not** know what any line
-//! means: consumers register interest and are handed each completed line, then
-//! told when the chunk closed. That split is `plan/12` §3a -- the chunker
+//! means: `close_chunk` hands the chunk to each consumer in turn, by name,
+//! as its prompt closes it. (There is no registering: this said consumers
+//! *"register interest"*, which the code never did.) That split is `plan/12` §3a -- the chunker
 //! remembers position, classifiers stay stateless, and the consumer above holds
 //! game situation.
 //!

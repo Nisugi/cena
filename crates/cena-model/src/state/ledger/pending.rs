@@ -85,3 +85,32 @@ impl LootQueue {
         self.chunks.is_empty()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{LootChunk, LootQueue, MAX_PENDING_LOOT};
+
+    /// At the cap the oldest chunk goes, and is counted: a drain that
+    /// stalled loses the past, never the present, and says how much.
+    #[test]
+    fn the_queue_is_bounded_and_counts_what_it_lets_go() {
+        let chunk = |second: usize| LootChunk {
+            at: u32::try_from(second).ok(),
+            ..LootChunk::default()
+        };
+        let mut queue = LootQueue::default();
+        for second in 0..MAX_PENDING_LOOT + 3 {
+            queue.push(chunk(second));
+        }
+        assert_eq!(queue.len(), MAX_PENDING_LOOT);
+        assert_eq!(queue.dropped(), 3);
+        let taken = queue.take();
+        assert_eq!(taken.first().and_then(|first| first.at), Some(3));
+        assert_eq!(
+            taken.last().and_then(|last| last.at),
+            u32::try_from(MAX_PENDING_LOOT + 2).ok()
+        );
+        assert!(queue.is_empty());
+        assert_eq!(queue.dropped(), 3, "taking forgets nothing counted");
+    }
+}

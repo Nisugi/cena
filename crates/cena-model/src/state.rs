@@ -432,8 +432,6 @@ impl GameState {
                 }
             }
             Frame::ProgressBar(bar) => self.apply_progress_bar(bar),
-            // The room's environment. Part of the room, so it is invalidated
-            // with the rest of it on a reconnect.
             // A cast's hard roundtime, which is not the action roundtime.
             Frame::CastTime { value } => self.cast_time_ends = Some(*value),
             Frame::Spell { text } => self.prepared = Some(text.trim().to_owned()),
@@ -441,6 +439,10 @@ impl GameState {
             // widget on the wire and read by nothing until 2026-09-21; see
             // `targeting.rs` for why a display widget is a model fact.
             Frame::DialogWidgets(widgets) => self.read_widgets(widgets),
+            // The room's environment: a fact about the room, not about who
+            // is in it, so a reconnect keeps it (`Room::forget_contents`).
+            // (This sat two arms up, over the cast time, and said the
+            // environment was invalidated on a reconnect; it is not.)
             Frame::RoomMeta(meta) => self.room.meta = Some(*meta),
             Frame::ObjectivesUpdate { action, entries } => {
                 self.objectives.apply(*action, entries);
