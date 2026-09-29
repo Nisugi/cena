@@ -1,7 +1,7 @@
 # 55 — The injury doll
 
 **Status: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
-written to those answers. One question is new (§4a).
+written to those answers, and §4a's, answered after them.
 
 **Status before that: PROPOSED 2026-09-29.** `plan/49` Stage G named the injury doll as work that
 *"gets its own plan when it is next"*. This is that plan. The author asked for it on
@@ -398,7 +398,8 @@ clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`
      scar. With Both, or no radio seen, it clears both, as it does today.
    - `Nsys1`-`3` is kept as a nerve rank of unknown kind, and shown as a wound until the game
      says otherwise.
-   - The six `health` lines (§1a) are read whenever they come, and settle the kind.
+   - The six `health` lines (§1a) are read when the player's own `health` brings them, and
+     settle the kind. Hydra never sends `health`, or anything else, to learn it (§4a).
 
    Tests: each radio over a scarred part and a wounded one; `Nsys2`; each of the six lines.
 
@@ -480,13 +481,20 @@ Nothing gs_studio depends on requires a licence of Hydra either: among all its d
 can be taken as Apache. Whether to take the stray lines out of gs_studio's manifests is
 gs_studio's to decide.
 
-### 4a. A new question, from step 0
+### 4a. A nerve rank's kind: ANSWERED, Hydra sends nothing
 
-**A nerve rank's kind.** `Nsys2` does not say whether it is a wound or a scar. Lich sends
-`health` itself to find out, each time a nerve rank arrives. Hydra could:
+`Nsys2` does not say whether it is a wound or a scar, and Lich sends `health` itself to find
+out. The author, 2026-09-29:
 
-- **Read the `health` lines whenever they come, and show an unknown nerve rank as a wound
-  until then** (recommended: nothing is sent that the player did not send, and wounds > scars
-  is the author's own order); or
-- **Send `health` itself when a nerve rank arrives,** as Lich does, through the session's
-  sync so it is never spoken over the player.
+> *"hydra should not send anything. Hydra should record the injury data that the game sends
+> you, the only time injury mode needs to be sent is for a heal or something and it's to
+> verify you have the most up to date wound/scar data. health is never sent or any other
+> command."*
+
+So:
+
+- The doll and the model are **readers only**. Nothing in this plan sends a command.
+- An unknown nerve rank shows as a wound until the player's own `health` brings a line that
+  settles it.
+- Setting the game's injury radio belongs to a heal, to make sure the wound and scar data is
+  current before healing. It is never the doll's.
