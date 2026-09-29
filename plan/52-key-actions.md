@@ -350,6 +350,31 @@ The author: *"step 3"*. §3's sending table, with Wrayth's keys:
   with the keyboard, Enter alone refused, the fork's keys with and without a window
   (`crates/cena-gui/src/app/tests/sending.rs`). Thirteen mutants, all caught.
 
+### Step 4, BUILT 2026-09-29
+
+The author: *"do steps 4-10"*. The window in use, and §3's scrolling table:
+
+- **The window in use** (`crates/cena-gui/src/play.rs`, `Play::in_use`) is the widget
+  last pressed in, by its placed id, standalone, in a custom window's cell or a tab; the
+  story until one is, and again once the one pressed is taken away. It is marked with a
+  faint amber edge (`play/draw.rs`, `shown`), so the player sees what a key will act on.
+- **Six actions**, with Wrayth's keys: `scroll_page_up` and `_down` (PageUp, PageDown),
+  `scroll_line_up` and `_down` (Shift with them), `scroll_top` (Ctrl+Home, Ctrl+PageUp)
+  and `scroll_bottom` (Ctrl+End, Ctrl+PageDown). A key asks the widget in use by its id
+  and the widget scrolls as it is drawn (`widget/split.rs`, `ask` and `asked`).
+- **The story and a stream split as the wheel splits them**: back from the newest line a
+  page, a line or to the oldest opens the split with its top there; the keys then move
+  the top, never past the newest line; forward to the newest, or `scroll_bottom`, closes
+  it, as its button does. A key back is scrolled from inside the pane and at once: an
+  offset given a pane is not the player's own scroll to egui, and sticking to the newest
+  line took it straight back (`egui/src/containers/scroll_area.rs:1280` in the fork).
+- **Any other widget that scrolls** -- the Room, the lists, the Hunt panel -- takes the
+  same keys through its one scrolling helper (`widget/draw.rs`, `scrolled`).
+- *Tests:* the split by keys, from one pane and two; a list scrolled a page, a line, to
+  the bottom and the top; a catalog widget taking its key; the story in use until the
+  room is pressed, then the room scrolling and the story not (`play/tests/in_use.rs`).
+  Ten mutants, all caught.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

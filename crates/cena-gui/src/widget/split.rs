@@ -15,10 +15,21 @@
 //! move up by its height. The top is kept on its lines, not its offset: the
 //! widget marks where each line starts ([`Tops`]), and each frame the top
 //! moves down by the height of the lines dropped since the last.
+//!
+//! **Keys scroll it too** (`plan/52` step 4): a page or a line back opens
+//! the split as the wheel does, and scrolls its top; forward scrolls the top
+//! down, and to the newest line closes it, as its button does. A key's
+//! scroll is asked of a widget by its id ([`ask`]) and done as it is next
+//! drawn, by this or by any widget that scrolls ([`asked`]).
 
 use egui::{CursorIcon, Id, Rect, Sense, Stroke, vec2};
 
 use crate::text::AMBER;
+#[cfg(test)]
+use scroll::ASKED;
+use scroll::steps;
+pub(crate) use scroll::{Scroll, ask};
+pub(super) use scroll::{asked, keyed};
 
 /// How tall the separator is, to take a drag.
 const BAR: f32 = 14.0;
@@ -79,6 +90,10 @@ struct Split {
     /// scrolled the top down to close the split is such a frame. It left
     /// the pane far back, and split it again.
     settling: bool,
+    /// The pane the player scrolls -- the one, or the top -- as last drawn:
+    /// how tall it is, and its offset at the newest line.
+    height: f32,
+    end: f32,
 }
 
 impl Default for Split {
@@ -92,6 +107,8 @@ impl Default for Split {
             ys: Vec::new(),
             turns: 0,
             settling: false,
+            height: 0.0,
+            end: 0.0,
         }
     }
 }
@@ -99,12 +116,13 @@ impl Default for Split {
 /// A scrolled body of lines, newest at the bottom, split when the player
 /// scrolls back. `first` is the number of the first line kept, which grows
 /// as old lines are dropped; `wrap` whether lines wrap, or the body scrolls
-/// sideways too; `add` draws every line, marking each on its [`Tops`], and
-/// may be drawn twice a frame, once a pane.
+/// sideways too; `scroll` what a key asked; `add` draws every line, marking
+/// each on its [`Tops`], and may be drawn twice a frame, once a pane.
 pub(super) fn scrolled(
     ui: &mut egui::Ui,
     id: Id,
     (first, wrap): (u64, bool),
+    scroll: Option<Scroll>,
     mut add: impl FnMut(&mut egui::Ui, &mut Tops),
 ) {
     let state_id = id.with("split");
@@ -120,16 +138,39 @@ pub(super) fn scrolled(
         tops.ys
     };
     if split.open {
-        both(ui, id, &mut split, (first, wrap), &mut body);
+        both(ui, id, &mut split, (first, wrap, scroll), &mut body);
     } else {
         let mut area = pane(wrap)
             .id_salt(id.with(("one", split.turns)))
             .stick_to_bottom(true);
+        // A key back from the newest line: the pane goes there, and splits.
+        // Scrolled from inside, at once: an offset given the pane is not
+        // the player's scroll to egui, and sticking to the newest line
+        // takes it straight back.
+        let (line, page) = steps(ui, split.height);
+        let back = match scroll {
+            Some(Scroll::PageUp) => Some(page),
+            Some(Scroll::LineUp) => Some(line),
+            Some(Scroll::Top) => Some(split.end),
+            _ => None,
+        };
+        let back = back.filter(|_| split.end > 0.0);
+        if back.is_some() {
+            split.settling = false;
+        }
         if split.settling {
             area = area.scroll_source(egui::scroll_area::ScrollSource::NONE);
         }
-        let shown = area.show(ui, |ui| body(ui));
+        let shown = area.show(ui, |ui| {
+            if let Some(back) = back {
+                let now = egui::style::ScrollAnimation::none();
+                ui.scroll_with_delta_animation(vec2(0.0, back), now);
+            }
+            body(ui)
+        });
         let newest = newest(&shown);
+        split.height = shown.inner_rect.height();
+        split.end = newest;
         let back = shown.state.offset.y < newest - 1.0;
         if split.settling {
             split.settling = back;
@@ -151,7 +192,7 @@ fn both(
     ui: &mut egui::Ui,
     id: Id,
     split: &mut Split,
-    (first, wrap): (u64, bool),
+    (first, wrap, scroll): (u64, bool, Option<Scroll>),
     body: &mut impl FnMut(&mut egui::Ui) -> Vec<f32>,
 ) {
     let whole = ui.available_rect_before_wrap();
@@ -160,6 +201,21 @@ fn both(
     let top_rect = Rect::from_min_size(whole.min, vec2(whole.width(), top_height));
     let bar_rect = Rect::from_min_size(top_rect.left_bottom(), vec2(whole.width(), BAR));
     let bottom_rect = Rect::from_min_max(bar_rect.left_bottom(), whole.max);
+
+    // A key scrolls the top, never past the newest line.
+    let (line, page) = steps(ui, split.height);
+    let moved = match scroll {
+        Some(Scroll::PageUp) => Some(split.offset - page),
+        Some(Scroll::PageDown) => Some(split.offset + page),
+        Some(Scroll::LineUp) => Some(split.offset - line),
+        Some(Scroll::LineDown) => Some(split.offset + line),
+        Some(Scroll::Top) => Some(0.0),
+        Some(Scroll::Bottom) | None => None,
+    };
+    if let Some(to) = moved {
+        split.offset = to.clamp(0.0, split.end.max(0.0));
+        split.place = true;
+    }
 
     // The top: where the player left it, moved down by the lines dropped.
     let gone = usize::try_from(first.saturating_sub(split.first)).unwrap_or(usize::MAX);
@@ -178,6 +234,8 @@ fn both(
         })
         .inner;
     let at_newest = shown.state.offset.y >= newest(&shown) - 1.0;
+    split.height = shown.inner_rect.height();
+    split.end = newest(&shown);
     split.offset = shown.state.offset.y;
     split.first = first;
     split.ys = shown.inner;
@@ -213,7 +271,7 @@ fn both(
     });
     ui.advance_cursor_after_rect(whole);
 
-    if back.clicked() || at_newest {
+    if back.clicked() || at_newest || scroll == Some(Scroll::Bottom) {
         split.open = false;
         split.turns += 1;
         split.settling = true;
@@ -235,5 +293,6 @@ fn newest<R>(shown: &egui::scroll_area::ScrollAreaOutput<R>) -> f32 {
     (shown.content_size.y - shown.inner_rect.height()).max(0.0)
 }
 
+mod scroll;
 #[cfg(test)]
 mod tests;

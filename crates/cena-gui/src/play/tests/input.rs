@@ -26,6 +26,7 @@ fn enter_sends_and_the_history_walks_back() {
     );
     let typed = |harness: &Harness<'_, Scene>| harness.state().play.input.clone();
     assert_eq!(typed(&harness), "", "cleared once sent");
+    let context = harness.ctx.clone();
     let mut walked = Vec::new();
     for action in [
         Action::HistoryBack,
@@ -33,33 +34,42 @@ fn enter_sends_and_the_history_walks_back() {
         Action::HistoryForward,
         Action::HistoryForward,
     ] {
-        assert_eq!(harness.state_mut().play.act(action), None);
+        assert_eq!(harness.state_mut().play.act(&context, action), None);
         walked.push(typed(&harness));
     }
     assert_eq!(walked, ["north", "look", "north", ""]);
 
     let play = &mut harness.state_mut().play;
-    assert_eq!(play.act(Action::RepeatLast).as_deref(), Some("north"));
-    assert_eq!(play.act(Action::RepeatSecondLast).as_deref(), Some("look"));
     assert_eq!(
-        play.act(Action::RepeatSecondLast).as_deref(),
+        play.act(&context, Action::RepeatLast).as_deref(),
+        Some("north")
+    );
+    assert_eq!(
+        play.act(&context, Action::RepeatSecondLast).as_deref(),
+        Some("look")
+    );
+    assert_eq!(
+        play.act(&context, Action::RepeatSecondLast).as_deref(),
         Some("look"),
         "a repeat is not typed, and changes no history"
     );
     assert_eq!(
-        play.act(Action::SendOrRepeat).as_deref(),
+        play.act(&context, Action::SendOrRepeat).as_deref(),
         Some("north"),
         "an empty line repeats"
     );
     play.fill("search");
-    assert_eq!(play.act(Action::SendOrRepeat).as_deref(), Some("search"));
     assert_eq!(
-        play.act(Action::RepeatSecondLast).as_deref(),
+        play.act(&context, Action::SendOrRepeat).as_deref(),
+        Some("search")
+    );
+    assert_eq!(
+        play.act(&context, Action::RepeatSecondLast).as_deref(),
         Some("north"),
         "a line sent is typed"
     );
     play.fill("hide");
-    assert_eq!(play.act(Action::ClearInput), None);
+    assert_eq!(play.act(&context, Action::ClearInput), None);
     assert_eq!(play.input, "");
 }
 

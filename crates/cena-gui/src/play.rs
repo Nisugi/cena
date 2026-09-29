@@ -170,6 +170,10 @@ pub(crate) struct Play {
     /// A key filled the input (`plan/52` §2): where its cursor goes, the
     /// end, as the input takes the keyboard.
     filled: Option<usize>,
+    /// The widget last clicked in, by its placed id: the window in use,
+    /// which the scrolling keys act on (`plan/52` step 4). The story until
+    /// one is, or once the one clicked is gone.
+    in_use: Option<u32>,
 }
 
 /// Lines of history kept for up and down.
@@ -213,6 +217,7 @@ impl Play {
             history: Vec::new(),
             back: None,
             filled: None,
+            in_use: None,
         }
     }
 
@@ -227,52 +232,6 @@ impl Play {
     /// The command input's id.
     pub(crate) fn input_id(&self) -> Id {
         Id::new(("play-input", self.session))
-    }
-
-    /// Whether the command input has the keyboard, or nothing does, with
-    /// nothing open that a key would close or move in first: the object's
-    /// menu, a widget's, the list of widgets to add, a drop-down or a menu
-    /// of the bar. What an action on the input waits for
-    /// ([`Action::on_input`](crate::keys::Action::on_input)).
-    pub(crate) fn typing(&self, context: &egui::Context) -> bool {
-        let focused = context.memory(egui::Memory::focused);
-        focused.is_none_or(|id| id == self.input_id())
-            && self.asking.is_none()
-            && self.menu.is_none()
-            && self.adding.is_none()
-            && !egui::Popup::is_any_open(context)
-    }
-
-    /// Do `action`, one of those on the command input or sending from it
-    /// (`plan/52` step 3); the line to send, if it sends one.
-    pub(crate) fn act(&mut self, action: crate::keys::Action) -> Option<String> {
-        use crate::keys::Action;
-        let typed = |back: usize| {
-            self.history
-                .len()
-                .checked_sub(back)
-                .and_then(|at| self.history.get(at).cloned())
-        };
-        match action {
-            Action::SendOrRepeat if self.input.trim().is_empty() => typed(1),
-            Action::SendOrRepeat => self.enter(),
-            Action::RepeatLast => typed(1),
-            Action::RepeatSecondLast => typed(2),
-            Action::HistoryBack => {
-                self.walk(true);
-                None
-            }
-            Action::HistoryForward => {
-                self.walk(false);
-                None
-            }
-            Action::ClearInput => {
-                self.input.clear();
-                self.back = None;
-                None
-            }
-            Action::Stop | Action::Settings | Action::Set(_) => None,
-        }
     }
 
     /// Draw the window into `ui` -- a viewport's whole area -- and return
@@ -436,5 +395,6 @@ impl Play {
     }
 }
 
+mod keyed;
 #[cfg(test)]
 mod tests;

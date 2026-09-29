@@ -12,7 +12,7 @@
 use egui::{Pos2, Rect, Vec2, pos2};
 use serde::{Deserialize, Serialize};
 
-use super::{Placed, kept, rect};
+use super::{Holds, Layout, Placed, kept, rect};
 use crate::widget::LINE;
 
 /// How near the bottom edge a cell's bottom must be to keep to it.
@@ -285,4 +285,22 @@ pub(crate) fn tabs_and_body(at: Rect, tabs: usize) -> (Vec<Rect>, Rect) {
         })
         .collect();
     (rects, body)
+}
+/// Every widget placed in a layout (moved here from `layout.rs` at its cap).
+impl Layout {
+    /// Every widget placed here, standalone or in a custom window, showing
+    /// or a tab behind another.
+    pub(crate) fn placed(&self) -> Vec<&Placed> {
+        self.holders
+            .iter()
+            .flat_map(|holder| match &holder.holds {
+                Holds::One(placed) => vec![placed],
+                Holds::Custom(custom) => custom
+                    .cells
+                    .iter()
+                    .flat_map(|cell| cell.tabs.iter())
+                    .collect(),
+            })
+            .collect()
+    }
 }

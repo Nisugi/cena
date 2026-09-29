@@ -53,6 +53,18 @@ pub enum Action {
     HistoryForward,
     /// Empty the command input.
     ClearInput,
+    /// Scroll the window in use back a page (`plan/52` step 4).
+    ScrollPageUp,
+    /// Forward a page.
+    ScrollPageDown,
+    /// Back a line.
+    ScrollLineUp,
+    /// Forward a line.
+    ScrollLineDown,
+    /// To its oldest line.
+    ScrollTop,
+    /// To its newest line.
+    ScrollBottom,
 }
 
 /// Each set's action's name in the keybinds file.
@@ -85,13 +97,19 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 24] = [
         Self::SendOrRepeat,
         Self::RepeatLast,
         Self::RepeatSecondLast,
         Self::HistoryBack,
         Self::HistoryForward,
         Self::ClearInput,
+        Self::ScrollPageUp,
+        Self::ScrollPageDown,
+        Self::ScrollLineUp,
+        Self::ScrollLineDown,
+        Self::ScrollTop,
+        Self::ScrollBottom,
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -119,6 +137,12 @@ impl Action {
             Self::HistoryBack => "history_back",
             Self::HistoryForward => "history_forward",
             Self::ClearInput => "clear_input",
+            Self::ScrollPageUp => "scroll_page_up",
+            Self::ScrollPageDown => "scroll_page_down",
+            Self::ScrollLineUp => "scroll_line_up",
+            Self::ScrollLineDown => "scroll_line_down",
+            Self::ScrollTop => "scroll_top",
+            Self::ScrollBottom => "scroll_bottom",
         }
     }
 
@@ -135,6 +159,12 @@ impl Action {
             Self::HistoryBack => "Back through what was typed",
             Self::HistoryForward => "Forward through what was typed",
             Self::ClearInput => "Clear the command input",
+            Self::ScrollPageUp => "Scroll back a page",
+            Self::ScrollPageDown => "Scroll forward a page",
+            Self::ScrollLineUp => "Scroll back a line",
+            Self::ScrollLineDown => "Scroll forward a line",
+            Self::ScrollTop => "Scroll to the oldest line",
+            Self::ScrollBottom => "Scroll to the newest line",
         }
     }
 

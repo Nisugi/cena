@@ -129,7 +129,8 @@ pub(super) fn story(
 ) -> Option<Clicked> {
     let mut clicked = None;
     let first = (story.dropped, options.wrap);
-    super::split::scrolled(ui, id.with("story"), first, |ui, tops| {
+    let scroll = super::split::asked(ui, id);
+    super::split::scrolled(ui, id.with("story"), first, scroll, |ui, tops| {
         let mut prompts = Prompts::default();
         for (at, shown) in &story.lines {
             tops.mark(ui);
@@ -209,10 +210,12 @@ pub(super) fn stream(
         kept.heard
             .saturating_sub(u64::try_from(kept.lines.len()).unwrap_or(u64::MAX))
     });
+    let scroll = super::split::asked(ui, id);
     super::split::scrolled(
         ui,
         id.with("stream"),
         (first, options.wrap),
+        scroll,
         |ui, tops| match kept {
             Some(kept) => {
                 for (at, runs) in &kept.lines {

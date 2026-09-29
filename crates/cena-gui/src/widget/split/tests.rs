@@ -206,3 +206,128 @@ fn the_split_as_drawn() {
     wheel(&mut harness, 600.0);
     harness.snapshot("split");
 }
+
+/// A key asked of the widget by its id, and the frames it takes.
+fn keyed(harness: &mut Harness<'_, Story>, scroll: super::Scroll) {
+    super::ask(&harness.ctx, egui::Id::new("s"), scroll);
+    harness.run();
+    harness.run();
+}
+
+/// A key back a page splits as the wheel does, the top a page above the
+/// newest; a line back from there is a line higher; to the top is the
+/// oldest line; forward pages to the newest close the split, and so does
+/// the key to the newest (`plan/52` step 4).
+#[test]
+fn keys_scroll_the_split() {
+    use super::Scroll;
+    let mut harness = story_of(80);
+    let end = split(&harness).end;
+    assert!(end > 0.0, "more lines than fit");
+    keyed(&mut harness, Scroll::PageUp);
+    let paged = split(&harness);
+    assert!(paged.open, "split");
+    assert!(
+        paged.offset < end - 100.0 && paged.offset > 0.0,
+        "a page back: {} of {end}",
+        paged.offset
+    );
+    keyed(&mut harness, Scroll::LineUp);
+    let lined = split(&harness).offset;
+    assert!(
+        lined < paged.offset && lined > paged.offset - 40.0,
+        "a line: {} -> {lined}",
+        paged.offset
+    );
+    keyed(&mut harness, Scroll::Top);
+    assert!(split(&harness).offset < 0.5, "the oldest line");
+    assert!(harness.query_by_label("⬇ Newest").is_some());
+    for _ in 0..20 {
+        keyed(&mut harness, Scroll::PageDown);
+    }
+    assert!(!split(&harness).open, "paged to the newest: one pane");
+
+    keyed(&mut harness, Scroll::LineUp);
+    assert!(split(&harness).open, "a line back splits too");
+    keyed(&mut harness, Scroll::Bottom);
+    assert!(!split(&harness).open, "to the newest: one pane");
+    keyed(&mut harness, Scroll::PageDown);
+    assert!(!split(&harness).open, "at the newest, forward is nothing");
+}
+
+/// A widget that scrolls without splitting -- a list, the room -- takes the
+/// same keys: a page, a line, the top and the bottom.
+#[test]
+fn keys_scroll_a_widget_that_does_not_split() {
+    use super::Scroll;
+    let mut harness = Harness::builder().with_size((300.0, 200.0)).build_ui_state(
+        |ui, offset: &mut (f32, f32)| {
+            let scroll = super::asked(ui, egui::Id::new("list"));
+            let shown = egui::ScrollArea::vertical()
+                .auto_shrink(false)
+                .show(ui, |ui| {
+                    super::keyed(ui, scroll, |ui| {
+                        for n in 0..100 {
+                            ui.label(format!("item {n}"));
+                        }
+                    });
+                });
+            *offset = (shown.state.offset.y, super::newest(&shown));
+        },
+        (0.0, 0.0),
+    );
+    harness.run();
+    let key = |harness: &mut Harness<'_, (f32, f32)>, scroll| {
+        super::ask(&harness.ctx, egui::Id::new("list"), scroll);
+        harness.run_steps(30);
+        harness.state().0
+    };
+    let paged = key(&mut harness, Scroll::PageDown);
+    assert!(paged > 100.0, "a page down: {paged}");
+    let lined = key(&mut harness, Scroll::LineUp);
+    assert!(
+        lined < paged && lined > paged - 40.0,
+        "a line up: {paged} -> {lined}"
+    );
+    let bottom = key(&mut harness, Scroll::Bottom);
+    assert!(
+        (bottom - harness.state().1).abs() < 0.5,
+        "the bottom: {bottom}"
+    );
+    assert!(key(&mut harness, Scroll::Top) < 0.5, "back at the top");
+}
+
+/// From one pane, the key to the oldest line splits, the top at the oldest.
+#[test]
+fn the_key_to_the_top_splits() {
+    let mut harness = story_of(80);
+    keyed(&mut harness, super::Scroll::Top);
+    let split = split(&harness);
+    assert!(split.open && split.offset < 0.5, "{}", split.offset);
+}
+
+/// A widget of the catalog that scrolls, the Room, takes the key asked of
+/// it as it is drawn.
+#[test]
+fn a_catalog_widget_takes_its_key() {
+    let mut harness = Harness::builder().with_size((300.0, 200.0)).build_ui_state(
+        |ui, story: &mut Story| {
+            let seen = Seen {
+                snapshot: None,
+                story,
+                hunt: None,
+                who: None,
+                open: &[],
+            };
+            let _ = Widget::Room.draw_with(ui, &seen, egui::Id::new("r"), &Chosen::default());
+        },
+        Story::default(),
+    );
+    harness.run();
+    super::ask(&harness.ctx, egui::Id::new("r"), super::Scroll::PageUp);
+    harness.run();
+    let left = harness
+        .ctx
+        .data(|data| data.get_temp::<super::Scroll>(egui::Id::new("r").with(super::ASKED)));
+    assert_eq!(left, None, "taken");
+}

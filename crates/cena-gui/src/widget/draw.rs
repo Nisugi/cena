@@ -200,12 +200,14 @@ fn line(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
 /// A widget whose content may be taller than it is given: it scrolls rather
 /// than growing what holds it, and asks for no height of its own, which is
 /// the layout's to say.
+/// Scrolled as a key asked, when it is the window in use (`plan/52` step 4).
 fn scrolled(ui: &mut egui::Ui, id: Id, add: impl FnOnce(&mut egui::Ui)) {
+    let scroll = super::split::asked(ui, id);
     egui::ScrollArea::vertical()
         .min_scrolled_height(0.0)
         .id_salt(id.with("scroll"))
         .auto_shrink(false)
-        .show(ui, add);
+        .show(ui, |ui| super::split::keyed(ui, scroll, add));
 }
 
 /// A vital as a bar fitted to what it is given, drawn as `look` says.

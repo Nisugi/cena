@@ -83,19 +83,14 @@ pub(super) struct Later {
 }
 
 /// What a play window asks for when a key performs `action`: what its own
-/// button asks. An action on its command input it does itself
-/// (`Play::act`), and the line it sends is asked to be sent.
-pub(super) fn asked(window: &mut Play, action: Action) -> Option<Asked> {
+/// button asks. An action on its command input or its windows it does
+/// itself (`Play::act`), and a line it sends is asked to be sent.
+pub(super) fn asked(context: &egui::Context, window: &mut Play, action: Action) -> Option<Asked> {
     Some(match action {
         Action::Stop => Asked::Stop,
         Action::Settings => Asked::Settings(None),
         Action::Set(set) => Asked::UseSet(set),
-        Action::SendOrRepeat
-        | Action::RepeatLast
-        | Action::RepeatSecondLast
-        | Action::HistoryBack
-        | Action::HistoryForward
-        | Action::ClearInput => return window.act(action).map(Asked::Send),
+        _ => return window.act(context, action).map(Asked::Send),
     })
 }
 

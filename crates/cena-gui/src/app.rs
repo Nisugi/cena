@@ -351,7 +351,10 @@ impl App {
                     match made {
                         Macro::Fill(text) => window.play.fill(&text),
                         Macro::Act(action) => {
-                            asked = asked.take().or(keyed::asked(&mut window.play, action));
+                            asked =
+                                asked
+                                    .take()
+                                    .or(keyed::asked(ui.ctx(), &mut window.play, action));
                         }
                         send @ Macro::Send(_) => sends.push(send),
                     }
