@@ -290,11 +290,51 @@ pictures (`svg.rs`) for the author to judge. **What tuned means is the author's 
    | directionless lines crossing another | 1,876 | 437 |
 
    Rooms drawn fell from 31,787 to 19,444, which is the rule, not a loss. Laying out every
-   area takes 3.5 s against 0.9 s; the slowest, Solhaven, 550 ms. Next, by the Hinterwilds
-   pictures: a part of a group hanging on one compass exit slides along it until its
-   directionless lines are clear (Berserker's End's stairs, which no bend can clear); compass
-   lines stretched far past a step by empty columns kept across a whole group (Ojandhaart,
-   Eldurhaart's grove); the positioner's objective, which still minimises length.
+   area takes 3.5 s against 0.9 s; the slowest, Solhaven, 550 ms.
+
+   **Then, the same day, one experiment at a time** (the author: *"this is why I want to
+   break it up step by step. Makes it easier for my human eyes to spot issues"*), each
+   judged by the pictures and the gate, all in `8da65b6`. The author's hand pins were
+   removed first: they were made for the old grouping and masked the engine's numbers.
+
+   - **A group is what the bearings join** (*"yellow lines should delineate groups"*). The
+     engine had welded groups across every outdoor line with no direction, so Hinterwilds
+     was one group of 126 rooms whose empty columns stretched every step between its two
+     halves down the map. Now only indoor-to-indoor doorways weld: 28 groups, the biggest
+     43. A one-way arrow is followed backwards so it keeps its rooms together.
+   - **A repair is taken when it tangles the group no more**, not when it is no longer
+     (*"Compactness is not a rule"*): exits against their direction 262 -> 236.
+   - **Doorways folded too** (*"there should be more splitting to interior sheets"*): the
+     street room is marked as a way in instead. Rooms reached only through hidden ones go
+     with them (Hinterwilds' Chthonian Dark, a boss's arena in the pits' way).
+   - **Islands cut** (*"should that group be it's own "area" and get the dot for a building
+     treatment?"*, *"We can try 3 steps"*): a group linked only by lines with no direction,
+     the nearest over 3 steps, goes to a row of its own below at full size, its links drawn
+     as marks. A link over 30 steps is a mark too, never dropped.
+   - **Lines keep clear**: every group stretched until clear from the picture's spot as
+     from its neighbour, then pulled back toward its links while it stays so; a line
+     with no direction that crosses or lies along another is bent, by a route-finder that
+     takes any number of turns and keeps a cell off other lines. *Lying along another*
+     is a sixth gated count.
+   - **A heading repeated until arrival is a bearing**: `pedal`, `swim` and `row`, 340
+     exits, the Eastern Waterway's whole swimming grid among them, were drawn as lines
+     with no direction; now it draws as Lich's picture does.
+   - Tried and not kept: every group laid as a jigsaw piece in one pass (worse on every
+     count: pieces placed once and never moved, doors with no room beside their street).
+
+   | Rule, events aside | before the day | now |
+   |---|---|---|
+   | exits against their direction | 454 | 236 |
+   | lines through rooms | 597 | 0 |
+   | building rooms under a line not theirs | 291 | 0 |
+   | directionless exits not drawn | 34 | 0 |
+   | directionless lines crossing another | 1,876 | 153 |
+   | directionless lines lying along another | -- | 63 |
+
+   14,903 rooms drawn. Laying out every area takes 104 s (Solhaven 15 s): speed is next, now
+   the answer is known (the author: *"A lot easier to optimize once you have the answer"*).
+   Of the 236 against their direction, about 110 are in groups with an up or down inside
+   them, two levels drawn on one sheet: floors, curated, later (§6).
 3. **Directions** (rule 1): the 358 drawn against their bearing on data that could be
    satisfied, by a repair that is not local (the README's own diagnosis). The 309 in groups
    whose exits truly contradict are data: curated, or drawn as the least wrong.
