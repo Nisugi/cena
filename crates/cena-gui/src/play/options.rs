@@ -21,6 +21,7 @@ use super::Play;
 use crate::bar::{Fills, Look, Place};
 use crate::layout::Holds;
 use crate::story::Hours;
+use crate::widget::doll::DollLook;
 use crate::widget::{Lines, RoomParts, Stamps, Widget};
 
 /// What a widget page's id begins with; the widget's id follows.
@@ -34,7 +35,20 @@ pub(crate) fn page_id(placed: u32) -> String {
 /// Whether `widget` has a page of its own.
 pub(crate) fn has_page(widget: &Widget) -> bool {
     widget.bar_look().is_some()
-        || matches!(widget, Widget::Room | Widget::Story | Widget::Stream(_))
+        || matches!(
+            widget,
+            Widget::Room | Widget::Story | Widget::Stream(_) | Widget::Injuries
+        )
+}
+
+/// The pictures a widget's page offers, from the data folder: a bar's
+/// images in `overlays`, a doll's in `dolls` (`plan/55`).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Pictures {
+    /// Each PNG in `overlays`.
+    pub(crate) overlays: Vec<PathBuf>,
+    /// Each doll picture in `dolls`, its overlays left out.
+    pub(crate) dolls: Vec<PathBuf>,
 }
 
 /// Where a line's time goes, as the page names each.
@@ -120,7 +134,7 @@ const PLACES: [(Place, &str, &str); 6] = [
 impl Play {
     /// A page for each widget in this window that has one, in the order its
     /// windows are drawn; `overlays` the images a bar may lay over itself.
-    pub(crate) fn widget_pages(&self, overlays: &[PathBuf]) -> Vec<Page> {
+    pub(crate) fn widget_pages(&self, pictures: &Pictures) -> Vec<Page> {
         let Some(layout) = &self.layout else {
             return Vec::new();
         };
@@ -143,7 +157,12 @@ impl Play {
             };
             for one in placed {
                 let rows = match (&one.widget, one.widget.bar_look()) {
-                    (_, Some(default)) => bar_rows(layout.looks.get(&one.id), &default, overlays),
+                    (_, Some(default)) => {
+                        bar_rows(layout.looks.get(&one.id), &default, &pictures.overlays)
+                    }
+                    (Widget::Injuries, None) => {
+                        doll_rows(layout.dolls.get(&one.id), &pictures.dolls)
+                    }
                     (Widget::Room, None) => room_rows(layout.rooms.get(&one.id)),
                     (Widget::Story | Widget::Stream(_), None) => {
                         lines_rows(layout.lines.get(&one.id), one.widget == Widget::Story)
@@ -202,6 +221,9 @@ impl Play {
         match &widget {
             Widget::Room => keep(&mut layout.rooms, placed, &RoomParts::default(), |parts| {
                 room_set(parts, key, to)
+            })?,
+            Widget::Injuries => keep(&mut layout.dolls, placed, &DollLook::default(), |look| {
+                doll_set(look, key, to)
             })?,
             Widget::Story | Widget::Stream(_) => {
                 let story = widget == Widget::Story;
@@ -483,6 +505,34 @@ fn overlay_choice(overlays: &[PathBuf]) -> RowKind {
         (path.display().to_string(), called)
     }));
     RowKind::Choice(images)
+}
+
+/// The Injuries widget's rows: its picture, any in the data folder's
+/// `dolls`, or none for the body drawn in code.
+fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
+    let picture = look.and_then(|look| look.picture.clone());
+    vec![Row {
+        key: "picture".to_owned(),
+        label: "Picture".to_owned(),
+        help: "A picture of your own for the doll, from the dolls folder in Hydra's data \
+               folder; None draws a body. Calibrate it from the doll's right-click menu."
+            .to_owned(),
+        kind: overlay_choice(dolls),
+        value: Value::Text(picture.clone().unwrap_or_default()),
+        here: picture.is_some(),
+        from: None,
+    }]
+}
+
+/// Set the Injuries widget's `key` to `to`, or back to its own.
+fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), String> {
+    match key {
+        "picture" => {
+            look.picture = to.filter(|path| !path.is_empty()).map(str::to_owned);
+            Ok(())
+        }
+        _ => Err(format!("Injuries has no setting {key}.")),
+    }
 }
 
 /// A bar widget's rows: how it draws, as `look` says, or its kind's own.

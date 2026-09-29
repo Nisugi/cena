@@ -15,10 +15,10 @@ use std::time::{Duration, Instant, SystemTime};
 /// How often a kept picture's file is looked at again.
 const LOOK_AGAIN: Duration = Duration::from_secs(1);
 
-/// A picture as last read, and when its file was last looked at.
+/// What was last read from a file, and when the file was last looked at.
 #[derive(Clone)]
-struct Kept {
-    texture: Option<egui::TextureHandle>,
+struct Kept<T> {
+    read: Option<T>,
     /// The file's modification time when read; `None` when there was no
     /// file to read.
     modified: Option<SystemTime>,
@@ -30,27 +30,49 @@ pub(crate) fn picture(context: &egui::Context, path: &str) -> Option<egui::Textu
     picture_at(context, path, Instant::now())
 }
 
+/// The doll calibration of the picture at `path` (`calibration.rs`), kept
+/// as a picture is.
+pub(crate) fn calibration(context: &egui::Context, path: &str) -> crate::calibration::Calibration {
+    kept_at(context, "calibration", path, Instant::now(), |path| {
+        Some(crate::calibration::Calibration::of_picture(Path::new(path)))
+    })
+    .unwrap_or_default()
+}
+
 /// [`picture`], at `now`.
 fn picture_at(context: &egui::Context, path: &str, now: Instant) -> Option<egui::TextureHandle> {
-    let id = egui::Id::new(("picture", path));
-    let kept = context.data(|data| data.get_temp::<Kept>(id));
+    kept_at(context, "picture", path, now, |path| read(context, path))
+}
+
+/// What `read` makes of the file at `path`, kept by egui under `kind` and
+/// read again only when the file's modification time has changed, looked
+/// at no oftener than [`LOOK_AGAIN`].
+fn kept_at<T: Clone + Send + Sync + 'static>(
+    context: &egui::Context,
+    kind: &'static str,
+    path: &str,
+    now: Instant,
+    read: impl FnOnce(&str) -> Option<T>,
+) -> Option<T> {
+    let id = egui::Id::new((kind, path));
+    let kept = context.data(|data| data.get_temp::<Kept<T>>(id));
     if let Some(kept) = &kept
         && now.saturating_duration_since(kept.looked) < LOOK_AGAIN
     {
-        return kept.texture.clone();
+        return kept.read.clone();
     }
     let modified = std::fs::metadata(path).and_then(|m| m.modified()).ok();
-    let texture = match kept {
-        Some(kept) if kept.modified == modified => kept.texture,
-        _ => modified.and_then(|_| read(context, path)),
+    let fresh = match kept {
+        Some(kept) if kept.modified == modified => kept.read,
+        _ => modified.and_then(|_| read(path)),
     };
-    let fresh = Kept {
-        texture: texture.clone(),
+    let kept = Kept {
+        read: fresh.clone(),
         modified,
         looked: now,
     };
-    context.data_mut(|data| data.insert_temp(id, fresh));
-    texture
+    context.data_mut(|data| data.insert_temp(id, kept));
+    fresh
 }
 
 /// A PNG, or any picture the `image` crate reads, as a texture.

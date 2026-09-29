@@ -73,7 +73,10 @@ fn a_bar_is_drawn_as_its_page_says() {
     let mut harness = harness();
     harness.run();
     let (health, page) = health_page(&harness);
-    let pages = harness.state().play.widget_pages(&[]);
+    let pages = harness
+        .state()
+        .play
+        .widget_pages(&crate::play::Pictures::default());
     let own = pages
         .iter()
         .find(|found| found.id == page)
@@ -124,7 +127,10 @@ fn a_bar_is_drawn_as_its_page_says() {
     assert_eq!((look.fills, look.place), (Fills::Up, Place::Below));
     assert_eq!(look.color, [0x10, 0x20, 0x30]);
     assert!(!look.says.numbers);
-    let pages = harness.state().play.widget_pages(&[]);
+    let pages = harness
+        .state()
+        .play
+        .widget_pages(&crate::play::Pictures::default());
     let own = pages
         .iter()
         .find(|found| found.id == page)
@@ -183,7 +189,7 @@ fn a_bars_page_is_saved_with_the_layout() {
     let page = harness
         .state()
         .play
-        .widget_pages(&[])
+        .widget_pages(&crate::play::Pictures::default())
         .into_iter()
         .find(|page| page.title.starts_with("Health"))
         .map(|page| page.id)
@@ -195,7 +201,7 @@ fn a_bars_page_is_saved_with_the_layout() {
         .expect("changed");
     let reopened = Play::new(0, "Ashryn", Some("Prime"), Some(dir.clone()));
     let fills = reopened
-        .widget_pages(&[])
+        .widget_pages(&crate::play::Pictures::default())
         .into_iter()
         .find(|found| found.id == page)
         .and_then(|found| found.rows.into_iter().find(|row| row.key == "fills"))
@@ -246,7 +252,10 @@ fn the_rooms_right_click_opens_its_page() {
         "{:?}",
         harness.state().asked
     );
-    let pages = harness.state().play.widget_pages(&[]);
+    let pages = harness
+        .state()
+        .play
+        .widget_pages(&crate::play::Pictures::default());
     let own = pages
         .iter()
         .find(|found| found.id == page)
@@ -295,7 +304,10 @@ fn the_room_shows_the_parts_its_page_picks() {
     assert!(harness.query_by_label("Creatures:").is_some(), "apart");
     let kept = layout(&harness).rooms.get(&room).copied().expect("kept");
     assert!(!kept.players && kept.apart && kept.exits);
-    let pages = harness.state().play.widget_pages(&[]);
+    let pages = harness
+        .state()
+        .play
+        .widget_pages(&crate::play::Pictures::default());
     let here: Vec<&str> = pages
         .iter()
         .find(|found| found.id == page)
@@ -357,7 +369,7 @@ fn keys(harness: &Harness<'_, Scene>, page: &str) -> Vec<String> {
     harness
         .state()
         .play
-        .widget_pages(&[])
+        .widget_pages(&crate::play::Pictures::default())
         .into_iter()
         .find(|found| found.id == page)
         .map(|found| found.rows.into_iter().map(|row| row.key).collect())
@@ -446,4 +458,42 @@ fn the_story_draws_its_lines_as_its_page_says() {
         layout.remove_widget(window, thoughts);
     }
     assert!(layout(&harness).lines.is_empty(), "gone with it");
+}
+
+/// The Injuries widget's page offers the dolls folder's pictures and keeps
+/// the one chosen with the layout; None puts the body back.
+#[test]
+fn the_injury_dolls_page_takes_a_picture() {
+    let mut harness = harness();
+    let doll = harness
+        .state_mut()
+        .play
+        .layout
+        .as_mut()
+        .map(|layout| layout.add_widget(Widget::Injuries, None))
+        .unwrap_or_default();
+    harness.run();
+    let pictures = crate::play::Pictures {
+        dolls: vec!["C:/dolls/ranger.png".into()],
+        ..crate::play::Pictures::default()
+    };
+    let pages = harness.state().play.widget_pages(&pictures);
+    let page = pages
+        .iter()
+        .find(|page| page.id == format!("widget:{doll}"))
+        .expect("a page of its own");
+    assert!(page.rows.iter().any(|row| row.key == "picture"));
+
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page.id, "picture", Some("C:/dolls/ranger.png"))
+        .expect("changed");
+    let kept = layout(&harness).dolls.get(&doll).cloned();
+    assert_eq!(
+        kept.and_then(|look| look.picture).as_deref(),
+        Some("C:/dolls/ranger.png")
+    );
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&format!("widget:{doll}"), "picture", None)
+        .expect("put back");
+    assert!(!layout(&harness).dolls.contains_key(&doll));
 }

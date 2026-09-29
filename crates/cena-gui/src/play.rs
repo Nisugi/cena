@@ -40,6 +40,7 @@ use crate::layout::{Drawers, GRID, Layout, Zones};
 use crate::story::Story;
 use crate::widget::Widget;
 use holders::Engaged;
+pub(crate) use options::Pictures;
 
 /// The player's own Lich for the character (`plan/51`): ticked while it
 /// runs; what it was switched to, when it was.

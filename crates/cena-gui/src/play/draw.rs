@@ -26,6 +26,8 @@ pub(super) struct Drawing<'a> {
     /// How each story or stream widget draws its lines, by id
     /// (`Layout::lines`).
     pub(super) lines: &'a BTreeMap<u32, crate::widget::Lines>,
+    /// Each Injuries widget's picture, by id (`Layout::dolls`).
+    pub(super) dolls: &'a BTreeMap<u32, crate::widget::doll::DollLook>,
     /// Which session: every id in the window is its own.
     pub(super) session: u32,
     /// How far each widget that counts what it says was read, by id.
@@ -50,6 +52,7 @@ impl Drawing<'_> {
             look: self.looks.get(&placed).cloned(),
             room: self.rooms.get(&placed).copied(),
             lines: self.lines.get(&placed).copied(),
+            doll: self.dolls.get(&placed).cloned(),
         }
     }
 }

@@ -86,6 +86,9 @@ pub(crate) struct Layout {
     /// when the player chose on its page.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) lines: BTreeMap<u32, crate::widget::Lines>,
+    /// Each Injuries widget's picture, by the widget's id (`plan/55`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) dolls: BTreeMap<u32, crate::widget::doll::DollLook>,
     /// Its four drawers (`plan/49` Stage E, `drawers.rs`).
     #[serde(default, skip_serializing_if = "Drawers::is_default")]
     pub(crate) drawers: Drawers,
@@ -193,6 +196,7 @@ impl Layout {
             locked: false,
             rooms: BTreeMap::new(),
             lines: BTreeMap::new(),
+            dolls: BTreeMap::new(),
             drawers: Drawers::default(),
         };
         let story = layout.place(Widget::Story);

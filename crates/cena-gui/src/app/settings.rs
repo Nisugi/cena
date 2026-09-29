@@ -23,7 +23,7 @@ impl App {
         let shown = self.shown_play();
         let overlays = match shown {
             Some(_) => self.overlays(),
-            None => Vec::new(),
+            None => crate::play::Pictures::default(),
         };
         // The keys of the character the menu shows, over every character's.
         let file = self.menu_mine();
@@ -211,30 +211,38 @@ impl App {
             .map(|seat| seat.id.0)
     }
 
-    /// The images a bar may lay over itself: each PNG in the data folder's
-    /// `overlays`, by name. **Listed again no oftener than every two
+    /// The images a bar may lay over itself, each PNG in the data folder's
+    /// `overlays`, and the doll pictures in its `dolls`, by name. **Listed
+    /// again no oftener than every two
     /// seconds**: the menu asks each frame it is drawn, and the folder was
     /// read from the disk sixty times a second for as long as Settings
     /// stood open on a character (the review of 2026-09-29).
-    fn overlays(&mut self) -> Vec<PathBuf> {
+    fn overlays(&mut self) -> crate::play::Pictures {
         let now = std::time::Instant::now();
         if let Some((at, found)) = &self.overlays
             && now.duration_since(*at) < OVERLAYS_KEPT
         {
             return found.clone();
         }
-        let found = self.list_overlays();
+        let found = crate::play::Pictures {
+            overlays: self.list_pictures("overlays"),
+            dolls: self
+                .list_pictures("dolls")
+                .into_iter()
+                .filter(|path| !crate::widget::doll::is_layer(path))
+                .collect(),
+        };
         self.overlays = Some((now, found.clone()));
         found
     }
 
-    /// The overlays folder as it is on the disk now.
-    fn list_overlays(&self) -> Vec<PathBuf> {
+    /// The PNGs in the data folder's `folder` as it is on the disk now.
+    fn list_pictures(&self, folder: &str) -> Vec<PathBuf> {
         let Some(folder) = self
             .layouts
             .as_deref()
             .and_then(std::path::Path::parent)
-            .map(|data| data.join("overlays"))
+            .map(|data| data.join(folder))
         else {
             return Vec::new();
         };

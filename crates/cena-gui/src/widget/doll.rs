@@ -17,6 +17,9 @@ use std::collections::BTreeMap;
 
 use cena_session::Injury;
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
+use serde::{Deserialize, Serialize};
+
+use crate::calibration::Calibration;
 
 /// What a part shows: its wound, else its scar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -247,6 +250,29 @@ const fn part(id: &'static str, name: &'static str, anchor: (f32, f32), shape: S
     }
 }
 
+/// The levels an overlay is drawn for, as `VellumFE` names them in a file
+/// (`reference/VellumFE/src/config/skins.rs:644-669`).
+pub(crate) const LEVELS: [&str; 7] = [
+    "healthy", "injury1", "injury2", "injury3", "scar1", "scar2", "scar3",
+];
+
+/// Whether the file at `path` is one of a doll picture's overlays,
+/// `<picture>_<part>_<level>.png`, rather than a picture of its own.
+pub(crate) fn is_layer(path: &std::path::Path) -> bool {
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return false;
+    };
+    let mut pieces = stem.rsplitn(3, '_');
+    let (Some(level), Some(part), Some(_picture)) = (pieces.next(), pieces.next(), pieces.next())
+    else {
+        return false;
+    };
+    LEVELS.iter().any(|known| known.eq_ignore_ascii_case(level))
+        && PARTS
+            .iter()
+            .any(|known| known.id.eq_ignore_ascii_case(part))
+}
+
 /// What `part` shows among `injuries`: a folded foot counting as its leg,
 /// the worse of the two on each track.
 pub(crate) fn shown(injuries: &BTreeMap<String, Injury>, part: &Part) -> Option<Shown> {
@@ -266,21 +292,62 @@ pub(crate) fn shown(injuries: &BTreeMap<String, Injury>, part: &Part) -> Option<
     }
 }
 
-/// The doll's width to its height.
+/// The body's width to its height.
 const ASPECT: f32 = 0.75;
 
-/// Draw the doll for `injuries` in what is left of `ui`.
-pub(super) fn doll(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>>) {
+/// What the player chose for one Injuries widget on its own page.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct DollLook {
+    /// The picture the doll is drawn over, a PNG in the data folder's
+    /// `dolls`; with none, the body drawn in code.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) picture: Option<String>,
+}
+
+/// How the dots are drawn: where each part's sits, how wide, how opaque.
+struct Dots<'a> {
+    calibration: Option<&'a Calibration>,
+    /// A dot's radius, in points.
+    radius: f32,
+    opacity: f32,
+}
+
+impl Dots<'_> {
+    fn anchor(&self, part: &Part) -> (f32, f32) {
+        self.calibration
+            .map_or(part.anchor, |calibration| calibration.anchor(part))
+    }
+}
+
+/// Draw the doll for `injuries` in what is left of `ui`, over the picture
+/// `look` names when it can be read, and over the body drawn in code when
+/// not.
+pub(super) fn doll(
+    ui: &mut egui::Ui,
+    injuries: Option<&BTreeMap<String, Injury>>,
+    look: Option<&DollLook>,
+) {
     // Before the game has said, the body is drawn whole. (An empty map
     // allocates nothing.)
     let whole = BTreeMap::new();
     let injuries = injuries.unwrap_or(&whole);
+    let chosen = look.and_then(|look| look.picture.as_deref());
+    let picture = chosen.and_then(|path| crate::pictures::picture(ui.ctx(), path));
+    let aspect = picture.as_ref().map_or(ASPECT, |texture| {
+        let [width, height] = texture.size();
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "a picture's size in pixels, far inside f32's exact range"
+        )]
+        let aspect = width as f32 / height.max(1) as f32;
+        aspect
+    });
     let avail = ui.available_size();
     let mut height = avail.y.max(60.0);
-    let mut width = height * ASPECT;
+    let mut width = height * aspect;
     if width > avail.x.max(40.0) {
         width = avail.x.max(40.0);
-        height = width / ASPECT;
+        height = width / aspect;
     }
     let (outer, _) =
         ui.allocate_exact_size(Vec2::new(avail.x.max(width), height), egui::Sense::hover());
@@ -288,38 +355,41 @@ pub(super) fn doll(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>
     let painter = ui.painter().with_clip_rect(outer);
     let at = |(x, y): (f32, f32)| rect.min + Vec2::new(x * rect.width(), y * rect.height());
     let scale = rect.height();
-    let letters = egui::FontId::proportional((scale * 0.09).clamp(10.0, 18.0));
+
+    let calibration = chosen
+        .filter(|_| picture.is_some())
+        .map(|path| crate::pictures::calibration(ui.ctx(), path));
+    let dots = if let (Some(texture), Some(calibration)) = (&picture, &calibration) {
+        let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+        painter.image(texture.id(), rect, uv, Color32::WHITE);
+        Dots {
+            calibration: Some(calibration),
+            radius: (calibration.diameter * scale * 0.5).max(4.0),
+            opacity: calibration.opacity,
+        }
+    } else {
+        body(&painter, &at, scale);
+        Dots {
+            calibration: None,
+            radius: (scale * 0.035).max(5.0),
+            opacity: 1.0,
+        }
+    };
 
     for part in &PARTS {
-        let hover = match part.shape {
-            Shape::Circle { c, r } => {
-                painter.circle_filled(at(c), r * scale, BODY);
-                Rect::from_center_size(at(c), Vec2::splat(r * scale * 2.0))
-            }
-            Shape::Block { min, max } => {
-                let block = Rect::from_min_max(at(min), at(max));
-                painter.rect_filled(block, scale * 0.02, BODY);
-                block
-            }
-            Shape::Line { a, b, w } => {
-                painter.line_segment([at(a), at(b)], Stroke::new(w * scale, BODY));
-                Rect::from_two_pos(at(a), at(b)).expand(w * scale * 0.5)
-            }
-            Shape::Letter { c, letter } => {
-                painter.text(
-                    at(c),
-                    egui::Align2::CENTER_CENTER,
-                    letter,
-                    letters.clone(),
-                    BODY,
-                );
-                Rect::from_center_size(at(c), Vec2::splat(scale * 0.11))
-            }
-        };
+        let center = at(dots.anchor(part));
         let shows = shown(injuries, part);
         if let Some(shows) = shows {
-            dot(&painter, at(part.anchor), scale, shows);
+            dot(&painter, center, &dots, shows);
         }
+        // Pointed at: a part's own shape on the body, its dot's
+        // neighbourhood on a picture.
+        let hover = match (&dots.calibration, part.shape) {
+            (None, shape) => shape_rect(shape, &at, scale),
+            (Some(_), _) => {
+                Rect::from_center_size(center, Vec2::splat(dots.radius.max(scale * 0.04) * 2.0))
+            }
+        };
         ui.interact(
             hover,
             ui.id().with(("injury", part.id)),
@@ -331,18 +401,58 @@ pub(super) fn doll(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>
     }
 }
 
+/// The body drawn in code, every part in its colour.
+fn body(painter: &egui::Painter, at: &impl Fn((f32, f32)) -> Pos2, scale: f32) {
+    let letters = egui::FontId::proportional((scale * 0.09).clamp(10.0, 18.0));
+    for part in &PARTS {
+        match part.shape {
+            Shape::Circle { c, r } => {
+                painter.circle_filled(at(c), r * scale, BODY);
+            }
+            Shape::Block { min, max } => {
+                painter.rect_filled(Rect::from_min_max(at(min), at(max)), scale * 0.02, BODY);
+            }
+            Shape::Line { a, b, w } => {
+                painter.line_segment([at(a), at(b)], Stroke::new(w * scale, BODY));
+            }
+            Shape::Letter { c, letter } => {
+                painter.text(
+                    at(c),
+                    egui::Align2::CENTER_CENTER,
+                    letter,
+                    letters.clone(),
+                    BODY,
+                );
+            }
+        }
+    }
+}
+
+/// Where a part's shape on the body is, for pointing at it.
+fn shape_rect(shape: Shape, at: &impl Fn((f32, f32)) -> Pos2, scale: f32) -> Rect {
+    match shape {
+        Shape::Circle { c, r } => Rect::from_center_size(at(c), Vec2::splat(r * scale * 2.0)),
+        Shape::Block { min, max } => Rect::from_min_max(at(min), at(max)),
+        Shape::Line { a, b, w } => Rect::from_two_pos(at(a), at(b)).expand(w * scale * 0.5),
+        Shape::Letter { c, .. } => Rect::from_center_size(at(c), Vec2::splat(scale * 0.11)),
+    }
+}
+
 /// A part's dot: its level's colour, its rank in it.
-fn dot(painter: &egui::Painter, center: Pos2, scale: f32, shows: Shown) {
-    let fill = PALETTE[shows.level()];
-    let radius = (scale * 0.035).max(5.0);
-    painter.circle(center, radius, fill, Stroke::new(1.0, Color32::BLACK));
-    painter.text(
-        center,
-        egui::Align2::CENTER_CENTER,
-        rank_text(shows.rank()),
-        egui::FontId::proportional(radius * 1.3),
-        Color32::WHITE,
-    );
+fn dot(painter: &egui::Painter, center: Pos2, dots: &Dots<'_>, shows: Shown) {
+    let fill = PALETTE[shows.level()].gamma_multiply(dots.opacity);
+    let edge = Color32::BLACK.gamma_multiply(dots.opacity);
+    painter.circle(center, dots.radius, fill, Stroke::new(1.0, edge));
+    // The rank, when there is room to read it (`VellumFE`'s threshold).
+    if dots.radius >= 5.5 {
+        painter.text(
+            center,
+            egui::Align2::CENTER_CENTER,
+            rank_text(shows.rank()),
+            egui::FontId::proportional(dots.radius * 1.3),
+            Color32::WHITE.gamma_multiply(dots.opacity),
+        );
+    }
 }
 
 /// A rank as its numeral, with no allocation.
@@ -413,7 +523,7 @@ mod tests {
     fn drawn(hurt: BTreeMap<String, Injury>) -> egui_kittest::Harness<'static, ()> {
         egui_kittest::Harness::builder()
             .with_size((180.0, 240.0))
-            .build_ui(move |ui| super::doll(ui, Some(&hurt)))
+            .build_ui(move |ui| super::doll(ui, Some(&hurt), None))
     }
 
     /// The body alone, before anything hurts.
@@ -441,6 +551,59 @@ mod tests {
         ]));
         harness.run();
         harness.snapshot("injuries_hurt");
+    }
+
+    /// A picture's overlays are not pictures of their own.
+    #[test]
+    fn an_overlay_file_is_told_from_a_picture() {
+        let is = |name: &str| super::is_layer(std::path::Path::new(name));
+        assert!(is("nisugi_chest_injury2.png"));
+        assert!(is("dwarf_ranger_leftArm_scar1.png"));
+        assert!(is("nisugi_nsys_healthy.png"));
+        assert!(!is("nisugi_bow.png"), "a variant, not an overlay");
+        assert!(!is("dwarf_ranger.png"));
+        assert!(!is("chest_injury2.png"), "no picture before the part");
+    }
+
+    /// A picture of the test's own, calibrated beside it as `VellumFE`
+    /// keeps its working copy: its dots where the calibration says, sized
+    /// and faded as it says.
+    #[test]
+    fn a_dot_for_each_hurt_part_on_a_picture_where_it_is_calibrated() {
+        let dir = std::env::temp_dir().join(format!("cena-doll-picture-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("a folder");
+        let path = dir.join("tall.png");
+        let mut art = image::RgbaImage::from_pixel(60, 120, image::Rgba([40, 60, 90, 255]));
+        for y in 10..110 {
+            for x in 25..35 {
+                art.put_pixel(x, y, image::Rgba([200, 190, 170, 255]));
+            }
+        }
+        art.save(&path).expect("saved");
+        std::fs::write(
+            dir.join("tall.toml"),
+            "kind = \"doll\"
+[anchors]
+head = [0.5, 0.1]
+chest = [0.5, 0.35]
+             leftleg = [0.5, 0.8]
+[dots]
+opacity = 0.8
+diameter = 0.1
+",
+        )
+        .expect("calibrated");
+        let look = super::DollLook {
+            picture: Some(path.to_string_lossy().into_owned()),
+        };
+        let hurt = injuries(&[("head", 2, 0), ("chest", 0, 3), ("leftFoot", 1, 0)]);
+        let mut harness = egui_kittest::Harness::builder()
+            .with_size((180.0, 240.0))
+            .build_ui(move |ui| super::doll(ui, Some(&hurt), Some(&look)));
+        harness.run();
+        harness.snapshot("injuries_picture");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

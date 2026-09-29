@@ -46,7 +46,11 @@ pub(super) fn draw(
             return room::compass(ui, state, seen.who.is_none()).map(super::Clicked::Send);
         }
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
-        Widget::Injuries => super::doll::doll(ui, state.map(|state| &state.character.injuries)),
+        Widget::Injuries => super::doll::doll(
+            ui,
+            state.map(|state| &state.character.injuries),
+            chosen.doll.as_ref(),
+        ),
         Widget::Minimap => super::minimap::minimap(ui, seen.minimap, id),
         Widget::Room => scrolled(ui, &mut |ui| {
             super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default());

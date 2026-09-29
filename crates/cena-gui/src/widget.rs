@@ -15,7 +15,7 @@
 mod character;
 mod described;
 mod dialog;
-mod doll;
+pub(crate) mod doll;
 mod draw;
 pub(crate) mod find;
 mod kind;
@@ -130,6 +130,8 @@ pub(crate) struct Chosen {
     pub(crate) room: Option<RoomParts>,
     /// How the story or a stream draws its lines.
     pub(crate) lines: Option<Lines>,
+    /// The injury doll's picture.
+    pub(crate) doll: Option<doll::DollLook>,
 }
 
 /// One line of text, or a bar: what a one-line widget asks for.

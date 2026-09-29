@@ -14,6 +14,7 @@
 
 mod app;
 pub mod bar;
+mod calibration;
 mod carry;
 mod feed;
 #[cfg(test)]
