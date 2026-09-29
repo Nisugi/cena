@@ -639,7 +639,7 @@ added, walking the Landing and Hinterwilds.
 
 The goal: *"The minimap should allow us to select where we want to travel that's nearby (in
 the same area at least) easily. If I'm in a bank that is 2 rooms, I don't want a 2 room
-minimap."* The place's own sheet (ง7d, `546c2ce`) is a stopgap, not the design.
+minimap."* The place's own sheet (ยง7d, `546c2ce`) is a stopgap, not the design.
 
 ### 8a. Inside: half scale in place, and the camera zooms in (ANSWERED)
 
@@ -658,7 +658,26 @@ minimap."* The place's own sheet (ง7d, `546c2ce`) is a stopgap, not the design.
 - Open: whether a big place (Angargreft, the Pits) opens the same way; measured in the
   mapper first.
 
-### 8b. Next door: the neighbouring areas (PROPOSED)
+### 8b. Maps of areas, and next door (ANSWERED)
+
+The author, on Cold River beside the Hinterwilds: *"I think the solution is for cold river to
+end up in the hinterwilds area, and not be a separate area. Areas have sub areas hmm? Or they
+should I guess!"*
+
+- **A map is a curated group of areas**, what is laid out and what the minimap shows: the
+  Hinterwilds is `icemule-trace-cold-river-town` (42 rooms) and `icemule-trace-hinterwilds`
+  (207). The areas are Simutronics' official layout areas, kept as they are, now sub-areas.
+  No field in the data gives the grouping: the region (Icemule Trace) spans caravans, and
+  `location` is noise, 89 of 318 locations spread over more than one area (`gs.overrides.areas.tsv`,
+  grouped by column 4); *Wehnimer's Landing* names rooms in 33 areas, Mist Harbor's among them.
+  So maps are curated in hydra-mapper beside the area assignments and baked into `gs.map`,
+  the mapper suggesting areas that share a walk and a location. Answered *"yeah"*. A new
+  map goes through the gate and the author's screenshots before it ships.
+- **Neighbours joined at the border too**, for the crossings between maps: *"yeah let's try
+  the joins too. We might remove them we might keep them, but might as well see."* As
+  proposed below.
+
+The join, as first proposed:
 
 The author: *"I would expect cold river to show up right along side the hinterwilds on the
 map ... Maybe limit it to the area + 1 additional area per exit that leads to another area?
@@ -675,9 +694,11 @@ tried in the mapper for one small stretch if the join looks wrong.
 
 ### 8c. Order
 
+0. **Mapper**: maps, curated and baked (`meta:map:`), the suggestions, and the Hinterwilds
+   the first, through the gate; Hydra lays out by map, each area a sub-area.
 1. **Mapper**: a place opened at half scale beside its door, the street grown only when there
    is no gap; checked by the gate and the author's screenshots (a bank, Rawknuckle's, a
    crowded Landing street).
 2. **Hydra**: the camera's two default zooms, reset at a door, and the glide.
-3. **Hydra**: neighbours joined at the border, and how many areas out.
+3. **Hydra**: neighbouring maps joined at the border, and how many out.
 4. **The settings page** (step 7's, brought forward): both zooms and the areas out.
