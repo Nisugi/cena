@@ -171,6 +171,15 @@ pub struct Planner {
     /// Critters' bags being emptied this visit.
     bags: BTreeMap<String, BagPhase>,
     room_looted: bool,
+    /// What lay on the floor when `loot room` was last sent, by id with its
+    /// kinds: a hand holding one of them afterwards is emptied before the
+    /// room is looted again (`loot_all`, `eloot.lic:5263`). Never anything
+    /// else a hand holds: the weapon stays where it is.
+    gathered: Vec<(String, ObjectTypes)>,
+    /// The bag the last `loot #id` was bound for: the game chooses it by
+    /// the stow list, as [`Planner::bag_for`] does, and its *won't fit* and
+    /// *closed* are about that bag, not the item.
+    into: Option<String>,
     /// A search failed for the character's condition; the sigil helps once.
     sigil: Sigil,
     /// Skinning, before the searches, when the profile turns it on.
@@ -201,6 +210,8 @@ impl Planner {
             opened: BTreeSet::new(),
             bags: BTreeMap::new(),
             room_looted: false,
+            gathered: Vec::new(),
+            into: None,
             sigil: Sigil::NotNeeded,
             last: None,
             bags_full: false,
@@ -274,6 +285,9 @@ impl Planner {
         if self.bags_full {
             return Step::Done(Left::BagsFull);
         }
+        if let Some(step) = self.empty_hands(state) {
+            return step;
+        }
         let floor = self.split(state);
         if floor.specials.is_empty() && floor.regular.is_empty() {
             return Step::Done(Self::left(state));
@@ -287,6 +301,11 @@ impl Planner {
         }
         if floor.specials.is_empty() && floor.unwanted == 0 && !self.room_looted {
             self.room_looted = true;
+            self.gathered = floor
+                .regular
+                .iter()
+                .map(|(item, types)| (item.id.clone(), types.clone()))
+                .collect();
             return Step::LootRoom;
         }
         if !state.containers.stow_checked() {
@@ -367,6 +386,37 @@ impl Planner {
         }
     }
 
+    /// What `loot room` left in a hand, dragged to its bag: the room is
+    /// looted again only once the hands are clear of it, or the game answers
+    /// *too much* to every `loot room` there is.
+    fn empty_hands(&mut self, state: &GameState) -> Option<Step> {
+        let held = [&state.right_hand, &state.left_hand]
+            .into_iter()
+            .filter_map(|hand| hand.id())
+            .find_map(|id| self.gathered.iter().find(|(item, _)| item == id))?
+            .clone();
+        if !state.containers.stow_checked() {
+            return Some(Step::Ask("stow list"));
+        }
+        let (id, types) = held;
+        if *self.tries.get(&id).unwrap_or(&0) >= DRAG_TRIES {
+            // It will not go away: no more of the room by `loot room`.
+            self.gathered.clear();
+            self.room_looted = true;
+            return None;
+        }
+        *self.tries.entry(id.clone()).or_insert(0) += 1;
+        let Some(bag) = self.bag_for(state, &types) else {
+            self.bags_full = true;
+            return Some(Step::Done(Left::BagsFull));
+        };
+        if self.memory.autoclosers.contains(&bag) && !self.opened.contains(&bag) {
+            self.opened.insert(bag.clone());
+            return Some(Step::Open(bag));
+        }
+        Some(Step::Drag { item: id, bag })
+    }
+
     /// Take one thing: by the game's verb where it stows itself, else a
     /// drag into the right bag. `None` when it has been given up on.
     fn take(&mut self, state: &GameState, item: &RoomItem, types: &ObjectTypes) -> Option<Step> {
@@ -375,17 +425,19 @@ impl Planner {
             return None;
         }
         *self.tries.entry(item.id.clone()).or_insert(0) += 1;
-        let bag = self.bag_for(state, types);
-        if lootable_by_verb(types) && bag.is_some() {
-            return Some(Step::LootItem(item.id.clone()));
-        }
-        let Some(bag) = bag else {
+        let Some(bag) = self.bag_for(state, types) else {
             self.bags_full = true;
             return Some(Step::Done(Left::BagsFull));
         };
+        // Before either way of taking it: `loot #id` into a bag that closes
+        // itself is refused as a drag is.
         if self.memory.autoclosers.contains(&bag) && !self.opened.contains(&bag) {
             self.opened.insert(bag.clone());
             return Some(Step::Open(bag));
+        }
+        if lootable_by_verb(types) {
+            self.into = Some(bag);
+            return Some(Step::LootItem(item.id.clone()));
         }
         Some(Step::Drag {
             item: item.id.clone(),
@@ -480,10 +532,12 @@ impl Planner {
                 }
             }
             (Step::LootRoom, Outcome::TooMuch) => {
-                // What landed in the hands is dragged item by item; the
-                // room is looted again once they are away.
+                // What landed in the hands is dragged item by item
+                // (`empty_hands`); the room is looted again once they are
+                // away.
                 self.room_looted = false;
             }
+            (Step::LootRoom, _) => self.gathered.clear(),
             (Step::Open(bag), Outcome::NotAContainer | Outcome::NotFound) => {
                 // Not a bag after all: nothing to empty, take it as it is.
                 self.bags.remove(&bag);
@@ -493,11 +547,22 @@ impl Planner {
                 self.bags.remove(&bag);
                 self.skipped.insert(bag);
             }
-            (Step::Drag { bag, .. } | Step::LootItem(bag), Outcome::WontFit) => {
+            (Step::Drag { bag, .. }, Outcome::WontFit) => {
                 self.memory.full.insert(bag);
             }
             (Step::Drag { bag, .. }, Outcome::Closed) => {
                 self.memory.autoclosers.insert(bag);
+            }
+            // `loot #id` names the item; the bag is the one it was bound for.
+            (Step::LootItem(_), Outcome::WontFit) => {
+                if let Some(bag) = self.into.take() {
+                    self.memory.full.insert(bag);
+                }
+            }
+            (Step::LootItem(_), Outcome::Closed) => {
+                if let Some(bag) = self.into.take() {
+                    self.memory.autoclosers.insert(bag);
+                }
             }
             (
                 Step::Drag { item, .. } | Step::LootItem(item),

@@ -194,6 +194,111 @@ fn a_full_bag_is_remembered_and_the_next_one_tried_then_rest() {
     );
 }
 
+/// `item` in the right hand, as the wire states it.
+fn in_hand(state: &mut GameState, item: &RoomItem) {
+    state.apply(&Frame::RightHand {
+        item: item.text.clone(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: item.id.clone(),
+                noun: item.noun.clone(),
+            },
+            text: item.text.clone(),
+            coord: None,
+        }),
+    });
+}
+
+#[test]
+fn a_gem_that_will_not_fit_by_the_games_verb_fills_the_bag_not_the_gem() {
+    let floor = [
+        item("1", "emerald", "uncut emerald"),
+        item("2", "acantha", "acantha leaf"),
+    ];
+    let state = state(&floor, true);
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+    plan.outcome(&Outcome::WontFit);
+    assert!(
+        plan.memory().full.contains("901"),
+        "the gem sack is what is full"
+    );
+    assert!(
+        !plan.memory().full.contains("1"),
+        "the emerald is no bag: {:?}",
+        plan.memory().full
+    );
+    // The default bag next, and the game's verb no more tries than it had.
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+    plan.outcome(&Outcome::WontFit);
+    assert!(plan.memory().full.contains("902"));
+    assert_eq!(
+        plan.next(&state),
+        Step::Done(Left::BagsFull),
+        "both bags full after two tries, not five of the same"
+    );
+}
+
+#[test]
+fn a_bag_that_closed_on_the_games_verb_is_opened_before_the_next_try() {
+    let floor = [
+        item("1", "emerald", "uncut emerald"),
+        item("2", "acantha", "acantha leaf"),
+    ];
+    let state = state(&floor, true);
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+    plan.outcome(&Outcome::Closed);
+    assert!(plan.memory().autoclosers.contains("901"));
+    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
+    plan.outcome(&Outcome::Stored);
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+}
+
+#[test]
+fn too_much_for_the_hands_is_dragged_away_before_the_room_is_looted_again() {
+    let floor = [
+        item("1", "emerald", "uncut emerald"),
+        item("2", "ruby", "star ruby"),
+    ];
+    let mut state = state(&floor, true);
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootRoom);
+    // The emerald landed in a hand; the ruby is still on the floor.
+    plan.outcome(&Outcome::TooMuch);
+    in_hand(&mut state, &floor[0]);
+    state.room.objects.remove(0);
+    assert_eq!(
+        plan.next(&state),
+        Step::Drag {
+            item: "1".to_owned(),
+            bag: "901".to_owned()
+        },
+        "the hand first, never `loot room` on full hands"
+    );
+    plan.outcome(&Outcome::Stored);
+    state.apply(&Frame::RightHand {
+        item: "Empty".to_owned(),
+        link: None,
+    });
+    assert_eq!(plan.next(&state), Step::LootRoom, "then the rest of it");
+}
+
+#[test]
+fn what_the_hand_held_before_the_looting_is_left_in_it() {
+    let floor = [item("1", "emerald", "uncut emerald")];
+    let mut state = state(&floor, true);
+    in_hand(&mut state, &item("77", "sword", "steel sword"));
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootRoom);
+    plan.outcome(&Outcome::TooMuch);
+    assert_eq!(
+        plan.next(&state),
+        Step::LootRoom,
+        "the sword was not on the floor: it is not dragged anywhere"
+    );
+}
+
 #[test]
 fn the_disk_is_the_last_bag_when_the_profile_uses_it() {
     let floor = [
