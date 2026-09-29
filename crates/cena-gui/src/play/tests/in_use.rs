@@ -139,11 +139,20 @@ fn find_looks_through_the_story() {
 #[test]
 fn the_find_bar_as_drawn() {
     let mut scene = Scene::new();
+    // No roundtime, as `the_window_as_drawn` has none: its seconds come
+    // from the wall clock, and this image showed `RT 29s` or `RT 30s` by
+    // when it was drawn. It failed one full run in three.
+    scene.snapshot.state.roundtime_ends = None;
     told(&mut scene.story, 200);
     let mut harness = Harness::builder()
         .with_size((1000.0, 700.0))
         .wgpu()
         .build_ui_state(|ui, scene: &mut Scene| scene.draw(ui), scene);
+    // The Find bar's input has the keyboard, and its cursor blinks by the
+    // wall clock: drawn steady, for the same reason.
+    harness
+        .ctx
+        .all_styles_mut(|style| style.visuals.text_cursor.blink = false);
     harness.run();
     let context = harness.ctx.clone();
     let _ = harness.state_mut().play.act(&context, Action::Find);
