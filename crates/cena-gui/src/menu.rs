@@ -6,7 +6,8 @@
 //!
 //! It opens on Hydra's own pages (step 2): the *Window* page, drawn as any
 //! other, and the *Keys* page ([`KeysView`]); the window applies their
-//! changes itself. A character is picked from the roster, running or not.
+//! changes itself. A character is picked from the roster, running or not,
+//! and has a *Keys* page of its own (`plan/52` step 2).
 //! Its pages come from the binary as [`Page`]s, which this draws knowing no
 //! behavior. Each change goes back as a [`HubRequest::Change`], which the
 //! binary applies through the writer the behavior's `;` command uses. So the
@@ -39,8 +40,14 @@ pub enum MenuAsked {
         /// to its default.
         to: Option<String>,
     },
-    /// A change to the keybinds, which the window writes.
-    Key(KeyChange),
+    /// A change to the keys, which the window writes: every character's,
+    /// or those of the character the menu shows, as the roster names it.
+    Key {
+        /// The character; `None` for every character's.
+        character: Option<String>,
+        /// The change.
+        change: KeyChange,
+    },
     /// A change on a widget's own page, which its play window makes to its
     /// layout: the character is the one the menu shows.
     Widget {
@@ -144,10 +151,13 @@ impl Menu {
     /// then hands it every numpad key ([`KeysView::caught`]).
     #[must_use]
     pub fn waiting_for_key(&self) -> bool {
-        self.open
-            && self.character.is_none()
-            && self.page.as_deref() == Some(KEYS)
-            && self.keys.waiting()
+        self.open && self.page.as_deref() == Some(KEYS) && self.keys.waiting()
+    }
+
+    /// The macro set the *Keys* page shows, whose keys it lists.
+    #[must_use]
+    pub fn keys_set(&self) -> u8 {
+        self.keys.set()
     }
 
     /// Say `said` at the top of the menu: what a change to Hydra's own
@@ -179,19 +189,41 @@ impl Menu {
                 &[]
             }
         };
-        if theirs.is_empty() && view.widgets.is_empty() {
+        // Its own pages come first, so the menu waits for them, unless it
+        // was opened at its keys or a widget's page.
+        let elsewhere = self
+            .page
+            .as_deref()
+            .is_some_and(|page| page == KEYS || page.starts_with("widget:"));
+        if theirs.is_empty() && !elsewhere {
             return asked;
         }
-        // The binary's pages, then the play window's widgets' own.
+        // The binary's pages, then the character's keys, then the play
+        // window's widgets' own.
         let pages: Vec<&Page> = theirs.iter().chain(view.widgets).collect();
-        let titles: Vec<(&str, &str)> = pages
+        let mut titles: Vec<(&str, &str)> = theirs
             .iter()
             .map(|page| (page.id.as_str(), page.title.as_str()))
             .collect();
+        titles.push((KEYS, "Keys"));
+        titles.extend(
+            view.widgets
+                .iter()
+                .map(|page| (page.id.as_str(), page.title.as_str())),
+        );
         ui.horizontal_top(|ui| {
             self.contents(ui, &titles);
             ui.separator();
             ui.vertical(|ui| {
+                if self.page.as_deref() == Some(KEYS) {
+                    if let Some(change) = self.keys.show(ui, &view.keys, &mut self.note) {
+                        asked = Some(MenuAsked::Key {
+                            character: Some(character.clone()),
+                            change,
+                        });
+                    }
+                    return;
+                }
                 let page = pages
                     .iter()
                     .find(|page| self.page.as_deref() == Some(page.id.as_str()));
@@ -298,7 +330,10 @@ impl Menu {
                     asked = self
                         .keys
                         .show(ui, &view.keys, &mut self.note)
-                        .map(MenuAsked::Key);
+                        .map(|change| MenuAsked::Key {
+                            character: None,
+                            change,
+                        });
                     return;
                 }
                 let page = view

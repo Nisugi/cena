@@ -31,12 +31,14 @@
 //! Clear key `NumLock`, and Clear is Hydra's switch there, the numpad typing
 //! or sending its keys (`app.rs`, `numpad_mode`).
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::{Path, PathBuf};
 
 use egui::Modifiers;
 
 pub use binding::{Action, Macro};
+use file::Layer;
+pub(crate) use file::{KeyFile, SETS, Whose};
 pub(crate) use names::NUM_LOCK;
 pub(crate) use names::winit_name;
 use names::{CAPTURED, NUMPAD, TYPING, known};
@@ -130,18 +132,14 @@ impl Chord {
     }
 }
 
-/// The keybinds in effect: Hydra's defaults, with the file's changes on
-/// top.
+/// The keybinds: Hydra's defaults, and every character's file on top. A
+/// character's own file goes over them in [`Keybinds::of`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Keybinds {
-    /// Hydra's own (`defaults.rs`).
+    /// Hydra's own (`defaults.rs`), all in set 0.
     defaults: BTreeMap<Chord, Macro>,
-    /// The file's: a macro, or `None` where it unbinds a default.
-    file: BTreeMap<Chord, Option<Macro>>,
-    /// The numpad always sends its bindings, `NumLock` or not: `numpad =
-    /// "always"`. macOS has no `NumLock`, so this is how a Mac binds its
-    /// numpad until the Clear key can switch it (this module's docs).
-    pub(crate) numpad_always: bool,
+    /// Every character's: the keybinds file.
+    every: KeyFile,
 }
 
 impl Default for Keybinds {
@@ -149,124 +147,180 @@ impl Default for Keybinds {
     fn default() -> Self {
         Self {
             defaults: defaults::defaults(),
-            file: BTreeMap::new(),
-            numpad_always: false,
+            every: KeyFile::default(),
         }
     }
 }
 
-/// The file as written.
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct File {
-    #[serde(default)]
-    numpad: Option<String>,
-    #[serde(default)]
-    keys: BTreeMap<String, toml::Value>,
-}
-
 impl Keybinds {
-    /// Read `text`, a keybinds file, over Hydra's defaults. Every binding
-    /// that is wrong is said, and the rest still bind.
+    /// Read `text`, every character's keybinds file, over Hydra's defaults.
+    /// Every binding that is wrong is said, and the rest still bind.
+    #[cfg(test)]
     pub(crate) fn read(text: &str) -> (Self, Vec<String>) {
-        let file = match toml::from_str::<File>(text) {
-            Ok(file) => file,
-            Err(why) => return (Self::default(), vec![format!("{FILE}: {why}")]),
-        };
-        let mut problems = Vec::new();
-        let mut keybinds = Self::default();
-        match file.numpad.as_deref() {
-            None | Some("numlock") => {}
-            Some("always") => keybinds.numpad_always = true,
-            Some(other) => problems.push(format!(
-                "numpad = \"{other}\": it is \"numlock\" or \"always\"."
-            )),
-        }
-        for (written, value) in file.keys {
-            match Chord::parse(&written) {
-                Ok(chord) if chord.types() => problems.push(format!(
-                    "`{written}` types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
-                )),
-                // Each command one line, or it is said, not bound: a line with
-                // a newline would send two (the crate review of 2026-09-28,
-                // R10); a send macro's commands are cut apart first.
-                Ok(chord) => match Macro::read(&value) {
-                    Ok(made) => {
-                        keybinds.file.insert(chord, made);
-                    }
-                    Err(why) => problems.push(format!("`{written}`: {why}.")),
-                },
-                Err(why) => problems.push(why),
-            }
-        }
-        (keybinds, problems)
+        let (every, problems) = KeyFile::read(text, Whose::Every);
+        (
+            Self {
+                every,
+                ..Self::default()
+            },
+            problems,
+        )
     }
 
     /// Read the file at `path`; none there is no bindings and no problem.
     pub(crate) fn load(path: &Path) -> (Self, Vec<String>) {
-        match std::fs::read_to_string(path) {
-            Ok(text) => Self::read(&text),
-            Err(why) if why.kind() == std::io::ErrorKind::NotFound => (Self::default(), Vec::new()),
-            Err(why) => (Self::default(), vec![format!("{}: {why}", path.display())]),
-        }
+        let (every, problems) = KeyFile::load(path, Whose::Every);
+        (
+            Self {
+                every,
+                ..Self::default()
+            },
+            problems,
+        )
     }
 
-    /// How many keys are bound, defaults and all.
+    /// The numpad sends its keys with `NumLock` on too: `numpad =
+    /// "always"`. macOS has no `NumLock`, so this is how a Mac binds its
+    /// numpad until the Clear key switches it (this module's docs).
+    pub(crate) fn numpad_always(&self) -> bool {
+        self.every.numpad_always
+    }
+
+    /// The keys in effect for the character whose own file is `mine`, or,
+    /// with none, for no character.
+    pub(crate) fn of<'a>(&'a self, mine: Option<&'a KeyFile>) -> Keys<'a> {
+        Keys { binds: self, mine }
+    }
+
+    /// How many keys are bound for no character, defaults and all.
     pub(crate) fn len(&self) -> usize {
-        self.bound().count()
+        self.of(None).bound().count()
     }
 
-    /// How many of those the file changed or added.
+    /// How many every character's file binds or unbinds, in every set.
     pub(crate) fn changed(&self) -> usize {
-        self.file.len()
+        self.every.len()
     }
 
-    /// Each key bound, and what it does.
-    fn bound(&self) -> impl Iterator<Item = (&Chord, &Macro)> {
-        let file = self
-            .file
-            .iter()
-            .filter_map(|(chord, made)| made.as_ref().map(|made| (chord, made)));
-        let defaults = self
-            .defaults
-            .iter()
-            .filter(|(chord, _)| !self.file.contains_key(*chord));
-        file.chain(defaults)
+    /// What `chord` does for no character, if it is bound.
+    #[cfg(test)]
+    pub(crate) fn does(&self, chord: &Chord) -> Option<&Macro> {
+        self.of(None).does(chord)
     }
 
-    /// Every key Hydra or the file binds or unbinds, in key order, with
-    /// what it does now and what Hydra's default is: what the Keys page
-    /// lists.
-    pub(crate) fn rows(&self) -> Vec<KeyRow> {
-        let chords: std::collections::BTreeSet<&Chord> =
-            self.defaults.keys().chain(self.file.keys()).collect();
+    /// What `chord` does in set 0 beneath a file's own line: under every
+    /// character's, Hydra's default; under a character's, every
+    /// character's, then Hydra's.
+    pub(crate) fn beneath(&self, whose: Whose, chord: &Chord) -> Option<&Macro> {
+        if whose == Whose::Character
+            && let Some(made) = self.every.sets[0].get(chord)
+        {
+            return made.as_ref();
+        }
+        self.defaults.get(chord)
+    }
+
+    /// Every key set `set` binds or unbinds -- in `mine`, a character's own
+    /// file, when the page is a character's, and in every character's --
+    /// with what it does, whose file that came from, and Hydra's default:
+    /// what the Keys page lists. Set 0's hold Hydra's defaults too.
+    pub(crate) fn rows(&self, set: u8, mine: Option<&KeyFile>) -> Vec<KeyRow> {
+        let set = usize::from(set.min(SETS - 1));
+        let layers: Vec<(Whose, &Layer)> = mine
+            .map(|mine| (Whose::Character, &mine.sets[set]))
+            .into_iter()
+            .chain(std::iter::once((Whose::Every, &self.every.sets[set])))
+            .collect();
+        let empty = BTreeMap::new();
+        let defaults = if set == 0 { &self.defaults } else { &empty };
+        let chords: BTreeSet<&Chord> = layers
+            .iter()
+            .flat_map(|(_, layer)| layer.keys())
+            .chain(defaults.keys())
+            .collect();
         chords
             .into_iter()
-            .map(|chord| KeyRow {
-                key: chord.written(),
-                does: self.does(chord).cloned(),
-                default: self.defaults.get(chord).cloned(),
+            .map(|chord| {
+                // What the first layer after `from` binds it to, or Hydra.
+                let after = |from: usize| {
+                    layers[from..]
+                        .iter()
+                        .find_map(|(_, layer)| layer.get(chord).cloned())
+                        .unwrap_or_else(|| defaults.get(chord).cloned())
+                };
+                let (does, from, beneath) = match layers
+                    .iter()
+                    .position(|(_, layer)| layer.contains_key(chord))
+                {
+                    Some(at) => (after(at), Some(layers[at].0), after(at + 1)),
+                    None => (defaults.get(chord).cloned(), None, None),
+                };
+                KeyRow {
+                    key: chord.written(),
+                    does,
+                    default: defaults.get(chord).cloned(),
+                    from,
+                    beneath,
+                }
             })
             .collect()
     }
+}
 
-    /// What `chord` does, if it is bound.
-    pub(crate) fn does(&self, chord: &Chord) -> Option<&Macro> {
-        match self.file.get(chord) {
-            Some(made) => made.as_ref(),
-            None => self.defaults.get(chord),
-        }
+/// The keys in effect for one character, or for none: a press looks in the
+/// chosen set, the character's own file and then every character's; then
+/// in set 0 the same way; then at Hydra's defaults. The first that binds or
+/// unbinds the key has it (`plan/52` §2).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Keys<'a> {
+    binds: &'a Keybinds,
+    mine: Option<&'a KeyFile>,
+}
+
+impl<'a> Keys<'a> {
+    /// The files' sets a press looks in, in order, before Hydra's defaults.
+    fn layers(self) -> impl Iterator<Item = &'a Layer> {
+        let chosen = self.mine.map_or(0, |mine| mine.chosen.min(SETS - 1));
+        let sets = if chosen == 0 {
+            vec![0]
+        } else {
+            vec![chosen, 0]
+        };
+        sets.into_iter().flat_map(move |set| {
+            let set = usize::from(set);
+            self.mine
+                .map(|mine| &mine.sets[set])
+                .into_iter()
+                .chain(std::iter::once(&self.binds.every.sets[set]))
+        })
     }
 
-    /// Whether Hydra binds `chord` by default.
-    pub(crate) fn has_default(&self, chord: &Chord) -> bool {
-        self.defaults.contains_key(chord)
+    /// What `chord` does, if it is bound.
+    pub(crate) fn does(self, chord: &Chord) -> Option<&'a Macro> {
+        for layer in self.layers() {
+            if let Some(made) = layer.get(chord) {
+                return made.as_ref();
+            }
+        }
+        self.binds.defaults.get(chord)
+    }
+
+    /// Each key bound, and what it does.
+    fn bound(self) -> impl Iterator<Item = (&'a Chord, &'a Macro)> {
+        let chords: BTreeSet<&'a Chord> = self
+            .layers()
+            .flat_map(BTreeMap::keys)
+            .chain(self.binds.defaults.keys())
+            .collect();
+        chords
+            .into_iter()
+            .filter_map(move |chord| self.does(chord).map(|made| (chord, made)))
     }
 
     /// The fork's names for the numpad keys that are bound, whatever the
     /// modifiers: what it is told to catch, so an unbound numpad key still
     /// types (`eframe::Frame::set_numpad_capture_keys`).
-    pub(crate) fn numpad_caught(&self) -> HashSet<String> {
+    pub(crate) fn numpad_caught(self) -> HashSet<String> {
         self.bound()
             .filter_map(|(chord, _)| NUMPAD.iter().find(|(winit, _)| *winit == chord.key))
             .map(|(_, fork)| (*fork).to_owned())
@@ -276,7 +330,7 @@ impl Keybinds {
     /// The keys egui has no name for that are bound, whatever the
     /// modifiers: what the fork is told to catch (`eframe::Frame::
     /// set_key_capture`), so one unbound is left to egui.
-    pub(crate) fn key_capture(&self) -> HashSet<winit::keyboard::KeyCode> {
+    pub(crate) fn key_capture(self) -> HashSet<winit::keyboard::KeyCode> {
         self.bound()
             .filter_map(|(chord, _)| CAPTURED.iter().find(|(name, _)| *name == chord.key))
             .map(|(_, code)| *code)
@@ -285,7 +339,7 @@ impl Keybinds {
 
     /// Take from `input` every key press this binds, and the macros they
     /// do, in order: taken, so no widget sees a bound key.
-    pub(crate) fn take(&self, input: &mut egui::InputState) -> Vec<Macro> {
+    pub(crate) fn take(self, input: &mut egui::InputState) -> Vec<Macro> {
         let mut lines = Vec::new();
         input.events.retain(|event| {
             let egui::Event::Key {
@@ -318,6 +372,12 @@ pub(crate) fn path(data: &Path) -> PathBuf {
     data.join(FILE)
 }
 
+/// A character's own keys file, in `data` beside its settings, by the code
+/// of its game and its name: `None` for a game Hydra does not know.
+pub(crate) fn character_path(data: &Path, game: &str, name: &str) -> Option<PathBuf> {
+    cena_session::store::character_path(data, cena_session::instance(game)?, name, ".keys.toml")
+}
+
 /// The chord a numpad press is, its key named as winit names it; `None` for
 /// a release, or a key with no code.
 pub(crate) fn numpad_chord(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
@@ -330,12 +390,13 @@ pub(crate) fn numpad_chord(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
     Some(Chord::of(&format!("{code:?}"), event.modifiers))
 }
 
-/// The macro a numpad press does, when it is bound and the fork caught it.
-pub(crate) fn numpad_macro(keybinds: &Keybinds, event: &eframe::NumpadKeyEvent) -> Option<Macro> {
+/// The chord of a numpad press the fork caught, to be done as the window
+/// with the keyboard binds it; `None` for one let through to be typed.
+pub(crate) fn numpad_caught(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
     if !event.consumed {
         return None;
     }
-    keybinds.does(&numpad_chord(event)?).cloned()
+    numpad_chord(event)
 }
 
 /// Every key egui has no name for that a binding may use: what the fork
@@ -358,6 +419,7 @@ pub(crate) fn captured_chord(event: &eframe::CapturedKeyEvent) -> Option<Chord> 
 
 pub(crate) mod binding;
 mod defaults;
+pub(crate) mod file;
 mod names;
 pub(crate) mod page;
 #[cfg(test)]

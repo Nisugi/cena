@@ -10,33 +10,60 @@
 //!
 //! A send macro's commands are typed with `\r` between them, as the file
 //! writes them and Wrayth's and `VellumFE`'s players write them.
+//!
+//! **Every character's keys, or one character's** (`plan/52` step 2): the
+//! page is Hydra's, and changes every character's keybinds file, or a
+//! character's, where a key added is the character's own unless *global* is
+//! ticked, and each key from a file has *global* to move it between the two
+//! (the author: *"The macro is character by default with a global
+//! toggle"*). Either shows one of the ten macro sets at a time; a
+//! character's page also chooses the set it uses.
 
 use std::collections::HashMap;
 
 use super::binding::{self, Action, Macro};
-use super::{Chord, winit_name};
+use super::file::Whose;
+use super::{Chord, SETS, winit_name};
 
-/// A key on the page: what it does now and what Hydra's default is.
+/// A key on the page: what it does now, from whose file, and what Hydra's
+/// default is.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct KeyRow {
     /// The key, as the file writes it: `Ctrl+F1`, `Numpad8`.
     pub key: String,
-    /// What it does now; `None` where the player unbound Hydra's default.
+    /// What it does now; `None` where a file unbinds it.
     pub does: Option<Macro>,
     /// What Hydra binds it to, if anything.
     pub default: Option<Macro>,
+    /// Whose file binds or unbinds it; `None` for Hydra's default.
+    pub from: Option<Whose>,
+    /// What it would do without its file's line, if anything.
+    pub beneath: Option<Macro>,
 }
 
 impl KeyRow {
-    /// A key the player bound, which Hydra does not: for a test.
+    /// A key every character's file binds, which Hydra does not: for a
+    /// test.
     #[must_use]
     pub fn players(key: &str, does: Macro) -> Self {
         Self {
             key: key.to_owned(),
             does: Some(does),
             default: None,
+            from: Some(Whose::Every),
+            beneath: None,
         }
     }
+}
+
+/// Where a change to a key is made: which set, in every character's file or
+/// in the character's the page shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Place {
+    /// The macro set, 0 to 9.
+    pub set: u8,
+    /// Every character's file; otherwise the character's own.
+    pub every: bool,
 }
 
 /// A change the Keys page asks for, a key written as the file writes it.
@@ -50,13 +77,40 @@ pub enum KeyChange {
         does: Macro,
         /// The key the macro moved from, which does nothing now.
         was: Option<String>,
+        /// Where.
+        place: Place,
     },
-    /// `key` does nothing, even where Hydra binds it.
-    Unbind(String),
-    /// `key` does what Hydra binds it to again.
-    Restore(String),
+    /// `key` does nothing, even where something beneath the file binds it.
+    Unbind {
+        /// The key.
+        key: String,
+        /// Where.
+        place: Place,
+    },
+    /// `key`'s line is taken out of the file, so it does what it does
+    /// beneath it again: Hydra's default, or every character's.
+    Restore {
+        /// The key.
+        key: String,
+        /// Where.
+        place: Place,
+    },
+    /// `key`, doing `does` in set `set`, moved to every character's file,
+    /// or to the character's own.
+    Share {
+        /// The key.
+        key: String,
+        /// What it does.
+        does: Macro,
+        /// The macro set.
+        set: u8,
+        /// To every character's file; otherwise to the character's.
+        every: bool,
+    },
     /// Whether the numpad sends its keys with `NumLock` on too.
     NumpadAlways(bool),
+    /// The macro set the character uses over set 0; 0 for set 0 alone.
+    Choose(u8),
 }
 
 /// What the Keys page draws from this frame.
@@ -73,6 +127,10 @@ pub struct KeysView<'a> {
     /// numpad key, or one egui has no name for -- written as the file
     /// writes it.
     pub caught: Option<&'a str>,
+    /// The page is a character's, not every character's.
+    pub character: bool,
+    /// The macro set the character uses; 0 for set 0 alone.
+    pub chosen: u8,
 }
 
 /// What the page is waiting for a key for.
@@ -131,6 +189,10 @@ pub(crate) struct KeysPage {
     /// A key pressed for a new binding, the kind chosen for it, and what is
     /// typed for it so far.
     adding: Option<(String, Kind, String)>,
+    /// The new binding is every character's, on a character's page.
+    adding_every: bool,
+    /// The macro set shown.
+    set: u8,
     /// The new binding's field is to take the focus.
     focus_new: bool,
     /// What is typed into a bound key's field while it has the focus.
@@ -147,6 +209,24 @@ impl KeysPage {
     /// Whether the page is waiting for a key to be pressed.
     pub(crate) fn waiting(&self) -> bool {
         self.waiting.is_some()
+    }
+
+    /// The macro set shown, whose keys the page lists.
+    pub(crate) fn set(&self) -> u8 {
+        self.set
+    }
+
+    /// Where a change to `row` goes: its own file, or for Hydra's default,
+    /// the character's on a character's page.
+    fn place(&self, row: Option<&KeyRow>, view: &KeysView<'_>) -> Place {
+        let every = match row.and_then(|row| row.from) {
+            Some(whose) => whose == Whose::Every,
+            None => !view.character,
+        };
+        Place {
+            set: self.set,
+            every,
+        }
     }
 
     /// Draw the page over `view`. What it asks, when anything; why a key
@@ -168,13 +248,17 @@ impl KeysPage {
         let mut asked = self
             .pressed(ui, view)
             .and_then(|chord| self.captured(&chord, view, note));
+        if let Some(chosen) = self.sets(ui, view) {
+            asked = Some(KeyChange::Choose(chosen));
+        }
         let mut always = view.numpad_always;
-        if ui
-            .checkbox(&mut always, "The numpad sends its keys with NumLock on too")
-            .on_hover_text(
-                "Off, with NumLock on the numpad's digits type. A Mac has no NumLock, and needs this on.",
-            )
-            .changed()
+        if !view.character
+            && ui
+                .checkbox(&mut always, "The numpad sends its keys with NumLock on too")
+                .on_hover_text(
+                    "Off, with NumLock on the numpad's digits type. A Mac has no NumLock, and needs this on.",
+                )
+                .changed()
         {
             asked = Some(KeyChange::NumpadAlways(always));
         }
@@ -191,7 +275,7 @@ impl KeysPage {
             egui::Grid::new("settings-keys-new")
                 .num_columns(5)
                 .show(ui, |ui| {
-                    if let Some(change) = self.adding_row(ui, note) {
+                    if let Some(change) = self.adding_row(ui, view, note) {
                         asked = Some(change);
                     }
                 });
@@ -205,7 +289,7 @@ impl KeysPage {
                     .striped(true)
                     .show(ui, |ui| {
                         for row in view.bound {
-                            if let Some(change) = self.bound_row(ui, row, note) {
+                            if let Some(change) = self.bound_row(ui, row, view, note) {
                                 asked = Some(change);
                             }
                             ui.end_row();
@@ -213,6 +297,60 @@ impl KeysPage {
                     });
             });
         asked
+    }
+
+    /// The macro set shown, and on a character's page the one it uses: the
+    /// set it chose, when another is.
+    fn sets(&mut self, ui: &mut egui::Ui, view: &KeysView<'_>) -> Option<u8> {
+        let called = |set: u8| {
+            if set == 0 {
+                "Set 0, always in use".to_owned()
+            } else {
+                format!("Set {set}")
+            }
+        };
+        let mut chosen = None;
+        ui.horizontal(|ui| {
+            let label = ui.label("Keys of");
+            egui::ComboBox::from_id_salt("settings-keys-set")
+                .selected_text(called(self.set))
+                .show_ui(ui, |ui| {
+                    for set in 0..SETS {
+                        ui.selectable_value(&mut self.set, set, called(set));
+                    }
+                })
+                .response
+                .labelled_by(label.id);
+            if view.character {
+                let label = ui.label("In use over set 0");
+                let mut using = view.chosen;
+                egui::ComboBox::from_id_salt("settings-keys-chosen")
+                    .selected_text(if using == 0 {
+                        "none".to_owned()
+                    } else {
+                        format!("set {using}")
+                    })
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut using, 0, "none");
+                        for set in 1..SETS {
+                            ui.selectable_value(&mut using, set, format!("set {set}"));
+                        }
+                    })
+                    .response
+                    .labelled_by(label.id)
+                    .on_hover_text("Alt and a digit choose it too");
+                if using != view.chosen {
+                    chosen = Some(using);
+                }
+            }
+        });
+        if self.set != 0 {
+            ui.weak(format!(
+                "Set {}'s keys go over set 0's while it is in use; a key it leaves out does what set 0 has it do.",
+                self.set
+            ));
+        }
+        chosen
     }
 
     /// The key pressed this frame while the page waits for one, taken from
@@ -286,21 +424,19 @@ impl KeysPage {
             }
             (Waiting::New, None) => {
                 self.adding = Some((written, Kind::Send, String::new()));
+                self.adding_every = !view.character;
                 self.focus_new = true;
                 *note = None;
                 None
             }
             (Waiting::Move(from), None) => {
-                let does = view
-                    .bound
-                    .iter()
-                    .find(|row| row.key == from)?
-                    .does
-                    .clone()?;
+                let row = view.bound.iter().find(|row| row.key == from)?;
+                let does = row.does.clone()?;
                 Some(KeyChange::Bind {
                     key: written,
                     does,
                     was: Some(from),
+                    place: self.place(Some(row), view),
                 })
             }
         }
@@ -313,9 +449,11 @@ impl KeysPage {
         &mut self,
         ui: &mut egui::Ui,
         row: &KeyRow,
+        view: &KeysView<'_>,
         note: &mut Option<String>,
     ) -> Option<KeyChange> {
         let key = row.key.as_str();
+        let place = self.place(Some(row), view);
         let moving = self.waiting == Some(Waiting::Move(key.to_owned()));
         let button = ui
             .add_enabled(
@@ -335,7 +473,7 @@ impl KeysPage {
         if picked != kind
             && let Some(picked) = picked
         {
-            asked = self.kind_changed(key, row.does.as_ref(), picked, note);
+            asked = self.kind_changed((key, place), row.does.as_ref(), picked, note);
         }
         let text = match (&row.does, kind) {
             (Some(Macro::Send(text)), Some(Kind::Send)) => binding::shown(text),
@@ -348,10 +486,11 @@ impl KeysPage {
                     key: key.to_owned(),
                     does: Macro::Act(action),
                     was: None,
+                    place,
                 })
             }
             (Some(kind @ (Kind::Send | Kind::Fill)), _) => {
-                self.text_field(ui, key, kind, &text, button.id, note)
+                self.text_field(ui, (key, place), (kind, &text), button.id, note)
             }
             _ => {
                 ui.label("");
@@ -359,25 +498,37 @@ impl KeysPage {
             }
         };
         asked = asked.or(value);
-        let (word, default) = whence(row);
-        let word = ui.weak(word);
-        if let Some(default) = default {
-            word.on_hover_text(default);
+        if let Some(shared) = whence(ui, row, view.character) {
+            asked = row.does.clone().map(|does| KeyChange::Share {
+                key: key.to_owned(),
+                does,
+                set: self.set,
+                every: shared,
+            });
         }
         // Restore first: for a key the player changed, it is the likelier.
         ui.horizontal(|ui| {
-            if row.default.is_some()
-                && row.does != row.default
+            if let Some(beneath) = &row.beneath
+                && row.does.as_ref() != Some(beneath)
                 && ui
                     .small_button("Restore")
-                    .on_hover_text("Do what Hydra binds this key to again")
+                    .on_hover_text(format!(
+                        "Take this key out of the file: it {} again",
+                        beneath.said()
+                    ))
                     .clicked()
             {
                 self.kinds.remove(key);
-                asked = Some(KeyChange::Restore(key.to_owned()));
+                asked = Some(KeyChange::Restore {
+                    key: key.to_owned(),
+                    place,
+                });
             }
             if row.does.is_some() && ui.small_button("Remove").clicked() {
-                asked = Some(KeyChange::Unbind(key.to_owned()));
+                asked = Some(KeyChange::Unbind {
+                    key: key.to_owned(),
+                    place,
+                });
             }
         });
         asked
@@ -387,7 +538,7 @@ impl KeysPage {
     /// same text as another kind at once, or else waiting for its text.
     fn kind_changed(
         &mut self,
-        key: &str,
+        (key, place): (&str, Place),
         does: Option<&Macro>,
         picked: Kind,
         note: &mut Option<String>,
@@ -417,6 +568,7 @@ impl KeysPage {
             key: key.to_owned(),
             does: made,
             was: None,
+            place,
         })
     }
 
@@ -425,9 +577,8 @@ impl KeysPage {
     fn text_field(
         &mut self,
         ui: &mut egui::Ui,
-        key: &str,
-        kind: Kind,
-        shown: &str,
+        (key, place): (&str, Place),
+        (kind, shown): (Kind, &str),
         label: egui::Id,
         note: &mut Option<String>,
     ) -> Option<KeyChange> {
@@ -464,12 +615,22 @@ impl KeysPage {
             key: key.to_owned(),
             does,
             was: None,
+            place,
         })
     }
 
     /// The new binding's row, once its key is pressed: its kind, what it
     /// does, asked for when typed or chosen; *Cancel*.
-    fn adding_row(&mut self, ui: &mut egui::Ui, note: &mut Option<String>) -> Option<KeyChange> {
+    fn adding_row(
+        &mut self,
+        ui: &mut egui::Ui,
+        view: &KeysView<'_>,
+        note: &mut Option<String>,
+    ) -> Option<KeyChange> {
+        let place = Place {
+            set: self.set,
+            every: self.adding_every || !view.character,
+        };
         let (key, kind, text) = self.adding.as_mut()?;
         let label = ui.label(key.as_str());
         let mut picked = Some(*kind);
@@ -508,13 +669,19 @@ impl KeysPage {
                 }
             }
         };
-        ui.label("");
+        if view.character {
+            ui.checkbox(&mut self.adding_every, "global")
+                .on_hover_text("Every character has this key; unticked, only this one");
+        } else {
+            ui.label("");
+        }
         let cancelled = ui.small_button("Cancel").clicked();
         ui.end_row();
         let asked = made.map(|does| KeyChange::Bind {
             key: key.clone(),
             does,
             was: None,
+            place,
         });
         if asked.is_some() || cancelled {
             self.adding = None;
@@ -558,18 +725,40 @@ fn hint(kind: Kind) -> &'static str {
     }
 }
 
-/// Where what a key does came from, in a word, and Hydra's default for a
-/// key that has one, for when the pointer rests on the word.
-fn whence(row: &KeyRow) -> (&'static str, Option<String>) {
+/// Where what a key does came from: in a word, or on a character's page
+/// (`character`), for a key a file binds, *global*, ticked for every
+/// character's file; Hydra's default for a key that has one, when the
+/// pointer rests on it. Whether it was ticked or unticked.
+fn whence(ui: &mut egui::Ui, row: &KeyRow, character: bool) -> Option<bool> {
     let default = row
         .default
         .as_ref()
         .map(|default| format!("Hydra's default {}", default.said()));
-    let word = match (&row.does, &row.default) {
-        (_, None) => "yours",
-        (None, Some(_)) => "unbound",
-        (Some(does), Some(default)) if does == default => "Hydra's",
-        (Some(_), Some(_)) => "changed",
+    if character
+        && row.does.is_some()
+        && let Some(from) = row.from
+    {
+        let mut every = from == Whose::Every;
+        let ticked = ui
+            .checkbox(&mut every, "global")
+            .on_hover_text(match default {
+                Some(default) => {
+                    format!("Every character has this key; unticked, only this one. {default}")
+                }
+                None => "Every character has this key; unticked, only this one".to_owned(),
+            });
+        return ticked.changed().then_some(every);
+    }
+    let word = match (&row.does, &row.from, &row.default) {
+        (None, _, _) => "unbound",
+        (Some(_), None, _) => "Hydra's",
+        (Some(_), Some(_), None) => "yours",
+        (Some(does), Some(_), Some(default)) if does == default => "Hydra's",
+        (Some(_), Some(_), Some(_)) => "changed",
     };
-    (word, default)
+    let word = ui.weak(word);
+    if let Some(default) = default {
+        word.on_hover_text(default);
+    }
+    None
 }

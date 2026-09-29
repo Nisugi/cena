@@ -6,13 +6,15 @@
 //!
 //! The numpad walks as Wrayth's stock key set has it, and `VellumFE`'s and
 //! Genie's copy it (`plan/52` §1); Shift with it peers that way (the author,
-//! 2026-09-28: *"shift + numpad = peer direction"*). Each later step of the
+//! 2026-09-28: *"shift + numpad = peer direction"*). Alt with a digit
+//! chooses that macro set, as Wrayth's does, the one action with a key of
+//! Hydra's (the author: *"sure alt + number = set"*). Each later step of the
 //! plan adds the keys of the actions it builds.
 
 use std::collections::BTreeMap;
 
-use super::binding::Macro;
-use super::{Chord, SHIFT};
+use super::binding::{Action, Macro};
+use super::{ALT, Chord, SHIFT};
 
 /// Each numpad key that walks, and where.
 const WALKS: [(&str, &str); 11] = [
@@ -51,6 +53,12 @@ pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     for (key, line) in MARKS {
         keys.insert(chord(key, 0), Macro::Send(line.to_owned()));
     }
+    for set in 0..super::SETS {
+        keys.insert(
+            chord(&format!("Digit{set}"), ALT),
+            Macro::Act(Action::Set(set)),
+        );
+    }
     keys
 }
 
@@ -64,7 +72,11 @@ mod tests {
     #[test]
     fn every_default_is_one_the_file_would_take() {
         let defaults = defaults();
-        assert_eq!(defaults.len(), 26, "eleven walks, eleven peers, four marks");
+        assert_eq!(
+            defaults.len(),
+            36,
+            "eleven walks, eleven peers, four marks, ten sets"
+        );
         for (chord, made) in &defaults {
             let written = chord.written();
             assert_eq!(Chord::parse(&written).as_ref(), Ok(chord), "{written}");
@@ -75,6 +87,10 @@ mod tests {
         assert_eq!(
             defaults.get(&peer),
             Some(&Macro::Send("peer northwest".to_owned()))
+        );
+        assert_eq!(
+            defaults.get(&Chord::parse("Alt+Digit3").expect("a key")),
+            Some(&Macro::Act(Action::Set(3)))
         );
     }
 }

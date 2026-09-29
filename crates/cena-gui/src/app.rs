@@ -15,9 +15,11 @@
 //! Keybinds (step 7, `crate::keys`) send on the character whose play window
 //! has the keyboard: a bound key is taken from that window's input, and the
 //! numpad, which the fork hands over apart from any window, goes to the one
-//! focused.
+//! focused. Each character's own keys and the macro set it uses go over
+//! every character's (`plan/52` step 2), read from its keys file when its
+//! window first needs them.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -25,7 +27,7 @@ use std::time::{Duration, Instant};
 use cena_ui::LifecycleView;
 
 use crate::hub::{HubAction, HubView};
-use crate::keys::{self, Keybinds, Macro};
+use crate::keys::{self, Chord, KeyFile, Keybinds, Macro};
 use crate::layout::Library;
 use crate::own::Own;
 use crate::play::{Asked, Play, PlayView};
@@ -55,10 +57,15 @@ pub struct App {
     keys_said: Vec<String>,
     /// The fork is to be told again which keys to catch (`keyed.rs`).
     catch_again: bool,
-    /// The macros of the keys the fork caught this frame -- the numpad's,
-    /// and those egui has no name for -- for the play window with the
-    /// keyboard.
-    caught: Vec<Macro>,
+    /// Each character's own keys, by its keys file, with what is wrong in
+    /// it: read when first needed, and again once a change is written.
+    mine: HashMap<PathBuf, (KeyFile, Vec<String>)>,
+    /// The play window that last had the keyboard, by session, and its
+    /// character's keys file: whose keys the fork catches.
+    focused: Option<(u32, Option<PathBuf>)>,
+    /// The keys the fork caught this frame -- the numpad's, and those egui
+    /// has no name for -- bound for the play window with the keyboard.
+    caught: Vec<Chord>,
     /// Commands a key's macro sends once a wait in it is over
     /// (`keyed.rs`).
     later: Vec<keyed::Later>,
@@ -104,6 +111,8 @@ impl App {
             keys_file: None,
             keys_said: Vec::new(),
             catch_again: true,
+            mine: HashMap::new(),
+            focused: None,
             caught: Vec::new(),
             later: Vec::new(),
             numlock: None,
@@ -134,8 +143,10 @@ impl App {
         app
     }
 
-    /// Read the keybinds file again, and say what it bound.
+    /// Read the keybinds file again, and say what it bound; each
+    /// character's own is read again when next needed.
     fn read_keys(&mut self) {
+        self.mine.clear();
         let Some(file) = &self.keys_file else {
             return;
         };
@@ -154,7 +165,7 @@ impl App {
         })
         .chain(problems)
         .collect();
-        self.clear_sends = keys.numpad_always;
+        self.clear_sends = keys.numpad_always();
         self.keys = keys;
         self.catch_again = true;
     }
@@ -164,9 +175,19 @@ impl App {
     /// what a test drives directly.
     pub fn draw(&mut self, ui: &mut egui::Ui) {
         crate::carry::set_key(ui.ctx(), self.own.drag_with());
+        let glance = self.sessions.glance();
         let seats = self.sessions.seated();
         self.seat(&seats);
-        let glance = self.sessions.glance();
+        let named = |seat: &Seat| {
+            glance
+                .roster
+                .iter()
+                .find(|card| card.character.eq_ignore_ascii_case(&seat.name))
+                .map_or_else(
+                    || format!("{}:{}", seat.game, seat.name),
+                    crate::menu::roster_name,
+                )
+        };
         if let Some((_, left)) = &glance.said {
             // A frame when the answer is due to go, or it stays until the
             // next input.
@@ -223,17 +244,19 @@ impl App {
             ui.ctx().request_repaint_after(next);
         }
         for seat in &seats {
+            // The character's own settings, by its roster name.
             match self.play(ui.ctx(), seat, &seats) {
                 Some(Asked::Settings(page)) => {
-                    // The character's own settings, by its roster name.
-                    let name = glance
-                        .roster
-                        .iter()
-                        .find(|card| card.character.eq_ignore_ascii_case(&seat.name))
-                        .map(crate::menu::roster_name);
-                    self.menu.open_at(name, page.as_deref());
+                    self.menu.open_at(Some(named(seat)), page.as_deref());
                 }
-                Some(Asked::Keys) => self.menu.open_at(None, Some("keys")),
+                Some(Asked::Keys) => self.menu.open_at(Some(named(seat)), Some("keys")),
+                Some(Asked::UseSet(set)) => {
+                    let asked = crate::MenuAsked::Key {
+                        character: Some(named(seat)),
+                        change: crate::KeyChange::Choose(set),
+                    };
+                    self.menu_asked(asked);
+                }
                 _ => {}
             }
         }
@@ -270,8 +293,15 @@ impl App {
         seat: &Arc<Seat>,
         seats: &[Arc<Seat>],
     ) -> Option<Asked> {
-        let (keys, caught, keys_said) = (&self.keys, &mut self.caught, &self.keys_said);
+        let file = self.mine_path(&seat.game, &seat.name);
+        self.load_mine(file.as_deref());
+        let mine = file.as_ref().and_then(|file| self.mine.get(file));
+        let keys = self.keys.of(mine.map(|(mine, _)| mine));
+        let chosen = mine.map_or(0, |(mine, _)| mine.chosen);
+        let keys_said = self.keys_said(mine, &seat.name);
+        let caught = &mut self.caught;
         let numlock = self.numlock;
+        let mut focused = false;
         let close_with_session = self.own.close_with_session();
         let window = self.plays.get_mut(&seat.id.0)?;
         let lifecycle = lock(&seat.card).lifecycle.clone();
@@ -312,7 +342,12 @@ impl App {
                 // Taken before anything draws, so no widget sees a bound key.
                 let mut pressed = ui.ctx().input_mut(|input| keys.take(input));
                 if ui.input(|input| input.focused) {
-                    pressed.append(caught);
+                    focused = true;
+                    pressed.extend(
+                        caught
+                            .drain(..)
+                            .filter_map(|chord| keys.does(&chord).cloned()),
+                    );
                 }
                 for made in pressed {
                     match made {
@@ -330,7 +365,8 @@ impl App {
                     now: Instant::now(),
                     hunt: hunt.as_ref(),
                     numlock,
-                    keys: keys_said,
+                    keys: &keys_said,
+                    set: chosen,
                     others: &others,
                     presets: &self.presets,
                     lich: seat.handle.lich_running(),
@@ -342,25 +378,22 @@ impl App {
         if closed {
             window.open = false;
         }
+        if focused {
+            self.took_keyboard(seat.id.0, file);
+        }
         if let Some(after) = clocks_run(snapshot.as_deref(), &seat.story) {
             context.request_repaint_after(after);
         }
-        let now = Instant::now();
-        for made in sends {
-            self.send_macro(seat, &made, now);
-        }
-        // A command kept for after a wait: the next frame asks for the one
-        // it is due in (`send_due`).
-        if !self.later.is_empty() {
-            context.request_repaint();
-        }
+        self.send_macros(context, seat, sends);
         match asked {
             Some(Asked::ReloadKeys) => self.read_keys(),
             Some(Asked::SavePreset(preset)) => self.presets.keep(preset),
             Some(Asked::ForgetPreset(name)) => self.presets.forget(&name),
             Some(Asked::Send(line)) => self.sessions.send(seat, line),
             Some(Asked::Quietly(line)) => self.sessions.send_quietly(seat, line),
-            Some(asked @ (Asked::Settings(_) | Asked::Keys)) => return Some(asked),
+            Some(asked @ (Asked::Settings(_) | Asked::Keys | Asked::UseSet(_))) => {
+                return Some(asked);
+            }
             Some(Asked::Stop) => self.hydras(seat, "stop"),
             Some(Asked::Log) => self.open_log(seat),
             Some(Asked::Lich(on)) => self.hydras(seat, lich_word(on)),
