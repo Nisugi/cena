@@ -202,9 +202,7 @@ sleeping, webbed, stunned, dazed, calmed or standing. On top of the pose:
    `gs_field::data_dirs::set_base_dir`. Hydra must set its own folder.
 4. **32 MB of art compiled into `gs_field`** (`include_dir`). Hydra's include ban scans only
    Hydra's own crates, so this would link, and the binary would grow by 32 MB.
-5. **The licence.** Every gs_studio crate says GPL-3.0-or-later. Hydra's manifests declare
-   none.
-6. **Cost.** A turning doll costs 2-3 ms of CPU a frame on the GPU skin, and 20-26 ms
+5. **Cost.** A turning doll costs 2-3 ms of CPU a frame on the GPU skin, and 20-26 ms
    without it. Each view keeps its own 2048² atlas, about 64 MB of GPU memory, freed after 300
    frames unseen. The doll keeps asking for repaints while it breathes.
 
@@ -351,7 +349,7 @@ and the triggers already read, rather than a third condition language.
    without it gs_field reads `~/.vellum-fe` (`gs_studio/crates/gs_field/src/data_dirs.rs:64-93`).
    Its doc should say a host calls it once before drawing. Hydra will call it with Hydra's own
    data folder.
-4. **The licence** is a decision, not code (§4, question 7).
+The author, 2026-09-29: *"gs_studio is taking those fixes"*.
 
 Nothing else is needed from gs_studio. Answer 6's build option is Hydra's: the whole
 dependency sits behind a cargo feature in `cena-gui`, so gs_studio needs no feature of its
@@ -461,27 +459,26 @@ The glossary gains *doll*, *anchor*, *overlay* and *style*.
 | 4 | With no picture chosen | *"hydra should draw a body in code"* |
 | 5 | Wounds, scars or both | *"it just shows both always. wounds > scars > nothing"*; the game's radio would make them *"flash"*, which is §1a's first model fault |
 | 6 | Infinite's weight | *"optional at build time, on by default, might not go in mobile builds? don't know yet"* |
-| 7 | The licence | asked *"What in gs_studio is gpl?"*; answered below |
+| 7 | The licence | *"we have no license. nothing was ported from vellum, vellum was allowed to use some of MY code"*; see below |
 | 8 | The puppet's form | *"we will probably make puppets for all races, but just humanoid for now"* |
-| 9 | gs_studio's changes | *"we can make studio changes, what are they?"*: §2f lists them |
+| 9 | gs_studio's changes | *"we can make studio changes, what are they?"*, then *"gs_studio is taking those fixes"*: §2f lists them |
 
-**Question 7, what is GPL in gs_studio.** Only five manifest lines, and nothing gs_studio
-depends on requires it:
+**Question 7, the licence: none.** Five gs_studio manifests (`gs_field`, `gs_field_egui`,
+`gs_puppet`, `gs_calibrators`, `studio`) carry a `license = "GPL-3.0-or-later"` line, the
+same line VellumFE's own manifest carries (`reference/VellumFE/Cargo.toml:10`).
 
-- **The five.** `gs_field`, `gs_field_egui`, `gs_puppet`, `gs_calibrators` and `studio` each
-  say `license = "GPL-3.0-or-later"`. They got the line on 2026-09-19, when they were carved
-  out of VellumFE, which is GPL-3.0-or-later with a `LICENSE` file
-  (`reference/VellumFE/Cargo.toml:10`).
-- **The rest.** `rig`, `rig_bake` and `vellum_light` declare no licence.
-- **The dependencies.** Among all of gs_studio's (`cargo metadata`), the only one naming GPL
-  is `self_cell`, which is `Apache-2.0 OR GPL-2.0-only` and can be taken as Apache.
+> **CORRECTED 2026-09-29.** This section first said those crates were *"carved out of
+> VellumFE"* and that the GPL came with the ported code. **That was an inference, and the
+> direction was backwards.** The author: *"nothing was ported from vellum, vellum was allowed
+> to use some of MY code"*. The line is a leftover, not an obligation, and gs_studio has no
+> licence. The inference came from two crates sharing a manifest line and from commit
+> messages saying "as a shared crate". Neither says which way the code went. §−2's rule, in
+> its usual form: a claim about provenance needs the author, not a guess from similarity.
 
-So GPL applies to the code ported from VellumFE because VellumFE's copyright holders
-licensed it that way, and to nothing else. If VellumFE's code is all the author's own, the
-author may license it, and gs_studio, however they choose. Code anyone else contributed to
-VellumFE stays under GPL unless they agree otherwise. Linking the crates as they are now
-makes Hydra's binary GPL-3.0-or-later. That is the author's decision; it is recorded here, not
-made.
+Nothing gs_studio depends on requires a licence of Hydra either: among all its dependencies
+(`cargo metadata`), the only one naming GPL is `self_cell`, `Apache-2.0 OR GPL-2.0-only`, which
+can be taken as Apache. Whether to take the stray lines out of gs_studio's manifests is
+gs_studio's to decide.
 
 ### 4a. A new question, from step 0
 
