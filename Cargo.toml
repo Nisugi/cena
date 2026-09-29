@@ -43,8 +43,8 @@ cena-gui = { path = "crates/cena-gui" }
 # The map layout engine and the map it lays out, from hydra-mapper at one
 # commit, so the two cannot drift (plan/53 §6 item 2, §7): the minimap lays
 # out every area at launch from the map Hydra embeds.
-cena-map-layout = { git = "https://github.com/Nisugi/hydra-mapper", rev = "c3f8c989d41e2b560731fc0fc9a28e944776651e" }
-cena-gs-map = { git = "https://github.com/Nisugi/hydra-mapper", rev = "c3f8c989d41e2b560731fc0fc9a28e944776651e" }
+cena-map-layout = { git = "https://github.com/Nisugi/hydra-mapper", rev = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa" }
+cena-gs-map = { git = "https://github.com/Nisugi/hydra-mapper", rev = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa" }
 # The GUI's toolkit (plan/47): the author's egui fork, egui 0.35.0 with its
 # numpad capture (plan/47 §2) and, one commit on from what VellumFE builds
 # with (2e2ead3), its key capture for keys egui has no name for (plan/47

@@ -694,8 +694,18 @@ tried in the mapper for one small stretch if the join looks wrong.
 
 ### 8c. Order
 
-0. **Mapper**: maps, curated and baked (`meta:map:`), the suggestions, and the Hinterwilds
-   the first, through the gate; Hydra lays out by map, each area a sub-area.
+0. **Mapper**: maps, curated and baked, the suggestions, and the Hinterwilds the first,
+   through the gate; Hydra lays out by map, each area a sub-area. **BUILT 2026-09-29**
+   (hydra-mapper `f266756`, `f471f2a`, `398bf5c`, merged as `7f1fa33`, which Hydra pins).
+   Baked as `meta:hydramap:`: `map:` is the mapper's own flags and gs.map already carries
+   Simutronics' `mapname:` on 228 rooms. The author had already folded Cold River's rooms
+   into the Hinterwilds area in the store, never exported, so gs.map still split them; they
+   are two areas again, on one map (*"I like your recommendation"*). A room whose lines with
+   no direction run far is drawn as dots at the rooms they reach (*"I can accept dots"*):
+   three lines over ten street steps, which over gs.map folds two rooms, the Issenflow's
+   current and Black Swan Castle's drawbridge. The gate: every total unchanged. A character
+   in such a room is drawn at its first dot (`cena-gui/src/widget/minimap.rs`,
+   `whereabouts`).
 1. **Mapper**: a place opened at half scale beside its door, the street grown only when there
    is no gap; checked by the gate and the author's screenshots (a bank, Rawknuckle's, a
    crowded Landing street).

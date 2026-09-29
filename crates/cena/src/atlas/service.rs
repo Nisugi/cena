@@ -22,7 +22,7 @@ use cena_behavior::travel::{Map, RoomId};
 /// hydra-mapper's revision Hydra is built with: part of the cache's name,
 /// so an engine that lays out differently never reads another's areas.
 /// `the_engine_revision_is_the_one_pinned` holds it to `Cargo.lock`.
-const ENGINE: &str = "c3f8c989d41e2b560731fc0fc9a28e944776651e";
+const ENGINE: &str = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa";
 
 /// Why a room has no scene yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -362,6 +362,28 @@ mod tests {
         assert!(
             street.room(tavern).is_none(),
             "the tavern is left off the street"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Cold River is on the Hinterwilds' map (the author, 2026-09-29), and
+    /// the Issenflow's current, drawn only as dots at the banks it is
+    /// entered from, gives that map with those dots.
+    #[test]
+    fn cold_river_is_on_the_hinterwilds_and_the_current_is_its_dots() {
+        let map = Arc::new(cena_behavior::travel::read_map(cena_gs_map::GS_MAP).expect("decodes"));
+        let dir = std::env::temp_dir().join(format!("hydra-atlas-hw-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let (thoroughfare, current) = (29869, 30115);
+
+        let atlas = Atlas::start(&map, "0f0f0f0f0f0f0f0f", &dir);
+        let scene = wait_for(&atlas, current);
+        assert_eq!(scene.area, "the-hinterwilds");
+        assert!(scene.room(thoroughfare).is_some(), "Cold River on the map");
+        assert!(scene.room(current).is_none());
+        assert!(
+            scene.doors.iter().filter(|d| d.inside == current).count() >= 3,
+            "the current is dots at its banks"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

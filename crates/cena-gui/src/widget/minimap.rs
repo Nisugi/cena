@@ -59,10 +59,9 @@ pub(super) fn minimap(ui: &mut egui::Ui, view: Option<&MinimapView>, id: Id) {
         Some(MinimapView::Waiting(why)) => return waiting(&painter, rect, why),
         None => return waiting(&painter, rect, "No map."),
     };
-    let Some(here) = scene.room(you) else {
+    let Some((here_cell, inside)) = whereabouts(scene, you) else {
         return waiting(&painter, rect, "You are not on this area's map.");
     };
-    let here_cell = cell(here.cell);
     let area = egui::util::hash(&scene.area);
     let mut camera = ui.data(|d| d.get_temp::<Camera>(id)).unwrap_or(Camera {
         centre: here_cell,
@@ -86,7 +85,6 @@ pub(super) fn minimap(ui: &mut egui::Ui, view: Option<&MinimapView>, id: Id) {
 
     let to_screen = |p: Vec2| rect.center() + (p - camera.centre) * camera.zoom;
     // In a building, only the building; outdoors, everything.
-    let inside = here.building;
     let shown = |building: Option<usize>| inside.is_none() || building == inside;
     for edge in scene.edges.iter().filter(|e| shown(e.building)) {
         draw_edge(&painter, edge, &to_screen, camera.zoom);
@@ -112,6 +110,17 @@ pub(super) fn minimap(ui: &mut egui::Ui, view: Option<&MinimapView>, id: Id) {
         square * 0.9 + 3.0,
         Stroke::new(2.5, YOU),
     );
+}
+
+/// Where you are drawn, and the building you are in: your room, or, for a
+/// room the layout draws only as dots at the rooms it is entered from (the
+/// Issenflow's current), the first of those dots.
+fn whereabouts(scene: &MapScene, you: u32) -> Option<(Vec2, Option<usize>)> {
+    if let Some(here) = scene.room(you) {
+        return Some((cell(here.cell), here.building));
+    }
+    let door = scene.doors.iter().find(|d| d.inside == you)?;
+    Some((vec2(door.at.0, door.at.1), None))
 }
 
 /// Wheel zoom about the pointer, drag to pan, double-click back to you.
@@ -318,6 +327,16 @@ mod tests {
         });
         harness.run();
         harness.snapshot("minimap_inside");
+    }
+
+    /// A drawn room is where you are, with its building; a room drawn only
+    /// as a dot is at the dot; a room drawn neither way is nowhere.
+    #[test]
+    fn you_are_at_your_room_or_its_dot() {
+        let town = town();
+        assert_eq!(whereabouts(&town, 5), Some((vec2(5.0, 1.0), Some(0))));
+        assert_eq!(whereabouts(&town, 40), Some((vec2(4.0, 4.45), None)));
+        assert_eq!(whereabouts(&town, 99), None);
     }
 
     /// Nothing to draw says why, where the map would be.
