@@ -192,6 +192,7 @@ impl Play {
             in_use,
             pressed: None,
             unread: Vec::new(),
+            rects: Vec::new(),
         };
         for holder in &mut layout.holders {
             let Some(at) = zones.fit(holder.rect(), holder.zone) else {
@@ -244,6 +245,7 @@ impl Play {
             self.in_use = Some(pressed);
         }
         self.unread_tabs = std::mem::take(&mut drawing.unread);
+        self.shown_rects = std::mem::take(&mut drawing.rects);
         match drawing.sent {
             Some(Clicked::Send(line)) => self.out = Some(super::Asked::Send(line)),
             Some(Clicked::Quietly(line)) => self.out = Some(super::Asked::Quietly(line)),

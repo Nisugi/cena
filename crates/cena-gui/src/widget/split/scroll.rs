@@ -67,3 +67,37 @@ pub(crate) fn keyed(ui: &mut egui::Ui, scroll: Option<Scroll>, add: impl FnOnce(
         ui.scroll_to_cursor(Some(egui::Align::BOTTOM));
     }
 }
+
+/// Where each line of a pane starts, from the top of its content: what
+/// keeps the top pane on its lines as old ones are dropped.
+#[derive(Debug, Default)]
+pub(crate) struct Tops {
+    /// The content's top on screen, when the pane began.
+    origin: f32,
+    /// Where each line kept starts, in order.
+    pub(super) ys: Vec<f32>,
+    /// Its pane is the one the player scrolls: the one, or the top.
+    player: bool,
+}
+
+impl Tops {
+    /// Marks from the top of `ui`'s content, in the pane the player
+    /// scrolls (`player`) or the other.
+    pub(super) fn at(ui: &egui::Ui, player: bool) -> Self {
+        Self {
+            origin: ui.cursor().top(),
+            ys: Vec::new(),
+            player,
+        }
+    }
+
+    /// Whether its pane is the one the player scrolls.
+    pub(crate) fn player(&self) -> bool {
+        self.player
+    }
+
+    /// The next line kept starts here, drawn or not.
+    pub(crate) fn mark(&mut self, ui: &egui::Ui) {
+        self.ys.push(ui.cursor().top() - self.origin);
+    }
+}

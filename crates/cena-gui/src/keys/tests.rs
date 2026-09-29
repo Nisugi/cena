@@ -135,7 +135,7 @@ fn hydras_defaults_bind_under_the_file() {
     assert_eq!(hydras.does(&key("Numpad8")), Some(&send("north")));
     assert_eq!(hydras.does(&key("Shift+Numpad0")), Some(&send("peer down")));
     assert_eq!(hydras.does(&key("NumpadAdd")), Some(&send("look")));
-    assert_eq!(hydras.len(), 54);
+    assert_eq!(hydras.len(), 57);
     assert_eq!(hydras.changed(), 0);
 
     let (keybinds, problems) =
@@ -148,7 +148,7 @@ fn hydras_defaults_bind_under_the_file() {
         Some(&send("east")),
         "still Hydra's"
     );
-    assert_eq!(keybinds.len(), 54, "one gone, one added");
+    assert_eq!(keybinds.len(), 57, "one gone, one added");
     let rows = keybinds.rows(0, None);
     let row = |written: &str| rows.iter().find(|row| row.key == written).cloned();
     assert_eq!(

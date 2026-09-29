@@ -396,6 +396,30 @@ The author: *"do steps 4-10"*. The window in use, and §3's scrolling table:
   (`play/tests/tabs.rs`). Five mutants: four caught, and the fifth, a stack of one not
   turned, was equivalent and its guard removed.
 
+### Step 6, BUILT 2026-09-29
+
+§3's Find:
+
+- **The bar** (`crates/cena-gui/src/play/find.rs`) opens on `find` (Ctrl+F) over the top
+  right of the window in use when it is a story or a stream, over the story when it is
+  not, with the keyboard; Ctrl+F again takes the keyboard back to it. It says *n of m*,
+  or *none*; ⬆ and ⬇ step, × closes, and so does Escape in it.
+- **What is found** (`widget/find.rs`): the lines the widget draws -- the game's, and
+  the echo when it is shown, never a prompt -- that hold what is typed, whatever its
+  case. Each is marked, the current one more. The current one counts from the newest:
+  the first found is the latest said, and `find_next` (F3, and Enter in the bar) goes
+  back to the one before, `find_previous` (Shift+F3, Shift+Enter) forward.
+- **Brought into sight**: when the bar moves to a line, the pane the player scrolls is
+  brought to it at once, so a story splits as scrolling back splits it and the newest
+  lines stay below. A widget is asked by its id each frame, as a key's scroll is, and
+  says how many it found back.
+- *Tests:* typed, found whatever its case, the latest first and the story split to it,
+  F3 and Shift+F3 stepping and stopping at the latest, Escape closing it
+  (`play/tests/in_use.rs`), and the bar as drawn (`tests/snapshots/find.png`). Six
+  mutants: five caught; the sixth, the lines counted afresh for each pane, changes only
+  which line is marked current in the pane that follows the newest, where the current
+  one is not in sight.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

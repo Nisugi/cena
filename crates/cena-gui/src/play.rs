@@ -177,6 +177,10 @@ pub(crate) struct Play {
     /// The tabs not showing that have lines unread, by placed id, in the
     /// order they were drawn: what `next_unread_tab` shows (step 5).
     unread_tabs: Vec<u32>,
+    /// The Find bar, while it is open (step 6).
+    find: Option<find::FindBar>,
+    /// Where each widget showing was drawn last, by placed id.
+    shown_rects: Vec<(u32, egui::Rect)>,
 }
 
 /// Lines of history kept for up and down.
@@ -222,6 +226,8 @@ impl Play {
             filled: None,
             in_use: None,
             unread_tabs: Vec::new(),
+            find: None,
+            shown_rects: Vec::new(),
         }
     }
 
@@ -309,11 +315,13 @@ impl Play {
             }
         });
         let area = ui.available_rect_before_wrap();
+        self.ask_find(ui.ctx());
         changed |= self.arrange(ui, view);
         let received: Vec<&str> = view.story.streams.ids().collect();
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others, &received);
         self.object_menu(ui.ctx(), view);
+        self.find_bar(ui.ctx(), area);
         crate::carry::show(ui.ctx(), session);
         asked = asked.or(self.out.take());
         if changed {
@@ -401,6 +409,7 @@ impl Play {
     }
 }
 
+mod find;
 mod keyed;
 #[cfg(test)]
 mod tests;

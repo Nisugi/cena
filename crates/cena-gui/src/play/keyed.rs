@@ -84,6 +84,18 @@ impl Play {
             Action::NextTab => self.turn_tab(true),
             Action::PreviousTab => self.turn_tab(false),
             Action::NextUnreadTab => self.unread_tab(),
+            Action::Find => {
+                self.open_find();
+                None
+            }
+            Action::FindNext => {
+                self.step_find(context, true);
+                None
+            }
+            Action::FindPrevious => {
+                self.step_find(context, false);
+                None
+            }
             Action::Stop | Action::Settings | Action::Set(_) => None,
         }
     }

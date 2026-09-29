@@ -29,38 +29,13 @@ use crate::text::AMBER;
 use scroll::ASKED;
 use scroll::steps;
 pub(crate) use scroll::{Scroll, ask};
-pub(super) use scroll::{asked, keyed};
+pub(super) use scroll::{Tops, asked, keyed};
 
 /// How tall the separator is, to take a drag.
 const BAR: f32 = 14.0;
 
 /// The smallest share of the height either pane is left.
 const LEAST: f32 = 0.1;
-
-/// Where each line of a pane starts, from the top of its content: what
-/// keeps the top pane on its lines as old ones are dropped.
-#[derive(Debug, Default)]
-pub(super) struct Tops {
-    /// The content's top on screen, when the pane began.
-    origin: f32,
-    /// Where each line kept starts, in order.
-    ys: Vec<f32>,
-}
-
-impl Tops {
-    /// Marks from the top of `ui`'s content.
-    fn at(ui: &egui::Ui) -> Self {
-        Self {
-            origin: ui.cursor().top(),
-            ys: Vec::new(),
-        }
-    }
-
-    /// The next line kept starts here, drawn or not.
-    pub(super) fn mark(&mut self, ui: &egui::Ui) {
-        self.ys.push(ui.cursor().top() - self.origin);
-    }
-}
 
 /// A widget's split, kept from frame to frame.
 #[derive(Clone, Debug)]
@@ -129,11 +104,11 @@ pub(super) fn scrolled(
     let mut split: Split = ui
         .data_mut(|data| data.get_temp(state_id))
         .unwrap_or_default();
-    let mut body = |ui: &mut egui::Ui| {
+    let mut body = |ui: &mut egui::Ui, player: bool| {
         if !wrap {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         }
-        let mut tops = Tops::at(ui);
+        let mut tops = Tops::at(ui, player);
         add(ui, &mut tops);
         tops.ys
     };
@@ -166,7 +141,7 @@ pub(super) fn scrolled(
                 let now = egui::style::ScrollAnimation::none();
                 ui.scroll_with_delta_animation(vec2(0.0, back), now);
             }
-            body(ui)
+            body(ui, true)
         });
         let newest = newest(&shown);
         split.height = shown.inner_rect.height();
@@ -193,7 +168,7 @@ fn both(
     id: Id,
     split: &mut Split,
     (first, wrap, scroll): (u64, bool, Option<Scroll>),
-    body: &mut impl FnMut(&mut egui::Ui) -> Vec<f32>,
+    body: &mut impl FnMut(&mut egui::Ui, bool) -> Vec<f32>,
 ) {
     let whole = ui.available_rect_before_wrap();
     let panes = (whole.height() - BAR).max(0.0);
@@ -230,7 +205,7 @@ fn both(
     }
     let shown = ui
         .scope_builder(egui::UiBuilder::new().max_rect(top_rect), |ui| {
-            top.show(ui, |ui| body(ui))
+            top.show(ui, |ui| body(ui, true))
         })
         .inner;
     let at_newest = shown.state.offset.y >= newest(&shown) - 1.0;
@@ -267,7 +242,7 @@ fn both(
             .id_salt(id.with(("bottom", split.turns)))
             .stick_to_bottom(true)
             .scroll_source(egui::scroll_area::ScrollSource::NONE)
-            .show(ui, |ui| body(ui));
+            .show(ui, |ui| body(ui, false));
     });
     ui.advance_cursor_after_rect(whole);
 

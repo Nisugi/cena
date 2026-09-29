@@ -39,6 +39,8 @@ pub(super) struct Drawing<'a> {
     pub(super) pressed: Option<u32>,
     /// The tabs not showing that have lines unread, by placed id.
     pub(super) unread: Vec<u32>,
+    /// Where each widget showing was drawn, by placed id.
+    pub(super) rects: Vec<(u32, egui::Rect)>,
 }
 
 impl Drawing<'_> {
@@ -264,6 +266,7 @@ pub(super) fn holder(
 /// it, or says that character is not running; a story never follows.
 fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
     let rect = ui.max_rect();
+    drawing.rects.push((placed.id, rect));
     if ui.input(|input| input.pointer.primary_pressed()) && ui.rect_contains_pointer(rect) {
         drawing.pressed = Some(placed.id);
     }

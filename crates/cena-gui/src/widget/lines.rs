@@ -13,6 +13,7 @@ use cena_ui::StyledRun;
 use egui::Id;
 use serde::{Deserialize, Serialize};
 
+use super::find::Seek;
 use super::{Clicked, Seen};
 use crate::story::{Hours, Shown, Stamp, Story};
 use crate::text::{self, WRONG};
@@ -130,11 +131,23 @@ pub(super) fn story(
     let mut clicked = None;
     let first = (story.dropped, options.wrap);
     let scroll = super::split::asked(ui, id);
+    let mut finder = Seek::of(
+        ui,
+        id,
+        story
+            .lines
+            .iter()
+            .filter_map(|(_, shown)| said(shown, open, options)),
+    );
     super::split::scrolled(ui, id.with("story"), first, scroll, |ui, tops| {
         let mut prompts = Prompts::default();
+        if let Some(finder) = &mut finder {
+            finder.start();
+        }
         for (at, shown) in &story.lines {
             tops.mark(ui);
-            match shown {
+            let text = finder.as_ref().and_then(|_| said(shown, open, options));
+            let mut draw = |ui: &mut egui::Ui| match shown {
                 Shown::Game(runs) => {
                     prompts.line(runs);
                     clicked = clicked.take().or(options.label(ui, *at, runs));
@@ -158,6 +171,10 @@ pub(super) fn story(
                 Shown::Gap => {
                     ui.colored_label(WRONG, "Some lines were missed here.");
                 }
+            };
+            match (&mut finder, text) {
+                (Some(finder), Some(text)) => finder.line(ui, (&text, tops.player()), draw),
+                _ => draw(ui),
             }
         }
     });
@@ -165,6 +182,27 @@ pub(super) fn story(
     // no other object, is dropped (the author, 2026-09-28).
     clicked
         .or_else(|| crate::carry::target(ui, id.with("story"), "drop", None).map(Clicked::Quietly))
+}
+
+/// The text of a line of the story that Find looks through: one drawn,
+/// the game's or an echo, never a prompt (`plan/52` step 6).
+fn said<'a>(shown: &'a Shown, open: &[String], options: Lines) -> Option<Cow<'a, str>> {
+    match shown {
+        Shown::Game(runs) => Some(plain(runs)),
+        Shown::From(stream, runs) if !open.contains(stream) => Some(plain(runs)),
+        Shown::Typed { prompt, line } if options.echo => {
+            Some(Cow::Owned(format!("{prompt}{line}")))
+        }
+        _ => None,
+    }
+}
+
+/// A line's runs as the text they say.
+fn plain(runs: &[StyledRun]) -> Cow<'_, str> {
+    match runs {
+        [one] => Cow::Borrowed(one.text.as_str()),
+        _ => Cow::Owned(runs.iter().map(|run| run.text.as_str()).collect()),
+    }
 }
 
 /// Which of the story's prompts are drawn, walking it in order.
@@ -211,6 +249,8 @@ pub(super) fn stream(
             .saturating_sub(u64::try_from(kept.lines.len()).unwrap_or(u64::MAX))
     });
     let scroll = super::split::asked(ui, id);
+    let lines = kept.into_iter().flat_map(|kept| kept.lines.iter());
+    let mut finder = Seek::of(ui, id, lines.map(|(_, runs)| plain(runs)));
     super::split::scrolled(
         ui,
         id.with("stream"),
@@ -218,9 +258,18 @@ pub(super) fn stream(
         scroll,
         |ui, tops| match kept {
             Some(kept) => {
+                if let Some(finder) = &mut finder {
+                    finder.start();
+                }
                 for (at, runs) in &kept.lines {
                     tops.mark(ui);
-                    clicked = clicked.take().or(options.label(ui, *at, runs));
+                    let mut draw = |ui: &mut egui::Ui| {
+                        clicked = clicked.take().or(options.label(ui, *at, runs));
+                    };
+                    match &mut finder {
+                        Some(finder) => finder.line(ui, (&plain(runs), tops.player()), draw),
+                        None => draw(ui),
+                    }
                 }
             }
             None => {

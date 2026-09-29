@@ -75,6 +75,12 @@ pub enum Action {
     PreviousTab,
     /// Show the first tab, anywhere in the play window, with lines unread.
     NextUnreadTab,
+    /// Open the Find bar over the window in use (`plan/52` step 6).
+    Find,
+    /// Go to the line found before.
+    FindNext,
+    /// Go to the line found after.
+    FindPrevious,
 }
 
 /// Each set's action's name in the keybinds file.
@@ -107,7 +113,7 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 29] = [
+    pub const ALL: [Self; 32] = [
         Self::SendOrRepeat,
         Self::RepeatLast,
         Self::RepeatSecondLast,
@@ -125,6 +131,9 @@ impl Action {
         Self::NextTab,
         Self::PreviousTab,
         Self::NextUnreadTab,
+        Self::Find,
+        Self::FindNext,
+        Self::FindPrevious,
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -163,6 +172,9 @@ impl Action {
             Self::NextTab => "next_tab",
             Self::PreviousTab => "previous_tab",
             Self::NextUnreadTab => "next_unread_tab",
+            Self::Find => "find",
+            Self::FindNext => "find_next",
+            Self::FindPrevious => "find_previous",
         }
     }
 
@@ -190,6 +202,9 @@ impl Action {
             Self::NextTab => "Show the next tab",
             Self::PreviousTab => "Show the tab before",
             Self::NextUnreadTab => "Show a tab with lines unread",
+            Self::Find => "Find in the window in use",
+            Self::FindNext => "Find the one before",
+            Self::FindPrevious => "Find the one after",
         }
     }
 
