@@ -5,7 +5,8 @@
 //! it came from"*). A key is set by pressing it rather than typing its name,
 //! and a key that types is refused, as the file refuses it. While the page
 //! waits for a key, the window opens the fork's channel to every numpad key
-//! and hands the press here, so a numpad key is never taken for its digit.
+//! and every key egui has no name for, and hands the press here, so a numpad
+//! key is never taken for its digit and Pause can be bound.
 //!
 //! A send macro's commands are typed with `\r` between them, as the file
 //! writes them and Wrayth's and `VellumFE`'s players write them.
@@ -68,9 +69,10 @@ pub struct KeysView<'a> {
     /// What the window says of the file: where it is and how many keys it
     /// binds, then what in it is wrong.
     pub said: &'a [String],
-    /// A numpad key pressed this frame while the page waits for a key,
-    /// written as the file writes it.
-    pub numpad: Option<&'a str>,
+    /// A key the fork caught this frame while the page waits for one -- a
+    /// numpad key, or one egui has no name for -- written as the file
+    /// writes it.
+    pub caught: Option<&'a str>,
 }
 
 /// What the page is waiting for a key for.
@@ -217,8 +219,8 @@ impl KeysPage {
     /// the input so nothing else sees it. Escape ends the wait.
     fn pressed(&mut self, ui: &egui::Ui, view: &KeysView<'_>) -> Option<Chord> {
         self.waiting.as_ref()?;
-        if let Some(numpad) = view.numpad {
-            return Chord::parse(numpad).ok();
+        if let Some(caught) = view.caught {
+            return Chord::parse(caught).ok();
         }
         let mut pressed = None;
         let mut cancelled = false;

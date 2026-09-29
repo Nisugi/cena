@@ -1,8 +1,10 @@
 //! The keys' names (`plan/47` step 7): each key by the name winit gives its
 //! physical code, which keys type, the numpad's names in the fork, and the
-//! keys this build cannot see yet. Moved out of `keys.rs` at its cap.
+//! keys egui has no name for, which the fork catches for Hydra. Moved out of
+//! `keys.rs` at its cap.
 
 use egui::Key;
+use winit::keyboard::KeyCode;
 
 /// The keys that type, by winit name.
 pub(super) const TYPING: &[&str] = &[
@@ -76,16 +78,21 @@ pub(super) const NUMPAD: &[(&str, &str)] = &[
     ("NumpadDecimal", "num_decimal"),
 ];
 
-/// Keys winit names that no path reaches yet: they need the fork's hook
-/// widened (this module's docs).
-const NOT_YET: &[&str] = &[
-    "Pause",
-    "ScrollLock",
-    "PrintScreen",
-    "NumLock",
-    "ContextMenu",
-    "CapsLock",
+/// Keys egui has no name for, which the author's fork catches before egui
+/// sees them when Hydra asks (`eframe::Frame::set_key_capture`, pinned at
+/// `ed8b264`, `plan/47` step 7): their winit names and codes.
+pub(super) const CAPTURED: [(&str, KeyCode); 5] = [
+    ("Pause", KeyCode::Pause),
+    ("ScrollLock", KeyCode::ScrollLock),
+    ("PrintScreen", KeyCode::PrintScreen),
+    ("CapsLock", KeyCode::CapsLock),
+    ("ContextMenu", KeyCode::ContextMenu),
 ];
+
+/// The key winit calls `NumLock`: `NumLock` itself, the operating system's
+/// switch for the numpad, on Windows and Linux; macOS's Clear key, which is
+/// Hydra's switch for it there. Bound to nothing either way.
+pub(crate) const NUM_LOCK: KeyCode = KeyCode::NumLock;
 
 /// The winit name `key` is written as, checked: a key this build can see.
 pub(super) fn known(key: &str) -> Result<String, String> {
@@ -102,9 +109,15 @@ pub(super) fn known(key: &str) -> Result<String, String> {
     {
         return Ok(name);
     }
-    if NOT_YET.iter().any(|name| name.eq_ignore_ascii_case(key)) {
+    if let Some((name, _)) = CAPTURED
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case(key))
+    {
+        return Ok((*name).to_owned());
+    }
+    if key.eq_ignore_ascii_case("NumLock") || key.eq_ignore_ascii_case("Clear") {
         return Err(format!(
-            "Hydra cannot see {key} yet: it needs the egui fork's key hook widened (plan/47 step 7)."
+            "{key} switches the numpad between typing and its keys (NumLock; Clear on a Mac), and is bound to nothing."
         ));
     }
     Err(format!(

@@ -34,16 +34,49 @@ fn a_chord_is_written_as_it_reads() {
     }
 }
 
-/// A key this build cannot see is told why; a name nobody knows, and a
-/// modifier nobody has, are told so.
+/// A key egui has no name for binds by its winit name, the fork catching
+/// it; `NumLock`, the numpad's switch (Clear's name on a Mac), is refused and
+/// told why; a name nobody knows, and a modifier nobody has, are told so.
 #[test]
-fn a_key_hydra_cannot_see_yet_says_so() {
-    let Err(pause) = Chord::parse("Pause") else {
-        panic!("Pause is not reachable yet");
-    };
-    assert!(pause.contains("cannot see Pause yet"), "{pause}");
+fn a_key_egui_cannot_name_binds_and_numlock_does_not() {
+    for (typed, written) in [
+        ("pause", "Pause"),
+        ("ctrl+ScrollLock", "Ctrl+ScrollLock"),
+        ("PrintScreen", "PrintScreen"),
+        ("capslock", "CapsLock"),
+        ("ContextMenu", "ContextMenu"),
+    ] {
+        assert_eq!(
+            Chord::parse(typed).map(|chord| chord.written()),
+            Ok(written.to_owned())
+        );
+    }
+    assert_eq!(capturable().len(), 5);
+    for switch in ["NumLock", "Clear"] {
+        let Err(why) = Chord::parse(switch) else {
+            panic!("{switch} is the numpad's switch");
+        };
+        assert!(why.contains("switches the numpad"), "{why}");
+    }
     assert!(Chord::parse("Blarg").is_err());
     assert!(Chord::parse("hyper+F1").is_err());
+}
+
+/// A press the fork's key capture caught is a chord with its modifiers; a
+/// release is none.
+#[test]
+fn a_captured_press_is_a_chord() {
+    let event = |pressed| eframe::CapturedKeyEvent {
+        physical_key: winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::ScrollLock),
+        pressed,
+        repeat: false,
+        modifiers: Modifiers::ALT,
+    };
+    assert_eq!(
+        captured_chord(&event(true)).map(|chord| chord.written()),
+        Some("Alt+ScrollLock".to_owned())
+    );
+    assert_eq!(captured_chord(&event(false)), None);
 }
 
 #[test]

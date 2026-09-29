@@ -141,7 +141,7 @@ impl Menu {
     }
 
     /// Whether the *Keys* page waits for a key to be pressed: the window
-    /// then hands it every numpad key ([`KeysView::numpad`]).
+    /// then hands it every numpad key ([`KeysView::caught`]).
     #[must_use]
     pub fn waiting_for_key(&self) -> bool {
         self.open

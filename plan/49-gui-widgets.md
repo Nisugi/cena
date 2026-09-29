@@ -859,8 +859,8 @@ bundle on macOS, a `.desktop` entry on Linux.
 
 ### Carried from M10
 
-- Pause, Scroll Lock and macOS's Clear: the egui fork's key hook widened, the author's to
-  make (`plan/47` step 7).
+- ~~Pause, Scroll Lock and macOS's Clear: the egui fork's key hook widened~~ **DONE
+  2026-09-29**: the author widened it, and Hydra wired it (`plan/47` step 7).
 - ~~A bar's options saved~~ **BUILT 2026-09-28**: a bar widget's look (fill direction, text
   place and words, colour, overlay) on its own page in the settings menu, saved with the
   layout (`plan/50` §7 step 8, as the author corrected it).

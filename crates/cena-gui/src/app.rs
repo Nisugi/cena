@@ -53,10 +53,12 @@ pub struct App {
     keys_file: Option<PathBuf>,
     /// What a play window says of the keybinds: how many, and what is wrong.
     keys_said: Vec<String>,
-    /// The fork is to be told again which numpad keys to catch.
+    /// The fork is to be told again which keys to catch (`keyed.rs`).
     catch_again: bool,
-    /// Numpad macros this frame, for the play window with the keyboard.
-    numpad: Vec<Macro>,
+    /// The macros of the keys the fork caught this frame -- the numpad's,
+    /// and those egui has no name for -- for the play window with the
+    /// keyboard.
+    caught: Vec<Macro>,
     /// Commands a key's macro sends once a wait in it is over
     /// (`keyed.rs`).
     later: Vec<keyed::Later>,
@@ -66,10 +68,14 @@ pub struct App {
     menu: Menu,
     /// Hydra's own settings, kept in the window's own file (step 2).
     own: Own,
-    /// The fork was last told to hand every numpad key to the Keys page.
-    caught_for_menu: bool,
-    /// A numpad key pressed this frame while the Keys page waits for one.
-    numpad_for_menu: Option<String>,
+    /// The fork was last told to hand every key it can catch to the Keys
+    /// page.
+    menu_waits: bool,
+    /// A key the fork caught this frame while the Keys page waits for one.
+    caught_for_page: Option<String>,
+    /// On macOS, the numpad sends its keys rather than typing: switched by
+    /// the Clear key, starting as the keybinds file's `numpad` says.
+    clear_sends: bool,
 }
 
 /// One character's play window.
@@ -96,13 +102,14 @@ impl App {
             keys_file: None,
             keys_said: Vec::new(),
             catch_again: true,
-            numpad: Vec::new(),
+            caught: Vec::new(),
             later: Vec::new(),
             numlock: None,
             menu: Menu::default(),
             own: Own::default(),
-            caught_for_menu: false,
-            numpad_for_menu: None,
+            menu_waits: false,
+            caught_for_page: None,
+            clear_sends: false,
         }
     }
 
@@ -144,6 +151,7 @@ impl App {
         })
         .chain(problems)
         .collect();
+        self.clear_sends = keys.numpad_always;
         self.keys = keys;
         self.catch_again = true;
     }
@@ -253,7 +261,7 @@ impl App {
         seat: &Arc<Seat>,
         seats: &[Arc<Seat>],
     ) -> Option<Asked> {
-        let (keys, numpad, keys_said) = (&self.keys, &mut self.numpad, &self.keys_said);
+        let (keys, caught, keys_said) = (&self.keys, &mut self.caught, &self.keys_said);
         let numlock = self.numlock;
         let close_with_session = self.own.close_with_session();
         let window = self.plays.get_mut(&seat.id.0)?;
@@ -295,7 +303,7 @@ impl App {
                 // Taken before anything draws, so no widget sees a bound key.
                 let mut pressed = ui.ctx().input_mut(|input| keys.take(input));
                 if ui.input(|input| input.focused) {
-                    pressed.append(numpad);
+                    pressed.append(caught);
                 }
                 for made in pressed {
                     match made {
@@ -416,49 +424,14 @@ fn clocks_run(
     effects.then_some(Duration::from_secs(1))
 }
 
-impl App {
-    /// The fork's numpad presses this frame: `NumLock` as they show it, and
-    /// the lines the bound ones send on the play window with the keyboard;
-    /// or, while the Keys page waits for a key, the first press, for it.
-    fn numpad_pressed(&mut self, pressed: &[eframe::NumpadKeyEvent]) {
-        if let Some(on) = pressed.iter().rev().find_map(|event| event.numlock_on) {
-            self.numlock = Some(on);
-        }
-        if self.menu.waiting_for_key() {
-            self.numpad.clear();
-            self.numpad_for_menu = pressed
-                .iter()
-                .filter(|event| !event.repeat)
-                .find_map(keys::numpad_chord)
-                .map(|chord| chord.written());
-            return;
-        }
-        self.numpad_for_menu = None;
-        self.numpad = pressed
-            .iter()
-            .filter_map(|event| keys::numpad_macro(&self.keys, event))
-            .collect();
-    }
-}
-
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
-        let waiting = self.menu.waiting_for_key();
-        if waiting != self.caught_for_menu {
-            self.caught_for_menu = waiting;
-            self.catch_again = true;
-        }
-        if std::mem::take(&mut self.catch_again) {
-            // While the Keys page waits for a key, every numpad key comes
-            // here, so none is typed as its digit.
-            frame.set_numpad_capture_mode(if self.keys.numpad_always || waiting {
-                eframe::NumpadCaptureMode::Always
-            } else {
-                eframe::NumpadCaptureMode::NumLockAware
-            });
-            frame.set_numpad_capture_keys((!waiting).then(|| self.keys.numpad_caught()));
-        }
-        self.numpad_pressed(frame.numpad_keys());
+        self.catch(frame);
+        self.caught_pressed(
+            frame.numpad_keys(),
+            frame.captured_keys(),
+            cfg!(target_os = "macos"),
+        );
         if ui.ctx().input(|input| input.viewport().close_requested()) && !self.close_asked() {
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::CancelClose);

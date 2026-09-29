@@ -15,18 +15,21 @@
 //! why the numpad comes through the author's fork instead
 //! (`eframe::Frame::numpad_keys`), with `NumLock` read from each press.
 //!
-//! The keys come two ways. The numpad's through the fork's channel, which
-//! catches only the numpad keys that are bound, so an unbound one still
-//! types. Every other key through egui, which names F1-F35, the arrows and
-//! the rest; a bound key's press is taken before anything else sees it. A
-//! key that types -- a letter, a digit, a mark, with no Ctrl, Alt or Cmd --
-//! never fires a binding, or nobody could type it.
+//! The keys come three ways. The numpad's through the fork's numpad channel,
+//! which catches only the numpad keys that are bound, so an unbound one
+//! still types. The keys egui has no name for -- Pause, Scroll Lock, Print
+//! Screen, Caps Lock, the context-menu key -- through the fork's key capture
+//! (`plan/47` step 7, the fork pinned at `ed8b264`), which catches only those
+//! bound, so an unbound Caps Lock is left to egui. Every other key through
+//! egui, which names F1-F35, the arrows and the rest; a bound key's press is
+//! taken before anything else sees it. A key that types -- a letter, a digit,
+//! a mark, with no Ctrl, Alt or Cmd -- never fires a binding, or nobody could
+//! type it.
 //!
-//! **Not yet** (`plan/47` step 7): a key egui has no name for -- Pause,
-//! Scroll Lock, Print Screen, and macOS's Clear, which winit reports as
-//! `NumLock` -- needs the fork's hook widened from the numpad to every key,
-//! a change to the author's repository. The file names such a key and is
-//! told so, rather than a binding that silently never fires.
+//! **`NumLock` is nobody's.** On Windows and Linux it is the operating
+//! system's switch for the numpad; on macOS, which has none, winit calls the
+//! Clear key `NumLock`, and Clear is Hydra's switch there, the numpad typing
+//! or sending its keys (`app.rs`, `numpad_mode`).
 
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -34,8 +37,9 @@ use std::path::{Path, PathBuf};
 use egui::Modifiers;
 
 pub use binding::{Action, Macro};
+pub(crate) use names::NUM_LOCK;
 pub(crate) use names::winit_name;
-use names::{NUMPAD, TYPING, known};
+use names::{CAPTURED, NUMPAD, TYPING, known};
 pub use page::KeyRow;
 
 /// The keybinds file, in the data folder.
@@ -269,6 +273,16 @@ impl Keybinds {
             .collect()
     }
 
+    /// The keys egui has no name for that are bound, whatever the
+    /// modifiers: what the fork is told to catch (`eframe::Frame::
+    /// set_key_capture`), so one unbound is left to egui.
+    pub(crate) fn key_capture(&self) -> HashSet<winit::keyboard::KeyCode> {
+        self.bound()
+            .filter_map(|(chord, _)| CAPTURED.iter().find(|(name, _)| *name == chord.key))
+            .map(|(_, code)| *code)
+            .collect()
+    }
+
     /// Take from `input` every key press this binds, and the macros they
     /// do, in order: taken, so no widget sees a bound key.
     pub(crate) fn take(&self, input: &mut egui::InputState) -> Vec<Macro> {
@@ -322,6 +336,24 @@ pub(crate) fn numpad_macro(keybinds: &Keybinds, event: &eframe::NumpadKeyEvent) 
         return None;
     }
     keybinds.does(&numpad_chord(event)?).cloned()
+}
+
+/// Every key egui has no name for that a binding may use: what the fork
+/// catches while the Keys page waits for a key, so it can take one.
+pub(crate) fn capturable() -> HashSet<winit::keyboard::KeyCode> {
+    CAPTURED.iter().map(|(_, code)| *code).collect()
+}
+
+/// The chord a press the fork's key capture caught is; `None` for a
+/// release, or a key with no code.
+pub(crate) fn captured_chord(event: &eframe::CapturedKeyEvent) -> Option<Chord> {
+    if !event.pressed {
+        return None;
+    }
+    let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
+        return None;
+    };
+    Some(Chord::of(&format!("{code:?}"), event.modifiers))
 }
 
 pub(crate) mod binding;

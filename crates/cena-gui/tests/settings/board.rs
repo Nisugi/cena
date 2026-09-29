@@ -15,7 +15,7 @@ pub struct Board {
     pub own: Vec<Page>,
     pub bound: Vec<KeyRow>,
     pub numpad_always: bool,
-    pub numpad: Option<String>,
+    pub caught: Option<String>,
     pub widgets: Vec<Page>,
     pub asked: Vec<MenuAsked>,
 }
@@ -34,7 +34,7 @@ impl Board {
                 bound: &self.bound,
                 numpad_always: self.numpad_always,
                 said: &[],
-                numpad: self.numpad.as_deref(),
+                caught: self.caught.as_deref(),
             },
             widgets: &self.widgets,
         };

@@ -39,7 +39,7 @@ impl App {
                 bound: &bound,
                 numpad_always: self.keys.numpad_always,
                 said: &self.keys_said,
-                numpad: self.numpad_for_menu.as_deref(),
+                caught: self.caught_for_page.as_deref(),
             },
             widgets: &widgets,
         };

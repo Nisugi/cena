@@ -414,9 +414,9 @@ fn a_bound_key_is_changed_moved_and_removed() {
         .click();
     harness.run();
     assert!(harness.state().menu.waiting_for_key());
-    harness.state_mut().numpad = Some("Numpad2".to_owned());
+    harness.state_mut().caught = Some("Numpad2".to_owned());
     harness.run();
-    harness.state_mut().numpad = None;
+    harness.state_mut().caught = None;
     if let Some(remove) = harness.get_all_by_label("Remove").nth(1) {
         remove.click();
     }

@@ -70,11 +70,11 @@ fn a_key_bound_in_the_menu_binds_at_once() {
     };
     harness
         .state_mut()
-        .numpad
+        .caught
         .push(keys::Macro::Send("stale".to_owned()));
-    harness.state_mut().numpad_pressed(&[press]);
-    assert_eq!(harness.state().numpad_for_menu.as_deref(), Some("Numpad8"));
-    assert!(harness.state().numpad.is_empty(), "no play window's");
+    harness.state_mut().caught_pressed(&[press], &[], false);
+    assert_eq!(harness.state().caught_for_page.as_deref(), Some("Numpad8"));
+    assert!(harness.state().caught.is_empty(), "no play window's");
     harness.run();
     assert!(!harness.state().menu.waiting_for_key());
 
@@ -201,5 +201,100 @@ fn a_key_fills_the_input_or_acts() {
     assert!(
         harness.query_by_label(">;stop").is_some(),
         "Stop, as its button"
+    );
+}
+
+/// A press of `code` the fork's key capture caught, with `modifiers`.
+fn captured(
+    code: winit::keyboard::KeyCode,
+    modifiers: egui::Modifiers,
+) -> eframe::CapturedKeyEvent {
+    eframe::CapturedKeyEvent {
+        physical_key: winit::keyboard::PhysicalKey::Code(code),
+        pressed: true,
+        repeat: false,
+        modifiers,
+    }
+}
+
+/// A key egui has no name for, bound, is caught by the fork and does its
+/// macro on the play window with the keyboard; while the Keys page waits
+/// for a key, it goes to the page, so Pause can be bound by pressing it.
+#[test]
+fn a_key_egui_cannot_name_does_its_macro() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let mut app = App::new(Sessions::new(runtime.handle().clone()));
+    app.keys =
+        Keybinds::read("[keys]\n\"Ctrl+Pause\" = \"stance defensive\"\nScrollLock = \"hide\"\n").0;
+    let code = winit::keyboard::KeyCode::Pause;
+    assert_eq!(
+        app.keys.key_capture(),
+        std::collections::HashSet::from([code, winit::keyboard::KeyCode::ScrollLock]),
+        "the fork is told the bound ones, whatever the modifiers"
+    );
+    app.caught_pressed(&[], &[captured(code, egui::Modifiers::CTRL)], false);
+    assert_eq!(
+        app.caught,
+        [keys::Macro::Send("stance defensive".to_owned())]
+    );
+    app.caught_pressed(&[], &[captured(code, egui::Modifiers::NONE)], false);
+    assert!(app.caught.is_empty(), "Pause alone is not bound");
+
+    app.menu.open_for(None);
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
+    harness.run();
+    harness.get_by_label("Keys").click();
+    harness.run();
+    harness.get_by_label("Add a key").click();
+    harness.run();
+    harness
+        .state_mut()
+        .caught_pressed(&[], &[captured(code, egui::Modifiers::SHIFT)], false);
+    assert_eq!(
+        harness.state().caught_for_page.as_deref(),
+        Some("Shift+Pause")
+    );
+    assert!(harness.state().caught.is_empty(), "no play window's");
+}
+
+/// On a Mac, Clear, which winit calls `NumLock`, switches the numpad
+/// between typing and sending its keys, from what the file's `numpad`
+/// says; elsewhere `NumLock` is the system's, and switches nothing here.
+#[test]
+fn clear_switches_the_numpad_on_a_mac() {
+    use eframe::NumpadCaptureMode::{Always, NumLockAware, Off};
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let mut app = App::new(Sessions::new(runtime.handle().clone()));
+    let clear = || [captured(keys::NUM_LOCK, egui::Modifiers::NONE)];
+    assert!(!app.clear_sends);
+    app.caught_pressed(&[], &clear(), false);
+    assert!(!app.clear_sends, "not on Windows or Linux");
+    app.catch_again = false;
+    app.caught_pressed(&[], &clear(), true);
+    assert!(app.clear_sends, "switched");
+    assert!(app.catch_again, "and the fork told again");
+    assert!(app.caught.is_empty(), "Clear does no macro");
+    app.caught_pressed(&[], &clear(), true);
+    assert!(!app.clear_sends, "and back");
+
+    let mode = super::super::keyed::numpad_mode;
+    assert_eq!(
+        mode(false, Some(false), false),
+        Off,
+        "a Mac types until Clear"
+    );
+    assert_eq!(mode(false, Some(true), false), Always);
+    assert_eq!(mode(false, None, false), NumLockAware, "NumLock decides");
+    assert_eq!(mode(false, None, true), Always, "numpad = \"always\"");
+    assert_eq!(
+        mode(true, Some(false), false),
+        Always,
+        "the Keys page waits"
     );
 }
