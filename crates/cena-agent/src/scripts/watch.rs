@@ -118,12 +118,17 @@ impl Watcher {
             return false;
         };
         // The events up to the new snapshot's fence are still in the old
-        // receiver: they belong to this chunk.
-        while let Ok(event) = self.events.try_recv() {
-            if event.cursor > snapshot.cursor {
-                break;
+        // receiver: they belong to this chunk. Some lost on the way are
+        // said to have been, as the watch says it (the integrated crate
+        // review of 2026-09-28, I5: this stopped at a loss, silently).
+        loop {
+            match self.events.try_recv() {
+                Ok(event) if event.cursor <= snapshot.cursor => self.held.extend(told(&event)),
+                Err(broadcast::error::TryRecvError::Lagged(missed)) => {
+                    self.held.push(listening::Event::Lagged { missed });
+                }
+                Ok(_) | Err(_) => break,
             }
-            self.held.extend(told(&event));
         }
         self.events = fresh;
         let now = self.copy_of(&snapshot);

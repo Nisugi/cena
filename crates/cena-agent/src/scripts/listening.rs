@@ -16,6 +16,15 @@
 //! never let go for room**: a `;kill` lost to a flood of combat lines would
 //! be lost exactly when it mattered; nor is a line asked of the input hooks,
 //! which the player is waiting on.
+//!
+//! **A read that lagged begins with the whole copy.** A `state` carries only
+//! the fields that changed, and the watcher does not send a field again
+//! until it changes again; so a `state` let go for room left the runner's
+//! copy wrong for good, a warning its only sign (the integrated crate review
+//! of 2026-09-28, I5). The log keeps every field of every `state` that has
+//! left it, read or let go, the last word winning: the copy as of the last
+//! one gone. A read that lagged is answered with that first, as one `state`,
+//! and the `state`s still kept after it apply over it in order.
 
 use std::collections::VecDeque;
 use std::sync::{Mutex, PoisonError};
@@ -157,6 +166,20 @@ struct Inner {
     /// The highest position let go for room; 0 when none was.
     dropped_through: u64,
     closed: bool,
+    /// Every field of every `state` that has left the log, the last word
+    /// winning, and the cursor of the last: the copy as of then.
+    gone: serde_json::Map<String, serde_json::Value>,
+    gone_cursor: u64,
+}
+
+impl Inner {
+    /// `entry` leaves the log: a `state`'s fields are kept in [`Self::gone`].
+    fn leaves(&mut self, entry: Entry) {
+        if let Event::State { cursor, fields } = entry.event {
+            self.gone.extend(fields);
+            self.gone_cursor = cursor;
+        }
+    }
 }
 
 impl Listening {
@@ -174,6 +197,7 @@ impl Listening {
             };
             if let Some(dropped) = inner.entries.remove(oldest) {
                 inner.dropped_through = inner.dropped_through.max(dropped.at);
+                inner.leaves(dropped);
             }
         }
         drop(inner);
@@ -207,17 +231,34 @@ impl Listening {
 
     fn read(&self, since: u64) -> Heard {
         let mut inner = self.lock();
-        while inner.entries.front().is_some_and(|entry| entry.at <= since) {
-            inner.entries.pop_front();
+        // Read, or a typed line kept past the bound ahead of lines already
+        // read: let go of each.
+        let (read, kept): (VecDeque<Entry>, VecDeque<Entry>) = std::mem::take(&mut inner.entries)
+            .into_iter()
+            .partition(|entry| entry.at <= since);
+        inner.entries = kept;
+        for entry in read {
+            inner.leaves(entry);
         }
-        // A typed line kept past the bound may sit ahead of lines already
-        // read: let go of those too.
-        inner.entries.retain(|entry| entry.at > since);
-        let events: Vec<Entry> = inner.entries.iter().take(RETURNED).cloned().collect();
+        let lagged = since < inner.dropped_through;
+        let mut events: Vec<Entry> = Vec::new();
+        if lagged && !inner.gone.is_empty() {
+            // The whole copy as of the last `state` gone, at the last
+            // position let go: after `since`, before everything kept.
+            events.push(Entry {
+                at: inner.dropped_through,
+                event: Event::State {
+                    cursor: inner.gone_cursor,
+                    fields: inner.gone.clone(),
+                },
+            });
+        }
+        let returned = RETURNED - events.len();
+        events.extend(inner.entries.iter().take(returned).cloned());
         Heard {
             next: events.last().map_or(since, |last| last.at),
-            lagged: since < inner.dropped_through,
-            closed: inner.closed && inner.entries.len() == events.len(),
+            lagged,
+            closed: inner.closed && inner.entries.len() <= returned,
             events,
         }
     }
@@ -273,6 +314,72 @@ mod tests {
                 line: "k trollspeak".into()
             })
         );
+    }
+
+    fn state(cursor: u64, fields: &[(&str, serde_json::Value)]) -> Event {
+        Event::State {
+            cursor,
+            fields: fields
+                .iter()
+                .map(|(name, value)| ((*name).to_owned(), value.clone()))
+                .collect(),
+        }
+    }
+
+    /// The review's case: a `state` let go for room, and the field it
+    /// changed never changing again. The read that lagged begins with the
+    /// whole copy -- that field among the ones read before -- and a `state`
+    /// still kept applies over it.
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_read_that_lagged_begins_with_the_whole_copy() {
+        use serde_json::json;
+        let log = Listening::default();
+        log.push(state(
+            1,
+            &[("room", json!("Town Square")), ("hands", json!("empty"))],
+        ));
+        let first = log.listen(0, Duration::ZERO).await;
+        assert_eq!(first.events.len(), 1);
+        log.push(state(2, &[("room", json!("North Gate"))]));
+        for cursor in 3..KEPT as u64 + 3 {
+            log.push(line(cursor));
+        }
+        log.push(state(9_000, &[("hands", json!("a sword"))]));
+
+        let heard = log.listen(first.next, Duration::ZERO).await;
+        assert!(heard.lagged);
+        let Some(Event::State { cursor, fields }) = heard.events.first().map(|e| &e.event) else {
+            panic!(
+                "a lagged read begins with the copy: {:?}",
+                heard.events.first()
+            );
+        };
+        assert_eq!(*cursor, 2);
+        assert_eq!(fields["room"], json!("North Gate"), "the lost change");
+        assert_eq!(fields["hands"], json!("empty"), "a field read before");
+        assert!(
+            heard.events.windows(2).all(|pair| pair[0].at < pair[1].at),
+            "in order"
+        );
+
+        // Read to the end: the later `state` still comes, and after it the
+        // log is caught up.
+        let mut since = heard.next;
+        let mut last_state = None;
+        loop {
+            let more = log.listen(since, Duration::ZERO).await;
+            if more.events.is_empty() {
+                assert!(!more.lagged, "once, not again");
+                break;
+            }
+            for entry in &more.events {
+                if let Event::State { fields, .. } = &entry.event {
+                    last_state = Some(fields.clone());
+                }
+            }
+            since = more.next;
+        }
+        assert_eq!(last_state.unwrap()["hands"], json!("a sword"));
     }
 
     #[tokio::test(flavor = "current_thread", start_paused = true)]
