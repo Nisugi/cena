@@ -265,30 +265,9 @@ pub(super) fn overlay(ui: &egui::Ui, path: &str) -> Option<bar::Overlay> {
     image(ui, path).map(|texture| bar::Overlay::stretched(texture.id(), texture.size_vec2()))
 }
 
-/// The image at `path`, read once and kept by egui for every frame after;
-/// `None` when it cannot be read.
+/// The image at `path` (`pictures.rs`), `None` when it cannot be read.
 fn image(ui: &egui::Ui, path: &str) -> Option<egui::TextureHandle> {
-    let id = Id::new(("bar-overlay", path));
-    let kept = ui
-        .ctx()
-        .data(|data| data.get_temp::<Option<egui::TextureHandle>>(id));
-    kept.unwrap_or_else(|| {
-        let read = read_image(ui.ctx(), path);
-        ui.ctx().data_mut(|data| data.insert_temp(id, read.clone()));
-        read
-    })
-}
-
-/// A PNG, or any image the `image` crate reads, as a texture.
-fn read_image(context: &egui::Context, path: &str) -> Option<egui::TextureHandle> {
-    let bytes = std::fs::read(path).ok()?;
-    let image = image::load_from_memory(&bytes).ok()?.to_rgba8();
-    let size = [
-        usize::try_from(image.width()).ok()?,
-        usize::try_from(image.height()).ok()?,
-    ];
-    let pixels = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
-    Some(context.load_texture(path, pixels, egui::TextureOptions::LINEAR))
+    crate::pictures::picture(ui.ctx(), path)
 }
 
 /// What a hand holds, after which hand: `?` until the game has said.
