@@ -118,7 +118,7 @@ Nowhere = "x"
         caught.contains("num_8") && caught.contains("num_decimal"),
         "the fork catches each bound numpad key, whatever the modifiers: {caught:?}"
     );
-    assert!(!caught.contains("num_enter"), "bound by nobody yet");
+    assert!(caught.contains("num_enter"), "sends or repeats");
     let (hydras, broken) = Keybinds::read("keys = 3");
     assert_eq!(hydras, Keybinds::default(), "Hydra's alone");
     assert_eq!(broken.len(), 1);
@@ -135,7 +135,7 @@ fn hydras_defaults_bind_under_the_file() {
     assert_eq!(hydras.does(&key("Numpad8")), Some(&send("north")));
     assert_eq!(hydras.does(&key("Shift+Numpad0")), Some(&send("peer down")));
     assert_eq!(hydras.does(&key("NumpadAdd")), Some(&send("look")));
-    assert_eq!(hydras.len(), 36);
+    assert_eq!(hydras.len(), 44);
     assert_eq!(hydras.changed(), 0);
 
     let (keybinds, problems) =
@@ -148,7 +148,7 @@ fn hydras_defaults_bind_under_the_file() {
         Some(&send("east")),
         "still Hydra's"
     );
-    assert_eq!(keybinds.len(), 36, "one gone, one added");
+    assert_eq!(keybinds.len(), 44, "one gone, one added");
     let rows = keybinds.rows(0, None);
     let row = |written: &str| rows.iter().find(|row| row.key == written).cloned();
     assert_eq!(
@@ -197,7 +197,7 @@ fn a_bound_press_is_taken_and_the_rest_left() {
     let mut input = egui::InputState::default();
     input.events = vec![press(Key::F5), press(Key::A)];
     assert_eq!(
-        keybinds.of(None).take(&mut input),
+        keybinds.of(None).take(&mut input, |_| false),
         [Macro::Send("look".to_owned())]
     );
     assert_eq!(input.events, [press(Key::A)]);

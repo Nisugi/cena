@@ -8,13 +8,16 @@
 //! Genie's copy it (`plan/52` §1); Shift with it peers that way (the author,
 //! 2026-09-28: *"shift + numpad = peer direction"*). Alt with a digit
 //! chooses that macro set, as Wrayth's does, the one action with a key of
-//! Hydra's (the author: *"sure alt + number = set"*). Each later step of the
-//! plan adds the keys of the actions it builds.
+//! Hydra's (the author: *"sure alt + number = set"*). The sending actions
+//! have Wrayth's keys (`plan/52` §3, step 3): `NumpadEnter` sends or repeats,
+//! Ctrl with an Enter repeats the last command and Alt the one before it,
+//! Up and Down walk what was typed, and Escape clears the input. Each later
+//! step of the plan adds the keys of the actions it builds.
 
 use std::collections::BTreeMap;
 
 use super::binding::{Action, Macro};
-use super::{ALT, Chord, SHIFT};
+use super::{ALT, CTRL, Chord, SHIFT};
 
 /// Each numpad key that walks, and where.
 const WALKS: [(&str, &str); 11] = [
@@ -39,6 +42,18 @@ const MARKS: [(&str, &str); 4] = [
     ("NumpadDivide", "health"),
 ];
 
+/// The sending actions' keys, and the modifiers held.
+const SENDING: [(&str, u8, Action); 8] = [
+    ("NumpadEnter", 0, Action::SendOrRepeat),
+    ("Enter", CTRL, Action::RepeatLast),
+    ("NumpadEnter", CTRL, Action::RepeatLast),
+    ("Enter", ALT, Action::RepeatSecondLast),
+    ("NumpadEnter", ALT, Action::RepeatSecondLast),
+    ("ArrowUp", 0, Action::HistoryBack),
+    ("ArrowDown", 0, Action::HistoryForward),
+    ("Escape", 0, Action::ClearInput),
+];
+
 /// Every key Hydra binds, and what each does.
 pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     let chord = |key: &str, held: u8| Chord {
@@ -52,6 +67,9 @@ pub(crate) fn defaults() -> BTreeMap<Chord, Macro> {
     }
     for (key, line) in MARKS {
         keys.insert(chord(key, 0), Macro::Send(line.to_owned()));
+    }
+    for (key, held, action) in SENDING {
+        keys.insert(chord(key, held), Macro::Act(action));
     }
     for set in 0..super::SETS {
         keys.insert(
@@ -74,13 +92,13 @@ mod tests {
         let defaults = defaults();
         assert_eq!(
             defaults.len(),
-            36,
-            "eleven walks, eleven peers, four marks, ten sets"
+            44,
+            "eleven walks, eleven peers, four marks, eight sending, ten sets"
         );
         for (chord, made) in &defaults {
             let written = chord.written();
             assert_eq!(Chord::parse(&written).as_ref(), Ok(chord), "{written}");
-            assert!(!chord.types(), "{written} types");
+            assert_eq!(chord.refused(), None, "{written}");
             assert_eq!(made.check(), Ok(()), "{written}");
         }
         let peer = Chord::parse("Shift+Numpad7").expect("a key");

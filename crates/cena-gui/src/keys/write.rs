@@ -65,10 +65,8 @@ fn changed(
             place,
         } => {
             let to = chord(key)?;
-            if to.types() {
-                return Err(format!(
-                    "{key} types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
-                ));
+            if let Some(why) = to.refused() {
+                return Err(why);
             }
             does.check().map_err(|why| format!("{key}: {why}."))?;
             let text = match was.as_deref().map(chord).transpose()? {

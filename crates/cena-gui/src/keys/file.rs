@@ -149,10 +149,8 @@ impl KeyFile {
 /// `None` for `""`.
 fn bound(written: &str, value: &toml::Value) -> Result<(Chord, Option<Macro>), String> {
     let chord = Chord::parse(written)?;
-    if chord.types() {
-        return Err(format!(
-            "`{written}` types: bind it with Ctrl, Alt or Cmd, or it could not be typed."
-        ));
+    if let Some(why) = chord.refused() {
+        return Err(why);
     }
     // Each command one line, or it is said, not bound: a line with a
     // newline would send two (the crate review of 2026-09-28, R10); a send
@@ -211,7 +209,7 @@ mod tests {
         assert!(
             problems
                 .iter()
-                .any(|why| why.starts_with("[set2] `KeyA` types"))
+                .any(|why| why.starts_with("[set2] KeyA types"))
         );
         assert_eq!(set_of("set9"), Some(9));
         assert_eq!(table(0), "keys");

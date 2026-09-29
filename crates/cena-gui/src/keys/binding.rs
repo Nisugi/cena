@@ -40,6 +40,19 @@ pub enum Action {
     /// Use this macro set, 1 to 9, over set 0; set 0 alone for 0 (`plan/52`
     /// step 2). Kept for the character.
     Set(u8),
+    /// Send what is typed; on an empty line, the last command again
+    /// (Wrayth's `{ReturnOrRepeatLast}`, `plan/52` step 3).
+    SendOrRepeat,
+    /// Send the last command typed again.
+    RepeatLast,
+    /// Send the command typed before the last again.
+    RepeatSecondLast,
+    /// Back a command through what was typed, into the input.
+    HistoryBack,
+    /// Forward a command through what was typed.
+    HistoryForward,
+    /// Empty the command input.
+    ClearInput,
 }
 
 /// Each set's action's name in the keybinds file.
@@ -72,7 +85,13 @@ const SET_LABELS: [&str; 10] = [
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 18] = [
+        Self::SendOrRepeat,
+        Self::RepeatLast,
+        Self::RepeatSecondLast,
+        Self::HistoryBack,
+        Self::HistoryForward,
+        Self::ClearInput,
         Self::Stop,
         Self::Settings,
         Self::Set(0),
@@ -94,6 +113,12 @@ impl Action {
             Self::Stop => "stop",
             Self::Settings => "settings",
             Self::Set(set) => SET_NAMES[usize::from(set.min(9))],
+            Self::SendOrRepeat => "send_or_repeat",
+            Self::RepeatLast => "repeat_last",
+            Self::RepeatSecondLast => "repeat_second_last",
+            Self::HistoryBack => "history_back",
+            Self::HistoryForward => "history_forward",
+            Self::ClearInput => "clear_input",
         }
     }
 
@@ -104,7 +129,24 @@ impl Action {
             Self::Stop => "Stop the behaviors",
             Self::Settings => "Open the settings",
             Self::Set(set) => SET_LABELS[usize::from(set.min(9))],
+            Self::SendOrRepeat => "Send, or on an empty line repeat",
+            Self::RepeatLast => "Repeat the last command",
+            Self::RepeatSecondLast => "Repeat the one before it",
+            Self::HistoryBack => "Back through what was typed",
+            Self::HistoryForward => "Forward through what was typed",
+            Self::ClearInput => "Clear the command input",
         }
+    }
+
+    /// Whether it edits the command input, and so waits for the input to
+    /// have the keyboard with nothing open: while something else does, its
+    /// key is left to that -- Escape closes a menu, Up moves in a list.
+    #[must_use]
+    pub fn on_input(self) -> bool {
+        matches!(
+            self,
+            Self::HistoryBack | Self::HistoryForward | Self::ClearInput
+        )
     }
 
     /// The action named `name` in the keybinds file.

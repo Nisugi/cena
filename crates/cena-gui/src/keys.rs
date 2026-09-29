@@ -125,10 +125,20 @@ impl Chord {
         written
     }
 
-    /// Whether this chord types something rather than commanding: a letter,
-    /// a digit, a mark or the space, with no Ctrl, Alt or Cmd held.
-    fn types(&self) -> bool {
-        self.held & (CTRL | ALT | CMD) == 0 && TYPING.contains(&self.key.as_str())
+    /// Why this chord cannot be bound, in words for the player: it types
+    /// something rather than commanding -- a letter, a digit, a mark or the
+    /// space, with no Ctrl, Alt or Cmd held -- or it is Enter alone, which
+    /// sends what is typed (`plan/52` §3: a key that cannot be bound should
+    /// not look bindable).
+    pub(crate) fn refused(&self) -> Option<String> {
+        let written = self.written();
+        if self.held & (CTRL | ALT | CMD) == 0 && TYPING.contains(&self.key.as_str()) {
+            return Some(format!(
+                "{written} types: hold Ctrl, Alt or Cmd with it, or it could not be typed."
+            ));
+        }
+        (self.held == 0 && self.key == "Enter")
+            .then(|| "Enter sends what is typed: hold Ctrl, Shift, Alt or Cmd with it.".to_owned())
     }
 }
 
@@ -338,8 +348,13 @@ impl<'a> Keys<'a> {
     }
 
     /// Take from `input` every key press this binds, and the macros they
-    /// do, in order: taken, so no widget sees a bound key.
-    pub(crate) fn take(self, input: &mut egui::InputState) -> Vec<Macro> {
+    /// do, in order: taken, so no widget sees a bound key. A key whose macro
+    /// `leaves` is not taken, and does nothing here.
+    pub(crate) fn take(
+        self,
+        input: &mut egui::InputState,
+        leaves: impl Fn(&Macro) -> bool,
+    ) -> Vec<Macro> {
         let mut lines = Vec::new();
         input.events.retain(|event| {
             let egui::Event::Key {
@@ -356,11 +371,11 @@ impl<'a> Keys<'a> {
                 return true;
             };
             match self.does(&Chord::of(&name, *modifiers)) {
-                Some(made) => {
+                Some(made) if !leaves(made) => {
                     lines.push(made.clone());
                     false
                 }
-                None => true,
+                _ => true,
             }
         });
         lines
