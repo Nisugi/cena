@@ -89,6 +89,7 @@ use crate::state::creature::status::Classification;
 use crate::{BodyPart, GameState, PsmCategory, StatusName};
 
 mod read;
+pub use read::vocabulary;
 mod used;
 
 pub use used::Used;

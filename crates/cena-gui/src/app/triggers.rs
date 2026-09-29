@@ -31,6 +31,11 @@ impl App {
             .with_title(format!("Triggers — {TITLE}"));
         let editor = &mut self.triggers;
         let said = glance.said.as_ref().map(|(said, _)| said.as_str());
+        let characters: Vec<String> = glance
+            .roster
+            .iter()
+            .map(|card| card.character.clone())
+            .collect();
         // What every pass asks, kept: see `App::play`.
         let (mut asked, mut closed, mut seen) = (Vec::new(), false, None);
         context.show_viewport_immediate(
@@ -39,7 +44,7 @@ impl App {
             |ui, _class| {
                 closed |= ui.input(|input| input.viewport().close_requested());
                 seen = Some(ui.input(|input| input.viewport().clone()));
-                asked.extend(editor.show(ui, glance.triggers.as_ref(), said));
+                asked.extend(editor.show(ui, glance.triggers.as_ref(), said, &characters));
             },
         );
         if let Some(seen) = &seen {

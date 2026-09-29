@@ -255,3 +255,34 @@ fn empowered_bonus(text: &str) -> Option<u32> {
         .parse()
         .ok()
 }
+
+/// Every guard word as a player writes it, with what it takes after it:
+/// `stunned`, `health_at_least <n>`, `buff "<name>"`. Any may be written
+/// with `!` before it to mean its opposite. For an editor to offer (`plan/54`).
+#[must_use]
+pub fn vocabulary() -> Vec<String> {
+    let mut words: Vec<String> = super::FACTS
+        .iter()
+        .map(|(word, _)| (*word).to_owned())
+        .collect();
+    words.extend(
+        super::MEASURES
+            .iter()
+            .map(|(word, _)| format!("{word} <n>")),
+    );
+    words.extend(
+        super::DIALOGS
+            .iter()
+            .map(|(word, _)| format!("{word} \"<name>\"")),
+    );
+    words.extend(
+        [
+            "expiring \"<name>\" <n>",
+            "injured \"<part>\" <n>",
+            "flag \"<name>\"",
+            "available \"<mnemonic>\"",
+        ]
+        .map(str::to_owned),
+    );
+    words
+}

@@ -330,6 +330,100 @@ fn summary(trigger: &Value) -> String {
     format!("{} -> {}", when.join(" "), does.join(", "))
 }
 
+/// Every key of a trigger's table the trigger editor's form edits
+/// (`plan/54` step 2). The rest -- `for`, `origin`, `held`, `approved` --
+/// the form leaves as the file has them.
+pub const FORM_KEYS: [&str; 23] = [
+    "category",
+    "enabled",
+    "text",
+    "regex",
+    "case_sensitive",
+    "whole_word",
+    "stream",
+    "event",
+    "condition",
+    "rearm",
+    "only_if",
+    "look",
+    "squelch",
+    "substitute",
+    "redirect",
+    "flag",
+    "sound",
+    "notify",
+    "alert",
+    "send",
+    "cooldown",
+    "priority",
+    "characters",
+];
+
+/// Each trigger's own table, by name, in the file's order.
+///
+/// # Errors
+///
+/// The file is not TOML.
+pub fn tables(text: &str) -> Result<Vec<(String, Table)>, String> {
+    let (_, table) = settings::split(text)?;
+    let Some(Value::Table(triggers)) = table.get("trigger") else {
+        return Ok(Vec::new());
+    };
+    Ok(triggers
+        .iter()
+        .filter_map(|(name, value)| Some((name.clone(), value.as_table()?.clone())))
+        .collect())
+}
+
+/// The trigger editor's form saved: `fields` (only [`FORM_KEYS`]) as
+/// trigger `name`'s, which was `was` (`None` for a new trigger, renamed when
+/// the names differ). What the form does not edit is kept. With `approve`,
+/// its send is approved: the player typed it (`plan/54` §1 row 2).
+///
+/// # Errors
+///
+/// The file is not TOML, the name is empty or taken, `was` is not a trigger,
+/// or the trigger as saved would be refused (the reason).
+pub fn save(
+    text: &str,
+    was: Option<&str>,
+    name: &str,
+    fields: Table,
+    approve: bool,
+) -> Result<String, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("a trigger needs a name".to_owned());
+    }
+    change(text, &[name], |table| {
+        let triggers = section(table, "trigger")?;
+        let mut own = match was {
+            Some(was) => triggers
+                .remove(was)
+                .and_then(|value| value.as_table().cloned())
+                .ok_or_else(|| format!("there is no trigger `{was}`"))?,
+            None => Table::new(),
+        };
+        if triggers.contains_key(name) {
+            return Err(format!("there is already a trigger `{name}`"));
+        }
+        own.retain(|key, _| !FORM_KEYS.contains(&key));
+        own.extend(fields);
+        let send = own.get("send").and_then(Value::as_str).map(str::to_owned);
+        match send {
+            Some(send) if approve && own.contains_key("origin") => {
+                own.insert("approved".to_owned(), Value::String(send));
+            }
+            None => {
+                own.remove("approved");
+            }
+            Some(_) => {}
+        }
+        triggers.insert(name.to_owned(), Value::Table(own));
+        Ok(())
+    })
+}
+
 /// What an import did to the file.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Merged {

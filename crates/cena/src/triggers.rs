@@ -18,6 +18,7 @@ mod act;
 pub(crate) mod book;
 mod explain;
 mod follow;
+mod form;
 mod import;
 mod load;
 mod words;
