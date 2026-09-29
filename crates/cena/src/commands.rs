@@ -45,6 +45,48 @@ pub(crate) enum Took {
     Done,
     /// Started something that is over when this task is.
     Started(tokio::task::JoinHandle<()>),
+    /// Started something that goes on -- a hunt, a walk, a batch -- over
+    /// when this task is, and stopped, it and nothing else, by the stopper.
+    /// A `;multi` that is stopped stops what it started (the review of
+    /// 2026-09-29: the batch let go of it and it kept sending).
+    Stoppable(tokio::task::JoinHandle<()>, Stopper),
+}
+
+/// The controls of a run a family started, put here once the run has them
+/// (it subscribes to the session first), and a stop asked for before then
+/// kept and made as they arrive.
+#[derive(Clone, Default)]
+pub(crate) struct Controls(
+    Arc<std::sync::Mutex<(Option<cena_behavior::operation::Steering>, bool)>>,
+);
+
+impl Controls {
+    /// The run has begun: these stop it.
+    pub(crate) fn set(&self, steering: cena_behavior::operation::Steering) {
+        let mut held = self
+            .0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if held.1 {
+            steering.stop();
+        }
+        held.0 = Some(steering);
+    }
+
+    /// What stops the run, whenever it is asked: `true` when it had begun.
+    pub(crate) fn stopper(&self) -> Stopper {
+        let held = Arc::clone(&self.0);
+        Arc::new(move || {
+            let mut held = held
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            held.1 = true;
+            held.0
+                .as_ref()
+                .map(cena_behavior::operation::Steering::stop)
+                .is_some()
+        })
+    }
 }
 
 /// What `;help` says: every family, and the word that says more of it

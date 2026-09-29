@@ -124,7 +124,8 @@ pub(crate) fn open(
                     ));
                     return Some(Took::Done);
                 };
-                Took::Started(start(&desk, &handler, &observer, command))
+                let (task, controls) = start(&desk, &handler, &observer, command);
+                Took::Stoppable(task, controls.stopper())
             }
             Command::Group { name, with } => {
                 let (Some(desk), Some(leader)) = (desk.clone(), leader.clone()) else {
@@ -159,8 +160,17 @@ fn start(
     handle: &SessionHandle,
     observer: &SessionObserver,
     command: Command,
-) -> tokio::task::JoinHandle<()> {
-    start_placed(desk, handle, observer, command, Place::Read)
+) -> (tokio::task::JoinHandle<()>, crate::commands::Controls) {
+    let controls = crate::commands::Controls::default();
+    let task = start_controlled(
+        desk,
+        handle,
+        observer,
+        command,
+        Place::Read,
+        controls.clone(),
+    );
+    (task, controls)
 }
 
 /// [`start`], a hunt taking `place` in its group.
@@ -170,6 +180,25 @@ fn start_placed(
     observer: &SessionObserver,
     command: Command,
     place: Place,
+) -> tokio::task::JoinHandle<()> {
+    start_controlled(
+        desk,
+        handle,
+        observer,
+        command,
+        place,
+        crate::commands::Controls::default(),
+    )
+}
+
+/// [`start_placed`], its run's controls put in `controls` once it has them.
+fn start_controlled(
+    desk: &Arc<Desk>,
+    handle: &SessionHandle,
+    observer: &SessionObserver,
+    command: Command,
+    place: Place,
+    controls: crate::commands::Controls,
 ) -> tokio::task::JoinHandle<()> {
     let (desk, handle, observer) = (desk.clone(), handle.clone(), observer.clone());
     tokio::spawn(async move {
@@ -181,8 +210,9 @@ fn start_placed(
                     snapshot,
                     cena_behavior::travel::Heard::rejoinable(observer.clone(), events),
                 );
-                if let Some(run) = desk.run_placed(&handle, joined, command, place) {
-                    let _ = run.await;
+                if let Some(run) = desk.underway_placed(&handle, joined, command, place) {
+                    controls.set(run.steering);
+                    let _ = run.task.await;
                 }
             }
             Err(e) => handle.say(Notice::line(
