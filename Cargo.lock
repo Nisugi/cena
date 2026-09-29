@@ -1154,7 +1154,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 [[package]]
 name = "ecolor"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "bytemuck",
  "emath",
@@ -1163,7 +1163,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1198,7 +1198,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1216,7 +1216,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1235,7 +1235,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "arboard",
  "bytemuck",
@@ -1255,7 +1255,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1269,7 +1269,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "dify",
  "eframe",
@@ -1295,7 +1295,7 @@ checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 [[package]]
 name = "emath"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "bytemuck",
 ]
@@ -1344,7 +1344,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -1368,7 +1368,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.35.0"
-source = "git+https://github.com/Nisugi/egui.git?rev=2e2ead359c474102c5f713f86f2ec4a3be5e741b#2e2ead359c474102c5f713f86f2ec4a3be5e741b"
+source = "git+https://github.com/Nisugi/egui.git?rev=ed8b2649fd4b1c3351e38988b045f1bf33335f38#ed8b2649fd4b1c3351e38988b045f1bf33335f38"
 
 [[package]]
 name = "equivalent"
