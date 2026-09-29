@@ -25,6 +25,7 @@ mod layout;
 mod logs;
 mod menu;
 mod own;
+mod placement;
 mod play;
 mod sessions;
 mod snap;

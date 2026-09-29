@@ -26,19 +26,28 @@ impl App {
             let Some(logs) = self.logs.get_mut(&seat.id.0).filter(|logs| logs.open) else {
                 continue;
             };
-            let mut closed = false;
+            let place = crate::placement::key("log", &seat.game, &seat.name);
+            let builder = self
+                .placements
+                .builder(&place, [1000.0, 640.0])
+                .with_title(format!("Log — {} — {TITLE}", seat.name));
+            let (mut closed, mut seen) = (false, None);
             context.show_viewport_immediate(
                 egui::ViewportId::from_hash_of(("log", seat.id.0)),
-                egui::ViewportBuilder::default()
-                    .with_title(format!("Log — {} — {TITLE}", seat.name))
-                    .with_inner_size([1000.0, 640.0]),
+                builder,
                 |ui, _class| {
                     closed |= ui.input(|input| input.viewport().close_requested());
+                    seen = Some(ui.input(|input| input.viewport().clone()));
                     logs.show(ui);
                 },
             );
+            if let Some(seen) = &seen {
+                self.placements
+                    .note(&place, seen, std::time::Instant::now());
+            }
             if closed {
                 logs.open = false;
+                self.placements.closed(&place);
             }
             // Taken after every pass has drawn: what any pass asked is kept
             // on the window until here (see `App::play`).

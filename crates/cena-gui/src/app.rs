@@ -30,6 +30,7 @@ use crate::hub::{HubAction, HubView};
 use crate::keys::{self, Chord, KeyFile, Keybinds, Macro};
 use crate::layout::Library;
 use crate::own::Own;
+use crate::placement::{self, Placements};
 use crate::play::{Asked, Play, PlayView};
 use crate::sessions::{Seat, lock};
 use crate::widget::Character;
@@ -38,6 +39,9 @@ use crate::{Hub, Menu, Sessions};
 /// The window's title: the product's name (`CLAUDE.md`: anything
 /// user-facing is Hydra, not the working name).
 pub const TITLE: &str = "Hydra";
+
+/// The hub's key among the windows' places (`placement.rs`).
+const HUB: &str = "hub";
 
 /// The app eframe drives: the hub over [`Sessions`], and the play windows.
 pub struct App {
@@ -88,6 +92,8 @@ pub struct App {
     clear_sends: bool,
     /// Each character's log window, once opened, by session (`logs.rs`).
     logs: BTreeMap<u32, crate::logs::Logs>,
+    /// Where each window was, kept (`placement.rs`).
+    placements: Placements,
 }
 
 /// One character's play window.
@@ -126,6 +132,7 @@ impl App {
             caught_for_page: None,
             clear_sends: false,
             logs: BTreeMap::new(),
+            placements: Placements::default(),
         }
     }
 
@@ -139,6 +146,7 @@ impl App {
             layouts: Some(data.join("layouts")),
             presets: Library::load(Some(data.join("layouts"))),
             keys_file: Some(keys::path(data)),
+            placements: Placements::load(data),
             ..Self::new(sessions)
         };
         app.hub.card_width = own.card_width();
@@ -268,6 +276,9 @@ impl App {
         self.left_keyboard();
         self.settings(ui.ctx(), &glance);
         self.log_windows(ui.ctx(), &seats);
+        if let Some(after) = self.placements.save_due(Instant::now()) {
+            ui.ctx().request_repaint_after(after);
+        }
     }
 
     /// A window for each seat new since the last frame, open; none for a
@@ -310,12 +321,14 @@ impl App {
         let mut focused = false;
         let close_with_session = self.own.close_with_session();
         let window = self.plays.get_mut(&seat.id.0)?;
+        let place = placement::key("play", &seat.game, &seat.name);
         let lifecycle = lock(&seat.card).lifecycle.clone();
         // Closed with its session when the player asked for that (`plan/50`
         // §6 item 11), once: reopened from its card, it stays open.
         let ended = matches!(lifecycle, LifecycleView::Closed { .. });
         if ended && !window.ended && close_with_session {
             window.open = false;
+            self.placements.closed(&place);
         }
         window.ended = ended;
         if !window.open {
@@ -328,9 +341,10 @@ impl App {
             .filter(|other| other.id != seat.id)
             .map(|other| other.seen_from(seat))
             .collect();
-        let builder = egui::ViewportBuilder::default()
-            .with_title(format!("{} — {TITLE}", seat.name))
-            .with_inner_size([980.0, 680.0]);
+        let builder = self
+            .placements
+            .builder(&place, [980.0, 680.0])
+            .with_title(format!("{} — {TITLE}", seat.name));
         // What every pass asks, kept. egui may draw a window's frame more
         // than once and keep only the last pass (`Context::run_ui`), as when
         // a layout settles -- a new window's first frame -- and a click or a
@@ -339,12 +353,13 @@ impl App {
         // asked for, and waited for pages that never came (the author,
         // 2026-09-28: "when clicking on settings for the first time it only
         // shows widget settings").
-        let (mut asked, mut sends, mut closed) = (None, Vec::new(), false);
+        let (mut asked, mut sends, mut closed, mut seen) = (None, Vec::new(), false, None);
         context.show_viewport_immediate(
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             builder,
             |ui, _class| {
                 closed |= ui.input(|input| input.viewport().close_requested());
+                seen = Some(ui.input(|input| input.viewport().clone()));
                 let (pressed, has) = keyed::pressed(ui, keys, &window.play, caught);
                 focused |= has;
                 for made in pressed {
@@ -375,8 +390,12 @@ impl App {
                 drop(story);
             },
         );
+        if let Some(seen) = &seen {
+            self.placements.note(&place, seen, Instant::now());
+        }
         if closed {
             window.open = false;
+            self.placements.closed(&place);
         }
         if focused {
             self.took_keyboard(seat.id.0, file);
@@ -425,6 +444,7 @@ impl App {
             self.hub.confirm_shutdown();
             return false;
         }
+        self.placements.save();
         true
     }
 }
@@ -479,6 +499,9 @@ impl eframe::App for App {
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
+        // The hub's own place: eframe's root window, placed by `run`.
+        let seen = ui.ctx().input(|input| input.viewport().clone());
+        self.placements.note(HUB, &seen, Instant::now());
         egui::CentralPanel::default().show(ui, |ui| self.draw(ui));
     }
 }
@@ -491,10 +514,11 @@ impl eframe::App for App {
 ///
 /// The window could not be opened: no display, or no graphics adapter.
 pub fn run(sessions: Sessions) -> eframe::Result {
+    let data = cena_session::character_store::data_dir();
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title(TITLE)
-            .with_inner_size([560.0, 720.0]),
+        viewport: Placements::load(&data)
+            .builder(HUB, [560.0, 720.0])
+            .with_title(TITLE),
         ..Default::default()
     };
     eframe::run_native(
@@ -502,7 +526,6 @@ pub fn run(sessions: Sessions) -> eframe::Result {
         options,
         Box::new(move |creation| {
             sessions.opened(&creation.egui_ctx);
-            let data = cena_session::character_store::data_dir();
             Ok(Box::new(App::keeping(sessions, &data)))
         }),
     )

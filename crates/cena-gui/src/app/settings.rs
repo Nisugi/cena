@@ -6,6 +6,9 @@
 use std::path::{Path, PathBuf};
 
 use super::{App, TITLE};
+
+/// The settings menu's key among the windows' places.
+const SETTINGS: &str = "settings";
 use crate::keys::page::{KeyChange, Place};
 use crate::keys::{self, Whose};
 use crate::{KeysView, MenuAsked, MenuView};
@@ -69,21 +72,29 @@ impl App {
             },
             widgets: &widgets,
         };
+        let builder = self
+            .placements
+            .builder(SETTINGS, [760.0, 560.0])
+            .with_title(format!("Settings — {TITLE}"));
         let menu = &mut self.menu;
         // What every pass asks, kept: see `App::play`.
-        let (mut asked, mut closed) = (Vec::new(), false);
+        let (mut asked, mut closed, mut seen) = (Vec::new(), false, None);
         context.show_viewport_immediate(
             egui::ViewportId::from_hash_of("settings"),
-            egui::ViewportBuilder::default()
-                .with_title(format!("Settings — {TITLE}"))
-                .with_inner_size([760.0, 560.0]),
+            builder,
             |ui, _class| {
                 closed |= ui.input(|input| input.viewport().close_requested());
+                seen = Some(ui.input(|input| input.viewport().clone()));
                 asked.extend(menu.show(ui, &view));
             },
         );
+        if let Some(seen) = &seen {
+            self.placements
+                .note(SETTINGS, seen, std::time::Instant::now());
+        }
         if closed {
             self.menu.open = false;
+            self.placements.closed(SETTINGS);
         }
         for asked in asked {
             self.menu_asked(asked);
