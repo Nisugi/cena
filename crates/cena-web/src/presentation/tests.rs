@@ -341,6 +341,20 @@ fn a_quiet_window_does_not_outlive_its_connection() {
     assert_eq!(drawn(&pending), [(String::new(), "fresh".into())]);
 }
 
+/// A quiet window's end lost with other events: the next ordinary line is
+/// drawn, not held back for good (the integrated crate review of 2026-09-28,
+/// I6), as the GUI's story does.
+#[test]
+fn after_lost_events_a_quiet_window_is_over() {
+    let mut pending = Pending::new(&snapshot(0));
+    pending.observe(observed(0, 1, Event::Quiet(true)));
+    // `Quiet(false)` at cursor 2 is lost; the fence finds the gap.
+    let (_sender, mut events) = broadcast::channel(1);
+    pending.fence(&snapshot(2), &mut events);
+    pending.observe(observed(0, 3, published("", "shown again")));
+    assert_eq!(drawn(&pending), [(String::new(), "shown again".into())]);
+}
+
 #[test]
 fn serialization_refuses_oversized_presentation_messages() {
     let message = ServerMessage::Receipt {

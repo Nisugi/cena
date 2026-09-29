@@ -97,8 +97,13 @@ impl Pending {
         }
     }
 
+    /// Events were lost: mark the place, and end a quiet window, whose end
+    /// may be among them. The snapshot does not carry the quiet state, and a
+    /// story shown too much beats one silent for good (the integrated crate
+    /// review of 2026-09-28, I6), as the GUI's story does (`Story::missed`).
     pub(super) fn missing(&mut self) {
         self.gap = true;
+        self.quiet = false;
     }
 
     pub(super) fn fence(
