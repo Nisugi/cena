@@ -1,7 +1,7 @@
 //! Stocking the herb container (`plan/36` Stage 4): eherbs' minimums, what
 //! the town's herbalist sells, the menu, the purchase and the bank.
 
-use cena_behavior::heal::stock::{Bucket, Step};
+use cena_behavior::heal::stock::{Bucket, Step, Stocked};
 use cena_behavior::heal::{HealProfile, Reply, Stocker};
 use cena_map::RoomId;
 use cena_session::herbs::HerbKind;
@@ -261,4 +261,27 @@ fn too_little_silver_goes_to_the_bank_for_the_price_and_back() {
     );
     assert_eq!(round.next(&state), Step::Walk(SHOP));
     assert_eq!(round.next(&state), order);
+}
+
+#[test]
+fn a_buy_that_sells_nothing_three_times_ends_the_round_and_says_which_herb() {
+    let mut state = setup(&[]);
+    landing_menu(&mut state);
+    let mut round = stocker(&state, Some(20), false);
+    let order = first_order(&state, &round).expect("something is short");
+    let herb = round.wants(&state)[0].herb.name;
+    assert_eq!(round.next(&state), Step::Walk(SHOP));
+    // An answer that is neither a sale nor too little silver, three times.
+    for _ in 0..3 {
+        assert_eq!(round.next(&state), order);
+        round.outcome(&[Reply::Price(100)], &state);
+        assert_eq!(round.next(&state), Step::Buy);
+        round.outcome(&[], &state);
+    }
+    assert_eq!(round.next(&state), Step::Walk(HOME), "no fourth order");
+    assert_eq!(
+        round.next(&state),
+        Step::Done(Stocked::NotSold(herb)),
+        "and the herb is named"
+    );
 }

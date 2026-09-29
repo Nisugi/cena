@@ -146,6 +146,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 format!("Heal: the herbalist's menu has no {herb}.")
             }
             Some(Stocked::NoSilver) => "Heal: the bank would not cover the herbs.".to_owned(),
+            Some(Stocked::NotSold(herb)) => {
+                format!("Heal: the herbalist would not sell {herb}; stocking stopped there.")
+            }
             None => "Heal: stocking gave up after too many steps.".to_owned(),
         };
         say(self, text);

@@ -150,7 +150,16 @@ pub enum Stocked {
     NotOnMenu(&'static str),
     /// The bank would not cover it.
     NoSilver,
+    /// The herbalist took the order for this herb and would not sell it,
+    /// [`BUY_TRIES`] times running.
+    NotSold(&'static str),
 }
+
+/// How many times running a `buy` that sells nothing is tried before the
+/// round ends. Any answer but *sold* or *not enough silver* left the want as
+/// it was, and `order` and `buy` went out in turn to the driver's cap of 400
+/// steps (the review of 2026-09-29).
+const BUY_TRIES: u8 = 3;
 
 /// Where the round is.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -191,6 +200,8 @@ pub struct Stocker {
     price: Option<u64>,
     bought: u32,
     withdrew: bool,
+    /// Buys that sold nothing, running.
+    unsold: u8,
     menu_asked: bool,
     /// The wants are counted once, before the first walk to the shop.
     planned: bool,
@@ -239,6 +250,7 @@ impl Stocker {
             price: None,
             bought: 0,
             withdrew: false,
+            unsold: 0,
             menu_asked: false,
             planned: false,
             last: None,
@@ -377,6 +389,10 @@ impl Stocker {
             self.phase = Phase::Over(Stocked::NotOnMenu(want.herb.name));
             return Step::Walk(self.home);
         };
+        if self.unsold >= BUY_TRIES {
+            self.phase = Phase::Over(Stocked::NotSold(want.herb.name));
+            return Step::Walk(self.home);
+        }
         match &self.last {
             Some(Step::Order { .. }) => Step::Buy,
             _ => Step::Order {
@@ -431,6 +447,9 @@ impl Stocker {
                     self.left -= batch;
                     self.bought += batch;
                     self.withdrew = false;
+                    self.unsold = 0;
+                } else {
+                    self.unsold = self.unsold.saturating_add(1);
                 }
                 // A package in hand is unpacked; a herb in hand is stored.
                 if let Some(id) = held_package(state) {
