@@ -24,9 +24,14 @@ use super::load::{counted, reload};
 /// the file changed, not who changed it.
 const BEHIND: usize = 16;
 
-/// Word of each change to the triggers file, to every character following.
+/// Word of each change to the triggers file, to every character following;
+/// and the imports waiting on the player's answer, with the window to ask
+/// in (`plan/54` step 5), shared by every character's `;trigger`.
 #[derive(Clone)]
-pub(crate) struct Changes(broadcast::Sender<Changed>);
+pub(crate) struct Changes {
+    sender: broadcast::Sender<Changed>,
+    pub(super) imports: std::sync::Arc<std::sync::Mutex<super::import::Imports>>,
+}
 
 /// One change to the triggers file: which character made it, and what it
 /// did.
@@ -43,18 +48,29 @@ pub(crate) struct Following(broadcast::Receiver<Changed>);
 impl Changes {
     /// Nobody following yet.
     pub(crate) fn new() -> Self {
-        Self(broadcast::channel(BEHIND).0)
+        Self {
+            sender: broadcast::channel(BEHIND).0,
+            imports: std::sync::Arc::default(),
+        }
+    }
+
+    /// The same, asking the player in `window` about an import that brings
+    /// commands, when there is a window.
+    pub(crate) fn asking_in(window: Option<cena_gui::Sessions>) -> Self {
+        let changes = Self::new();
+        super::import::lock(&changes.imports).window = window;
+        changes
     }
 
     /// A place for one character, from now on.
     pub(crate) fn follow(&self) -> Following {
-        Following(self.0.subscribe())
+        Following(self.sender.subscribe())
     }
 
     /// Tell every character following that `by` changed the file: `done`.
     pub(super) fn tell(&self, by: &str, done: &str) {
         // Nobody following is nobody to tell.
-        let _ = self.0.send(Changed {
+        let _ = self.sender.send(Changed {
             by: by.to_owned(),
             done: done.to_owned(),
         });

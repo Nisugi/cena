@@ -83,6 +83,11 @@ struct Typing {
 
 impl Typing {
     fn new(test: &str) -> io::Result<Self> {
+        Self::telling(test, Changes::new())
+    }
+
+    /// The same, its changes and imports on `changes`.
+    fn telling(test: &str, changes: Changes) -> io::Result<Self> {
         let dir = dir(test, None)?;
         let session = Session::new(ReplaySource::from_bytes(b""));
         let handle = session.handle();
@@ -93,7 +98,7 @@ impl Typing {
             &commands,
             dir.clone(),
             "Nisugi".to_owned(),
-            Changes::new(),
+            changes,
         );
         Ok(Self {
             dir,
@@ -295,4 +300,79 @@ async fn a_change_made_meanwhile_waits_and_both_are_kept() {
     for name in ["first", "second", "third"] {
         assert!(edit::show(&file, name).is_ok(), "{name}: {file}\n{said:?}");
     }
+}
+
+/// Another player's triggers file, two of whose triggers send commands.
+const SHARED: &str = "[trigger.stunned]
+text = 'You are stunned'
+send = 'stand'
+
+                      [trigger.webbed]
+text = 'webbed'
+send = 'stance defensive'
+origin = 'theirs'
+approved = 'stance defensive'
+
+                      [trigger.rock]
+text = 'a rock'
+squelch = true
+";
+
+/// A shared file written beside the test's triggers file.
+fn shared(typing: &Typing) -> io::Result<PathBuf> {
+    let path = typing.dir.join("Maravel.toml");
+    fs::write(&path, SHARED)?;
+    Ok(path)
+}
+
+/// `plan/54` step 5, with no window: another player's file comes in, what
+/// made its sends theirs left behind, every command held and named.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_shared_file_with_no_window_comes_in_with_its_commands_held() {
+    let mut typing = Typing::new("shared").unwrap();
+    let path = shared(&typing).unwrap();
+    let said = typing.typed(&format!("trigger import {}", path.display()));
+    assert!(
+        said[0].contains("Maravel.toml imported: 3 triggers"),
+        "{said:?}"
+    );
+    assert!(
+        said.iter()
+            .any(|s| s.contains("`webbed` would send \"stance defensive\": held")),
+        "their approval did not come with it: {said:?}"
+    );
+    let loaded = cena_behavior::triggers::read(&typing.file()).unwrap();
+    assert_eq!(loaded.held.len(), 2, "both commands held");
+}
+
+/// `plan/54` step 5, with a window: nothing is written until the player
+/// answers; the commands accepted are approved, the rest held; *Cancel*
+/// imports nothing.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_shared_file_with_commands_waits_for_the_answer() {
+    let window = cena_gui::Sessions::new(tokio::runtime::Handle::current());
+    let changes = Changes::asking_in(Some(window));
+    let mut typing = Typing::telling("shared-asked", changes.clone()).unwrap();
+    let path = shared(&typing).unwrap();
+
+    let said = typing.typed(&format!("trigger import {}", path.display()));
+    assert!(
+        said[0].contains("nothing is imported until you answer"),
+        "{said:?}"
+    );
+    assert_eq!(typing.file(), "", "nothing written yet");
+
+    let done = super::import::answer(&changes, 0, Some(vec!["stunned".to_owned()]));
+    assert!(done.contains("1 command approved"), "{done}");
+    let loaded = cena_behavior::triggers::read(&typing.file()).unwrap();
+    let held: Vec<&str> = loaded.held.iter().map(|h| h.name.as_str()).collect();
+    assert_eq!(held, ["webbed"], "the one not accepted stays held");
+
+    let said = typing.typed(&format!("trigger import {}", path.display()));
+    assert!(said[0].contains("until you answer"), "{said:?}");
+    let before = typing.file();
+    let cancelled = super::import::answer(&changes, 1, None);
+    assert!(cancelled.contains("not imported"), "{cancelled}");
+    assert_eq!(typing.file(), before, "a cancel writes nothing");
+    assert!(super::import::answer(&changes, 1, None).contains("already answered"));
 }

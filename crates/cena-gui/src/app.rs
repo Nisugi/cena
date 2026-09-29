@@ -99,6 +99,8 @@ pub struct App {
     placements: Placements,
     /// The trigger editor (`plan/54`).
     triggers: crate::triggers::Editor,
+    /// The trigger import's question, while one is asked (`import.rs`).
+    asking: trigger_import::Asking,
 }
 
 /// One character's play window.
@@ -140,6 +142,7 @@ impl App {
             logs: BTreeMap::new(),
             placements: Placements::default(),
             triggers: crate::triggers::Editor::default(),
+            asking: trigger_import::Asking::default(),
         }
     }
 
@@ -286,6 +289,7 @@ impl App {
         self.left_keyboard();
         self.settings(ui.ctx(), &glance);
         self.trigger_window(ui.ctx(), &glance);
+        self.import_question(ui.ctx(), glance.import.as_ref());
         self.log_windows(ui.ctx(), &seats);
         if let Some(after) = self.placements.save_due(Instant::now()) {
             ui.ctx().request_repaint_after(after);
@@ -532,4 +536,5 @@ mod logs;
 mod settings;
 #[cfg(test)]
 mod tests;
+mod trigger_import;
 mod triggers;

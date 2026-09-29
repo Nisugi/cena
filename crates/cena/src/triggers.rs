@@ -19,7 +19,7 @@ pub(crate) mod book;
 mod explain;
 mod follow;
 mod form;
-mod import;
+pub(crate) mod import;
 mod load;
 mod words;
 

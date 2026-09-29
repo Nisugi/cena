@@ -174,11 +174,11 @@ pub(crate) async fn serve(
         scripts: crate::scripts::Scripts::new(&dir, &map),
         lichs: crate::lich::Lichs::default(),
         party: crate::hunt::Party::new(gui.clone()),
+        changes: triggers::Changes::asking_in(gui.clone()),
         gui,
         map,
         pin: dir.join(cena_platform::PIN_FILENAME),
         attention: crate::attention::start(&dir),
-        changes: triggers::Changes::new(),
         roster: Arc::default(),
         dir,
         turn: Arc::default(),
@@ -437,6 +437,11 @@ impl Table {
             HubRequest::Triggers => {
                 triggers::book::send(&self.dir, self.gui.as_ref());
                 String::new()
+            }
+            HubRequest::ImportAnswer { id, accept } => {
+                let said = triggers::import::answer(&self.changes, id, accept);
+                triggers::book::send(&self.dir, self.gui.as_ref());
+                said
             }
             HubRequest::Trigger(change) => {
                 let said = triggers::book::apply(&self.dir, &self.changes, &change);

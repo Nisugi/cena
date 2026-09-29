@@ -424,6 +424,41 @@ pub fn save(
     })
 }
 
+/// Another player's triggers file read as an import, each trigger marked
+/// with `origin` (`plan/54` step 5): what made it theirs, where it came from
+/// and what it was approved to send (`for`, `origin`, `held`, `approved`) is
+/// left behind, so every send it brings is held until this player approves it
+/// (`plan/45` §1 row 1).
+///
+/// # Errors
+///
+/// The file is not TOML, or holds no triggers.
+pub fn shared(text: &str, origin: &str) -> Result<Import, String> {
+    let (_, table) = settings::split(text)?;
+    let Some(Value::Table(triggers)) = table.get("trigger") else {
+        return Err("it holds no triggers".to_owned());
+    };
+    let mut brought = Import::default();
+    for (name, value) in triggers {
+        let Some(own) = value.as_table() else {
+            continue;
+        };
+        let mut own = own.clone();
+        for theirs in ["for", "origin", "held", "approved"] {
+            own.remove(theirs);
+        }
+        if own.contains_key("sound") {
+            brought.sounds += 1;
+        }
+        own.insert("origin".to_owned(), Value::String(origin.to_owned()));
+        brought.triggers.push((name.clone(), own));
+    }
+    if brought.triggers.is_empty() {
+        return Err("it holds no triggers".to_owned());
+    }
+    Ok(brought)
+}
+
 /// What an import did to the file.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Merged {

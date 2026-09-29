@@ -16,7 +16,7 @@ pub(crate) const HELP: [&str; 13] = [
     "trigger on|off every <look|squelch|substitute|redirect> -- one kind of response, everywhere",
     "trigger test <line> -- what this character's triggers would do to that line",
     "trigger reload -- read the file again, for every character",
-    "trigger import <path> -- a Wrayth settings file's highlights, names and ignores",
+    "trigger import <path> -- a Wrayth settings file's highlights, names and ignores, or another player's triggers .toml (its commands asked about first)",
     "trigger approve <name> -- let a trigger that came from elsewhere send its line",
 ];
 

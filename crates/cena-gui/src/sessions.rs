@@ -57,6 +57,8 @@ struct Shared {
     settings: Mutex<Option<(String, Vec<Page>)>>,
     /// The triggers file as the binary last gave it (`plan/54`).
     triggers: Mutex<Option<cena_ui::triggers::Book>>,
+    /// An import asking before it writes (`plan/54` step 5).
+    import: Mutex<Option<cena_ui::triggers::ImportQuestion>>,
     /// Every session's shared streams, merged (`plan/29` step 5d).
     merged: Arc<Mutex<MergedHistory>>,
     /// The binary's answer to the last request, and when it came.
@@ -164,6 +166,8 @@ pub(crate) struct Glance {
     pub(crate) settings: Option<(String, Vec<Page>)>,
     /// The triggers file, for the trigger editor.
     pub(crate) triggers: Option<cena_ui::triggers::Book>,
+    /// An import asking before it writes.
+    pub(crate) import: Option<cena_ui::triggers::ImportQuestion>,
     pub(crate) merged: Vec<MergedLine>,
     /// The binary's last answer, while it is fresh, and how long it has left.
     pub(crate) said: Option<(String, Duration)>,
@@ -185,6 +189,7 @@ impl Sessions {
                 listing: Mutex::default(),
                 settings: Mutex::default(),
                 triggers: Mutex::default(),
+                import: Mutex::default(),
                 merged: Arc::default(),
                 said: Mutex::default(),
             }),
@@ -279,6 +284,21 @@ impl Sessions {
     pub fn triggers(&self, book: cena_ui::triggers::Book) {
         *lock(&self.shared.triggers) = Some(book);
         self.shared.window.wake();
+    }
+
+    /// Ask the player about an import that brings commands, before it
+    /// writes anything (`plan/54` step 5).
+    pub fn ask_import(&self, question: cena_ui::triggers::ImportQuestion) {
+        *lock(&self.shared.import) = Some(question);
+        self.shared.window.wake();
+    }
+
+    /// The import `id` was answered: its question goes.
+    pub(crate) fn answered_import(&self, id: u64) {
+        let mut import = lock(&self.shared.import);
+        if import.as_ref().is_some_and(|question| question.id == id) {
+            *import = None;
+        }
     }
 
     /// Close the window: the run is over. Called by the binary once every
@@ -407,6 +427,7 @@ impl Sessions {
             listing: lock(&self.shared.listing).clone(),
             settings: lock(&self.shared.settings).clone(),
             triggers: lock(&self.shared.triggers).clone(),
+            import: lock(&self.shared.import).clone(),
             merged: lock(&self.shared.merged).lines().cloned().collect(),
             said,
         }
