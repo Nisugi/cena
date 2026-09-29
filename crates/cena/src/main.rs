@@ -46,6 +46,7 @@ mod batch;
 mod combat;
 mod commands;
 mod connector;
+mod doll;
 mod frontend;
 mod general;
 mod glossary;

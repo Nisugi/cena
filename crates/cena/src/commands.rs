@@ -104,6 +104,7 @@ pub(crate) const HELP: &[&str] = &[
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
     "history help     read back what you saw: history tail, history last 15m, history search <text>",
     "sorter           show a container's contents one line per category: sorter on, off or status",
+    "doll import <folder>   your VellumFE injury dolls into Hydra, each calibration kept in its picture",
     "multi help, foreach help   run commands several times, or once for each item",
     "agent help       what an agent (a program such as Claude Code) may do with this character",
     "lich help        run your own Lich for this character, and keep it on",
@@ -133,6 +134,8 @@ pub(crate) struct Commands {
     loot: Arc<OnceLock<Handler>>,
     combat: Arc<OnceLock<Handler>>,
     history: Arc<OnceLock<Handler>>,
+    /// The injury doll's import (`crate::doll`).
+    doll: Arc<OnceLock<Handler>>,
     sorter: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
@@ -228,6 +231,7 @@ impl Commands {
             &self.loot,
             &self.combat,
             &self.history,
+            &self.doll,
             &self.sorter,
             &self.trigger,
             &self.agent,
@@ -294,6 +298,13 @@ impl Commands {
     pub(crate) fn history(&self, handler: Handler) {
         if self.history.set(handler).is_err() {
             eprintln!("  !! [commands] history was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;doll` to `handler` from now on. Once, as for travel.
+    pub(crate) fn doll(&self, handler: Handler) {
+        if self.doll.set(handler).is_err() {
+            eprintln!("  !! [commands] doll was registered twice; keeping the first");
         }
     }
 

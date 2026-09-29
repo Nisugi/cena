@@ -178,7 +178,7 @@ impl Calibration {
 
 /// `bytes` with `text` as its calibration chunk: any old one dropped, the
 /// new one after the header. `None` when the bytes are not a PNG.
-fn with_chunk(bytes: &[u8], text: &str) -> Option<Vec<u8>> {
+pub(crate) fn with_chunk(bytes: &[u8], text: &str) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(bytes.len() + text.len() + 64);
     out.extend_from_slice(&PNG_SIGNATURE);
     let mut put = false;
