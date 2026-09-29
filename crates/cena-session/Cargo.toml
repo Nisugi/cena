@@ -30,6 +30,10 @@ rusqlite.workspace = true
 # The player log's search (`player_log/reader.rs`). Already compiled into
 # every build through cena-model's own `regex = "1"`: an edge, no new crates.
 regex = "1"
+# The player log's archives (`player_log/archive.rs`, `plan/25` D4): already
+# compiled into every build through reqwest's decompression, so an edge and
+# no new crates.
+flate2 = "1"
 
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # CancellationToken. plan/12 §5.5 names it by name as the mechanism for "every

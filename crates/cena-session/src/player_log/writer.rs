@@ -349,7 +349,7 @@ fn safe_name(character: &str) -> String {
     }
 }
 
-/// Which day's file a line belongs in: today.
+/// Which file a line written now belongs in: [`file_key`] of today.
 ///
 /// **This reads a clock rather than the line.** `LogLine::at` is
 /// `HH:MM:SS.mmm` and deliberately carries no date (D2), so there is nothing in
@@ -360,7 +360,36 @@ fn safe_name(character: &str) -> String {
 /// change to replay an old capture into a log, because every line would then
 /// land in today's file. Recorded here rather than discovered later.
 fn today() -> String {
-    cena_platform::date_dir()
+    file_key(&cena_platform::date_dir(), cena_platform::eastern::now())
+}
+
+/// The file a line written at Unix time `now`, on the player's local date
+/// `local_day`, goes to: the local date, and after it the Eastern stretch the
+/// line falls in whenever that is not the local date's own.
+///
+/// **Why a second part** (`plan/25` D6). The log keeps the player's clock
+/// and the archives keep the server's: an archive is an Eastern month or a
+/// Sunday-to-Saturday Eastern week, and a file must never straddle two. So
+/// the file is also cut at midnight Eastern wherever a week or a month
+/// begins ([`starts_period`](cena_platform::eastern::starts_period)), for
+/// every choice of archive, so that a change of choice later has nothing to
+/// split. Between two such cuts is a *stretch*, named by the date it begins.
+///
+/// For a player on Eastern time the two clocks agree and every file is just
+/// its date. A Pacific player's Saturday that runs past 21:00 local, which is
+/// Sunday in Eastern, continues in `<date>_<Sunday>`; a player in London who
+/// plays in the small hours of a Sunday, still Saturday in Eastern, starts
+/// the day in `<date>_<last stretch>` and continues in `<date>`.
+#[must_use]
+pub fn file_key(local_day: &str, now: i64) -> String {
+    use cena_platform::eastern;
+    let stretch = eastern::stretch_start(eastern::date(now));
+    match eastern::parse(local_day) {
+        Some(local) if eastern::stretch_start(local) != stretch => {
+            format!("{local_day}_{}", eastern::format(stretch))
+        }
+        _ => local_day.to_owned(),
+    }
 }
 
 /// The default root for player logs, matching the wire log's.
@@ -428,25 +457,43 @@ pub fn dir(root: &Path, character: &str) -> PathBuf {
     root.join(SUBDIR).join(safe_name(character))
 }
 
-/// The file one character's lines for `day` (`YYYY-MM-DD`) go to, under `root`.
+/// The file one character's lines for `key` go to, under `root`: a
+/// [`file_key`], which for most files is just the date, `YYYY-MM-DD`.
 #[must_use]
-pub fn day_path(root: &Path, character: &str, day: &str) -> PathBuf {
-    dir(root, character).join(format!("{}_{day}.log", safe_name(character)))
+pub fn day_path(root: &Path, character: &str, key: &str) -> PathBuf {
+    dir(root, character).join(file_name(character, key))
 }
 
-/// The day a day-file is for, `YYYY-MM-DD`, read off its name
-/// (`<character>_<day>.log`); `None` for a file not named that way.
+/// The name of the file for `key`: `<character>_<key>.log`.
+#[must_use]
+pub fn file_name(character: &str, key: &str) -> String {
+    format!("{}_{key}.log", safe_name(character))
+}
+
+/// The day a day-file is for, `YYYY-MM-DD`, read off its name; `None` for a
+/// file not named as the writer names them.
 #[must_use]
 pub fn day_of(path: &Path) -> Option<String> {
-    let stem = path.file_stem()?.to_str()?;
-    let (_, day) = stem.rsplit_once('_')?;
-    let well_formed = day.len() == 10
-        && day.bytes().enumerate().all(|(i, b)| {
-            if i == 4 || i == 7 {
-                b == b'-'
-            } else {
-                b.is_ascii_digit()
-            }
-        });
-    well_formed.then(|| day.to_owned())
+    piece(path.file_name()?.to_str()?).map(|(day, _)| day)
+}
+
+/// A day-file's name read back: its local date, and the Eastern stretch it
+/// holds ([`file_key`]). `None` for a name the writer did not give.
+///
+/// The stretch is what orders two files of one local date, and what decides
+/// which archive a file belongs in.
+#[must_use]
+pub fn piece(file_name: &str) -> Option<(String, cena_platform::eastern::Date)> {
+    use cena_platform::eastern;
+    let stem = file_name.strip_suffix(".log")?;
+    // From the end: the name before them may itself hold `_` (a device name
+    // gets one, `safe_name`).
+    let mut parts = stem.rsplitn(3, '_');
+    let last = parts.next()?;
+    let before = parts.next()?;
+    match (eastern::parse(before), eastern::parse(last)) {
+        (Some(_), Some(stretch)) if parts.next().is_some() => Some((before.to_owned(), stretch)),
+        (_, Some(local)) => Some((last.to_owned(), eastern::stretch_start(local))),
+        _ => None,
+    }
 }

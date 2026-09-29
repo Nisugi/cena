@@ -111,7 +111,7 @@ impl Capture {
 /// (`settings_store`): which feeds to write, by tag.
 ///
 /// ```json
-/// "player_log": { "feeds": { "inv": true, "thoughts": false } }
+/// "player_log": { "feeds": { "inv": true, "thoughts": false }, "archive": "weekly" }
 /// ```
 ///
 /// **Overrides, not the whole list.** A feed not named keeps its default, so a
@@ -121,6 +121,10 @@ pub struct LogSettings {
     /// Feed tag to on/off, overriding the default for each feed named.
     #[serde(default)]
     pub feeds: BTreeMap<String, bool>,
+    /// How closed days are kept; [`Archive::Monthly`](super::archive::Archive)
+    /// when the file does not say.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archive: Option<super::archive::Archive>,
 }
 
 /// The name of [`LogSettings`]' section.

@@ -47,6 +47,7 @@
 pub mod answering;
 pub mod bytes;
 pub mod eaccess;
+pub mod eastern;
 
 /// Game-specific data, under the namespace `plan/05` Rule 3.4 prescribes.
 ///

@@ -27,15 +27,20 @@
 //! [`MAX_DAYS`] files are opened by one: `plan/25` §5's caps, Lichborne's
 //! numbers. A read that stopped at the cap says so ([`Found::more`]).
 //!
-//! # What this does not read yet
+//! # Plain or archived, one day
 //!
-//! Closed days gzipped (step 4) do not exist yet, so only `.log` files are
-//! read. Step 4 adds `.log.gz` here, in [`read_day`], and nowhere else.
+//! A day is read from wherever its files are: plain `.log` files, or members
+//! of a month's or a week's archive (step 4, [`super::archive`]). Only
+//! [`days`] and [`read_day`] know there is a difference.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io;
 use std::path::Path;
 
+use cena_platform::eastern::{self, Date};
+
+use super::archive::{self, Archive};
 use super::writer;
 
 /// The most lines one read returns.
@@ -186,14 +191,29 @@ pub struct Found {
 /// A failure to read the directory. None at all is not one: a character who
 /// has never played has no days.
 pub fn days(root: &Path, character: &str) -> io::Result<Vec<String>> {
-    Ok(writer::days(root, character)?
+    let mut days: BTreeSet<String> = writer::days(root, character)?
         .iter()
         .filter_map(|path| writer::day_of(path))
-        .collect())
+        .collect();
+    for path in archive::archives(root, character)? {
+        days.extend(
+            archive::names(&path)?
+                .iter()
+                .filter_map(|name| writer::piece(name).map(|(day, _)| day)),
+        );
+    }
+    Ok(days.into_iter().rev().collect())
 }
 
 /// One day's lines, in the order they were written; none for a day with no
 /// file.
+///
+/// A day may be in more than one file (the writer cuts where an Eastern week
+/// or month begins, [`writer::file_key`]) and each may be plain or archived.
+/// They are read in the order of the stretches they hold; a plain file wins
+/// over an archived one of the same name, which exists only for the moment
+/// between an archive being written and the day-files it replaces being
+/// removed.
 ///
 /// A line that is not ours is skipped, and so is a last line with no newline:
 /// the writer ends every line with one, so a line without it is a write still
@@ -202,18 +222,46 @@ pub fn days(root: &Path, character: &str) -> io::Result<Vec<String>> {
 ///
 /// # Errors
 ///
-/// A failure to read a file that exists.
+/// A failure to read a file or an archive that exists.
 pub fn read_day(root: &Path, character: &str, day: &str) -> io::Result<Vec<Entry>> {
-    let bytes = match fs::read(writer::day_path(root, character, day)) {
-        Ok(bytes) => bytes,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(err) => return Err(err),
-    };
+    let ours = |name: &str| writer::piece(name).filter(|(of, _)| of == day);
+    let mut parts: BTreeMap<(Date, String), Vec<u8>> = BTreeMap::new();
+    for path in writer::days(root, character)? {
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let Some((_, stretch)) = ours(name) else {
+            continue;
+        };
+        match fs::read(&path) {
+            Ok(bytes) => {
+                parts.insert((stretch, name.to_owned()), bytes);
+            }
+            // Archived and removed since it was listed: the archive has it.
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) => return Err(err),
+        }
+    }
+    for path in archives_for(root, character, day) {
+        for (name, bytes) in archive::read(&path, |name| ours(name).is_some())? {
+            if let Some((_, stretch)) = ours(&name) {
+                parts.entry((stretch, name)).or_insert(bytes);
+            }
+        }
+    }
+    Ok(parts
+        .values()
+        .flat_map(|bytes| entries(day, bytes))
+        .collect())
+}
+
+/// The lines of one file's bytes, as [`read_day`] describes.
+fn entries(day: &str, bytes: &[u8]) -> Vec<Entry> {
     // Lossy: a byte the writer never wrote (a hand edit, a torn sector) costs
     // that character, not the day.
-    let text = String::from_utf8_lossy(&bytes);
+    let text = String::from_utf8_lossy(bytes);
     let whole = text.rfind('\n').map_or("", |end| &text[..end]);
-    Ok(whole
+    whole
         .lines()
         .filter_map(writer::parse_line)
         .map(|(at, stream, text)| Entry {
@@ -222,7 +270,28 @@ pub fn read_day(root: &Path, character: &str, day: &str) -> io::Result<Vec<Entry
             stream: stream.to_owned(),
             text: text.trim_end_matches('\r').to_owned(),
         })
-        .collect())
+        .collect()
+}
+
+/// The archives that can hold any of `day`'s files, whichever way they were
+/// archived: a file of that date holds a stretch from six days before it
+/// (the week began earlier) to the day after (a player west of Eastern, past
+/// midnight there).
+fn archives_for(root: &Path, character: &str, day: &str) -> Vec<std::path::PathBuf> {
+    let Some(date) = eastern::parse(day) else {
+        return Vec::new();
+    };
+    let days = eastern::days_from_civil(date);
+    let periods: BTreeSet<String> = (days - 6..=days + 1)
+        .map(eastern::civil_from_days)
+        .flat_map(|d| [Archive::Monthly, Archive::Weekly].map(|choice| choice.period(d)))
+        .flatten()
+        .collect();
+    periods
+        .iter()
+        .map(|period| archive::path(root, character, period))
+        .filter(|path| path.is_file())
+        .collect()
 }
 
 /// The last `count` lines kept by `streams`, oldest first, across as many

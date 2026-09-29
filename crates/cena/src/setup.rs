@@ -57,6 +57,7 @@ pub(crate) fn attach(
         .with_menu_store(data);
     let (session, record_flush) = attach_recorders(session, game, character);
     let (session, player_flush) = attach_player_log(session, character);
+    archive_player_log(character, game);
     (session, record_flush, player_flush)
 }
 
@@ -91,6 +92,36 @@ fn attach_player_log(
         ),
         tokio::spawn(writer.run_reporting(sink)),
     )
+}
+
+/// Archive the player log's finished months or weeks, as the character's
+/// settings file chooses (`plan/25` step 4), on a blocking task: a month of
+/// day-files is tens of megabytes to compress, and the session starts
+/// without waiting for it.
+///
+/// Once per login, which is when a change of choice takes effect (the
+/// *Player log* page says so). A period that ends while a character stays
+/// logged in is archived at the next login. A failure is said and changes
+/// nothing: the day-files stay.
+fn archive_player_log(character: &str, game: &str) {
+    let choice = crate::general::archive_choice(
+        &cena_session::character_store::data_dir(),
+        &format!("{game}:{character}"),
+    );
+    let character = character.to_owned();
+    tokio::task::spawn_blocking(move || {
+        let root = cena_session::player_log::writer::root();
+        let now = cena_platform::eastern::now();
+        match cena_session::player_log::archive::sweep(&root, &character, choice, now) {
+            Ok(swept) if swept.files > 0 => eprintln!(
+                "[player log] archived {} day-files into {}",
+                swept.files,
+                swept.archives.join(", ")
+            ),
+            Ok(_) => {}
+            Err(e) => eprintln!("[player log] not archived, the day-files are kept: {e}"),
+        }
+    });
 }
 
 /// How long a stop waits for a session's logs to finish writing.

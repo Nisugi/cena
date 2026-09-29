@@ -1,7 +1,7 @@
 # 25 — The player log
 
 **Status: steps 1, 2 and 2b BUILT (2026-09-21); step 3 BUILT (2026-09-29), with
-`;history`; 4-8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI), step 4 then ON HOLD (D6).** Author decisions
+`;history`; step 4 BUILT the same day; 5-8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI).** Author decisions
 recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
@@ -186,7 +186,7 @@ the earlier draft mistook the situation.
 Worth the measurement either way: their 85–90% figure is, for a heavy player, the
 difference between a few hundred MB and a few GB per year.
 
-### D6. The log is local; the archives are Eastern — **AUTHOR, 2026-09-29; step 4 ON HOLD**
+### D6. The log is local; the archives are Eastern — **AUTHOR, 2026-09-29**
 
 - **Archives, user configurable: monthly (default), weekly, or off.** Monthly
   means the calendar month, *"not 30 or 31 or 28 days, actual calendar
@@ -205,20 +205,25 @@ difference between a few hundred MB and a few GB per year.
 > wrap at local midnight and a window, which compares stamps as text, would
 > misread it. Found before any code was written, by working out step 4's
 > first change. The question as first asked hid it; asked again with the
-> wrap stated, the author put the whole log back on local time and held
-> step 4 to revisit.
+> wrap stated, the author put the whole log back on local time. Claude read
+> *"let's hold on and revisit this"* as holding step 4 and recorded it so;
+> the author meant the answer itself, and asked why it was on hold.
 
-**Open, for the revisit:** a day-file is a *local* date and an archive
-period is an *Eastern* one. For a player in Eastern time they agree. For
-anyone else the Eastern boundary falls inside a local day, and a file cannot
-be split. The simplest rule is that a file joins the period its date is in,
-and a period is archived once it is over in Eastern **and** holds no file
-that can still be written (today's local file). What that rule does to a
-player far from Eastern is the question to settle.
+**SETTLED the same day, the author's rule:** *"the logger will have to know to
+cut a file at midnight so there's always a clean break for the archive"*. The
+writer cuts at local midnight, as it did, **and** at midnight Eastern wherever
+a week (Saturday to Sunday) or a month begins, whichever archive the player
+chose, so a later change of choice has nothing to split. Between two such cuts
+is a *stretch*, named by its first date. The piece of a local day past a cut
+keeps the local date and adds its stretch: `nisugi_2026-10-31.log`, then
+`nisugi_2026-10-31_2026-11-01.log` (a Pacific player's evening, already
+November in Eastern). The name as first proposed to the author ended in the
+month (`_2026-11`); a date names a week's stretch as well as a month's.
+Every file then belongs to exactly one archive. A player on Eastern time
+never sees a second piece.
 
-If the Eastern calendar is needed outside `;loot` (whose `today` and month
-already follow it, `crates/cena/src/loot/period.rs`), it moves down to
-`cena-platform` rather than being copied.
+The Eastern calendar moved down to `cena-platform` (`eastern.rs`), `;loot`
+and the log both reading it.
 
 ### D5. Retention defaults — **AUTHOR, 2026-09-29: no size cap; kept forever by default**
 
@@ -435,8 +440,7 @@ Each step leaves the tree green and is independently reviewable.
    > `[hydra]`, and every search would write its hits for the next to find.
    >
    > Not run live. A GUI view over the same reader is not built.
-4. **Archives on close** (D4, D6). APPROVED 2026-09-29, then ON HOLD the same day (D6): the log stays local, the
-   periods are Eastern, and how the two meet is open.
+4. **Archives on close** (D4, D6). APPROVED 2026-09-29.
    A closed month (or week) of day-files becomes one archive, today and
    the open period untouched; the setting is `monthly`, `weekly` or `off`, in
    the `player_log` section of the character's settings file, on the *Player
@@ -444,6 +448,30 @@ Each step leaves the tree green and is independently reviewable.
    file (`read_day` is the one place that changes). Archiving is not
    rewriting: a day-file is removed only once its archive is written and read
    back whole.
+
+   > **BUILT 2026-09-29.** The cut: `writer::file_key`, read back by
+   > `writer::piece`. The archives: `crates/cena-session/src/player_log/archive.rs`,
+   > `Archive::{Monthly, Weekly, Off}` in the `player_log` section
+   > (`LogSettings::archive`), `sweep` writing `<character>_2026-09.log.gz` or
+   > `<character>_week-2026-09-27.log.gz`. An archive is gzip members, a
+   > `manifest` member first listing each day-file's name and compressed size,
+   > so a reader skips to one day without inflating the month; `zcat` still
+   > reads it as every day in turn. Written beside its name, read back and
+   > compared, renamed, and only then are the day-files removed; a day-file
+   > that turns up late joins its archive, keeping what was there. The reader
+   > (`read_day`, `days`) reads a day from its plain pieces and the archives
+   > that can hold it, in stretch order, a plain file winning over the same
+   > name archived.
+   >
+   > **When:** once per login, on a blocking task, as the character is
+   > attached (`crates/cena/src/setup.rs`), because `cena-session` reports
+   > nothing on its own and a change of choice takes effect at the next login
+   > anyway. A period that ends while a character stays logged in is archived
+   > at the next login. The choice is on the *Player log* page.
+   >
+   > **Unenforced:** the read-back comparison. No test makes a write come back
+   > wrong, so deleting the comparison passes the suite; recorded rather than
+   > covered by a test that would pass either way.
 5. **Retention**, per D5: forever by default, a number of days when set,
    whole archives only, with §7's deletion preview. No size cap. APPROVED.
 6. **Export**, per §1's spec shape: a range of days and tags written to one
