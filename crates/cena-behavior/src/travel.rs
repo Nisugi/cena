@@ -4,8 +4,8 @@
 //! answers with what to do. It owns no socket, reads no clock and draws no
 //! random numbers, so a replay walks the same way (`plan/12` §7.2 criterion 7)
 //! and every rule below can be tested by table. The driver that feeds it
-//! frames and sends what it asks for is a later stage (`plan/24` §3, stage 4),
-//! and is thin by design.
+//! frames and sends what it asks for is `travel/drive.rs` (`plan/24` §3, stage 4),
+//! thin by design.
 //!
 //! # What it crosses
 //!
@@ -334,9 +334,10 @@ impl Trip {
         self.ahead.clear();
     }
 
-    /// What the trip has changed and not yet put back, **for a driver that is
-    /// stopping it**: a user's stop asks once for what is stored (`drive`). Taking
-    /// it clears it.
+    /// What the trip has changed and not yet put back. Taking it clears
+    /// it. The driver keeps its own record of what it stored and took out,
+    /// and takes back from that when it is stopped; this is the trip's
+    /// side of the same debt, which the tests read.
     pub fn owed(&mut self) -> Vec<Deed> {
         std::iter::from_fn(|| self.next_owed()).collect()
     }

@@ -16,8 +16,9 @@
 //! what the engine's group arms read: the rest a member has prepared for
 //! (the rest-prep barrier), the corpses it has looted (the leader's wait
 //! before it leaves a room), and the leader's phase, room, target, looter
-//! and prep order. `plan/39` §5's hidden and sneaky (the movement barrier)
-//! and the leader's rooms are not built: no rule reads them yet.
+//! and prep order; and the leader's rooms, which a follower travelling on
+//! its own reads (`hunt/party/alone.rs`). `plan/39` §5's hidden and sneaky
+//! (the movement barrier) are not built: no rule reads them yet.
 
 use cena_map::RoomId;
 use cena_session::State;

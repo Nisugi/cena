@@ -20,7 +20,7 @@
 //! | 0 | Survival | `Hunt::survival` | dead: stop; down and able: stand |
 //! | 10 | Flee | `Hunt::flee` | too many, or a creature the profile always flees: leave the room |
 //! | 20 | Rest | `Hunt::rest` | wounded, fried, encumbered or out of mana: walk to the rest room, rest, walk back, prepare |
-//! | 30 | Loot | `Hunt::loot` | `loot #id` on each dead creature, once; the stand-in for eloot (M6c) |
+//! | 30 | Loot | `Hunt::loot` | every corpse here handed to the loot planner (`crate::loot`, M6c); with no loot profile, `loot #id` on each, once |
 //! | 40 | Maintain | `Hunt::maintain` | a sign the effects say is down: cast it, when no target is here |
 //! | 50 | Engage | `Hunt::engage` | choose a target, target it, take the hunting stance, run its routine one step a tick |
 //! | 60 | Wander | `Hunt::wander` | nothing to fight: wait, then walk to a fresh room inside the boundaries |

@@ -296,8 +296,6 @@ fn expiry_of(stated: &str) -> Option<i64> {
 
 /// The planner's flag for a pass between these two towns, named as a pass
 /// spells them: `day_pass:imt,wl`, the codes in alphabetical order.
-// For the planner's pre-flight, which is not wired yet (`plan/24` stage 5).
-#[cfg_attr(not(test), allow(dead_code))]
 pub(in crate::travel) fn flag_for(one: &str, other: &str) -> Option<String> {
     let code = |name: &str| TOWNS.iter().find(|town| town.name == name).map(|t| t.code);
     let (mut first, mut second) = (code(one)?, code(other)?);

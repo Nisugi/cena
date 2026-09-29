@@ -16,7 +16,8 @@
 //! | the planner | [`plan`] | the next command, given the state and what was learned so far; pure |
 //!
 //! The driver that sends what the planner says, inside the hunt's authority
-//! as a walk runs, is Stage 2 (`plan/31` §4) and is not here yet.
+//! as a walk runs, is the hunt's: `hunt/drive/loot.rs` (`plan/31` §4, Stage
+//! 2).
 
 pub mod import;
 pub mod outcome;

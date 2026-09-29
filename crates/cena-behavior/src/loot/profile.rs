@@ -74,7 +74,8 @@ pub struct LootProfile {
     #[serde(default, skip_serializing_if = "Skin::is_off")]
     pub skin: Skin,
     /// The selling, hoarding and banking keys, carried verbatim for the rest
-    /// phase's errands (`plan/31` §4, Stage 4). Nothing reads them yet.
+    /// phase's errands (`plan/31` §4, Stage 4), which read them as
+    /// [`crate::town::Town`].
     #[serde(skip_serializing_if = "toml::Table::is_empty")]
     pub town: toml::Table,
 }

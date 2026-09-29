@@ -9,7 +9,8 @@
 //! target not in the room, `safety` refuses an attack spell with nothing
 //! hostile here, `channel` channels what the spell table says can be, and
 //! `stance` takes the offensive stance for what the table marks as wanting
-//! it.
+//! it. Hydra's own fifth, `typed`, is whether a bare spell number typed
+//! with no `sc` is caught at all.
 //!
 //! Here it is `;sc 401 bob 3`, and, with the `typed` switch on (the
 //! default), a bare `401 bob 3` or `boom bob` as spellcaster takes it
@@ -43,7 +44,7 @@ const STANCES: &[&str] = &[
 #[serde(default, deny_unknown_fields)]
 #[expect(
     clippy::struct_excessive_bools,
-    reason = "spellcaster's four switches, carried as they are"
+    reason = "spellcaster's four switches, carried as they are, and Hydra's `typed`"
 )]
 pub struct CasterProfile {
     /// Names for spells: `boom = 910`.

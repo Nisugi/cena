@@ -4,14 +4,23 @@
 //! Rhai, no DSL (CLAUDE.md, settled). Automation is Rust that a user
 //! configures with data, not Rust that runs a user's code.
 //!
-//! Two exist: [`sync()`](sync::sync) and [`travel()`](travel::travel), the
-//! latter with a [`Desk`](travel::Desk) that runs it from a typed `;go2`.
-//! Both end with a [`BehaviorError`] when the session, not the behavior,
+//! | Module | What it is |
+//! |---|---|
+//! | [`mod@sync`] | learning a character at login: the commands whose answers the model reads |
+//! | [`travel`] | the walk, with a [`Desk`](travel::Desk) that runs it from a typed command |
+//! | [`hunt`] | M6's behavior (`plan/30`): the profile, the importer, the engine and its driver |
+//! | [`group`] | the rules a group hunts by, pure (`plan/39`) |
+//! | [`loot`], [`town`] | eloot: what is taken in the field, and the selling round (`plan/31`) |
+//! | [`heal`] | eherbs: healing, and stocking the herb container (`plan/36`) |
+//! | [`cast`], [`keep`], [`waggle`], [`spellcaster`] | the spell behaviors (`plan/37`) |
+//! | [`batch`] | a command over many things, or many times (`plan/30` §7, M6e) |
+//! | [`triggers`] | the one triggers file and its rules (`plan/45`) |
+//!
+//! Each ends with a [`BehaviorError`] when the session, not the behavior,
 //! decided.
 //!
-//! Hunt, M6's behavior (`plan/30`), is being built in [`hunt`]: the profile
-//! it runs on, the guard vocabulary and the bigshot importer are there; the
-//! engine that runs a profile follows (`plan/30` §7, M6b).
+//! (CORRECTED 2026-09-29: this said *"Two exist"*, sync and travel, and
+//! that the hunt's engine *"follows"*. The list is the `pub mod`s below.)
 //!
 //! `look`, M1's looping behavior, was retired at M6 (author, 2026-09-24:
 //! *"get rid of any test behaviors, like look"*). It lives on in

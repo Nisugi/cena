@@ -22,7 +22,8 @@
 //!
 //! # A walk inside the hunt
 //!
-//! Rest and wander walk. The walk is travel's own driver, run through
+//! Rest, wander, a retreat, the selling round and stocking walk. The walk
+//! is travel's own driver, run through
 //! [`travel_holding`](crate::travel::travel_holding) under the hunt's token, given a second listener on the
 //! same stream ([`Heard::resubscribe`]) and a copy of the state. The hunt
 //! keeps folding its own stream meanwhile, so that when the walk returns the
