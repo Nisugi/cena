@@ -71,11 +71,17 @@ pub(crate) enum Acted {
     Quietly(String),
 }
 
-/// A line whose runs have links in it, `job` drawn as a label is: a link
-/// under the pointer shows the hand; with the drag key held an object's
-/// link is carried from it (`carry.rs`), and one carried let go on another
-/// object's link goes into it. The runs are the job's, in order, their text
-/// its text.
+/// A line whose runs have links in it, `job` drawn as a label is: its words
+/// selected by a drag, as any line's; a link under the pointer shows the
+/// hand, and a click on one is the link's; with the drag key held an
+/// object's link is carried from it instead (`carry.rs`), and one carried let
+/// go on another object's link goes into it. The runs are the job's, in
+/// order, their text its text.
+///
+/// It was not selectable, so a line with a link in it could not be selected,
+/// and broke a selection across it (the author, 2026-09-28: *"links in the
+/// lines break text selection"*). A drag selects; a click, which is no drag,
+/// is still the link's.
 pub(crate) fn linked(ui: &mut egui::Ui, job: LayoutJob, runs: &[StyledRun]) -> Option<Acted> {
     let carrying = crate::carry::held(ui);
     let sense = if carrying {
@@ -85,17 +91,26 @@ pub(crate) fn linked(ui: &mut egui::Ui, job: LayoutJob, runs: &[StyledRun]) -> O
     };
     let (at, galley, response) = egui::Label::new(job)
         .sense(sense)
-        .selectable(false)
+        .selectable(!carrying)
         .layout_in_ui(ui);
     let enabled = ui.is_enabled();
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, enabled, galley.text()));
     if ui.is_rect_visible(response.rect) {
-        ui.painter().galley(
-            at,
-            std::sync::Arc::clone(&galley),
-            ui.visuals().text_color(),
-        );
+        let color = ui.visuals().text_color();
+        if carrying {
+            ui.painter()
+                .galley(at, std::sync::Arc::clone(&galley), color);
+        } else {
+            egui::text_selection::LabelSelectionState::label_text_selection(
+                ui,
+                &response,
+                at,
+                std::sync::Arc::clone(&galley),
+                color,
+                egui::Stroke::NONE,
+            );
+        }
     }
     let run_at = |pointer: Pos2| {
         // The nearest boundary between characters, and the character under
