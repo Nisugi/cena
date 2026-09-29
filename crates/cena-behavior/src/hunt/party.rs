@@ -523,7 +523,7 @@ impl Hunt {
             party
                 .musters
                 .iter()
-                .any(|(n, m)| n == name && matches!(m, Muster::Gone | Muster::Left))
+                .any(|(n, m)| n == name && !m.waited_for())
         };
         let counted: Vec<&Report> = party
             .followers

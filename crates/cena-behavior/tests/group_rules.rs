@@ -663,3 +663,40 @@ fn quiet_followers_off_preps_everyone_at_once() {
         PrepOrder::Together
     );
 }
+
+/// Two followers find the leader lost a moment apart, with no list of
+/// successors, and health that moved between: one answer for both.
+#[test]
+fn a_lost_leaders_successor_is_decided_once_for_the_group() {
+    use cena_behavior::group::{Boards, successor};
+    let boards = Boards::new();
+    let settings = Settings::default();
+    let seen = |ashryn: u32, baelor: u32| {
+        let mut a = member("Ashryn");
+        a.health = Some(ashryn);
+        let mut b = member("Baelor");
+        b.health = Some(baelor);
+        vec![a, b]
+    };
+    let ask = |members: Vec<Report>| {
+        boards.succeed(
+            "Lorwyn",
+            |new| members.iter().any(|r| r.name == new && r.present()),
+            || successor(&members, &settings, 0).map(str::to_owned),
+        )
+    };
+    // Ashryn asks first, the healthier as it reads them.
+    assert_eq!(ask(seen(90, 85)).as_deref(), Some("Ashryn"));
+    // Baelor asks after a heal: by its own reading it would lead too.
+    let later = seen(90, 95);
+    assert_eq!(
+        successor(&later, &settings, 0),
+        Some("Baelor"),
+        "guard: read alone, the two disagree"
+    );
+    assert_eq!(ask(later).as_deref(), Some("Ashryn"), "and it is told");
+    // One named who is no longer there is not followed: chosen again.
+    let mut gone = seen(90, 95);
+    gone.remove(0);
+    assert_eq!(ask(gone).as_deref(), Some("Baelor"));
+}

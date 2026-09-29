@@ -489,6 +489,51 @@ fn a_leader_walks_back_only_when_every_follower_is_ready_for_this_rest() {
     );
 }
 
+/// A follower that died on the way to the rest, or that muster has given
+/// up on, is not waited for: the rest ends on the members who can end it.
+#[test]
+fn a_rest_does_not_wait_on_a_member_muster_has_given_up_on() {
+    for given_up in [
+        Muster::Dead,
+        Muster::TakeHome,
+        Muster::Drag,
+        Muster::Overdue,
+    ] {
+        let mut hunt = Hunt::new(profile().unwrap(), 1);
+        let heavy = Report {
+            rest: Some(Why::Encumbered),
+            ..report("Kiyna")
+        };
+        let state = leading(state(100), "Kiyna");
+        hunt.see(leader_party(vec![heavy], Vec::new()));
+        assert_eq!(
+            hunt.tick(&state, here(10), Some(100)),
+            Said::Walk(RoomId(20))
+        );
+        // Never prepared, and never will be.
+        let stuck = || Report {
+            room: Some(RoomId(20)),
+            ..report("Kiyna")
+        };
+        let musters = || vec![("Kiyna".to_owned(), given_up)];
+        hunt.see(leader_party(vec![stuck()], musters()));
+        assert_eq!(
+            hunt.tick(&state, here(20), Some(101)),
+            send("store all", None)
+        );
+        hunt.see(leader_party(vec![stuck()], musters()));
+        assert_ne!(
+            hunt.tick(&state, here(20), Some(102)),
+            Said::Wait(5),
+            "{given_up:?}: waited on for good"
+        );
+        assert!(
+            !hunt.take_notes().iter().any(|n| n.contains("Kiyna isn't")),
+            "{given_up:?}: nor said to be waited on"
+        );
+    }
+}
+
 /// The gather (`bigshot.lic:7556-7562`): ready, but not here, the leader
 /// opens the group and waits before walking back.
 #[test]

@@ -80,6 +80,37 @@ impl Boards {
         handed.insert(old.to_owned(), new.to_owned());
     }
 
+    /// Who leads what `old` led, **decided once for the group**: the one
+    /// already named, while it still `stands`, else the one `choose` names,
+    /// kept for the members who ask after.
+    ///
+    /// Each follower finds the leader lost on a turn of its own and reads
+    /// the reports as they stand then. With no list of successors the
+    /// healthiest leads, and health moves in a fight: two followers a
+    /// moment apart each found itself the healthiest and both led, or each
+    /// found the other and both followed (the review of 2026-09-29). The
+    /// first to ask decides, under one lock, and the rest are told.
+    #[must_use]
+    pub fn succeed(
+        &self,
+        old: &str,
+        stands: impl Fn(&str) -> bool,
+        choose: impl FnOnce() -> Option<String>,
+    ) -> Option<String> {
+        let mut handed = self.handed.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(new) = handed.get(old)
+            && stands(new)
+        {
+            return Some(new.clone());
+        }
+        let new = choose();
+        match &new {
+            Some(new) => handed.insert(old.to_owned(), new.clone()),
+            None => handed.remove(old),
+        };
+        new
+    }
+
     /// Who took over from `old`, once: `old` follows them now.
     #[must_use]
     pub fn take_handed(&self, old: &str) -> Option<String> {

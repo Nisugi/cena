@@ -139,6 +139,31 @@ pub enum Muster {
     Overdue,
 }
 
+impl Muster {
+    /// Whether a rest waits for this member to be ready for it.
+    ///
+    /// Not for one gone or left, nor for one muster has given up on or
+    /// found dead: its wait was muster's own, `lost_wait`, and it has run
+    /// out. Only the first two were left out of the rest's count, and
+    /// muster does nothing about the others while the group rests, so a
+    /// follower that died on the walk home, or lost its connection in the
+    /// rest room, was *preparing for the rest* for good (the review of
+    /// 2026-09-29).
+    #[must_use]
+    pub fn waited_for(&self) -> bool {
+        !matches!(
+            self,
+            Self::Gone
+                | Self::Left
+                | Self::Dead
+                | Self::TakeHome
+                | Self::Drag
+                | Self::Add
+                | Self::Overdue
+        )
+    }
+}
+
 /// What the group does about `member`, with the leader in `leader_room`;
 /// `None` when it is with the leader and nothing keeps it.
 ///

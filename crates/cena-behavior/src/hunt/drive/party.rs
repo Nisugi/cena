@@ -281,12 +281,16 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             .filter(|r| r.name != old)
             .cloned()
             .collect();
-        let successor = group::successor(&members, &settings, 0).map(str::to_owned);
+        // One answer for the group, not one a follower (`Boards::succeed`).
+        let successor = member.boards.succeed(
+            old,
+            |new| members.iter().any(|r| r.name == new && r.present()),
+            || group::successor(&members, &settings, 0).map(str::to_owned),
+        );
         member.leader_since = None;
         member.on = None;
         let text = match &successor {
             Some(new) if new == name => {
-                member.boards.hand_over(old, name);
                 member.lost = Some((old.to_owned(), Arc::clone(board)));
                 member.following = None;
                 member.expected = members
