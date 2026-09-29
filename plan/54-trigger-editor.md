@@ -1,6 +1,6 @@
 # 54 — The trigger editor
 
-**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Steps 1-4 BUILT 2026-09-29.**
+**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Every step BUILT 2026-09-29; none run live.**
 
 M8 built triggers whole (`plan/45`) and left one door: the file, `;trigger`, and a Wrayth
 import. The author, choosing one file (`plan/45` §1 row 3): *"players won't be accessing the
@@ -147,5 +147,17 @@ settings menu's pages do.
    > `Sessions::check_log` off the window's thread, the log flushed first when the
    > character is playing.
 5. **The import popup** (§1 row 2): `;trigger import` with a window open asks first.
+
+   > **BUILT 2026-09-29.** A Wrayth file brings no sends (its macros are keys, not triggers),
+   > so the popup needed an import that can: `;trigger import` now also takes another
+   > player's Hydra triggers file, a `.toml` (`edit::shared`), marked `Shared: <file>`, what
+   > made its sends theirs (`for`, `origin`, `held`, `approved`) left behind, so every command
+   > comes in held. With a window open, nothing is written until the player answers
+   > (`crates/cena/src/triggers/import.rs`, the waiting imports on `Changes`): the popup over
+   > the hub (`crates/cena-gui/src/app/trigger_import.rs`) lists each trigger's command with a
+   > box, *Accept all*, *Accept the ticked* and *Cancel*, answered as
+   > `HubRequest::ImportAnswer`. Accepted commands are approved after the import (renamed as
+   > it renamed them); the rest stay held; *Cancel* imports nothing. Without a window the
+   > import goes on, each held command named with `;trigger approve`.
 
 Each step leaves the tree green and is committed alone.

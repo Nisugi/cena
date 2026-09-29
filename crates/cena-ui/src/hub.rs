@@ -56,6 +56,15 @@ pub enum HubRequest {
     Triggers,
     /// Make one change to the triggers file from the editor.
     Trigger(crate::triggers::Change),
+    /// The answer to an [`ImportQuestion`](crate::triggers::ImportQuestion):
+    /// import, approving the commands of the triggers named (every one, or
+    /// some, or none), or `None` to import nothing.
+    ImportAnswer {
+        /// Which import.
+        id: u64,
+        /// The triggers whose commands are approved; `None` cancels.
+        accept: Option<Vec<String>>,
+    },
 }
 
 /// An account logged in to list its characters: the Not launched tab's login,

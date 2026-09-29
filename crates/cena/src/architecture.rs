@@ -336,7 +336,10 @@
 //! as Despana and sending through the same manual path. A log window per
 //! character (`plan/25` step 8) reads the player log back through
 //! `cena_session::player_log`'s reader, off the window's thread, after the
-//! writer is asked to flush.
+//! writer is asked to flush. The trigger editor (`plan/54`) is a window over the
+//! one triggers file: the binary reads it into [`Book`](cena_ui::triggers::Book)
+//! and makes each change through the writer `;trigger` uses, and the window runs
+//! a form through the real matcher to test it.
 //!
 //! # Outside programs: an agent, scripts and the player's Lich
 //!

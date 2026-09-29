@@ -185,6 +185,22 @@ pub struct Flag {
     pub clear: bool,
 }
 
+/// An import that brings commands its triggers would send, asked about before
+/// anything is written (`plan/54` step 5, the author: *"a popup indicating it
+/// contains the commands, list the commands, offer accept all, accept one,
+/// cancel"*).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImportQuestion {
+    /// Which import, for the answer.
+    pub id: u64,
+    /// The file, as the player named it.
+    pub file: String,
+    /// How many triggers it brings.
+    pub triggers: usize,
+    /// Each trigger that sends, and the command it sends.
+    pub sends: Vec<(String, String)>,
+}
+
 /// What a switch turns on or off.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Switch {
