@@ -237,7 +237,13 @@ pub async fn travel_holding(
         Ok(()) => driver.walk(&mut cx).await,
         Err(ended) => ended,
     };
-    if ended == Ended::Stopped(BehaviorError::Cancelled) {
+    // A routine that halts the trip leaves the session as a stop does, and
+    // what is owed is owed the same: a ferry with no ticket to be had ended
+    // the walk with the weapons put away (the review of 2026-09-29).
+    if matches!(
+        ended,
+        Ended::Stopped(BehaviorError::Cancelled) | Ended::Halted
+    ) {
         driver.take_back_once().await;
     }
     let changed = [

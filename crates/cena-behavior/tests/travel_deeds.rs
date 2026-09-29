@@ -377,6 +377,37 @@ async fn a_cast_refused_for_roundtime_is_cast_again() {
     session.cancel();
 }
 
+/// Any deed's command refused for roundtime is sent again, not the cast
+/// alone: a stance not taken is a climb tried without it.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_deed_refused_for_roundtime_is_done_again() {
+    const LEDGE: &str = r#"[
+      {"id":1,"uid":[1001],"exits":[{"to":3,"kind":"scripted","cost":1,
+         "steps":[{"stance":"defensive"},{"move":"climb rope"}]}]},
+      {"id":3,"uid":[1003]}
+    ]"#;
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, LEDGE);
+    transcript.answer(
+        "stance defensive",
+        b"...wait 2 seconds.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    transcript.answer("climb rope", &arrival(1003));
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    let lines = transcript.lines();
+    assert_eq!(
+        lines
+            .iter()
+            .filter(|line| *line == "stance defensive")
+            .count(),
+        2,
+        "refused, waited out, and sent again: {lines:?}"
+    );
+    session.cancel();
+}
+
 /// What the walker knows of its spells comes from `Effects::active`, which
 /// knows an effect whose clock has not started yet. In the login burst the
 /// spells arrive **before the first prompt**: there is no server second to

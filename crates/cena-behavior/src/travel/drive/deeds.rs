@@ -19,6 +19,13 @@ use super::super::{Deed, TravelNotes, Trip, walker_from};
 use super::{Driver, Ended, FOLLOW_WAIT, Taken};
 
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
+    /// One deed of a crossing. **Every command is sent by [`Self::put`]**,
+    /// Lich's `fput`, which sends again when the game answers with
+    /// roundtime, as the cast was made to in the review of 2026-09-23. The
+    /// rest still went out once: after a failed climb's roundtime `store
+    /// right` was refused, the hands still full, and the exit given up on
+    /// its third try; `get my heavy key` was refused, and the gate banned
+    /// for the trip (the review of 2026-09-29).
     pub(super) async fn deed(&mut self, trip: &mut Trip, deed: Deed) -> Result<(), Ended> {
         match deed {
             Deed::EmptyHands => {
@@ -26,7 +33,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                     // Written down before it is sent: a stop between the two
                     // must still know what to take back.
                     self.stored.push(stored);
-                    self.exchange(trip, &command).await?;
+                    self.put(trip, &command).await?;
                 }
             }
             Deed::FillHands => self.fill_hands(trip).await?,
@@ -51,16 +58,16 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 if self.stance_before.is_none() {
                     self.stance_before.clone_from(&self.state.character.stance);
                 }
-                self.exchange(trip, &format!("stance {stance}")).await?;
+                self.put(trip, &format!("stance {stance}")).await?;
             }
             Deed::RestoreStance => {
                 if let Some(before) = self.stance_before.take() {
-                    self.exchange(trip, &format!("stance {before}")).await?;
+                    self.put(trip, &format!("stance {before}")).await?;
                 }
             }
             Deed::AwaitFollowers => self.await_followers(trip).await?,
             Deed::Speak(language) => {
-                self.exchange(trip, "speak").await?;
+                self.put(trip, "speak").await?;
                 let speaking = kept::language_in(&self.answer);
                 if !speaking
                     .as_deref()
@@ -70,16 +77,16 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                     if self.speech_before.is_none() {
                         self.speech_before = speaking;
                     }
-                    self.exchange(trip, &format!("speak {language}")).await?;
+                    self.put(trip, &format!("speak {language}")).await?;
                 }
             }
             Deed::RestoreSpeech => {
                 if let Some(before) = self.speech_before.take() {
-                    self.exchange(trip, &format!("speak {before}")).await?;
+                    self.put(trip, &format!("speak {before}")).await?;
                 }
             }
             Deed::TakeOut(name) => {
-                self.exchange(trip, &format!("get my {name}")).await?;
+                self.put(trip, &format!("get my {name}")).await?;
                 self.taken = kept::taken_from(&self.answer).map(|(thing, container)| Taken {
                     thing,
                     container,
@@ -95,7 +102,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 // must still say where the key is.
                 if let Some(taken) = &self.taken {
                     let command = format!("put #{} in #{}", taken.thing, taken.container);
-                    self.exchange(trip, &command).await?;
+                    self.put(trip, &command).await?;
                     self.taken = None;
                 }
             }
@@ -119,7 +126,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         let mut asked = Ok(());
         while let Some(stored) = untried.pop() {
             let command = take_back(&self.state, &stored);
-            asked = self.exchange(trip, &command).await;
+            asked = self.put(trip, &command).await.map(drop);
             if self.state.hand_holding(&stored.id).is_none() {
                 missed.push(stored);
             }
