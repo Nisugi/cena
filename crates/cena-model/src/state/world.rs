@@ -88,7 +88,9 @@ impl World {
         self.events.push(WorldEvent {
             realm: (!realm.is_empty()).then(|| realm.to_owned()),
             text: text.to_owned(),
-            expires_at: now.zip(expires_min).map(|(now, min)| now + 60 * min),
+            expires_at: now
+                .zip(expires_min)
+                .map(|(now, min)| now.saturating_add(min.saturating_mul(60))),
         });
         if self.events.len() > MAX_EVENTS {
             self.events.remove(0);
@@ -154,6 +156,11 @@ mod tests {
             .map(|event| event.realm.as_deref())
             .collect();
         assert_eq!(realms, [Some("Wehnimer's Landing"), None], "none said");
+        // Minutes no clock can hold: never lapsing, not a wrapped second
+        // in the past, nor a panic in a debug build.
+        world.announced(Some(1_000), "", Some(u32::MAX), "Forever.");
+        assert!(under_way(&world, Some(u32::MAX - 1)).contains(&"Forever.".to_owned()));
+        world.events.pop();
         // The second it lapses, it goes.
         world.announced(Some(1_600), "", None, "Another.");
         assert_eq!(world.events.len(), 2, "the lapsed one went");

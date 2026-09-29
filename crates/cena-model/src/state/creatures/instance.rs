@@ -525,10 +525,17 @@ impl CreatureInstance {
         f64::from(self.current_hp()) <= threshold
     }
 
-    /// Out of hit points (`creature.rb:631`).
+    /// Out of hit points (`creature.rb:631`), **when its hit points are
+    /// known**: stated by the game, or the bestiary's. With neither, the
+    /// maximum is [`FALLBACK_MAX_HP`], a guess, and 400 damage counted
+    /// against a creature that has more read it dead while it fought on: no
+    /// longer a target, and a corpse to loot (the review of 2026-09-29). The
+    /// guard word `thp` already refuses the guess (`guard/read.rs`). Such a
+    /// creature's death is the wire's to state: its `dead` flag, or a line
+    /// that ended it ([`Self::corpse`]).
     #[must_use]
     pub fn dead(&self) -> bool {
-        self.current_hp() == 0
+        (self.hp_is_stated() || self.has_template()) && self.current_hp() == 0
     }
 
     /// A corpse: dead by the wire's flag or by hit points. The room list

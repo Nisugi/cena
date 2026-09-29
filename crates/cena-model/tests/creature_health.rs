@@ -169,6 +169,26 @@ mod registry {
         assert_eq!(c.current_hp(), c.max_hp() - 50);
     }
 
+    /// A creature the bestiary does not know and the game states no health
+    /// for has a guessed maximum: damage counted past the guess is not its
+    /// death. One the bestiary knows still dies by the tally.
+    #[test]
+    fn a_guessed_maximum_never_reads_a_creature_dead() {
+        let mut unknown = CreatureInstance::new(-1, None, "a thing nobody has listed", None);
+        assert!(!unknown.has_template(), "guard: the bestiary lacks it");
+        unknown.add_damage(100_000);
+        assert_eq!(unknown.current_hp(), 0, "the tally is what it is");
+        assert!(!unknown.dead(), "and no verdict on a guess");
+        assert!(unknown.valid_target(), "it is still fought");
+        assert!(!unknown.corpse(), "and not looted");
+
+        let mut known = CreatureInstance::new(-2, Some("troll"), "cave troll", None);
+        assert!(known.has_template(), "guard: the bestiary has the troll");
+        known.add_damage(100_000);
+        assert!(known.dead());
+        assert!(!known.valid_target());
+    }
+
     #[test]
     fn a_creature_with_no_hp_model_falls_back_to_the_template() {
         // `maxhealth="0"` is not an answer, so it must not become the max --
