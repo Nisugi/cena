@@ -1,7 +1,7 @@
 # 25 — The player log
 
 **Status: steps 1, 2 and 2b BUILT (2026-09-21); step 3 BUILT (2026-09-29), with
-`;history`; 4-8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI).** Author decisions
+`;history`; 4-8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI), step 4 then ON HOLD (D6).** Author decisions
 recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
@@ -186,32 +186,39 @@ the earlier draft mistook the situation.
 Worth the measurement either way: their 85–90% figure is, for a heavy player, the
 difference between a few hundred MB and a few GB per year.
 
-### D6. Days, weeks and months are Eastern; old days archived by month — **AUTHOR, 2026-09-29**
-
-Asked about step 4 and whether day-files should follow the game's clock:
+### D6. The log is local; the archives are Eastern — **AUTHOR, 2026-09-29; step 4 ON HOLD**
 
 - **Archives, user configurable: monthly (default), weekly, or off.** Monthly
   means the calendar month, *"not 30 or 31 or 28 days, actual calendar
   month"*. Weekly weeks *"reset when saturday changes to sunday in eastern
   time"*. Off keeps every day-file plain, for a player who greps by hand.
-- **Day-files are cut at midnight Eastern too**, so days, weeks and months all
-  follow one clock, the game's, as `;loot`'s *today* already does
-  (`crates/cena/src/loot/period.rs`). This CORRECTS D2 in one respect only:
-  the **file's** day is Eastern. The stamp on each line stays the player's
-  wall clock, which is what D2 was about (*"a reader wants to know when they
-  were at the keyboard"*).
+- **The log keeps the player's clock; the archives keep the server's.** The
+  author: *"timestamps in logs should be in their local system time. backup
+  system should be in eastern time like the server."* So D2 stands: day-files
+  and line stamps are local wall clock, as built. Only the archive periods
+  (which month, which Sunday-to-Saturday week) are Eastern.
 
-  Consequence for the reader: a window's `Moment` pairs an Eastern day with a
-  local stamp, which compare correctly only when the two clocks agree on the
-  order of lines within a file. They do (a file is one Eastern day, written in
-  order), but "the last 15 minutes" must be turned into a day and a stamp on
-  the same pair of clocks: `cena_platform::stamp_ago` changes with this.
+> **CORRECTED 2026-09-29, the same day.** This section first recorded
+> *"day-files are cut at midnight Eastern too"* with local line stamps, and
+> said the two *"compare correctly"*. They do not: for a player in Pacific
+> time an Eastern day runs 21:00 to 21:00 local, so a file's stamps would
+> wrap at local midnight and a window, which compares stamps as text, would
+> misread it. Found before any code was written, by working out step 4's
+> first change. The question as first asked hid it; asked again with the
+> wrap stated, the author put the whole log back on local time and held
+> step 4 to revisit.
 
-  **Move the Eastern calendar down, do not copy it.** `loot/period.rs` is in
-  the binary and hand-rolls the US rule since 2007. The writer in
-  `cena-session` needs the same answer, so it moves to `cena-platform`
-  beside `date_dir` (which has `jiff`, and `jiff` knows `America/New_York`),
-  and both `;loot` and the log call it.
+**Open, for the revisit:** a day-file is a *local* date and an archive
+period is an *Eastern* one. For a player in Eastern time they agree. For
+anyone else the Eastern boundary falls inside a local day, and a file cannot
+be split. The simplest rule is that a file joins the period its date is in,
+and a period is archived once it is over in Eastern **and** holds no file
+that can still be written (today's local file). What that rule does to a
+player far from Eastern is the question to settle.
+
+If the Eastern calendar is needed outside `;loot` (whose `today` and month
+already follow it, `crates/cena/src/loot/period.rs`), it moves down to
+`cena-platform` rather than being copied.
 
 ### D5. Retention defaults — **AUTHOR, 2026-09-29: no size cap; kept forever by default**
 
@@ -428,9 +435,9 @@ Each step leaves the tree green and is independently reviewable.
    > `[hydra]`, and every search would write its hits for the next to find.
    >
    > Not run live. A GUI view over the same reader is not built.
-4. **Archives on close** (D4, D6). APPROVED 2026-09-29. First the Eastern
-   calendar moved down to `cena-platform` and the day-files cut by it (D6).
-   Then a closed month (or week) of day-files becomes one archive, today and
+4. **Archives on close** (D4, D6). APPROVED 2026-09-29, then ON HOLD the same day (D6): the log stays local, the
+   periods are Eastern, and how the two meet is open.
+   A closed month (or week) of day-files becomes one archive, today and
    the open period untouched; the setting is `monthly`, `weekly` or `off`, in
    the `player_log` section of the character's settings file, on the *Player
    log* page. The reader reads a day out of an archive as it reads a plain
