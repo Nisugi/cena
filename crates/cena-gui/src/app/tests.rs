@@ -599,7 +599,11 @@ fn a_play_window_opens_the_menu_where_it_is_set() {
     harness.get_by_label("Change the keys...").click();
     harness.run();
     assert!(harness.state().menu.open);
-    assert_eq!(harness.state().menu.character(), None);
+    assert_eq!(
+        harness.state().menu.character(),
+        Some(ashryn.as_str()),
+        "the character's own keys (plan/52 step 2)"
+    );
     assert_eq!(harness.state().menu.page(), Some("keys"));
 }
 

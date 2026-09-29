@@ -11,8 +11,11 @@
 //! the Keys page waits for a key it is told every one, and the first press
 //! goes to the page. On macOS the Clear key, which winit calls `NumLock`, is
 //! always caught: it switches the numpad between typing and sending its
-//! keys, as `NumLock` does elsewhere.
+//! keys, as `NumLock` does elsewhere. Each is told the keys of the play
+//! window that last had the keyboard, its character's own among them
+//! (`plan/52` step 2).
 
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -20,7 +23,7 @@ use eframe::NumpadCaptureMode;
 
 use super::App;
 use crate::keys::binding::Step;
-use crate::keys::{self, Action, Macro};
+use crate::keys::{self, Action, KeyFile, Macro, Whose};
 use crate::play::Asked;
 use crate::sessions::Seat;
 
@@ -57,10 +60,77 @@ pub(super) fn asked(action: Action) -> Asked {
     match action {
         Action::Stop => Asked::Stop,
         Action::Settings => Asked::Settings(None),
+        Action::Set(set) => Asked::UseSet(set),
     }
 }
 
 impl App {
+    /// The keys file of the character `name` of the game `game`, in the
+    /// data folder; `None` where nothing is kept, or the game is unknown.
+    pub(super) fn mine_path(&self, game: &str, name: &str) -> Option<PathBuf> {
+        let data = self.keys_file.as_deref()?.parent()?;
+        keys::character_path(data, game, name)
+    }
+
+    /// Read the character's keys file at `file` when it has not been read.
+    pub(super) fn load_mine(&mut self, file: Option<&Path>) {
+        if let Some(file) = file
+            && !self.mine.contains_key(file)
+        {
+            let read = KeyFile::load(file, Whose::Character);
+            self.mine.insert(file.to_owned(), read);
+        }
+    }
+
+    /// What a play window says of its keys: every character's, then how
+    /// many of `name`'s own there are and the set it uses, and what is
+    /// wrong in its file.
+    pub(super) fn keys_said(
+        &self,
+        mine: Option<&(KeyFile, Vec<String>)>,
+        name: &str,
+    ) -> Vec<String> {
+        let mut said = self.keys_said.clone();
+        if let Some((mine, problems)) = mine {
+            if mine.len() > 0 {
+                said.push(format!("{} of {name}'s own.", mine.len()));
+            }
+            if mine.chosen != 0 {
+                said.push(format!("Macro set {} in use, over set 0.", mine.chosen));
+            }
+            said.extend(problems.iter().cloned());
+        }
+        said
+    }
+
+    /// The play window of `session`, whose character's keys file is
+    /// `file`, has the keyboard: the fork catches its keys, and is told so
+    /// when it did not have it before.
+    pub(super) fn took_keyboard(&mut self, session: u32, file: Option<PathBuf>) {
+        if self.focused.as_ref().map(|(had, _)| *had) != Some(session) {
+            self.focused = Some((session, file));
+            self.catch_again = true;
+        }
+    }
+
+    /// The send macros keys did on `seat`'s window this frame, sent from
+    /// now; a command kept for after a wait has the next frame ask for the
+    /// one it is due in (`send_due`).
+    pub(super) fn send_macros(
+        &mut self,
+        context: &egui::Context,
+        seat: &Arc<Seat>,
+        sends: Vec<Macro>,
+    ) {
+        let now = Instant::now();
+        for made in sends {
+            self.send_macro(seat, &made, now);
+        }
+        if !self.later.is_empty() {
+            context.request_repaint();
+        }
+    }
+
     /// `made`, a send macro, on `seat` from `now`: its commands before any
     /// wait sent at once, the rest kept until their waits are over.
     pub(super) fn send_macro(&mut self, seat: &Arc<Seat>, made: &Macro, now: Instant) {
@@ -115,13 +185,20 @@ impl App {
         frame.set_numpad_capture_mode(numpad_mode(
             waiting,
             mac.then_some(self.clear_sends),
-            self.keys.numpad_always,
+            self.keys.numpad_always(),
         ));
-        frame.set_numpad_capture_keys((!waiting).then(|| self.keys.numpad_caught()));
+        let file = self.focused.as_ref().and_then(|(_, file)| file.clone());
+        self.load_mine(file.as_deref());
+        let mine = file
+            .as_ref()
+            .and_then(|file| self.mine.get(file))
+            .map(|(mine, _)| mine);
+        let keys = self.keys.of(mine);
+        frame.set_numpad_capture_keys((!waiting).then(|| keys.numpad_caught()));
         let mut captured = if waiting {
             keys::capturable()
         } else {
-            self.keys.key_capture()
+            keys.key_capture()
         };
         if mac {
             captured.insert(keys::NUM_LOCK);
@@ -131,8 +208,8 @@ impl App {
 
     /// The fork's presses this frame, of the numpad (`numpad`) and of the
     /// keys egui has no name for (`captured`): `NumLock` as the numpad's
-    /// show it; on a Mac (`mac`), Clear switching the numpad; the macros the
-    /// bound ones do, for the play window with the keyboard; or, while the
+    /// show it; on a Mac (`mac`), Clear switching the numpad; the bound
+    /// ones, for the play window with the keyboard to do; or, while the
     /// Keys page waits for a key, the first press, for it.
     pub(super) fn caught_pressed(
         &mut self,
@@ -165,13 +242,21 @@ impl App {
             return;
         }
         self.caught_for_page = None;
+        let mine = self
+            .focused
+            .as_ref()
+            .and_then(|(_, file)| self.mine.get(file.as_ref()?))
+            .map(|(mine, _)| mine);
+        let keys = self.keys.of(mine);
         self.caught = numpad
             .iter()
-            .filter_map(|event| keys::numpad_macro(&self.keys, event))
-            .chain(captured.iter().filter_map(|event| {
-                let chord = keys::captured_chord(event)?;
-                self.keys.does(&chord).cloned()
-            }))
+            .filter_map(keys::numpad_caught)
+            .chain(
+                captured
+                    .iter()
+                    .filter_map(|event| keys::captured_chord(event)),
+            )
+            .filter(|chord| keys.does(chord).is_some())
             .collect();
     }
 }

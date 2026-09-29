@@ -152,6 +152,10 @@ pub(super) fn top(
             if let Some(on) = view.numlock {
                 ui.weak(if on { "NumLock on" } else { "NumLock off" });
             }
+            if view.set != 0 {
+                ui.weak(format!("Set {}", view.set))
+                    .on_hover_text("The macro set in use over set 0; Alt+0 goes back to set 0 alone");
+            }
         });
     });
     for alert in view.story.alerts_at(view.now) {

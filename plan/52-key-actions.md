@@ -242,7 +242,7 @@ action for (`{Rest}`, `{ToggleMusic}`), `@` and `\?` are said, not silently lost
 5. Tabs and windows.
 6. Find: the bar, its matches, and its keys.
 7. Targeting, on Tab.
-8. Hydra's own: stop, drawers, characters, settings, the sets.
+8. Hydra's own: stop, drawers, characters, settings. (The sets' keys came with step 2.)
 9. `;keys import`.
 
 ### Step 1, BUILT 2026-09-28
@@ -276,6 +276,47 @@ The author: *"go for it"*. In `crates/cena-gui/src/keys/`:
 - *Tests:* the macro's cutting and kinds, the defaults all ones the file would take, the
   file over the defaults, the writer's `""` and restore, the waits, a fill and an action
   pressed in the app, the page's *Restore* and *Remove*. Eight mutants, all caught.
+
+### Step 2, BUILT 2026-09-29
+
+The author: *"step 2 let's go"*. In `crates/cena-gui/src/keys/`:
+
+- **Two files, ten sets each** (`file.rs`): every character's keybinds file, and a
+  character's own, `<instance>_<name>.keys.toml` beside its settings. Set 0 is `[keys]`,
+  as before, so step 1's files read unchanged; sets 1 to 9 are `[set1]` to `[set9]`.
+  The character's file keeps the set it uses as `set = 3` above its tables; every
+  character's keeps `numpad`. Each says what the other holds that it does not.
+- **A key press looks in order** (`keys.rs`, `Keys`): the chosen set, the character's
+  own and then every character's; then set 0 the same way; then Hydra's defaults. The
+  first that binds or unbinds the key has it, so `""` in a character's file unbinds every
+  character's key or Hydra's for that character alone, and in a chosen set leaves the
+  key doing nothing while the set is in use. The author's example is a test
+  (`a_chosen_set_goes_over_set_0`).
+- **Alt+0 to Alt+9 choose a set** (`defaults.rs`, `Action::Set`, `macro_set_0` to
+  `macro_set_9`), the one action with a key of Hydra's (§6 answer 10), kept in the
+  character's file (`KeyChange::Choose`) and shown on the play window's bar (*Set 3*).
+  Moved here from step 8: sets that could not be chosen would do nothing.
+- **The Keys page** (`page.rs`): on Hydra's own settings, every character's keys; on a
+  character's (its *Keys* in the page list, and the play window's *Change the keys...*),
+  its own over every character's. Either shows one set at a time (*Keys of*); a
+  character's also chooses the set in use. A key added on a character's page is its own
+  unless *global* is ticked (the author: *"character by default with a global
+  toggle"*), and each key from a file has *global* to move it between the two files
+  (`KeyChange::Share`, written as a bind in one and a line taken out of the other).
+  *Restore* takes a key's line out of its file, so it does what lies beneath again:
+  every character's, or Hydra's.
+- **The writer** (`write.rs`) writes a set's table, making it when there is none, and
+  writes `""` only in set 0 and only where something beneath the file binds the key; a
+  key taken out of a set from 1 to 9 falls to set 0's. A setting above the tables written
+  and taken out again leaves the file as it was, so Alt+1, Alt+0 does not pile up blank
+  lines.
+- **The fork catches the keys of the window with the keyboard** (`app/keyed.rs`): the
+  play window that last had it, its character's own among them.
+- *Tests:* each set read from its table, the layering and the author's example, the
+  writer's sets, a character's `""` and its chosen set, Alt+1 and Alt+0 in a play window,
+  a key shared and taken back, the character's page (`tests/settings_keys.rs`, with an
+  image). Nineteen mutants: eighteen caught; the one left, writing `set = n` unchecked on
+  read-back, is equivalent, since a line above the tables cannot fail to read back.
 
 ## 6. For the author
 

@@ -4,6 +4,13 @@
 //! action asked. Moved out of `app/tests.rs` at its cap.
 
 use super::*;
+use crate::keys::page::Place;
+
+/// Set 0 of every character's keys.
+const EVERY: Place = Place {
+    set: 0,
+    every: true,
+};
 
 /// A bound key pressed on a frame egui draws twice still sends its line:
 /// the key is in the first pass alone, and what that pass asked was lost
@@ -71,20 +78,22 @@ fn a_key_bound_in_the_menu_binds_at_once() {
     harness
         .state_mut()
         .caught
-        .push(keys::Macro::Send("stale".to_owned()));
+        .push(keys::Chord::parse("F9").expect("a key"));
     harness.state_mut().caught_pressed(&[press], &[], false);
     assert_eq!(harness.state().caught_for_page.as_deref(), Some("Numpad8"));
     assert!(harness.state().caught.is_empty(), "no play window's");
     harness.run();
     assert!(!harness.state().menu.waiting_for_key());
 
-    harness
-        .state_mut()
-        .menu_asked(MenuAsked::Key(crate::KeyChange::Bind {
+    harness.state_mut().menu_asked(MenuAsked::Key {
+        character: None,
+        change: crate::KeyChange::Bind {
             key: "Numpad8".to_owned(),
             does: keys::Macro::Send("hide".to_owned()),
             was: None,
-        }));
+            place: EVERY,
+        },
+    });
     let numpad8 = keys::Chord::parse("Numpad8").expect("a key");
     assert_eq!(
         harness.state().keys.does(&numpad8),
@@ -230,14 +239,17 @@ fn a_key_egui_cannot_name_does_its_macro() {
         Keybinds::read("[keys]\n\"Ctrl+Pause\" = \"stance defensive\"\nScrollLock = \"hide\"\n").0;
     let code = winit::keyboard::KeyCode::Pause;
     assert_eq!(
-        app.keys.key_capture(),
+        app.keys.of(None).key_capture(),
         std::collections::HashSet::from([code, winit::keyboard::KeyCode::ScrollLock]),
         "the fork is told the bound ones, whatever the modifiers"
     );
     app.caught_pressed(&[], &[captured(code, egui::Modifiers::CTRL)], false);
     assert_eq!(
         app.caught,
-        [keys::Macro::Send("stance defensive".to_owned())]
+        keys::Chord::parse("Ctrl+Pause")
+            .ok()
+            .into_iter()
+            .collect::<Vec<_>>()
     );
     app.caught_pressed(&[], &[captured(code, egui::Modifiers::NONE)], false);
     assert!(app.caught.is_empty(), "Pause alone is not bound");
@@ -297,4 +309,162 @@ fn clear_switches_the_numpad_on_a_mac() {
         Always,
         "the Keys page waits"
     );
+}
+
+/// A character's own keys go over every character's in its play window,
+/// and Alt with a digit chooses its macro set, kept in its own file and
+/// shown on the window's bar.
+#[test]
+fn a_characters_keys_and_its_set() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let data = std::env::temp_dir().join(format!("cena-app-sets-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&data);
+    std::fs::create_dir_all(&data).expect("a folder");
+    std::fs::write(keys::path(&data), "[keys]\nF5 = \"look\"\nF6 = \"hide\"\n").expect("written");
+    let mine =
+        keys::character_path(&data, cena_session::DEFAULT_GAME_CODE, "Ashryn").expect("a path");
+    std::fs::write(&mine, "[keys]\nF5 = \"search\"\n[set1]\nF6 = \"stand\"\n").expect("written");
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    let app = App::keeping(sessions, &data);
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
+    harness.run();
+    harness.key_press(egui::Key::F5);
+    harness.key_press(egui::Key::F6);
+    harness.run();
+    harness.run();
+    assert!(
+        harness.query_by_label(">search").is_some(),
+        "the character's own"
+    );
+    assert!(
+        harness.query_by_label(">hide").is_some(),
+        "every character's"
+    );
+    assert!(harness.query_by_label("Set 1").is_none());
+
+    harness.key_press_modifiers(egui::Modifiers::ALT, egui::Key::Num1);
+    harness.run();
+    harness.run();
+    assert!(
+        std::fs::read_to_string(&mine).is_ok_and(|text| text.starts_with("set = 1\n")),
+        "kept in its own file"
+    );
+    assert!(
+        harness.query_by_label("Set 1").is_some(),
+        "shown on the bar"
+    );
+    harness.key_press(egui::Key::F6);
+    harness.run();
+    harness.run();
+    assert!(harness.query_by_label(">stand").is_some(), "set 1's F6");
+
+    harness.key_press_modifiers(egui::Modifiers::ALT, egui::Key::Num0);
+    harness.run();
+    harness.run();
+    assert!(harness.query_by_label("Set 1").is_none(), "set 0 alone");
+    assert!(
+        std::fs::read_to_string(&mine).is_ok_and(|text| !text.contains("set =")),
+        "taken out of its file"
+    );
+    let _ = std::fs::remove_dir_all(&data);
+}
+
+/// A key made every character's leaves the character's file for the
+/// keybinds file, and one made the character's alone goes back; a key
+/// added on a character's page is its own.
+#[test]
+fn a_key_is_shared_and_taken_back() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let data = std::env::temp_dir().join(format!("cena-app-share-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&data);
+    let mut app = App::keeping(Sessions::new(runtime.handle().clone()), &data);
+    let who = Some(format!("{}:Ashryn", cena_session::DEFAULT_GAME_CODE));
+    let mine =
+        keys::character_path(&data, cena_session::DEFAULT_GAME_CODE, "Ashryn").expect("a path");
+    let read = |path: &std::path::Path| std::fs::read_to_string(path).unwrap_or_default();
+    let look = keys::Macro::Send("look".to_owned());
+    app.menu_asked(MenuAsked::Key {
+        character: who.clone(),
+        change: crate::KeyChange::Bind {
+            key: "F5".to_owned(),
+            does: look.clone(),
+            was: None,
+            place: Place {
+                set: 2,
+                every: false,
+            },
+        },
+    });
+    assert_eq!(read(&mine), "[set2]\n\"F5\" = \"look\"\n");
+    let shared = |every| MenuAsked::Key {
+        character: who.clone(),
+        change: crate::KeyChange::Share {
+            key: "F5".to_owned(),
+            does: look.clone(),
+            set: 2,
+            every,
+        },
+    };
+    app.menu_asked(shared(true));
+    assert_eq!(read(&keys::path(&data)), "[set2]\n\"F5\" = \"look\"\n");
+    assert!(!read(&mine).contains("F5"), "{}", read(&mine));
+    app.menu_asked(shared(false));
+    assert!(read(&mine).contains("\"F5\" = \"look\""));
+    assert!(!read(&keys::path(&data)).contains("F5"));
+    let _ = std::fs::remove_dir_all(&data);
+}
+
+/// The play window with the keyboard is the one whose keys the fork is told
+/// to catch, its character's own among them: a window taking the keyboard
+/// has the fork told again, and a key it caught is that character's.
+#[test]
+fn the_fork_catches_the_keys_of_the_window_with_the_keyboard() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let data = std::env::temp_dir().join(format!("cena-app-focus-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&data);
+    std::fs::create_dir_all(&data).expect("a folder");
+    let mine =
+        keys::character_path(&data, cena_session::DEFAULT_GAME_CODE, "Ashryn").expect("a path");
+    std::fs::write(&mine, "[keys]\nPause = \"hide\"\n").expect("written");
+    let sessions = Sessions::new(runtime.handle().clone());
+    let seat = sessions.seat_for_test(handle(), "Ashryn");
+    let pause = || {
+        [captured(
+            winit::keyboard::KeyCode::Pause,
+            egui::Modifiers::NONE,
+        )]
+    };
+    let mut app = App::keeping(sessions, &data);
+    app.caught_pressed(&[], &pause(), false);
+    assert!(app.caught.is_empty(), "no window has had the keyboard");
+    app.catch_again = false;
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
+    harness.run();
+    assert_eq!(
+        harness.state().focused,
+        Some((seat.id.0, Some(mine.clone()))),
+        "Ashryn's window"
+    );
+    assert!(harness.state().catch_again, "the fork told again");
+    harness.state_mut().caught_pressed(&[], &pause(), false);
+    assert_eq!(
+        harness.state().caught,
+        keys::Chord::parse("Pause")
+            .ok()
+            .into_iter()
+            .collect::<Vec<_>>(),
+        "Ashryn's own key"
+    );
+    let _ = std::fs::remove_dir_all(&data);
 }

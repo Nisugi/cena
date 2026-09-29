@@ -16,6 +16,8 @@ pub struct Board {
     pub bound: Vec<KeyRow>,
     pub numpad_always: bool,
     pub caught: Option<String>,
+    /// The macro set the character the menu shows uses.
+    pub chosen: u8,
     pub widgets: Vec<Page>,
     pub asked: Vec<MenuAsked>,
 }
@@ -35,6 +37,8 @@ impl Board {
                 numpad_always: self.numpad_always,
                 said: &[],
                 caught: self.caught.as_deref(),
+                character: self.menu.character().is_some(),
+                chosen: self.chosen,
             },
             widgets: &self.widgets,
         };

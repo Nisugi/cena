@@ -105,7 +105,7 @@ KeyA = "attack"
 Nowhere = "x"
 "#,
     );
-    assert!(keybinds.numpad_always);
+    assert!(keybinds.numpad_always());
     assert_eq!(keybinds.changed(), 4);
     assert_eq!(
         keybinds.does(&Chord::parse("F5").expect("parses")),
@@ -113,7 +113,7 @@ Nowhere = "x"
     );
     assert_eq!(problems.len(), 2, "{problems:?}");
     assert!(problems.iter().any(|p| p.contains("types")));
-    let caught = keybinds.numpad_caught();
+    let caught = keybinds.of(None).numpad_caught();
     assert!(
         caught.contains("num_8") && caught.contains("num_decimal"),
         "the fork catches each bound numpad key, whatever the modifiers: {caught:?}"
@@ -135,7 +135,7 @@ fn hydras_defaults_bind_under_the_file() {
     assert_eq!(hydras.does(&key("Numpad8")), Some(&send("north")));
     assert_eq!(hydras.does(&key("Shift+Numpad0")), Some(&send("peer down")));
     assert_eq!(hydras.does(&key("NumpadAdd")), Some(&send("look")));
-    assert_eq!(hydras.len(), 26);
+    assert_eq!(hydras.len(), 36);
     assert_eq!(hydras.changed(), 0);
 
     let (keybinds, problems) =
@@ -148,8 +148,8 @@ fn hydras_defaults_bind_under_the_file() {
         Some(&send("east")),
         "still Hydra's"
     );
-    assert_eq!(keybinds.len(), 26, "one gone, one added");
-    let rows = keybinds.rows();
+    assert_eq!(keybinds.len(), 36, "one gone, one added");
+    let rows = keybinds.rows(0, None);
     let row = |written: &str| rows.iter().find(|row| row.key == written).cloned();
     assert_eq!(
         row("Numpad8"),
@@ -157,6 +157,8 @@ fn hydras_defaults_bind_under_the_file() {
             key: "Numpad8".to_owned(),
             does: None,
             default: Some(send("north")),
+            from: Some(Whose::Every),
+            beneath: Some(send("north")),
         }),
         "an unbound default is listed, to be restored"
     );
@@ -194,15 +196,18 @@ fn a_bound_press_is_taken_and_the_rest_left() {
     };
     let mut input = egui::InputState::default();
     input.events = vec![press(Key::F5), press(Key::A)];
-    assert_eq!(keybinds.take(&mut input), [Macro::Send("look".to_owned())]);
+    assert_eq!(
+        keybinds.of(None).take(&mut input),
+        [Macro::Send("look".to_owned())]
+    );
     assert_eq!(input.events, [press(Key::A)]);
 }
 
-/// A numpad press the fork caught does its macro, named as winit names it;
-/// one it let through to be typed does nothing.
+/// A numpad press the fork caught is a chord, named as winit names it, to
+/// be done by the window with the keyboard; one it let through to be typed
+/// is none.
 #[test]
-fn a_caught_numpad_press_does_its_macro() {
-    let keybinds = Keybinds::default();
+fn a_caught_numpad_press_is_a_chord() {
     let event = |consumed| eframe::NumpadKeyEvent {
         physical_key: winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Numpad8),
         consumed,
@@ -212,15 +217,8 @@ fn a_caught_numpad_press_does_its_macro() {
         modifiers: Modifiers::NONE,
         character: None,
     };
-    assert_eq!(
-        numpad_macro(&keybinds, &event(true)),
-        Some(Macro::Send("north".to_owned()))
-    );
-    assert_eq!(
-        numpad_macro(&keybinds, &event(false)),
-        None,
-        "typed instead"
-    );
+    assert_eq!(numpad_caught(&event(true)), Chord::parse("Numpad8").ok());
+    assert_eq!(numpad_caught(&event(false)), None, "typed instead");
 }
 
 /// A send macro's commands are cut apart at each break, so each is one
@@ -247,4 +245,97 @@ F8 = "x\u0000"
     assert_eq!(steps("F7"), Some(Ok(1)));
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(problems[0].contains("CR, LF or NUL"), "{problems:?}");
+}
+
+/// A character's own file goes over every character's, which goes over
+/// Hydra's; its `""` unbinds what is beneath it, for that character alone.
+#[test]
+fn a_characters_own_keys_go_over_every_characters() {
+    let key = |written: &str| Chord::parse(written).expect("parses");
+    let send = |line: &str| Macro::Send(line.to_owned());
+    let (every, _) = Keybinds::read("[keys]\nF5 = \"look\"\nF6 = \"hide\"\n");
+    let (mine, problems) = KeyFile::read(
+        "[keys]\nF5 = \"search\"\nNumpad8 = \"\"\nNumpadAdd = \"\"\nF7 = \"stand\"\n",
+        Whose::Character,
+    );
+    assert!(problems.is_empty(), "{problems:?}");
+    let keys = every.of(Some(&mine));
+    assert_eq!(
+        keys.does(&key("F5")),
+        Some(&send("search")),
+        "the character's"
+    );
+    assert_eq!(
+        keys.does(&key("F6")),
+        Some(&send("hide")),
+        "every character's"
+    );
+    assert_eq!(keys.does(&key("F7")), Some(&send("stand")));
+    assert_eq!(keys.does(&key("Numpad8")), None, "unbound for it");
+    assert_eq!(keys.does(&key("Numpad2")), Some(&send("south")), "Hydra's");
+    assert!(!keys.numpad_caught().contains("num_plus"), "left to type");
+    assert_eq!(
+        every.of(None).does(&key("Numpad8")),
+        Some(&send("north")),
+        "every other character still walks"
+    );
+
+    let rows = every.rows(0, Some(&mine));
+    let row = |written: &str| rows.iter().find(|row| row.key == written).cloned();
+    let f5 = row("F5").expect("listed");
+    assert_eq!(
+        (f5.from, f5.beneath),
+        (Some(Whose::Character), Some(send("look"))),
+        "restored, the character does every character's"
+    );
+    assert_eq!(row("F6").and_then(|row| row.from), Some(Whose::Every));
+    assert_eq!(row("Numpad2").map(|row| row.from), Some(None), "Hydra's");
+}
+
+/// The author's example: set 0 has F2 and F4, set 1 only F4. With set 1 in
+/// use, F4 does set 1's and F2 still set 0's; with none, F4 is set 0's. A
+/// set's keys come from the character's file and every character's alike,
+/// and its `""` leaves a key doing nothing while it is in use.
+#[test]
+fn a_chosen_set_goes_over_set_0() {
+    let key = |written: &str| Chord::parse(written).expect("parses");
+    let send = |line: &str| Macro::Send(line.to_owned());
+    let (every, _) = Keybinds::read(
+        "[keys]\nF2 = \"stance offensive\"\nF4 = \"stance defensive\"\n[set2]\nF2 = \"hide\"\n",
+    );
+    let (mut mine, problems) = KeyFile::read(
+        "set = 1\n[set1]\nF4 = \"loot\"\nF6 = \"\"\n[keys]\nF6 = \"search\"\n",
+        Whose::Character,
+    );
+    assert!(problems.is_empty(), "{problems:?}");
+    let keys = every.of(Some(&mine));
+    assert_eq!(keys.does(&key("F4")), Some(&send("loot")), "set 1's");
+    assert_eq!(
+        keys.does(&key("F2")),
+        Some(&send("stance offensive")),
+        "set 0's"
+    );
+    assert_eq!(keys.does(&key("F6")), None, "set 1 leaves it doing nothing");
+    mine.chosen = 0;
+    let keys = every.of(Some(&mine));
+    assert_eq!(keys.does(&key("F4")), Some(&send("stance defensive")));
+    assert_eq!(keys.does(&key("F6")), Some(&send("search")));
+    mine.chosen = 2;
+    assert_eq!(
+        every.of(Some(&mine)).does(&key("F2")),
+        Some(&send("hide")),
+        "every character's set 2"
+    );
+    assert_eq!(
+        every.of(None).does(&key("Alt+Digit1")),
+        Some(&Macro::Act(Action::Set(1))),
+        "Alt and a digit choose a set"
+    );
+
+    let rows = every.rows(1, Some(&mine));
+    assert_eq!(
+        rows.iter().map(|row| row.key.as_str()).collect::<Vec<_>>(),
+        ["F4", "F6"],
+        "set 1's own keys, none of set 0's or Hydra's"
+    );
 }

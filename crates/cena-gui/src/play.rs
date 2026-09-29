@@ -74,6 +74,9 @@ pub(crate) enum Asked {
     Keys,
     /// Switch the player's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(bool),
+    /// Use this macro set over set 0, kept for the character; 0 for set 0
+    /// alone (`plan/52` step 2).
+    UseSet(u8),
 }
 
 /// What a play window shows this frame.
@@ -92,6 +95,8 @@ pub(crate) struct PlayView<'a> {
     pub(crate) hunt: Option<&'a HuntView>,
     /// `NumLock`, once a numpad press has shown it.
     pub(crate) numlock: Option<bool>,
+    /// The macro set the character uses over set 0; 0 for none.
+    pub(crate) set: u8,
     /// What the keybinds file bound, and what is wrong in it.
     pub(crate) keys: &'a [String],
     /// The other characters running, which a widget may follow.

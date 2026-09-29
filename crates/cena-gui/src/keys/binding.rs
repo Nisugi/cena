@@ -37,11 +37,55 @@ pub enum Action {
     Stop,
     /// Open the settings menu.
     Settings,
+    /// Use this macro set, 1 to 9, over set 0; set 0 alone for 0 (`plan/52`
+    /// step 2). Kept for the character.
+    Set(u8),
 }
+
+/// Each set's action's name in the keybinds file.
+const SET_NAMES: [&str; 10] = [
+    "macro_set_0",
+    "macro_set_1",
+    "macro_set_2",
+    "macro_set_3",
+    "macro_set_4",
+    "macro_set_5",
+    "macro_set_6",
+    "macro_set_7",
+    "macro_set_8",
+    "macro_set_9",
+];
+
+/// Each set's action's name for a player.
+const SET_LABELS: [&str; 10] = [
+    "Use set 0 alone",
+    "Use macro set 1",
+    "Use macro set 2",
+    "Use macro set 3",
+    "Use macro set 4",
+    "Use macro set 5",
+    "Use macro set 6",
+    "Use macro set 7",
+    "Use macro set 8",
+    "Use macro set 9",
+];
 
 impl Action {
     /// Every action, in the order the Keys page lists them.
-    pub const ALL: [Self; 2] = [Self::Stop, Self::Settings];
+    pub const ALL: [Self; 12] = [
+        Self::Stop,
+        Self::Settings,
+        Self::Set(0),
+        Self::Set(1),
+        Self::Set(2),
+        Self::Set(3),
+        Self::Set(4),
+        Self::Set(5),
+        Self::Set(6),
+        Self::Set(7),
+        Self::Set(8),
+        Self::Set(9),
+    ];
 
     /// Its name in the keybinds file.
     #[must_use]
@@ -49,6 +93,7 @@ impl Action {
         match self {
             Self::Stop => "stop",
             Self::Settings => "settings",
+            Self::Set(set) => SET_NAMES[usize::from(set.min(9))],
         }
     }
 
@@ -58,6 +103,7 @@ impl Action {
         match self {
             Self::Stop => "Stop the behaviors",
             Self::Settings => "Open the settings",
+            Self::Set(set) => SET_LABELS[usize::from(set.min(9))],
         }
     }
 
@@ -274,6 +320,11 @@ mod tests {
             assert_eq!(Macro::read(&table["key"]), Ok(Some(made)), "{text}");
         }
         assert_eq!(Macro::read(&toml::Value::String(String::new())), Ok(None));
+        let set: toml::Table = toml::from_str("key = { action = \"macro_set_3\" }").expect("TOML");
+        assert_eq!(
+            Macro::read(&set["key"]),
+            Ok(Some(Macro::Act(Action::Set(3))))
+        );
         let unknown: toml::Table = toml::from_str("key = { action = \"fly\" }").expect("TOML");
         assert!(Macro::read(&unknown["key"]).is_err());
         let two: toml::Table =
