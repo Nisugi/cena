@@ -2,8 +2,10 @@
 //!
 //! The fixtures are real wire traffic, cut from the corpus and scrubbed
 //! (`tests/FIXTURES.md` records provenance; `tests/fixtures_are_scrubbed.rs`
-//! proves the redaction held). They are 12 KB in total, inside the ~20-40 KB
-//! budget, so this tier costs nothing to run every time.
+//! proves the redaction held). They are small, each under its own budget
+//! (`du -cb tests/fixtures/*.xml` for the total: 75 KB on 2026-09-29, over
+//! 23 files, where this said 12 KB), so this tier costs nothing to run
+//! every time.
 //!
 //! # These assert meaning, not a snapshot
 //!

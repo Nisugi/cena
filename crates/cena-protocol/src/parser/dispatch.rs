@@ -116,7 +116,7 @@ impl Parser {
         }
 
         if closing {
-            self.close_tag(name, buffer, frames);
+            self.close_tag(tag, buffer, frames);
             return;
         }
 
@@ -396,7 +396,10 @@ impl Parser {
     /// one line (see [`menu`] for the other shape of the same idea): 447,095 opens in a 272-file corpus sample, none spanning a
     /// line (see MULTI-LINE CAPTURES in `parser.rs`).
     fn inline_paired(&mut self, tag: &str, frames: &mut Vec<Frame>) {
-        let id = text::attribute(tag, "id").unwrap_or_default();
+        // From the open tag, never the whole paired string (`inner::open_tag`
+        // says why): asked of the whole, an envelope that sent no `id` was
+        // given its first child's.
+        let id = text::attribute(open_tag(tag), "id").unwrap_or_default();
         let mut unmodelled = Vec::new();
         let body = self.parse_runs_reporting(&inner_text(tag), &mut unmodelled);
         // `<inv>` is a container's contents, not a room component: same shape
@@ -454,7 +457,8 @@ impl Parser {
     /// [`Frame::Structural`] and is not. Neither is silent -- being in
     /// [`crate::tags`] used to be what silenced a tag, and that is the third
     /// drop path recorded in this file's header.
-    fn close_tag(&mut self, name: &str, buffer: &mut String, frames: &mut Vec<Frame>) {
+    fn close_tag(&mut self, tag: &str, buffer: &mut String, frames: &mut Vec<Frame>) {
+        let name = text::tag_name(tag);
         self.flush(buffer, frames);
         // `</dialogData>` is the one close with state to undo: it ends the
         // dialog that encloses the `<progressBar>`s inside it.
@@ -501,12 +505,16 @@ impl Parser {
             self.resume_enclosing(frames);
             return;
         }
+        // **The bytes the wire sent**, not a close tag made again from its
+        // name: `</a >` and a close that carried attributes were reported as
+        // `</a>`, something the wire did not send (the review of
+        // 2026-09-29).
         if tags::is_known(name) {
-            frames.push(Frame::structural(name, &format!("</{name}>")));
+            frames.push(Frame::structural(name, tag));
         } else {
             frames.push(Frame::UnknownTag {
                 name: name.to_owned(),
-                raw: format!("</{name}>"),
+                raw: tag.to_owned(),
             });
         }
     }

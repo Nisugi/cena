@@ -418,3 +418,32 @@ fn a_cleared_stream_keeps_where_it_goes_when_shut() {
         ]
     );
 }
+
+/// A close tag is reported as the wire sent it, not made again from its
+/// name.
+#[test]
+fn a_close_tag_keeps_the_bytes_it_came_as() {
+    let out = frames(&["</newThing  attr='v'>", "</compass >"]);
+    let raws: Vec<&str> = out
+        .iter()
+        .filter_map(|f| match f {
+            Frame::UnknownTag { raw, .. } | Frame::Structural { raw, .. } => Some(raw.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(raws, ["</newThing  attr='v'>", "</compass >"]);
+}
+
+/// An envelope that sent no `id` is not given its first child's.
+#[test]
+fn a_component_without_an_id_does_not_take_a_childs() {
+    let out = frames(&["<component><a exist='9' noun='rock' id='child'>a rock</a></component>"]);
+    let ids: Vec<&str> = out
+        .iter()
+        .filter_map(|f| match f {
+            Frame::Component { id, .. } => Some(id.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ids, [""]);
+}

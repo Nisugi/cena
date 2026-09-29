@@ -41,17 +41,22 @@
 //!
 //! `LichWebUI` is the same category one step removed: it is Lich's own
 //! handshake, and since Cena *is* the Lich replacement it has no upstream Lich
-//! to handshake with. Dropped too, and left to fall through to
-//! [`Frame::UnknownTag`] if it ever arrives.
+//! to handshake with. It has no variant of its own. (CORRECTED 2026-09-29:
+//! this said it fell through to [`Frame::UnknownTag`]. It is in
+//! `KNOWN_WIRE_TAGS` and `parser/thin.rs` types it as
+//! [`Frame::WindowHints`], since the Lich relay of `plan/51` can send it.)
 //!
 //! # The arithmetic, stated so it can be checked
 //!
-//! This enum has **55** variants:
+//! This enum has **56** variants:
 //!
 //! ```text
 //! $ awk '/^pub enum Frame \{/,/^\}/' src/frame/vocabulary.rs | grep -oE '^    [A-Z][A-Za-z0-9]*' | sort -u | wc -l
-//! 55
+//! 56
 //! ```
+//!
+//! (CORRECTED 2026-09-29: this said 55 beside arithmetic that came to 56,
+//! the drift recorded below happening a second time. Run the command.)
 //!
 //! (`sort -u` is load-bearing: `ActiveEffect` is both a variant name and the
 //! struct it wraps, so without it the line matches twice and the count is 52.)

@@ -41,7 +41,7 @@ const PSEUDONYMS: &[(&str, &str)] = &[
     ("Inochi", "Alderin"),
     // The eleven players in `room_populated.xml`'s roster, from
     // `GSIV-Nisugi/2026/09/xml/2026-09-01_15-13-56.xml:240`. Kept in step with
-    // `examples/cut_fixtures.rs`; this list is what proves they are absent.
+    // `examples/scrub_fixture.rs`; this list is what proves they are absent.
     ("Fulmen", "Aldric"),
     ("Khadzim", "Bresnik"),
     ("Vortalis", "Cerdwyn"),

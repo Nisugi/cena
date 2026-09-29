@@ -58,20 +58,24 @@ pub enum Frame {
     // --- timers -----------------------------------------------------------
     /// `<roundTime value=>` -- absolute epoch second the roundtime ends.
     RoundTime {
-        /// `value=`, epoch seconds; `0` when absent or not a number.
+        /// `value=`, epoch seconds. A tag whose value is absent or not a
+        /// number is no timer of zero: it is [`Frame::MalformedTag`]
+        /// (`parser/thin.rs`, the crate review of 2026-09-28, R9).
         value: u32,
     },
     /// `<castTime value=>`.
     CastTime {
         /// `value=`: the epoch second the cast time ends, not a duration
-        /// (`Wrayth protocol.txt:355`); `0` when absent or not a number.
+        /// (`Wrayth protocol.txt:355`). Absent or not a number, the tag is
+        /// [`Frame::MalformedTag`], as a roundtime's is.
         value: u32,
     },
     /// `<timer>`, read as the aim timer. The parser does not check `id=`
     /// (`parser/thin.rs`, the `"timer"` arm): every `<timer>` lands here, and
     /// `aimTimer` is the only id this was written for.
     AimTime {
-        /// `value=` as a whole number; `0` when absent or not a number.
+        /// `value=` as a whole number. Absent or not a number, the tag is
+        /// [`Frame::MalformedTag`], as a roundtime's is.
         value: u32,
     },
 

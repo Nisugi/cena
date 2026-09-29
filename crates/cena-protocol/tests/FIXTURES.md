@@ -7,7 +7,9 @@ without exception. VERIFIED -- it went RED on this README. An exclusion list
 would have been a hole; moving the prose out was not. Cut from the corpus at
 `E:\Gemstone\data\log archive` (10,849 XML / 49.55 GB) and passed through
 `cena_protocol::scrub::Scrubber` by
-`cargo run -p cena-protocol --example cut_fixtures -- <raw-dir>`.
+`cargo run -p cena-protocol --example scrub_fixture -- <path>...`
+(CORRECTED 2026-09-29: this named `cut_fixtures`, which never existed;
+`examples/scrub_fixture.rs` records that).
 
 The raw excerpts are **not** committed: they are unscrubbed wire logs.
 The provenance below is what makes the cut reproducible.
@@ -98,7 +100,8 @@ VERIFIED, one probe per rule. Applied here:
 ## M2's corpus — six shapes, cut 2026-09-19
 
 Added for `plan/12` §8's Milestone 2 ("frame vocabulary breadth + golden
-corpus"). Read by `tests/golden_m2_corpus.rs`, 17 tests.
+corpus"). Read by `tests/golden_m2_corpus.rs` (`grep -c '#\[test\]'` for how many
+tests: 18 on 2026-09-29).
 
 **These come from a different source than everything above**, and that is the
 point. The M1 fixtures are pre-2026-08 archive logs; these are
@@ -160,7 +163,7 @@ spliced together, and the elision is recorded rather than silent.
 
 `room_populated.xml`'s roster is a public arena: **eleven** players, several
 behind titles (`Arena Icon`, `Captain of the Falcon`, `Legendary Lady`). All
-eleven are pseudonymised in `cut_fixtures.rs` and asserted absent by
+eleven are pseudonymised in `examples/scrub_fixture.rs` and asserted absent by
 `fixtures_are_scrubbed.rs`.
 
 They are pseudonymised rather than dropped because the line's **value is its
@@ -283,3 +286,26 @@ prints into the MAIN window and is an ordinary chunk reader beside
 `   You are a Master of the Guardians of Sunfist.`). Found by a test that
 asserted the society reached `Standing` and got `None` — the first version
 assumed the existing readers would take these, on no evidence.
+
+## Fixtures this file did not record
+
+Eight fixtures are in the directory and were in none of the sections above
+(the review of 2026-09-29; MEASURED: `for f in tests/fixtures/*.xml; do grep
+-c "$(basename $f)" tests/FIXTURES.md; done`). **Their provenance, the log
+and the lines each was cut from, is not recorded anywhere this review could
+find**, so it is not stated here. What is known is the commit that added each
+and what reads it:
+
+| Fixture | Added | Read by |
+|---|---|---|
+| `login_setup.xml` | `2aaba9c`, 2026-09-18 | `tests/fixed_defects.rs`, `cena-model/tests/login_told.rs` |
+| `login_burst_full.xml` | `c54e307`, 2026-09-19 | `tests/golden_m2_corpus.rs`, `cena-model/tests/login_told.rs`, `cena-model/tests/reconnect_invalidation.rs`, `cena/tests/m4_native_web.rs` |
+| `psm_list.xml` | `671df0d`, 2026-09-19 | `cena-model/tests/psm_list.rs`, `cena-model/tests/psm_cost.rs`, `cena-agent/tests/runner.rs` |
+| `psm_armor.xml` | `20d9753`, 2026-09-19 | `cena-model/tests/psm_list.rs`, `cena-model/tests/psm_cost.rs` |
+| `psm_feat.xml` | `20d9753`, 2026-09-19 | `cena-model/tests/psm_list.rs`, `cena-model/tests/psm_cost.rs` |
+| `ascension_info.xml` | `20d9753`, 2026-09-19 | `cena-model/tests/psm_list.rs` |
+| `enhancive_totals.xml` | `f835bdf`, 2026-09-19 | `cena-model/tests/enhancive_totals.rs` |
+| `enhancive_details.xml` | `f835bdf`, 2026-09-19 | `cena-model/tests/enhancive_totals.rs` |
+
+Each passes `fixtures_are_scrubbed.rs`, which reads every file in the
+directory.
