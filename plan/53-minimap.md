@@ -634,3 +634,50 @@ added, walking the Landing and Hinterwilds.
   lines (solid, dashed, marks), the way-in dots and big places' names, you; the camera,
   indoors the building alone. Three images and the dead zone as a unit. Not yet: the
   hover card, clicks, labels, icons, the settings page, a glide (step 7).
+
+## 8. Inside and next door: the author's goal after the first run, 2026-09-29
+
+The goal: *"The minimap should allow us to select where we want to travel that's nearby (in
+the same area at least) easily. If I'm in a bank that is 2 rooms, I don't want a 2 room
+minimap."* The place's own sheet (§7d, `546c2ce`) is a stopgap, not the design.
+
+### 8a. Inside: half scale in place, and the camera zooms in (ANSWERED)
+
+- **The place opens where its dot is**, its rooms at half the street's scale in the gap
+  beside its door, as the engine hung buildings before hiding them (`interior_shelf.rs`,
+  `TOWN_SCALE`); where there is no gap, the street grows round it, least and
+  symmetric, as the Atoll's ring does (`hole.rs`). The street stays drawn, dimmed, and
+  clickable; other buildings stay dots. *"We could also stretch the edges out a little to
+  fit the interior in the spot if needed"*, and *"they go at half scale or something but it
+  zooms in and centers on them, giving the impression they aren't so crampt, allowing exit
+  directions and labels to show."*
+- **Two zooms, outside and inside, each a default on the minimap's settings page**; crossing
+  a door resets to that side's default, and a wheel's change lasts until then: *"Maybe have
+  a setting where they can set the default zoom levels for each. I think it resetting to
+  the default is a better design for this thing."* The zoom and the pan glide together.
+- Open: whether a big place (Angargreft, the Pits) opens the same way; measured in the
+  mapper first.
+
+### 8b. Next door: the neighbouring areas (PROPOSED)
+
+The author: *"I would expect cold river to show up right along side the hinterwilds on the
+map ... Maybe limit it to the area + 1 additional area per exit that leads to another area?
+Maybe make it a setting?"*
+
+Proposed: each area keeps its own sheet, and its neighbours' sheets are **joined at the
+border**: a neighbour placed so the two rooms of the exit between them sit one step apart in
+its direction, anchored on the exit the character would cross, pushed back along it off an
+overlap, drawn dimmer. Crossing re-anchors on the new area by the same exit, so little moves.
+A setting: areas out, 0, 1 or 2, default 1. Nothing new to lay out, and each area keeps its
+tuning. The alternative, one sheet for everything a walk reaches (the Hinterwilds side of the
+caravan), keeps every room still across a border but on the mainland is most of Elanith;
+tried in the mapper for one small stretch if the join looks wrong.
+
+### 8c. Order
+
+1. **Mapper**: a place opened at half scale beside its door, the street grown only when there
+   is no gap; checked by the gate and the author's screenshots (a bank, Rawknuckle's, a
+   crowded Landing street).
+2. **Hydra**: the camera's two default zooms, reset at a door, and the glide.
+3. **Hydra**: neighbours joined at the border, and how many areas out.
+4. **The settings page** (step 7's, brought forward): both zooms and the areas out.
