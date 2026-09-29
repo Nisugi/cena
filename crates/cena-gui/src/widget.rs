@@ -18,6 +18,8 @@ mod dialog;
 pub(crate) mod doll;
 mod draw;
 pub(crate) mod find;
+#[cfg(feature = "doll-infinite")]
+pub(crate) mod infinite;
 mod kind;
 mod lines;
 mod lists;

@@ -496,4 +496,13 @@ fn the_injury_dolls_page_takes_a_picture() {
     play.widget_change(&format!("widget:{doll}"), "picture", None)
         .expect("put back");
     assert!(!layout(&harness).dolls.contains_key(&doll));
+
+    // Infinite, where this build has it; an unknown style refused.
+    let play = &mut harness.state_mut().play;
+    let page = format!("widget:{doll}");
+    assert!(play.widget_change(&page, "style", Some("paper")).is_err());
+    play.widget_change(&page, "style", Some("infinite"))
+        .expect("changed");
+    let kept = layout(&harness).dolls.get(&doll).map(|look| look.style);
+    assert_eq!(kept, Some(crate::widget::doll::Style::Infinite));
 }

@@ -279,6 +279,33 @@ pub(crate) struct DollLook {
     /// `dolls`; with none, the body drawn in code.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) picture: Option<String>,
+    /// Its style: the Doll (a picture's overlays make it the Doll plus), or
+    /// Infinite, `gs_studio`'s puppet, where this build has it.
+    #[serde(default, skip_serializing_if = "Style::is_doll")]
+    pub(crate) style: Style,
+}
+
+/// An Injuries widget's style (`plan/55` §2a).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Style {
+    /// Dots, over a picture or the body drawn in code; with a picture's
+    /// overlays, the Doll plus.
+    #[default]
+    Doll,
+    /// `gs_studio`'s puppet (`infinite.rs`); the Doll where it cannot be drawn,
+    /// or this build has it not.
+    Infinite,
+}
+
+impl Style {
+    #[expect(
+        clippy::trivially_copy_pass_by_ref,
+        reason = "serde's skip_serializing_if hands a reference"
+    )]
+    fn is_doll(&self) -> bool {
+        *self == Self::Doll
+    }
 }
 
 /// How the dots are drawn: where each part's sits, how wide, how opaque.
@@ -611,6 +638,7 @@ diameter = 0.1
         .expect("calibrated");
         let look = super::DollLook {
             picture: Some(path.to_string_lossy().into_owned()),
+            style: super::Style::Doll,
         };
         let hurt = injuries(&[("head", 2, 0), ("chest", 0, 3), ("leftFoot", 1, 0)]);
         let mut harness = egui_kittest::Harness::builder()
@@ -645,6 +673,7 @@ diameter = 0.1
         art.save(&scar).expect("saved");
         let look = super::DollLook {
             picture: Some(base.to_string_lossy().into_owned()),
+            style: super::Style::Doll,
         };
         let hurt = injuries(&[("chest", 2, 1), ("head", 1, 0)]);
         let mut harness = egui_kittest::Harness::builder()

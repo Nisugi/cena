@@ -55,6 +55,12 @@ egui_kittest = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b
 # (reference/VellumFE/Cargo.toml:35): wgpu to paint, X11 and Wayland on Linux,
 # the bundled fonts; not glow, not persistence, not eframe's defaults.
 eframe = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b1c3351e38988b045f1bf33335f38", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
+# The injury doll's Infinite style (plan/55 §2f): gs_studio's puppet and its
+# renderer, at one commit, built on the same egui commit as above (gs_studio
+# pins it so; two egui builds could not share a `Ui`). Only `cena-gui` uses
+# them, behind its `doll-infinite` feature.
+gs_field = { git = "https://github.com/Nisugi/gs_studio", rev = "a73922803fb110d5541ec5e83fe1b7d63a6844dc" }
+gs_field_egui = { git = "https://github.com/Nisugi/gs_studio", rev = "a73922803fb110d5541ec5e83fe1b7d63a6844dc" }
 
 # The first and only serialization in the workspace, added for M3 step 8.
 # `research/04-inherited-decisions.md:1878` (C21) argues the character store is

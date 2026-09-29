@@ -21,7 +21,7 @@ use super::Play;
 use crate::bar::{Fills, Look, Place};
 use crate::layout::Holds;
 use crate::story::Hours;
-use crate::widget::doll::DollLook;
+use crate::widget::doll::{DollLook, Style};
 use crate::widget::{Lines, RoomParts, Stamps, Widget};
 
 /// What a widget page's id begins with; the widget's id follows.
@@ -511,7 +511,24 @@ fn overlay_choice(overlays: &[PathBuf]) -> RowKind {
 /// `dolls`, or none for the body drawn in code.
 fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
     let picture = look.and_then(|look| look.picture.clone());
-    vec![Row {
+    let infinite = look.is_some_and(|look| look.style == Style::Infinite);
+    let mut rows = Vec::new();
+    if cfg!(feature = "doll-infinite") {
+        rows.push(Row {
+            key: "style".to_owned(),
+            label: "Style".to_owned(),
+            help: "The Doll: dots on a picture or a body, or a picture's own art. Infinite:                    a puppet that moves as your character does."
+                .to_owned(),
+            kind: RowKind::Choice(vec![
+                ("doll".to_owned(), "Doll".to_owned()),
+                ("infinite".to_owned(), "Infinite".to_owned()),
+            ]),
+            value: Value::Text(if infinite { "infinite" } else { "doll" }.to_owned()),
+            here: infinite,
+            from: None,
+        });
+    }
+    rows.push(Row {
         key: "picture".to_owned(),
         label: "Picture".to_owned(),
         help: "A picture of your own for the doll, from the dolls folder in Hydra's data \
@@ -521,7 +538,8 @@ fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
         value: Value::Text(picture.clone().unwrap_or_default()),
         here: picture.is_some(),
         from: None,
-    }]
+    });
+    rows
 }
 
 /// Set the Injuries widget's `key` to `to`, or back to its own.
@@ -529,6 +547,14 @@ fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), Stri
     match key {
         "picture" => {
             look.picture = to.filter(|path| !path.is_empty()).map(str::to_owned);
+            Ok(())
+        }
+        "style" => {
+            look.style = match to {
+                None | Some("doll") => Style::Doll,
+                Some("infinite") => Style::Infinite,
+                Some(other) => return Err(format!("Injuries has no style {other}.")),
+            };
             Ok(())
         }
         _ => Err(format!("Injuries has no setting {key}.")),

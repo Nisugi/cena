@@ -530,6 +530,8 @@ pub fn run(sessions: Sessions) -> eframe::Result {
         TITLE,
         options,
         Box::new(move |creation| {
+            #[cfg(feature = "doll-infinite")]
+            crate::widget::infinite::open(creation, &data);
             sessions.opened(&creation.egui_ctx);
             Ok(Box::new(App::keeping(sessions, &data)))
         }),

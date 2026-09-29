@@ -28,6 +28,17 @@ jiff = "0.2.37"
 # (plan/47 §4): the window has the main thread, the sessions the workers.
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7"
+# The injury doll's Infinite style (plan/55 §2f): gs_studio's puppet, posed
+# as the character is. Optional: the author, *"optional at build time, on by
+# default"*. It carries about 32 MB of puppet art compiled into gs_field.
+gs_field = { workspace = true, optional = true }
+gs_field_egui = { workspace = true, optional = true }
+
+[features]
+default = ["doll-infinite"]
+# The Injuries widget's Infinite style. A build without it offers the Doll
+# and the Doll plus only.
+doll-infinite = ["dep:gs_field", "dep:gs_field_egui"]
 
 [dev-dependencies]
 # `wgpu` renders a frame in a test and `snapshot` compares it with the image

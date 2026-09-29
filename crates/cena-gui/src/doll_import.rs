@@ -34,7 +34,11 @@ pub struct DollsImported {
 /// itself.
 fn dolls_under(folder: &Path) -> PathBuf {
     let pool = folder.join("global").join("images").join("dolls");
-    if pool.is_dir() { pool } else { folder.to_path_buf() }
+    if pool.is_dir() {
+        pool
+    } else {
+        folder.to_path_buf()
+    }
 }
 
 /// Copy the dolls under `folder` into `into`, Hydra's `dolls` folder.
@@ -105,7 +109,11 @@ mod tests {
     fn vellums_dolls_come_over_their_calibration_in_the_picture() {
         let root = std::env::temp_dir().join(format!("cena-doll-import-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        let pool = root.join("vellum").join("global").join("images").join("dolls");
+        let pool = root
+            .join("vellum")
+            .join("global")
+            .join("images")
+            .join("dolls");
         let hydra = root.join("hydra").join("dolls");
         std::fs::create_dir_all(&pool).unwrap();
         std::fs::create_dir_all(&hydra).unwrap();

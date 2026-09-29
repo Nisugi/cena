@@ -46,11 +46,22 @@ pub(super) fn draw(
             return room::compass(ui, state, seen.who.is_none()).map(super::Clicked::Send);
         }
         Widget::Combat => scrolled(ui, &mut |ui| room::combat(ui, state)),
-        Widget::Injuries => super::doll::doll(
-            ui,
-            state.map(|state| &state.character.injuries),
-            chosen.doll.as_ref(),
-        ),
+        Widget::Injuries => {
+            #[cfg(feature = "doll-infinite")]
+            if chosen
+                .doll
+                .as_ref()
+                .is_some_and(|look| look.style == super::doll::Style::Infinite)
+                && super::infinite::infinite(ui, state, id)
+            {
+                return None;
+            }
+            super::doll::doll(
+                ui,
+                state.map(|state| &state.character.injuries),
+                chosen.doll.as_ref(),
+            );
+        }
         Widget::Minimap => super::minimap::minimap(ui, seen.minimap, id),
         Widget::Room => scrolled(ui, &mut |ui| {
             super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default());
