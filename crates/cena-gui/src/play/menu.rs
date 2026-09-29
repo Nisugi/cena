@@ -65,6 +65,8 @@ enum Act {
     AddTab(u32, Widget),
     /// The trigger editor, a new trigger on this line's words.
     Trigger(String),
+    /// The calibrator, on this Injuries widget's picture (`calibrator.rs`).
+    Calibrate(u32, String),
 }
 
 impl Play {
@@ -238,6 +240,10 @@ impl Play {
             self.out = Some(Asked::TriggerFrom(line));
             return false;
         }
+        if let Act::Calibrate(placed, picture) = act {
+            self.calibrating = Some(super::calibrator::Calibrator::open(placed, picture));
+            return false;
+        }
         match act {
             Act::Remove(placed) => layout.remove_widget(holder, placed),
             Act::RemoveWindow => layout.remove_window(holder),
@@ -246,7 +252,7 @@ impl Play {
             Act::AddTab(beside, kind) => {
                 let _ = layout.add_tab(holder, beside, kind);
             }
-            Act::Save(_) | Act::Settings(_) | Act::Trigger(_) => {}
+            Act::Save(_) | Act::Settings(_) | Act::Trigger(_) | Act::Calibrate(..) => {}
         }
         true
     }
@@ -458,6 +464,17 @@ fn widget_items(
             .clicked()
     {
         act = Some(Act::Settings(super::options::page_id(placed)));
+    }
+    if let Some(picture) = layout
+        .dolls
+        .get(&placed)
+        .and_then(|look| look.picture.clone())
+        && ui
+            .button("Calibrate doll...")
+            .on_hover_text("Where each part is on the doll's picture")
+            .clicked()
+    {
+        act = Some(Act::Calibrate(placed, picture));
     }
     let beside = tab_kinds(layout, menu.holder, (placed, widget), received);
     if !beside.is_empty() {

@@ -327,13 +327,31 @@ pub(super) fn doll(
     injuries: Option<&BTreeMap<String, Injury>>,
     look: Option<&DollLook>,
 ) {
+    let chosen = look.and_then(|look| look.picture.as_deref());
+    let picture = chosen.and_then(|path| crate::pictures::picture(ui.ctx(), path));
+    let calibration = chosen
+        .filter(|_| picture.is_some())
+        .map(|path| crate::pictures::calibration(ui.ctx(), path));
+    let over = picture.as_ref().zip(calibration.as_ref());
+    let _ = drawn(ui, injuries, over, egui::Sense::hover());
+}
+
+/// Draw the doll for `injuries` in what is left of `ui`: over a picture,
+/// where `over`'s calibration puts each part, or over the body drawn in
+/// code. The rect it was drawn in, the picture's or the body's, and its
+/// response as `sense` asks: the widget only points; the calibrator clicks
+/// (`play/calibrator.rs`), and draws with the calibration it has not saved.
+pub(crate) fn drawn(
+    ui: &mut egui::Ui,
+    injuries: Option<&BTreeMap<String, Injury>>,
+    over: Option<(&egui::TextureHandle, &Calibration)>,
+    sense: egui::Sense,
+) -> (Rect, egui::Response) {
     // Before the game has said, the body is drawn whole. (An empty map
     // allocates nothing.)
     let whole = BTreeMap::new();
     let injuries = injuries.unwrap_or(&whole);
-    let chosen = look.and_then(|look| look.picture.as_deref());
-    let picture = chosen.and_then(|path| crate::pictures::picture(ui.ctx(), path));
-    let aspect = picture.as_ref().map_or(ASPECT, |texture| {
+    let aspect = over.map_or(ASPECT, |(texture, _)| {
         let [width, height] = texture.size();
         #[expect(
             clippy::cast_precision_loss,
@@ -349,17 +367,13 @@ pub(super) fn doll(
         width = avail.x.max(40.0);
         height = width / aspect;
     }
-    let (outer, _) =
-        ui.allocate_exact_size(Vec2::new(avail.x.max(width), height), egui::Sense::hover());
+    let (outer, response) = ui.allocate_exact_size(Vec2::new(avail.x.max(width), height), sense);
     let rect = Rect::from_center_size(outer.center(), Vec2::new(width, height));
     let painter = ui.painter().with_clip_rect(outer);
     let at = |(x, y): (f32, f32)| rect.min + Vec2::new(x * rect.width(), y * rect.height());
     let scale = rect.height();
 
-    let calibration = chosen
-        .filter(|_| picture.is_some())
-        .map(|path| crate::pictures::calibration(ui.ctx(), path));
-    let dots = if let (Some(texture), Some(calibration)) = (&picture, &calibration) {
+    let dots = if let Some((texture, calibration)) = over {
         let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
         painter.image(texture.id(), rect, uv, Color32::WHITE);
         Dots {
@@ -399,6 +413,7 @@ pub(super) fn doll(
             ui.label(format!("{}: {}", part.name, said(shows)));
         });
     }
+    (rect, response)
 }
 
 /// The body drawn in code, every part in its colour.

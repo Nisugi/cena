@@ -123,6 +123,108 @@ impl Calibration {
     }
 }
 
+/// Write `calibration` into the picture at `path`, **in the picture**: its
+/// `vellum-meta` chunk replaced, or put after the header, and nothing else
+/// of the file touched, the pixels byte for byte. What the picture's old
+/// calibration held beyond anchors and dots, or a `VellumFE` `.toml`
+/// beside it, is carried over, so a calibration made in `VellumFE` loses
+/// nothing. Written as every file Hydra keeps is, to a temp file renamed
+/// into place (`cena_session::store::save_bytes`).
+///
+/// # Errors
+///
+/// Why not: the picture cannot be read or written, or is not a PNG.
+pub(crate) fn write(path: &Path, calibration: &Calibration) -> Result<(), String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let old = embedded(&bytes)
+        .or_else(|| std::fs::read_to_string(path.with_extension("toml")).ok())
+        .and_then(|text| text.parse::<toml::Table>().ok())
+        .unwrap_or_default();
+    let text = toml::to_string(&calibration.over_table(old))
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    let written =
+        with_chunk(&bytes, &text).ok_or_else(|| format!("{} is not a PNG", path.display()))?;
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    cena_session::store::save_bytes(dir, path, &written)
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+impl Calibration {
+    /// `old` with this calibration's anchors and dots in it.
+    fn over_table(&self, mut old: toml::Table) -> toml::Table {
+        let round = |value: f32, places: f64| (f64::from(value) * places).round() / places;
+        old.insert("kind".to_owned(), toml::Value::from("doll"));
+        let mut anchors = toml::Table::new();
+        for part in doll_parts::PARTS {
+            if let Some(&(x, y)) = self.anchors.get(part.id) {
+                let pair = vec![
+                    toml::Value::from(round(x, 10_000.0)),
+                    toml::Value::from(round(y, 10_000.0)),
+                ];
+                anchors.insert(part.id.to_owned(), toml::Value::Array(pair));
+            }
+        }
+        old.insert("anchors".to_owned(), toml::Value::Table(anchors));
+        let mut dots = old
+            .remove("dots")
+            .and_then(|dots| dots.as_table().cloned())
+            .unwrap_or_default();
+        dots.insert("opacity".to_owned(), round(self.opacity, 100.0).into());
+        dots.insert("diameter".to_owned(), round(self.diameter, 1_000.0).into());
+        old.insert("dots".to_owned(), toml::Value::Table(dots));
+        old
+    }
+}
+
+/// `bytes` with `text` as its calibration chunk: any old one dropped, the
+/// new one after the header. `None` when the bytes are not a PNG.
+fn with_chunk(bytes: &[u8], text: &str) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(bytes.len() + text.len() + 64);
+    out.extend_from_slice(&PNG_SIGNATURE);
+    let mut put = false;
+    for (kind, data) in chunks(bytes)? {
+        let ours = kind == *b"tEXt"
+            && data
+                .iter()
+                .position(|&b| b == 0)
+                .is_some_and(|nul| &data[..nul] == KEYWORD.as_bytes());
+        if ours {
+            continue;
+        }
+        push_chunk(&mut out, kind, data)?;
+        if !put && kind == *b"IHDR" {
+            let mut chunk = KEYWORD.as_bytes().to_vec();
+            chunk.push(0);
+            chunk.extend_from_slice(text.as_bytes());
+            push_chunk(&mut out, *b"tEXt", &chunk)?;
+            put = true;
+        }
+    }
+    put.then_some(out)
+}
+
+/// One chunk onto `out`: its length, type, data and CRC.
+fn push_chunk(out: &mut Vec<u8>, kind: [u8; 4], data: &[u8]) -> Option<()> {
+    out.extend_from_slice(&u32::try_from(data.len()).ok()?.to_be_bytes());
+    out.extend_from_slice(&kind);
+    out.extend_from_slice(data);
+    out.extend_from_slice(&crc32(&[&kind, data]).to_be_bytes());
+    Some(())
+}
+
+/// PNG's CRC-32 over `parts` in order. Bit by bit: it runs once per save.
+fn crc32(parts: &[&[u8]]) -> u32 {
+    let mut crc = 0xffff_ffff_u32;
+    for byte in parts.iter().flat_map(|part| part.iter()) {
+        crc ^= u32::from(*byte);
+        for _ in 0..8 {
+            let mask = (crc & 1).wrapping_neg();
+            crc = (crc >> 1) ^ (0xedb8_8320 & mask);
+        }
+    }
+    !crc
+}
+
 /// A TOML number, written with a point or without.
 fn number(value: &toml::Value) -> Option<f64> {
     value.as_float().or_else(|| {
@@ -230,6 +332,74 @@ head = [0.9, 0.9]
             "the picture's own"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Written into the picture: read back the same, the old chunk replaced
+    /// and never doubled, the pixels and every other chunk as they were,
+    /// what `VellumFE` kept beside the picture carried in, and the image
+    /// still an image.
+    #[test]
+    fn a_calibration_is_written_into_the_picture_and_nothing_else_changes() {
+        let dir =
+            std::env::temp_dir().join(format!("cena-calibration-write-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("doll.png");
+        image::RgbaImage::from_pixel(3, 2, image::Rgba([10, 20, 30, 255]))
+            .save(&path)
+            .unwrap();
+        std::fs::write(
+            dir.join("doll.toml"),
+            "priority = 4\n[dots]\nwound_color = \"#e02020\"\n",
+        )
+        .unwrap();
+        let before = std::fs::read(&path).unwrap();
+
+        let mut calibration = Calibration::default();
+        calibration.anchors.insert("leftArm", (0.25, 0.5));
+        calibration.opacity = 0.6;
+        super::write(&path, &calibration).unwrap();
+        calibration.anchors.insert("head", (0.5, 0.125));
+        super::write(&path, &calibration).unwrap();
+
+        let after = std::fs::read(&path).unwrap();
+        assert_eq!(Calibration::of_picture(&path), calibration);
+        let text = embedded(&after).unwrap();
+        assert!(text.contains("leftArm"), "the game's spelling: {text}");
+        assert!(
+            text.contains("priority = 4") && text.contains("wound_color"),
+            "{text}"
+        );
+        let ours = |bytes: &[u8]| {
+            super::chunks(bytes)
+                .unwrap()
+                .iter()
+                .filter(|(kind, data)| {
+                    kind == b"tEXt" && data.starts_with(super::KEYWORD.as_bytes())
+                })
+                .count()
+        };
+        assert_eq!(ours(&after), 1, "replaced, not doubled");
+        let others = |bytes: &[u8]| -> Vec<([u8; 4], Vec<u8>)> {
+            super::chunks(bytes)
+                .unwrap()
+                .into_iter()
+                .filter(|(kind, _)| kind != b"tEXt")
+                .map(|(kind, data)| (kind, data.to_vec()))
+                .collect()
+        };
+        assert_eq!(
+            others(&after),
+            others(&before),
+            "every other chunk as it was"
+        );
+        assert!(image::load_from_memory(&after).is_ok(), "still a picture");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn crc_matches_the_standard_check_value() {
+        assert_eq!(super::crc32(&[b"123456789"]), 0xcbf4_3926);
     }
 
     #[test]

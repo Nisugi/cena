@@ -22,6 +22,7 @@
 //! keyboard to the command input, so the player can type without clicking it.
 
 mod arrange;
+mod calibrator;
 mod draw;
 mod drawers;
 mod holders;
@@ -164,6 +165,8 @@ pub(crate) struct Play {
     adding: Option<menu::Adding>,
     /// A window's or widget's right-click menu, while open (`menu.rs`).
     menu: Option<menu::Menu>,
+    /// An Injuries widget's calibrator, while open (`calibrator.rs`).
+    calibrating: Option<calibrator::Calibrator>,
     /// An object's menu, asked of the game on a click, until it is chosen
     /// from or closed (`links.rs`).
     asking: Option<links::Asking>,
@@ -226,6 +229,7 @@ impl Play {
             read: std::collections::HashMap::new(),
             adding: None,
             menu: None,
+            calibrating: None,
             asking: None,
             menus_asked: 0,
             out: None,
@@ -345,6 +349,7 @@ impl Play {
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others, &received);
         self.object_menu(ui.ctx(), view);
+        self.calibrator(ui.ctx());
         self.find_bar(ui.ctx(), area);
         crate::carry::show(ui.ctx(), session);
         asked = asked.or(self.out.take());
