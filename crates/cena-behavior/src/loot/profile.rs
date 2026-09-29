@@ -190,6 +190,11 @@ impl LootProfile {
 ///
 /// The text is not a loot profile, or cannot be written back as one.
 pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<String>, String> {
+    // The comments at the file's head are kept, as `;hunt set` keeps them
+    // (`settings::split`): written back from the profile alone, the first
+    // *You cannot skin* took the importer's notes of what it dropped out of
+    // the file (the review of 2026-09-29).
+    let (head, _) = crate::settings::split(text)?;
     let mut profile = LootProfile::parse(text)?;
     let before = profile.skin.unskinnable.len();
     for name in names {
@@ -200,7 +205,7 @@ pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<Strin
     if profile.skin.unskinnable.len() == before {
         return Ok(None);
     }
-    profile.to_toml().map(Some)
+    Ok(Some(format!("{head}{}", profile.to_toml()?)))
 }
 
 /// The character's loot profile: `<data>/hunt/loot/<instance>_<character>.toml`,

@@ -408,6 +408,27 @@ fn a_learned_unskinnable_creature_is_written_into_the_profile_once() {
     );
 }
 
+/// The importer's notes at the file's head outlast a name learned.
+#[test]
+fn a_name_learned_keeps_the_comments_at_the_files_head() {
+    let head = "# Imported from eloot.
+# What the importer dropped: keep_closed
+
+";
+    let text = format!(
+        "{head}{}",
+        profile(skinning()).to_toml().expect("a profile writes")
+    );
+    let written = cena_behavior::loot::remember_unskinnable(&text, &["cave troll".to_owned()])
+        .expect("reads")
+        .expect("a new name");
+    assert!(written.starts_with(head), "{written}");
+    assert_eq!(
+        LootProfile::parse(&written).map(|back| back.skin.unskinnable),
+        Ok(vec!["cave troll".to_owned()])
+    );
+}
+
 #[test]
 fn a_corpse_that_will_not_be_skinned_is_left_after_three_tries() {
     let mut state = state(Some(("77", "dagger", "curved skinning dagger")));

@@ -108,14 +108,14 @@ pub const TABLE: &[Key] = &[
     Key {
         name: "buy_missing",
         label: "Buy missing herbs",
-        help: "Buy a herb the container lacks, at the herbalist.",
+        help: "Not built yet: eherbs buys a herb the container lacks while it heals. Stock the container with heal stock.",
         kind: KeyKind::Toggle,
     },
     Key {
         name: "stock",
         label: "Stock to (percent)",
-        help: "When stocking, fill each herb to this percent of its minimum doses.",
-        kind: KeyKind::Whole { min: 0, max: 1000 },
+        help: "When stocking, fill each herb to this percent of its minimum doses; 100 at most, as eherbs has it.",
+        kind: KeyKind::Whole { min: 0, max: 100 },
     },
     Key {
         name: "split_blood",
@@ -126,7 +126,7 @@ pub const TABLE: &[Key] = &[
     Key {
         name: "deposit_coins",
         label: "Deposit coins",
-        help: "Deposit what is left at the bank after buying.",
+        help: "Not built yet: eherbs deposits what is left at the bank after buying.",
         kind: KeyKind::Toggle,
     },
     Key {

@@ -294,7 +294,7 @@ impl Job {
             (!container.trim().is_empty()).then(|| container.trim().to_owned());
         if !self.take("ammo").trim().is_empty() {
             self.note(
-                "ammo: not needed. bigshot names the ammunition only to bless it when the game says it                  shrugged off damage (bigshot.lic:2783-2788); Hydra blesses whatever the game says that of"
+                "ammo: not needed. bigshot names the ammunition only to bless it when the game says it shrugged off damage (bigshot.lic:2783-2788); Hydra blesses whatever the game says that of"
                     .to_owned(),
             );
         }

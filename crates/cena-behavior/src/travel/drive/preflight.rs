@@ -72,7 +72,7 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             self.handle.say(Notice::line(
                 NoticeKind::Warn,
                 format!(
-                    "Travel: this route asks for {needed} silver, and I could not tell how                      much you carry, so I am going anyway."
+                    "Travel: this route asks for {needed} silver, and I could not tell how much you carry, so I am going anyway."
                 ),
             ));
             return Ok(());

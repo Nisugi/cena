@@ -290,7 +290,7 @@ impl Desk {
             .as_ref()
             .is_some_and(|hash| Some(hash) != self.map_sha256.as_ref())
         {
-            "This hunt was saved against different or unverified map bytes.              Review its setup; nothing started."
+            "This hunt was saved against different or unverified map bytes. Review its setup; nothing started."
                 .to_owned()
         } else if profile.rooms.allowed.is_some()
             && let Err(why) = super::setup::validate_map(profile, &self.map)
