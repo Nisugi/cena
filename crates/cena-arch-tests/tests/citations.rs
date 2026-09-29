@@ -25,6 +25,12 @@
 //! claims. That needs a human. What it catches is the cheaper and more common
 //! rot: a file renamed, deleted, or shortened past the line being cited.
 //!
+//! **Also checks a path-rooted path cited without a line**, in `plan/` and
+//! `CLAUDE.md` (the crate review of 2026-09-28: the scanner saw only
+//! `path:LINE`, and eight bare paths in `plan/` named nothing). The file or
+//! folder must exist. A record that names a path gone on purpose, a file
+//! since moved or deleted and said so, is listed in [`GONE`] with why.
+//!
 //! **Does not check bare filenames** like `wire.rs:160`. Those resolve only
 //! against the reader's context, and guessing which `wire.rs` was meant would
 //! produce false failures -- the direction `plan/05` warns gets tests deleted
@@ -125,8 +131,11 @@ fn resolve(root: &Path, target: &str) -> Option<PathBuf> {
         return Some(direct);
     }
     let rest = target.strip_prefix("plan/")?;
-    // `plan/05` or `plan/12` -- a bare number naming one plan document.
-    if !rest.chars().all(|c| c.is_ascii_digit()) {
+    // `plan/05` or `plan/27d` -- a number, and a letter for a part, naming
+    // one plan document.
+    if !rest.starts_with(|c: char| c.is_ascii_digit())
+        || !rest.chars().all(|c| c.is_ascii_alphanumeric())
+    {
         return None;
     }
     std::fs::read_dir(root.join("plan"))
@@ -138,6 +147,113 @@ fn resolve(root: &Path, target: &str) -> Option<PathBuf> {
                 .and_then(|n| n.to_str())
                 .is_some_and(|n| n.starts_with(&format!("{rest}-")))
         })
+}
+
+/// Every path-rooted path in `text` cited WITHOUT a line: the ones
+/// [`citations_in`] passes over. A root alone (`crates/`) names nothing and
+/// is skipped; a trailing `.` ends a sentence, not a path.
+fn bare_paths_in(text: &str) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut found = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        let rest: String = chars[i..].iter().take(16).collect();
+        let starts = CHECKED_ROOTS.iter().find(|r| rest.starts_with(**r));
+        if starts.is_none() || (i > 0 && is_path_char(chars[i - 1])) {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < chars.len() && is_path_char(chars[i]) {
+            i += 1;
+        }
+        let path: String = chars[start..i].iter().collect();
+        let path = path.trim_end_matches('.').to_owned();
+        let cited =
+            chars.get(i) == Some(&':') && chars.get(i + 1).is_some_and(char::is_ascii_digit);
+        if !cited && !CHECKED_ROOTS.contains(&path.as_str()) {
+            found.push(path);
+        }
+    }
+    found
+}
+
+/// Paths a plan document names that are gone ON PURPOSE: a record of a file
+/// since moved or deleted, and saying so, or a name that is not a path.
+/// `(document, path, why)`. A path gone by accident is fixed in the
+/// document, never added here.
+const GONE: &[(&str, &str, &str)] = &[
+    (
+        "plan/12-implementation-spec.md",
+        "plan/04-inherited-decisions.md",
+        "the dead citation the passage records someone chasing",
+    ),
+    (
+        "plan/16-instant-actions-and-observability.md",
+        "crates/cena/src/probe.rs",
+        "the M1 probe, removed at M6 (plan/30 §2); the run it measured is history",
+    ),
+    (
+        "plan/21-mapdb.md",
+        "tools/mapdb-convert",
+        "the converter's first proposed home, before it was built in crates/",
+    ),
+    (
+        "plan/21-mapdb.md",
+        "crates/cena-mapdb-convert",
+        "built, then moved out to hydra-mapper (664c2f8)",
+    ),
+    (
+        "plan/29-m5-multi-session.md",
+        "crates/cena/src/run.rs",
+        "M5's table of what to change, before M6 left one run path",
+    ),
+    (
+        "plan/30-m6-hunt.md",
+        "plan/32",
+        "the number was never used, and the passage says so",
+    ),
+    (
+        "plan/30-m6-hunt.md",
+        "crates/cena-ui/src/sorter.rs",
+        "the sorter as built, before the MOVED note beneath it",
+    ),
+    (
+        "plan/30-m6-hunt.md",
+        "crates/cena-ui/tests/fixtures/container_looks.xml",
+        "as built, before the MOVED note beneath it",
+    ),
+    (
+        "plan/37-spell-behaviors.md",
+        "tools/extract_spells.rb",
+        "the extractor that cut the table, which the passage says is not in the repository",
+    ),
+    (
+        "plan/46-ruby-bridge.md",
+        "tools/call",
+        "MCP's method name, not a path",
+    ),
+];
+
+/// Every bare path in `documents` that names nothing, and a count.
+fn broken_bare_paths(root: &Path, documents: &[(String, String)]) -> (Vec<String>, usize) {
+    let mut broken = Vec::new();
+    let mut checked = 0usize;
+    for (in_file, text) in documents {
+        for path in bare_paths_in(text) {
+            checked += 1;
+            let there = root.join(&path).exists() || resolve(root, &path).is_some();
+            let gone = GONE
+                .iter()
+                .any(|(doc, gone, _)| doc == in_file && *gone == path);
+            if !there && !gone {
+                broken.push(format!("  {in_file}: `{path}` -- no such file or folder"));
+            }
+        }
+    }
+    broken.sort();
+    broken.dedup();
+    (broken, checked)
 }
 
 /// Check every citation in `documents`, returning the broken ones and a count.
@@ -264,4 +380,66 @@ fn every_citation_in_the_plan_documents_resolves() {
         "{}",
         report("the plan documents", &broken, checked)
     );
+
+    // Bare paths in what is read as instructions: `plan/` and `CLAUDE.md`.
+    // `research/` is superseded designs, and `inventory/` cites other
+    // workspaces' paths as it measured them.
+    let instructions: Vec<(String, String)> = documents
+        .into_iter()
+        .filter(|(name, _)| name.starts_with("plan/") || name == "CLAUDE.md")
+        .collect();
+    let (broken, checked) = broken_bare_paths(&root, &instructions);
+    assert!(
+        checked > 200,
+        "only {checked} bare paths were found: the scanner stopped matching"
+    );
+    assert!(
+        broken.is_empty(),
+        "{}",
+        report(
+            "the plan documents, cited without a line,",
+            &broken,
+            checked
+        )
+    );
+    let unused: Vec<_> = GONE
+        .iter()
+        .filter(|(doc, path, _)| {
+            !instructions
+                .iter()
+                .any(|(name, text)| name == doc && bare_paths_in(text).iter().any(|p| p == path))
+        })
+        .collect();
+    assert!(
+        unused.is_empty(),
+        "GONE lists paths no document names any more; take them off: {unused:?}"
+    );
+}
+
+/// A bare path is found however it ends, a line citation is left to the
+/// other scan, and a root alone names nothing.
+#[test]
+fn bare_paths_are_found_and_line_citations_left_alone() {
+    let text = "See `crates/cena/src/play.rs`, then crates/cena-gui/src/logs/.                 Not plan/05:12, nor crates/ alone; plan/27d is a part.";
+    assert_eq!(
+        bare_paths_in(text),
+        [
+            "crates/cena/src/play.rs",
+            "crates/cena-gui/src/logs/",
+            "plan/27d"
+        ]
+    );
+    let root = workspace_root();
+    assert!(
+        resolve(&root, "plan/27d").is_some(),
+        "a plan part by its number"
+    );
+    let (broken, _) = broken_bare_paths(
+        &root,
+        &[(
+            "plan/x.md".to_owned(),
+            "`crates/cena/src/nowhere.rs`".to_owned(),
+        )],
+    );
+    assert_eq!(broken.len(), 1, "{broken:?}");
 }

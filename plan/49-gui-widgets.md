@@ -83,8 +83,8 @@ frame, no border. It is:
 **Two holders**, and only two:
 
 - **A standalone window** holds one widget and gives it chrome: a title and a frame. It is
-  what each of M10's five panes is today (`crates/cena-gui/src/play/panes.rs`,
-  `pane_window`).
+  what each of M10's five panes is today (`panes.rs`'s `pane_window`, since become
+  `crates/cena-gui/src/play/holders.rs`'s `holder_window`).
 - **A custom window** holds a grid of widgets, bare, with one frame and an optional title
   for the whole. Inside, widgets are placed by the same snapping as the play window's
   (`crates/cena-gui/src/snap.rs`), one level down: free rects, the grid a snap target.

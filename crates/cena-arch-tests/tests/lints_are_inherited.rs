@@ -15,7 +15,8 @@
 //! a test written while the tree is green is a ratchet, and one written after
 //! a crate has drifted is a cleanup.
 
-use cena_arch_tests::harness::{member_crates, workspace_root};
+use cena_arch_tests::harness::{member_crates, relative, workspace_root, workspace_sources};
+use cena_arch_tests::lexical::skeleton_lines;
 
 /// The crate that cannot inherit, and why that is not an exception being
 /// carved for convenience.
@@ -224,8 +225,12 @@ fn every_spelling_of_a_reopened_lint_is_found() {
 /// is self-signed -- so the pin IS the verification. What this guards is the
 /// one line that could skip it: a caller opening `connect_tls` directly. A
 /// needle rather than a type-level guarantee, for the reason Rule 0 accepts
-/// one: `connect_tls` is `pub(crate)`, so the only callers are in this crate,
-/// and these are all of them.
+/// one: `connect_tls` is `pub(crate)`, so the only callers are in this crate.
+///
+/// **Every file is read for a call, not three named ones** (the crate review
+/// of 2026-09-28): the needles once read `live.rs`, `pin.rs` and
+/// `handshake.rs`, so a fourth file calling `connect_tls` was invisible. A
+/// call anywhere in the workspace's code but the pin fails here now.
 #[test]
 fn the_eaccess_tls_is_reachable_only_through_the_pin() {
     let src = workspace_root().join("crates/cena-platform/src");
@@ -249,7 +254,58 @@ fn the_eaccess_tls_is_reachable_only_through_the_pin() {
         "open_pinned must connect and then verify against the pin"
     );
     assert!(
-        handshake.contains("open_pinned(") && !handshake.contains("LiveSource::connect_tls("),
-        "authenticate must connect through open_pinned, never connect_tls directly"
+        handshake.contains("open_pinned("),
+        "authenticate must connect through open_pinned"
+    );
+
+    let callers = tls_callers(&workspace_sources());
+    assert_eq!(
+        callers,
+        ["crates/cena-platform/src/eaccess/pin.rs"],
+        "only the pin may open the unverified TLS connection"
+    );
+}
+
+/// The files whose code (comments and literals aside) calls `connect_tls`.
+fn tls_callers(sources: &[(std::path::PathBuf, String)]) -> Vec<String> {
+    sources
+        .iter()
+        .filter(|(_, text)| {
+            skeleton_lines(text).iter().any(|line| {
+                line.match_indices("connect_tls(")
+                    .any(|(at, _)| !line[..at].trim_end().ends_with("fn"))
+            })
+        })
+        .map(|(path, _)| relative(path))
+        .collect()
+}
+
+/// The scan finds a call wherever it is, and not the definition, a comment
+/// or a string naming it.
+#[test]
+fn a_tls_caller_is_found_in_any_file() {
+    let root = workspace_root();
+    let file = |rel: &str, text: &str| (root.join(rel), text.to_owned());
+    let sources = [
+        file(
+            "crates/cena-platform/src/live.rs",
+            "pub(crate) async fn connect_tls(host: &str) {}
+",
+        ),
+        file(
+            "crates/cena-platform/src/other.rs",
+            "// LiveSource::connect_tls(host)
+let s = \"connect_tls(\";
+",
+        ),
+        file(
+            "crates/cena-platform/src/sneaky.rs",
+            "let c = LiveSource::connect_tls(host, port).await;
+",
+        ),
+    ];
+    assert_eq!(
+        tls_callers(&sources),
+        ["crates/cena-platform/src/sneaky.rs"]
     );
 }
