@@ -396,3 +396,54 @@ fn sell_again_to_be_sure_sends_the_sale_again() {
         Some(Reply::WrongShop)
     );
 }
+
+#[test]
+fn a_fetch_nothing_answers_is_given_up_after_five_and_the_round_goes_on() {
+    let mut state = setup(
+        &[],
+        &[
+            ("5", "poignard", "steel poignard"),
+            ("6", "dagger", "iron dagger"),
+        ],
+    );
+    let mut seller = Seller::new(town(), &state, HOME).expect("a round");
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(PAWNSHOP));
+    // The bag is closed, say: a line no classifier knows, five times over.
+    for _ in 0..5 {
+        assert_eq!(seller.next(&state, &nearest), Step::Fetch("5".to_owned()));
+        seller.outcome(&[], &[], &state);
+    }
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Fetch("6".to_owned()),
+        "the poignard is left, and the dagger is next"
+    );
+    assert!(seller.skipped().contains("5"));
+    hand(&mut state, true, Some(("6", "dagger", "iron dagger")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Analyze("6".to_owned()));
+}
+
+#[test]
+fn a_sack_that_cannot_be_worn_is_stowed_not_left_in_the_hand() {
+    let mut state = setup(&[("1", "pearl", "black pearl")], &[]);
+    let mut seller = Seller::new(town(), &state, HOME).expect("a round");
+    seller.next(&state, &nearest);
+    seller.next(&state, &nearest);
+    hand(&mut state, true, Some(("901", "sack", "sack")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::SellSack("901".to_owned())
+    );
+    seller.outcome(&[sold(100)], &[Reply::SackInspected], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Wear("901".to_owned()));
+    seller.outcome(&[], &[Reply::CannotWear], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Stow {
+            item: "901".to_owned(),
+            bag: "902".to_owned()
+        }
+    );
+}

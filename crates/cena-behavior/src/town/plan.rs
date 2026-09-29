@@ -42,6 +42,13 @@ pub use super::step::Step;
 /// Over this encumbrance, the bank comes before the next shop.
 const HEAVY: u32 = 80;
 
+/// How many times running the same command is sent before what it is for
+/// is given up: the loot planner's `DRAG_TRIES`, and the pool's own count.
+/// A reply no classifier knows (a closed bag, full hands, a shopkeeper's line
+/// nobody has seen) otherwise sent the same `get`, `sell` or stow again to
+/// the driver's cap of 400 steps (the review of 2026-09-29).
+const SAME_TRIES: u8 = 5;
+
 /// Where the item in hand is in its selling.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Doing {
@@ -110,6 +117,8 @@ pub struct Seller {
     banked: bool,
     going_home: bool,
     last: Option<Step>,
+    /// How many times running [`Seller::next`] has answered `last`.
+    same: u8,
 }
 
 impl Seller {
@@ -167,6 +176,7 @@ impl Seller {
             banked: false,
             going_home: false,
             last: None,
+            same: 0,
         })
     }
 
@@ -181,9 +191,41 @@ impl Seller {
 
     /// The next step.
     pub fn next(&mut self, state: &GameState, nearest: &dyn Fn(&str) -> Option<RoomId>) -> Step {
-        let step = self.decide(state, nearest);
+        let mut step = self.decide(state, nearest);
+        // The pool counts its own tries, and waits on its worker.
+        if self.last.as_ref() == Some(&step) && self.pool.is_none() {
+            self.same += 1;
+        } else {
+            self.same = 0;
+        }
+        if self.same >= SAME_TRIES {
+            self.same = 0;
+            self.give_up(&step);
+            step = self.decide(state, nearest);
+        }
         self.last = Some(step.clone());
         step
+    }
+
+    /// `step` was sent [`SAME_TRIES`] times and nothing came of it: what it
+    /// was for is left, and the round goes on with the rest. With nothing
+    /// to leave, the round is over.
+    fn give_up(&mut self, step: &Step) {
+        if let Some((lot, _)) = self.lot.take() {
+            self.skipped.insert(lot.item.id);
+        } else if let Some((sack, _)) = self.sack.take() {
+            self.skipped.insert(sack);
+        } else if self.bank.take().is_some() {
+            self.close_bank();
+        } else if matches!(step, Step::Walk(_)) {
+            self.going_home = true;
+        } else {
+            // A hand that will not be freed: no more shops, only home.
+            self.shops.clear();
+            self.shop = None;
+            self.restore.clear();
+            self.banked = true;
+        }
     }
 
     fn decide(&mut self, state: &GameState, nearest: &dyn Fn(&str) -> Option<RoomId>) -> Step {
@@ -638,8 +680,10 @@ impl Seller {
             }
             Step::Wear(sack) => {
                 if replies.contains(&Reply::CannotWear) {
-                    // Back in the default bag instead.
-                    self.sack = Some((sack, SackPhase::StowingNote(String::new())));
+                    // Back in the default bag instead: stowed as the note
+                    // is. (This named no item, so nothing was stowed and
+                    // the sack stayed in the hand.)
+                    self.sack = Some((sack.clone(), SackPhase::StowingNote(sack)));
                 }
             }
             Step::ReadNote(note) => {
