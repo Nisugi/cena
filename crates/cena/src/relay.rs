@@ -17,6 +17,13 @@
 //! named in full, or by the start of its name when only one fits; one whose
 //! name is on two games is named with its game, `;to GSF:Baelor look`, and
 //! the name alone is refused rather than sent to either (the crate review of 2026-09-28, R6).
+//!
+//! **`;all` can leave characters out, or name only some** (the author,
+//! 2026-09-29: *"should probably have an include/exclude list"*):
+//! `;all -Dicate,Maravel stand` sends on everyone but those two, and
+//! `;all +Nisugi,Dicate stand` on those two alone. Each name is picked as
+//! `;to` picks one; one that picks nobody refuses the whole line, so a typo
+//! never sends on the wrong characters.
 
 use std::future::Future;
 use std::pin::Pin;
@@ -73,8 +80,25 @@ pub(crate) enum Relay {
         /// What to send on it.
         line: String,
     },
-    /// `;all <line>`: `line` on every running character.
-    All(String),
+    /// `;all [-names|+names] <line>`: `line` on every running character, or
+    /// all but some, or only some.
+    All {
+        /// Who, of those running.
+        who: Who,
+        /// What to send on each.
+        line: String,
+    },
+}
+
+/// Which running characters an `;all` is for.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Who {
+    /// Every one.
+    Everyone,
+    /// Every one but these, as typed.
+    Except(Vec<String>),
+    /// Only these, as typed.
+    Only(Vec<String>),
 }
 
 /// The relay a line (without its symbol) asks for: `None` when it is not
@@ -95,12 +119,33 @@ pub(crate) fn parse(line: &str) -> Option<Result<Relay, &'static str>> {
         }));
     }
     if word.eq_ignore_ascii_case("all") {
-        if rest.is_empty() {
+        let (first, after) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+        let names = |list: &str| -> Vec<String> {
+            list.split(',')
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(str::to_owned)
+                .collect()
+        };
+        let (who, line) = match (first.strip_prefix('-'), first.strip_prefix('+')) {
+            (Some(list), _) => (Who::Except(names(list)), after.trim()),
+            (_, Some(list)) => (Who::Only(names(list)), after.trim()),
+            _ => (Who::Everyone, rest),
+        };
+        if matches!(&who, Who::Except(list) | Who::Only(list) if list.is_empty()) {
+            return Some(Err(
+                "All: name characters after - or +, as `all -Dicate,Maravel stand`.",
+            ));
+        }
+        if line.is_empty() {
             return Some(Err(
                 "All: say what every character is to do, as `all stand`.",
             ));
         }
-        return Some(Ok(Relay::All(rest.to_owned())));
+        return Some(Ok(Relay::All {
+            who,
+            line: line.to_owned(),
+        }));
     }
     None
 }
@@ -191,9 +236,22 @@ async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[Running]) {
                 return;
             }
         },
-        Relay::All(line) => (running.to_vec(), line),
+        Relay::All { who, line } => match chosen(who, running) {
+            Ok(targets) => (targets, line),
+            Err(why) => {
+                told.say(Notice::line(NoticeKind::Error, why));
+                return;
+            }
+        },
     };
-    if matches!(relay, Relay::All(_)) {
+    if targets.is_empty() {
+        told.say(Notice::line(
+            NoticeKind::Warn,
+            format!("All: {line} -- nobody is left to send it on."),
+        ));
+        return;
+    }
+    if matches!(relay, Relay::All { .. }) {
         let names: Vec<String> = targets.iter().map(|one| one.label(running)).collect();
         told.say(Notice::line(
             NoticeKind::Info,
@@ -216,6 +274,49 @@ async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[Running]) {
             told.say(Notice::line(NoticeKind::Warn, format!("To {name}: {why}")));
         }
     }
+}
+
+/// The characters `who` names among `running`, each name picked as `;to`
+/// picks one.
+///
+/// # Errors
+///
+/// A name that picks nobody, or more than one, said as `;to` says it: the
+/// whole line is refused.
+pub(crate) fn chosen(who: &Who, running: &[Running]) -> Result<Vec<Running>, String> {
+    // By place in `running`: two characters are two entries, whatever else
+    // they share.
+    let picked = |names: &[String]| -> Result<Vec<usize>, String> {
+        names
+            .iter()
+            .map(|name| {
+                let one = pick(name, running).map_err(|why| why.replacen("To:", "All:", 1))?;
+                Ok(running
+                    .iter()
+                    .position(|each| std::ptr::eq(each, one))
+                    .unwrap_or(usize::MAX))
+            })
+            .collect()
+    };
+    let keep = |keep: &dyn Fn(usize) -> bool| -> Vec<Running> {
+        running
+            .iter()
+            .enumerate()
+            .filter(|(at, _)| keep(*at))
+            .map(|(_, one)| one.clone())
+            .collect()
+    };
+    Ok(match who {
+        Who::Everyone => running.to_vec(),
+        Who::Except(names) => {
+            let out = picked(names)?;
+            keep(&|at| !out.contains(&at))
+        }
+        Who::Only(names) => {
+            let only = picked(names)?;
+            keep(&|at| only.contains(&at))
+        }
+    })
 }
 
 /// Why a relayed line may not have gone, or `None` when it did.

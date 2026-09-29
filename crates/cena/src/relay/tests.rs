@@ -35,7 +35,30 @@ fn the_two_words_and_what_they_carry() {
             line: "look at kobold".to_owned()
         }))
     );
-    assert_eq!(parse("ALL stand"), Some(Ok(Relay::All("stand".to_owned()))));
+    assert_eq!(
+        parse("ALL stand"),
+        Some(Ok(Relay::All {
+            who: Who::Everyone,
+            line: "stand".to_owned()
+        }))
+    );
+    assert_eq!(
+        parse("all -Dicate, Maravel stand"),
+        Some(Ok(Relay::All {
+            who: Who::Except(vec!["Dicate".to_owned()]),
+            line: "Maravel stand".to_owned()
+        })),
+        "a list is one word: a space ends it"
+    );
+    assert_eq!(
+        parse("all +Nisugi,Dicate kneel"),
+        Some(Ok(Relay::All {
+            who: Who::Only(vec!["Nisugi".to_owned(), "Dicate".to_owned()]),
+            line: "kneel".to_owned()
+        }))
+    );
+    assert!(matches!(parse("all -Dicate"), Some(Err(_))), "no command");
+    assert!(matches!(parse("all - stand"), Some(Err(_))), "no names");
     assert!(matches!(parse("to Baelor"), Some(Err(_))), "no command");
     assert!(matches!(parse("all"), Some(Err(_))), "no command");
     assert_eq!(parse("toast"), None, "another word");
@@ -44,6 +67,29 @@ fn the_two_words_and_what_they_carry() {
 
 /// A whole name wins, whatever the case; otherwise the start of one name.
 /// A character named All is reached by `;to`, never by `;all`.
+/// `;all` leaves out, or keeps only, the characters named, each picked as
+/// `;to` picks one; a name that picks nobody refuses the whole line.
+#[test]
+fn all_leaves_out_or_keeps_only_those_named() {
+    let characters = running(&["Nisugi", "Dicate", "Maravel"]);
+    let names = |who: Who| {
+        chosen(&who, &characters)
+            .map(|chosen| chosen.into_iter().map(|one| one.name).collect::<Vec<_>>())
+    };
+    assert_eq!(
+        names(Who::Except(vec!["dic".to_owned()])),
+        Ok(vec!["Nisugi".to_owned(), "Maravel".to_owned()])
+    );
+    assert_eq!(
+        names(Who::Only(vec!["Maravel".to_owned(), "nisugi".to_owned()])),
+        Ok(vec!["Nisugi".to_owned(), "Maravel".to_owned()])
+    );
+    let Err(why) = names(Who::Only(vec!["Lorwyn".to_owned()])) else {
+        panic!("a name nobody has");
+    };
+    assert!(why.starts_with("All:"), "{why}");
+}
+
 #[test]
 fn a_character_is_picked_by_its_name_or_its_start() {
     let characters = running(&["Ashryn", "Ashkar", "Baelor", "All"]);

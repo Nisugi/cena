@@ -67,7 +67,7 @@ pub(crate) const HELP: &[&str] = &[
     "lich help        run your own Lich for this character, and keep it on",
     "stop             stop everything Hydra is doing on this character: a hunt, a walk, a batch",
     "keys import <file>   in a play window: a Wrayth key set into this character's keys (keys import global <file>: every character's)",
-    "to <name> <command>, all <command>   send a command on another character, or on every one",
+    "to <name> <command>, all <command>   send a command on another character, or on every one; all -Dicate,Maravel <command> leaves some out, all +Nisugi,Dicate <command> sends on only those",
     "<script> [args]  run one of your Lich scripts; k, l, p, u as in Lich. scripts: where they are; scripts import, scripts check",
 ];
 
