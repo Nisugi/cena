@@ -45,9 +45,10 @@
 
 pub mod channel;
 pub mod feed;
+pub mod reader;
 pub mod tap;
 pub mod writer;
 
-pub use channel::{CAPACITY, LogLine, LogSink, PlayerLog};
+pub use channel::{Arrival, CAPACITY, LogLine, LogSink, PlayerLog};
 pub use feed::{Capture, Feed, LogSettings};
 pub use tap::Tap;

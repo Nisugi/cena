@@ -49,6 +49,7 @@ mod frontend;
 mod general;
 mod glossary;
 mod gui;
+mod history;
 mod hunt;
 mod hunt_pages;
 mod hunt_setup;

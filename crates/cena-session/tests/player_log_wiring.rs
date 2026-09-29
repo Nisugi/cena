@@ -156,6 +156,34 @@ async fn what_hydra_says_is_logged_in_its_own_voice() {
 }
 
 #[test]
+fn the_logs_own_lines_shown_back_are_said_and_not_logged_again() {
+    // `;log search` shows lines out of the log. Logged again, every search
+    // would write its hits into today's file for the next one to find.
+    use cena_session::notice::{Notice, NoticeKind};
+    let session = Session::new(ReplaySource::from_bytes(b""));
+    let (_snapshot, mut events) = session.subscribe();
+    let (log, mut sink) = PlayerLog::new();
+    let session = session.with_player_log(log, Capture::default(), None);
+
+    session
+        .handle()
+        .say_unlogged(Notice::line(NoticeKind::Info, "a line from the log"));
+    session
+        .handle()
+        .say(Notice::line(NoticeKind::Info, "guard: said"));
+
+    let said = std::iter::from_fn(|| events.try_recv().ok())
+        .filter(|e| matches!(e, cena_session::Event::Notice(_)))
+        .count();
+    assert_eq!(said, 2, "both reached the player");
+    assert_eq!(
+        drain(&mut sink),
+        vec![("hydra".to_owned(), "guard: said".to_owned())],
+        "only the ordinary notice was logged"
+    );
+}
+
+#[test]
 fn a_notice_with_no_log_attached_is_still_said() {
     use cena_session::notice::{Notice, NoticeKind};
     let session = Session::new(ReplaySource::from_bytes(b""));

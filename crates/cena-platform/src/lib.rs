@@ -69,5 +69,5 @@ pub use live::{KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, LiveSource, UNACKED_SEND_TIME
 pub use record::{MAX_RECORDED_BYTES, RecordedEvent, Recorder};
 pub use replay::ReplaySource;
 pub use sink::{
-    DEFAULT_LOG_DIR, Redactions, SessionSink, date_dir, file_stamp, line_time, log_dir,
+    DEFAULT_LOG_DIR, Redactions, SessionSink, date_dir, file_stamp, line_time, log_dir, stamp_ago,
 };

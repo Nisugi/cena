@@ -59,6 +59,7 @@ pub(crate) const HELP: &[&str] = &[
     "sc <spell>       cast one spell as set up; sc alias, sc verb, sc stance and sc set change how",
     "go2 help         walk to a place or a room, save places, stop",
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
+    "history help     read back what you saw: history tail, history last 15m, history search <text>",
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "multi help, foreach help   run commands several times, or once for each item",
     "agent help       what an agent (a program such as Claude Code) may do with this character",
@@ -87,6 +88,7 @@ pub(crate) struct Commands {
     hunt: Arc<OnceLock<Starter>>,
     loot: Arc<OnceLock<Handler>>,
     combat: Arc<OnceLock<Handler>>,
+    history: Arc<OnceLock<Handler>>,
     sorter: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
@@ -181,6 +183,7 @@ impl Commands {
         for family in [
             &self.loot,
             &self.combat,
+            &self.history,
             &self.sorter,
             &self.trigger,
             &self.agent,
@@ -240,6 +243,13 @@ impl Commands {
     pub(crate) fn combat(&self, handler: Handler) {
         if self.combat.set(handler).is_err() {
             eprintln!("  !! [commands] combat was registered twice; keeping the first");
+        }
+    }
+
+    /// Route `;history` to `handler` from now on. Once, as for travel.
+    pub(crate) fn history(&self, handler: Handler) {
+        if self.history.set(handler).is_err() {
+            eprintln!("  !! [commands] history was registered twice; keeping the first");
         }
     }
 

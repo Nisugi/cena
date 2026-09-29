@@ -1,6 +1,7 @@
 # 25 — The player log
 
-**Status: steps 1, 2 and 2b BUILT (2026-09-21); 3-7 proposed.** Author decisions
+**Status: steps 1, 2 and 2b BUILT (2026-09-21); step 3 BUILT (2026-09-29), with
+`;history`; 4-8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI).** Author decisions
 recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
@@ -185,7 +186,42 @@ the earlier draft mistook the situation.
 Worth the measurement either way: their 85–90% figure is, for a heavy player, the
 difference between a few hundred MB and a few GB per year.
 
-### D5. Retention defaults — **PROPOSED**
+### D6. Days, weeks and months are Eastern; old days archived by month — **AUTHOR, 2026-09-29**
+
+Asked about step 4 and whether day-files should follow the game's clock:
+
+- **Archives, user configurable: monthly (default), weekly, or off.** Monthly
+  means the calendar month, *"not 30 or 31 or 28 days, actual calendar
+  month"*. Weekly weeks *"reset when saturday changes to sunday in eastern
+  time"*. Off keeps every day-file plain, for a player who greps by hand.
+- **Day-files are cut at midnight Eastern too**, so days, weeks and months all
+  follow one clock, the game's, as `;loot`'s *today* already does
+  (`crates/cena/src/loot/period.rs`). This CORRECTS D2 in one respect only:
+  the **file's** day is Eastern. The stamp on each line stays the player's
+  wall clock, which is what D2 was about (*"a reader wants to know when they
+  were at the keyboard"*).
+
+  Consequence for the reader: a window's `Moment` pairs an Eastern day with a
+  local stamp, which compare correctly only when the two clocks agree on the
+  order of lines within a file. They do (a file is one Eastern day, written in
+  order), but "the last 15 minutes" must be turned into a day and a stamp on
+  the same pair of clocks: `cena_platform::stamp_ago` changes with this.
+
+  **Move the Eastern calendar down, do not copy it.** `loot/period.rs` is in
+  the binary and hand-rolls the US rule since 2007. The writer in
+  `cena-session` needs the same answer, so it moves to `cena-platform`
+  beside `date_dir` (which has `jiff`, and `jiff` knows `America/New_York`),
+  and both `;loot` and the log call it.
+
+### D5. Retention defaults — **AUTHOR, 2026-09-29: no size cap; kept forever by default**
+
+*"agree no size cap"*. Keeping logs for a number of days stays a setting,
+**defaulting to forever** (author's pick): this log is *"kept; searched years
+later"* (§0), and an archived month costs a few MB. Deletion is always the
+player's choice, and always previewed (§7). With archives, retention deletes
+whole archives once every day in them is past the limit, never part of one.
+
+The original proposal follows, kept for the record.
 
 Two dials, per §1: `retention_days` (default 30, deletes by age) and a cap on
 uncompressed bytes only. (**CORRECTED 2026-09-21:** this said Lichborne disables the size cap by default.
@@ -367,12 +403,64 @@ Each step leaves the tree green and is independently reviewable.
    minute. Day listing, tail, window read, literal and regex search with
    the §5 caps. Both line formats accepted from the first commit (§1) — the
    second format does not exist yet, and that is the point.
-4. **Compression on close** (D4). Closed days gzip; today untouched.
-5. **Retention**, per D5, with §7's deletion preview.
-6. **Export**, per §1's spec shape.
-7. **Disk usage**, broken out raw / archive / total / day count.
 
-Steps 1–3 are the feature. 4–7 are what make it survivable over years.
+   > **BUILT 2026-09-29.** `crates/cena-session/src/player_log/reader.rs`:
+   > `days`, `read_day`, `tail`, `window` (by stamp, `Moment` = day + stamp,
+   > compared as text since both are fixed width) and `search` (a literal
+   > ignoring case, or a regex as written; newest first), each capped at
+   > `MAX_HITS` lines and `MAX_DAYS` files and saying so (`Found::more`). A
+   > filter by tag matches either half of `main/combat`. A last line with no
+   > newline is a write under way and is not read.
+   >
+   > **Reads flush first**, through the writer itself: a read asks with
+   > `PlayerLog::flush` (`SessionHandle::flush_player_log`), the writer
+   > writes what is queued, flushes and answers, and the read waits at most
+   > `FLUSH_EVERY`, since the writer's own timer does the same by then.
+   > Tested with time paused, so the timer cannot pass for the flush.
+   >
+   > **On the command line as `;history`, not `;log`** (Claude's call):
+   > `log.lic` is elanthia-online's logging script, and Hydra's words come
+   > before the player's scripts, so `;log` would take it from everyone who
+   > runs it. `crates/cena/src/history.rs`: `history` (the days), `tail`,
+   > `last 15m`, `day <day> [<from> [<to>]]`, `search <text>` or `/<regex>/`,
+   > and `in:<stream>` on any. What it shows is said with
+   > `SessionHandle::say_unlogged`: said as a notice, it would be logged as
+   > `[hydra]`, and every search would write its hits for the next to find.
+   >
+   > Not run live. A GUI view over the same reader is not built.
+4. **Archives on close** (D4, D6). APPROVED 2026-09-29. First the Eastern
+   calendar moved down to `cena-platform` and the day-files cut by it (D6).
+   Then a closed month (or week) of day-files becomes one archive, today and
+   the open period untouched; the setting is `monthly`, `weekly` or `off`, in
+   the `player_log` section of the character's settings file, on the *Player
+   log* page. The reader reads a day out of an archive as it reads a plain
+   file (`read_day` is the one place that changes). Archiving is not
+   rewriting: a day-file is removed only once its archive is written and read
+   back whole.
+5. **Retention**, per D5: forever by default, a number of days when set,
+   whole archives only, with §7's deletion preview. No size cap. APPROVED.
+6. **Export**, per §1's spec shape: a range of days and tags written to one
+   plain file the player chooses. APPROVED.
+7. **Disk usage**, broken out raw / archive / total / day count. APPROVED.
+8. **The GUI** -- missing from this list as first written, as 2b once was.
+   The author, 2026-09-29, showing Lichborne's two screens: *"I notice there
+   is no gui window in the plan"*. Two parts, both over `reader` and the
+   settings file, nothing new in the session:
+   - **The *Player log* settings page** (`crates/cena/src/general.rs`, which
+     already has each feed) gains the archive choice, *keep logs for* (0 =
+     forever), the disk usage (step 7) and *Open logs folder*.
+   - **A log window** per character, its own viewport as the settings window
+     is (`crates/cena-gui/src/app/settings.rs`), opened from the play window
+     and the hub card. From Lichborne's viewer: a day picker with each day's
+     size and *Refresh*; *Recent*, *Search* and *Export* tabs; a checkbox per
+     tag the day holds (the stream list per day, cached by `path:mtime:size`
+     for a closed day, §1); lines drawn as `time [tag] text` with the tag as
+     a chip. Their presets (*Everything*, *Combat*, *Social*, *Quiet*) and
+     *Dedup* are a reading view only: tallies count raw rows (§1, the
+     DR-speech pitfall). Every read off the UI thread, flushing first (§5).
+
+Steps 1–3 are the feature. 4–7 are what make it survivable over years; 8 is
+how a player reads it without typing.
 
 **Not in scope:** the catch-up digest. Theirs is genuinely good — pre-dedup
 tallies, `redactForAI()` applied only to the AI-bound body while the disk log

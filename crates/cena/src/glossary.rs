@@ -143,6 +143,7 @@
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
+//! | **Player log** | what the player saw and sent, as text, one file per character per day (`plan/25`): written by [`PlayerWriter`](cena_session::PlayerWriter), read back by [`reader`](cena_session::player_log::reader), which `;history` puts on the command line. The command is not `;log`, which is Lich's `log.lic` | the wire log, which is bytes and churns |
 //! | **Handle** | the only path that sends: [`SessionHandle`] | |
 //! | **Command** | a line for the game, through the session's [`CommandQueue`] | |
 //! | **Hydra command** | a typed line that starts with the command symbol ([`COMMAND_SYMBOL`], `;` unless the character's settings say otherwise). It is Hydra's whether or not anything knows the word, and the game never sees it ([`commands`](crate::commands)) | |

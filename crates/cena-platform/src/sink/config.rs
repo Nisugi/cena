@@ -196,26 +196,52 @@ pub fn file_stamp() -> String {
 /// scannable.
 #[must_use]
 pub fn date_dir() -> String {
-    let now = jiff::Zoned::now();
-    format!("{:04}-{:02}-{:02}", now.year(), now.month(), now.day())
+    day_of(&jiff::Zoned::now())
 }
 
 /// Wall-clock time for one log line: `HH:MM:SS.mmm`, per [`TIME_FORMAT`].
 #[must_use]
 pub fn line_time() -> String {
+    time_of(&jiff::Zoned::now())
+}
+
+/// The day and the line stamp ([`date_dir`], [`line_time`]) of the wall clock
+/// `ago` before now: where a reader of the player log starts *"the last 15
+/// minutes"*. Clamped to now for a span too large to subtract.
+#[must_use]
+pub fn stamp_ago(ago: std::time::Duration) -> (String, String) {
     let now = jiff::Zoned::now();
+    let then = now.checked_sub(ago).unwrap_or(now);
+    (day_of(&then), time_of(&then))
+}
+
+fn day_of(at: &jiff::Zoned) -> String {
+    format!("{:04}-{:02}-{:02}", at.year(), at.month(), at.day())
+}
+
+fn time_of(at: &jiff::Zoned) -> String {
     format!(
         "{:02}:{:02}:{:02}.{:03}",
-        now.hour(),
-        now.minute(),
-        now.second(),
-        now.millisecond()
+        at.hour(),
+        at.minute(),
+        at.second(),
+        at.millisecond()
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// [`stamp_ago`] gives the same two shapes the player log is written
+    /// in, so a reader can compare them as text; and it goes back.
+    #[test]
+    fn a_stamp_ago_is_in_the_logs_shapes_and_in_the_past() {
+        let (day, at) = stamp_ago(std::time::Duration::from_hours(48));
+        assert_eq!(day.len(), date_dir().len(), "{day}");
+        assert_eq!(at.len(), line_time().len(), "{at}");
+        assert!(day < date_dir(), "two days ago is an earlier day: {day}");
+    }
 
     /// [`TIME_FORMAT`] and [`line_time`] describe the same shape.
     ///

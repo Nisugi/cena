@@ -147,6 +147,12 @@ impl Tap {
         }
     }
 
+    /// Ask the writer to put what was recorded on disk, and wait until it has
+    /// ([`PlayerLog::flush`]). Never from the actor.
+    pub async fn flush(&self) -> bool {
+        self.log.flush().await
+    }
+
     /// Record one line under a stamp taken earlier -- when the line arrived,
     /// not when its chunk closed.
     pub(super) fn record_at(&self, generation: Generation, at: String, tag: String, text: String) {
@@ -157,5 +163,28 @@ impl Tap {
             session: self.session,
             generation,
         });
+    }
+}
+
+impl crate::SessionHandle {
+    /// Put this session's player log on disk as of now, before reading it
+    /// (`plan/25` §5: *"reads flush the writer's buffer first"*).
+    ///
+    /// `false` when the session has no log or its writer did not answer in
+    /// time; the read goes ahead either way. Never from the actor: it waits.
+    pub async fn flush_player_log(&self) -> bool {
+        let tap = self.log_slot().get().cloned();
+        match tap {
+            Some(tap) => tap.flush().await,
+            None => false,
+        }
+    }
+
+    /// [`Self::say`], but kept out of the player log: for the log's own lines
+    /// shown back to the player. Said through `say`, every search would
+    /// write its hits into today's file, and the next search would find them
+    /// again.
+    pub fn say_unlogged(&self, notice: crate::notice::Notice) {
+        self.publish(crate::Event::Notice(notice));
     }
 }
