@@ -27,6 +27,10 @@ serde_json.workspace = true
 toml.workspace = true
 # Fingerprint the exact map shared by travel and the read-only minimap.
 sha2 = "0.10"
+# The minimap (plan/53 §7): the map Hydra ships, and the engine that lays out
+# its areas at launch.
+cena-gs-map.workspace = true
+cena-map-layout.workspace = true
 
 # `signal` for Ctrl-C. Without it the only early exit was killing the process,
 # which skips BOTH the `quit` (plan/16 5b) and the sink flush -- so the run that

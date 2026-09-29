@@ -40,6 +40,11 @@ cena-web = { path = "crates/cena-web" }
 cena-agent = { path = "crates/cena-agent" }
 cena-host = { path = "crates/cena-host" }
 cena-gui = { path = "crates/cena-gui" }
+# The map layout engine and the map it lays out, from hydra-mapper at one
+# commit, so the two cannot drift (plan/53 §6 item 2, §7): the minimap lays
+# out every area at launch from the map Hydra embeds.
+cena-map-layout = { git = "https://github.com/Nisugi/hydra-mapper", rev = "c3f8c989d41e2b560731fc0fc9a28e944776651e" }
+cena-gs-map = { git = "https://github.com/Nisugi/hydra-mapper", rev = "c3f8c989d41e2b560731fc0fc9a28e944776651e" }
 # The GUI's toolkit (plan/47): the author's egui fork, egui 0.35.0 with its
 # numpad capture (plan/47 §2) and, one commit on from what VellumFE builds
 # with (2e2ead3), its key capture for keys egui has no name for (plan/47
@@ -132,6 +137,17 @@ expect_used = "deny"
 panic = "deny"
 todo = "deny"
 dbg_macro = "deny"
+
+# The engine's `cena-map` is this workspace's own, not a second copy from
+# GitHub: without it the two `Map`s are different types (plan/53 §5 item 2).
+[patch."https://github.com/Nisugi/cena"]
+cena-map = { path = "crates/cena-map" }
+
+# The layout engine optimised in every profile, the debug build included:
+# laying out the whole map takes 104 s in a release build (plan/53 §7a), and
+# Hydra builds debug for testing. One target directory still.
+[profile.dev.package.cena-map-layout]
+opt-level = 3
 
 # plan/12 section 5.5: panic = "abort" defeats per-session isolation.
 # Asserted by no_profile_aborts_on_panic, because a manifest line is a wish.

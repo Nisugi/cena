@@ -465,8 +465,10 @@ version = "0.1.0"
 dependencies = [
  "cena-agent",
  "cena-behavior",
+ "cena-gs-map",
  "cena-gui",
  "cena-host",
+ "cena-map-layout",
  "cena-platform",
  "cena-session",
  "cena-ui",
@@ -525,6 +527,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "cena-gs-map"
+version = "0.1.0"
+source = "git+https://github.com/Nisugi/hydra-mapper?rev=c3f8c989d41e2b560731fc0fc9a28e944776651e#c3f8c989d41e2b560731fc0fc9a28e944776651e"
+
+[[package]]
 name = "cena-gui"
 version = "0.1.0"
 dependencies = [
@@ -560,6 +567,15 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "cena-map-layout"
+version = "0.1.0"
+source = "git+https://github.com/Nisugi/hydra-mapper?rev=c3f8c989d41e2b560731fc0fc9a28e944776651e#c3f8c989d41e2b560731fc0fc9a28e944776651e"
+dependencies = [
+ "cena-map",
+ "serde",
 ]
 
 [[package]]

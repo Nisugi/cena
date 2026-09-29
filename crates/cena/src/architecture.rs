@@ -62,6 +62,12 @@
 //!   `a_dev_only_edge_stays_out_of_the_shipped_graph` keeps it out of the binary.
 //! ```
 //!
+//! From outside the workspace, the binary alone also takes hydra-mapper's
+//! layout engine, `cena-map-layout`, and the map Hydra ships, `cena-gs-map`,
+//! both at one pinned commit, for the minimap (`plan/53` §7). The engine's own
+//! `cena-map` is patched to this workspace's, so there is one `Map`. The
+//! layering test's table covers the workspace's crates, not these.
+//!
 //! | Crate | Start reading at |
 //! |---|---|
 //! | [`cena_platform`] | [`ByteSource`](cena_platform::ByteSource), and [`eaccess`](cena_platform::eaccess) for the login |
