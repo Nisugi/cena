@@ -455,7 +455,7 @@ impl GameState {
             // `<clearStream id=>`: the wire's own snapshot boundary, and the
             // ONLY thing that empties a buffer. See `state/streams.rs` for the
             // measurement that chose this over clearing on push.
-            Frame::ClearStream { id } => {
+            Frame::ClearStream { id, .. } => {
                 self.clear_stream(id);
                 self.pending.clear_stream(id);
                 if id == known_spells::STREAM {

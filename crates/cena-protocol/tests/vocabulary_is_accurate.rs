@@ -425,7 +425,7 @@ fn a_dyna_stream_routes_its_body_and_its_clear_clears() {
     assert!(
         frames
             .iter()
-            .any(|f| matches!(f, Frame::ClearStream { id } if id == "bugStream")),
+            .any(|f| matches!(f, Frame::ClearStream { id, .. } if id == "bugStream")),
         "clearDynaStream clears a streamBox, which is what ClearStream means: \
          {frames:?}"
     );

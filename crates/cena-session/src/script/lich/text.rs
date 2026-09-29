@@ -76,7 +76,7 @@ impl Reading {
                         showing.push(Showing::Line(Line::new(text.stream.clone(), runs)));
                     }
                 }
-                Frame::ClearStream { id } => self.lines.clear_stream(&id),
+                Frame::ClearStream { id, .. } => self.lines.clear_stream(&id),
                 Frame::Prompt { text, .. } => showing.push(Showing::Prompt(text)),
                 _ => {}
             }

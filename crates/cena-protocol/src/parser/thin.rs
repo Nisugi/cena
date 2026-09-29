@@ -199,6 +199,7 @@ fn thin_frame_rest(name: &str, tag: &str) -> Frame {
             id: id(),
             title: text::attribute(tag, "title"),
             target: text::attribute(tag, "target"),
+            attrs: text::attributes(tag),
         },
         "clearContainer" => Frame::ClearContainer { id: id() },
         // The dictionary version the server just stated. Typed rather than

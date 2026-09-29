@@ -132,7 +132,7 @@ fn the_room_stream_is_pushed_and_popped() {
         .any(|f| matches!(f, Frame::StreamPop { id: Some(id) } if id == "room"));
     let cleared = frames
         .iter()
-        .any(|f| matches!(f, Frame::ClearStream { id } if id == "room"));
+        .any(|f| matches!(f, Frame::ClearStream { id, .. } if id == "room"));
     assert!(
         pushed && popped && cleared,
         "the room frame envelope is clear/push/pop; got push={pushed} \

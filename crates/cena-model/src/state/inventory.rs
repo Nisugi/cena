@@ -197,7 +197,9 @@ impl crate::GameState {
     pub(super) fn apply_container(&mut self, frame: &cena_protocol::Frame) {
         use cena_protocol::Frame;
         match frame {
-            Frame::Container { id, title, target } => {
+            Frame::Container {
+                id, title, target, ..
+            } => {
                 self.inventory
                     .declare(id, title.as_deref(), target.as_deref());
             }

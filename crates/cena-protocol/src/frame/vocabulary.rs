@@ -163,6 +163,10 @@ pub enum Frame {
         /// `id=` of the `<clearStream>` or `<clearDynaStream>`; empty when
         /// absent.
         id: String,
+        /// Every attribute the tag carried, `id=` included: some carry
+        /// `ifClosed=`, where the clearing goes when the window is shut, and
+        /// it was dropped (the review of 2026-09-29).
+        attrs: Attrs,
     },
     /// `<clearDialogData>`, or an empty `<dialogData>`.
     ClearDialogData {
@@ -399,6 +403,13 @@ pub enum Frame {
 
     // --- containers and inventory -----------------------------------------
     /// `<container id= title= target=>`.
+    ///
+    /// Everything else rides in [`attrs`](Self::Container::attrs), as a
+    /// stream window's does: the committed fixtures' containers carry
+    /// `location=`, `save=` and `resident=` too, and the three were dropped
+    /// (the review of 2026-09-29). `location` is where a frontend puts the
+    /// container's window. MEASURED:
+    /// `grep -ohE '<container [^>]*/?>' tests/fixtures/*.xml`.
     Container {
         /// `id=`; empty when absent.
         id: String,
@@ -406,6 +417,8 @@ pub enum Frame {
         title: Option<String>,
         /// `target=`, entity-decoded; `None` when absent.
         target: Option<String>,
+        /// Every attribute the tag carried, including the three above.
+        attrs: Attrs,
     },
     /// `<clearContainer id=>`.
     ClearContainer {

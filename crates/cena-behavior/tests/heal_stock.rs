@@ -101,6 +101,7 @@ fn setup(herbs: &[(&str, &str, &str, Option<u32>)]) -> GameState {
         id: "700".to_owned(),
         title: Some("Herb Pouch".to_owned()),
         target: None,
+        attrs: Vec::new(),
     });
     for (id, noun, text, doses) in herbs {
         inside(&mut state, id, noun, text);

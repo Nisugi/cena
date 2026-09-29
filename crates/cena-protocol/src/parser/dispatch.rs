@@ -552,6 +552,7 @@ impl Parser {
         self.flush(buffer, frames);
         frames.push(Frame::ClearStream {
             id: text::attribute(tag, "id").unwrap_or_default(),
+            attrs: text::attributes(tag),
         });
     }
 

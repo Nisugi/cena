@@ -358,3 +358,63 @@ fn both_entry_points_agree_about_how_a_blob_ends() {
         );
     }
 }
+
+// --- the review of 2026-09-29: attributes two frames dropped ----------------
+
+/// A container's tag as the committed fixtures hold it: where its window
+/// goes, and the rest, reach the frame.
+#[test]
+fn a_container_keeps_every_attribute_it_carried() {
+    let out = frames(&[
+        "<container id='stow' title=\"My Cloak\" target='#2376048' location='right' save='' resident='true'/>",
+    ]);
+    let kept: Vec<(String, String)> = out
+        .iter()
+        .filter_map(|f| match f {
+            Frame::Container {
+                id, title, attrs, ..
+            } if id == "stow" && title.as_deref() == Some("My Cloak") => Some(attrs.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect();
+    let names: Vec<&str> = kept.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(
+        names,
+        ["id", "title", "target", "location", "save", "resident"]
+    );
+    assert!(kept.contains(&("location".to_owned(), "right".to_owned())));
+    assert!(kept.contains(&("resident".to_owned(), "true".to_owned())));
+}
+
+/// `ifClosed=''` is an answer, not an absence: it is kept, empty.
+#[test]
+fn a_cleared_stream_keeps_where_it_goes_when_shut() {
+    let out = frames(&[
+        "<clearStream id='inv' ifClosed=''/>",
+        "<clearStream id='room'/>",
+    ]);
+    let kept: Vec<(String, Vec<(String, String)>)> = out
+        .iter()
+        .filter_map(|f| match f {
+            Frame::ClearStream { id, attrs } => Some((id.clone(), attrs.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        kept,
+        [
+            (
+                "inv".to_owned(),
+                vec![
+                    ("id".to_owned(), "inv".to_owned()),
+                    ("ifClosed".to_owned(), String::new())
+                ]
+            ),
+            (
+                "room".to_owned(),
+                vec![("id".to_owned(), "room".to_owned())]
+            ),
+        ]
+    );
+}

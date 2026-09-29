@@ -689,6 +689,7 @@ fn arriving_to_rest_with_something_to_sell_runs_the_round_first() {
         id: "901".to_owned(),
         title: Some("My Sack".to_owned()),
         target: None,
+        attrs: Vec::new(),
     });
     state.apply(&Frame::ContainerItem {
         container_id: "901".to_owned(),

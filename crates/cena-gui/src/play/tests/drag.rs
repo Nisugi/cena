@@ -167,6 +167,7 @@ fn let_go_on_a_container_it_goes_into_it() {
             id: "stow".to_owned(),
             title: Some("My Cloak".to_owned()),
             target: Some("#64863904".to_owned()),
+            attrs: Vec::new(),
         });
     beside_the_story(&mut harness, Widget::Containers, None);
     let cloak = harness.get_by_label_contains("My Cloak").rect().center();
@@ -311,6 +312,7 @@ fn from_a_container_it_goes_elsewhere() {
                 id: id.to_owned(),
                 title: Some(title.to_owned()),
                 target: Some(target.to_owned()),
+                attrs: Vec::new(),
             });
         }
         contains(scene, "stow", ("11", "a gold ring", "ring"));

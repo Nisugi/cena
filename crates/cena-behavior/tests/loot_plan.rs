@@ -402,6 +402,7 @@ fn a_critters_bag_is_opened_looked_in_and_emptied_before_it_is_taken() {
         id: "5".to_owned(),
         title: Some("Bag".to_owned()),
         target: None,
+        attrs: Vec::new(),
     });
     inside(&mut state, "5", "6", "emerald", "uncut emerald");
     assert_eq!(
@@ -470,6 +471,7 @@ fn a_box_in_hand_is_opened_its_coins_charmed_out_and_its_gem_taken() {
         id: "40".to_owned(),
         title: Some("Coffer".to_owned()),
         target: None,
+        attrs: Vec::new(),
     });
     inside(&mut state, "40", "41", "coins", "342 silver coins");
     inside(&mut state, "40", "42", "emerald", "uncut emerald");
@@ -513,6 +515,7 @@ fn without_a_charm_the_coins_are_gathered_by_hand() {
         id: "40".to_owned(),
         title: Some("Coffer".to_owned()),
         target: None,
+        attrs: Vec::new(),
     });
     inside(&mut state, "40", "41", "coins", "12 silver coins");
     assert_eq!(plan.next(&state), Step::Coins("40".to_owned()));

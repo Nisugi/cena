@@ -59,6 +59,7 @@ pub fn setup(gems: &[(&str, &str, &str)], pack: &[(&str, &str, &str)]) -> GameSt
             id: id.to_owned(),
             title: Some(title.to_owned()),
             target: None,
+            attrs: Vec::new(),
         });
     }
     for (id, noun, text) in gems {

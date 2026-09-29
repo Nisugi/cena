@@ -172,6 +172,7 @@ fn sack(state: &mut GameState, items: &[(&str, &str, &str)]) {
         id: "9".to_owned(),
         title: Some("My Sack".to_owned()),
         target: Some("#9".to_owned()),
+        attrs: Vec::new(),
     });
     state.apply(&Frame::ClearContainer { id: "9".to_owned() });
     for (id, noun, name) in items {

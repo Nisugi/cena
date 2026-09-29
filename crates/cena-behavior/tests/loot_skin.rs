@@ -62,6 +62,7 @@ fn state(right_hand: Option<(&str, &str, &str)>) -> GameState {
         id: "902".to_owned(),
         title: Some("My Backpack".to_owned()),
         target: None,
+        attrs: Vec::new(),
     });
     for (id, noun, text) in [
         ("77", "dagger", "curved skinning dagger"),
