@@ -252,3 +252,6 @@ crates/cena-gui/src/widget/split.rs 300
 # NEW SPLIT PARENT, 2026-09-29, capped at birth (plan/25 step 8). crates/cena-gui/src/logs.rs
 # is a log window's facade over read.rs, view.rs, window.rs and draw.rs: 36 lines, so 100.
 crates/cena-gui/src/logs.rs 100
+# NEW SPLIT PARENT, 2026-09-29, capped at birth (plan/54 step 1). crates/cena-gui/src/triggers.rs
+# is the trigger editor's facade over editor.rs, its tests beside it: 14 lines, so 100.
+crates/cena-gui/src/triggers.rs 100

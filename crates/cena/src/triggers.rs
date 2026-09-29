@@ -15,6 +15,7 @@
 //! it -- because a player's triggers file may hold years of rules.
 
 mod act;
+pub(crate) mod book;
 mod explain;
 mod follow;
 mod import;

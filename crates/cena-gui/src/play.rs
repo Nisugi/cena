@@ -76,6 +76,8 @@ pub(crate) enum Asked {
     Keys,
     /// Open the character's log window (`plan/25` step 8).
     Log,
+    /// Open the trigger editor (`plan/54`).
+    Triggers,
     /// Switch the player's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(bool),
     /// Use this macro set over set 0, kept for the character; 0 for set 0
@@ -287,6 +289,7 @@ impl Play {
             Some(draw::Top::Settings) => asked = Some(Asked::Settings(None)),
             Some(draw::Top::Keys) => asked = Some(Asked::Keys),
             Some(draw::Top::Log) => asked = Some(Asked::Log),
+            Some(draw::Top::Triggers) => asked = Some(Asked::Triggers),
             Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
             Some(draw::Top::Lich(on)) => asked = Some(Asked::Lich(on)),
             Some(draw::Top::Fit) => {

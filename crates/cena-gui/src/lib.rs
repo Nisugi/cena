@@ -31,6 +31,7 @@ mod sessions;
 mod snap;
 mod story;
 mod text;
+mod triggers;
 mod widget;
 
 pub use app::{App, TITLE, run};
