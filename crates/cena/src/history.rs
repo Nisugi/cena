@@ -29,6 +29,7 @@ use cena_session::notice::{Body, Notice, NoticeKind};
 use cena_session::player_log::reader::{self, Entry, Found, MAX_HITS, Moment, Pattern, Streams};
 use cena_session::player_log::writer;
 use cena_session::player_log::{archive, retention};
+use cena_ui::settings::size;
 
 use crate::commands::Commands;
 
@@ -443,26 +444,6 @@ fn days(root: &Path, character: &str, keep_days: u32) -> std::io::Result<Vec<Str
     Ok(lines)
 }
 
-/// Bytes as a person reads them: `980 KB`, `56.8 MB`, `1.2 GB`.
-fn size(bytes: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-    const GB: u64 = MB * 1024;
-    // Tenths by integer arithmetic: a log is never large enough for the
-    // rounding to matter, and no float cast is needed.
-    let tenths = |unit: u64| {
-        let t = (bytes * 10 + unit / 2) / unit;
-        format!("{}.{}", t / 10, t % 10)
-    };
-    if bytes >= GB {
-        format!("{} GB", tenths(GB))
-    } else if bytes >= MB {
-        format!("{} MB", tenths(MB))
-    } else {
-        format!("{} KB", bytes.div_ceil(KB))
-    }
-}
-
 /// A window's or a search's lines under `label`: the first [`SHOWN`] of
 /// them, and how many more there were.
 fn shown(found: &Found, label: &str, with_day: bool) -> Vec<String> {
@@ -664,15 +645,6 @@ mod tests {
 "
         );
         let _ = std::fs::remove_dir_all(&root);
-    }
-
-    #[test]
-    fn sizes_read_as_a_person_reads_them() {
-        assert_eq!(size(0), "0 KB");
-        assert_eq!(size(1), "1 KB");
-        assert_eq!(size(980 * 1024), "980 KB");
-        assert_eq!(size(66_400 * 1024), "64.8 MB");
-        assert_eq!(size(3 * 1024 * 1024 * 1024 / 2), "1.5 GB");
     }
 
     #[test]

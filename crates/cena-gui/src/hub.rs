@@ -54,6 +54,8 @@ pub enum HubAction {
     Settings,
     /// Switch this session's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(u32, bool),
+    /// Open this session's log window (`plan/25` step 8).
+    Log(u32),
 }
 
 /// What the hub shows this frame, gathered by the window from its sessions.
@@ -342,6 +344,13 @@ fn draw(
         ui.label(facts.join(" · "));
         let Some(number) = number else { return };
         ui.horizontal(|ui| {
+            if ui
+                .button("Log")
+                .on_hover_text("What this character saw, read back")
+                .clicked()
+            {
+                asked = Some(HubAction::Log(number));
+            }
             if matches!(card.lifecycle, LifecycleView::Closed { .. }) {
                 if ui.button("Reconnect").clicked() {
                     asked = Some(HubAction::Ask(HubRequest::Reconnect(number)));

@@ -249,3 +249,6 @@ crates/cena-gui/src/app/tests.rs 750
 # NEW SPLIT PARENT, 2026-09-29, capped at birth (the author's split scrollback). crates/cena-gui/src/widget/split.rs
 # is a text widget's two panes, its tests in widget/split/tests.rs beside it: 239 lines, so 300.
 crates/cena-gui/src/widget/split.rs 300
+# NEW SPLIT PARENT, 2026-09-29, capped at birth (plan/25 step 8). crates/cena-gui/src/logs.rs
+# is a log window's facade over read.rs, view.rs, window.rs and draw.rs: 36 lines, so 100.
+crates/cena-gui/src/logs.rs 100

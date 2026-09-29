@@ -76,6 +76,8 @@ pub struct App {
     /// On macOS, the numpad sends its keys rather than typing: switched by
     /// the Clear key, starting as the keybinds file's `numpad` says.
     clear_sends: bool,
+    /// Each character's log window, once opened, by session (`logs.rs`).
+    logs: BTreeMap<u32, crate::logs::Logs>,
 }
 
 /// One character's play window.
@@ -110,6 +112,7 @@ impl App {
             menu_waits: false,
             caught_for_page: None,
             clear_sends: false,
+            logs: BTreeMap::new(),
         }
     }
 
@@ -203,6 +206,11 @@ impl App {
                     self.hydras(seat, lich_word(on));
                 }
             }
+            Some(HubAction::Log(session)) => {
+                if let Some(seat) = seats.iter().find(|seat| seat.id.0 == session) {
+                    self.open_log(seat);
+                }
+            }
             None => {}
         }
         // A width a drag set is kept once the drag lets go.
@@ -230,6 +238,7 @@ impl App {
             }
         }
         self.settings(ui.ctx(), &glance);
+        self.log_windows(ui.ctx(), &seats);
     }
 
     /// A window for each seat new since the last frame, open; none for a
@@ -353,6 +362,7 @@ impl App {
             Some(Asked::Quietly(line)) => self.sessions.send_quietly(seat, line),
             Some(asked @ (Asked::Settings(_) | Asked::Keys)) => return Some(asked),
             Some(Asked::Stop) => self.hydras(seat, "stop"),
+            Some(Asked::Log) => self.open_log(seat),
             Some(Asked::Lich(on)) => self.hydras(seat, lich_word(on)),
             None => {}
         }
@@ -466,6 +476,7 @@ pub fn run(sessions: Sessions) -> eframe::Result {
 }
 
 mod keyed;
+mod logs;
 mod settings;
 #[cfg(test)]
 mod tests;

@@ -223,6 +223,10 @@ fn a_stream_is_matched_by_either_half_of_its_tag() {
         "a part is whole, not a prefix"
     );
     assert!(Streams::all().admits("anything"));
+    // By class, the tag's last part alone: the log window's ticks.
+    assert!(!Streams::classes(["main"]).admits("main/combat"));
+    assert!(Streams::classes(["main"]).admits("main"));
+    assert!(Streams::classes(["combat"]).admits("main/combat"));
 }
 
 #[test]

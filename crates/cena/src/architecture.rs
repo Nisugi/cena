@@ -333,7 +333,10 @@
 //! [`cena_gui`] is the desktop window (`plan/47`, `plan/49`), and what the
 //! binary opens with no arguments: a hub of cards, one per character, and a
 //! play window per character built of widgets, observing the same sessions
-//! as Despana and sending through the same manual path.
+//! as Despana and sending through the same manual path. A log window per
+//! character (`plan/25` step 8) reads the player log back through
+//! `cena_session::player_log`'s reader, off the window's thread, after the
+//! writer is asked to flush.
 //!
 //! # Outside programs: an agent, scripts and the player's Lich
 //!

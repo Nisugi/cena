@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 use cena_behavior::settings;
 use cena_session::SessionHandle;
 use cena_session::command::claimant;
-use cena_session::player_log::archive::Archive;
+use cena_session::player_log::archive::{self, Archive};
 use cena_session::player_log::feed::{LogSettings, SECTION as LOG_SECTION};
 use cena_session::player_log::{Capture, tap};
 use cena_session::player_log::{retention, writer};
@@ -182,9 +182,12 @@ fn log_rows(log: &LogSettings, name: &str) -> Vec<Row> {
     let archive = Row {
         key: ARCHIVE.to_owned(),
         label: "Archive old days".to_owned(),
-        help: "Gzip each finished month or week (Eastern, as the game keeps time) into one file. \
-               Today's log stays plain text, and ;history reads archives as it reads the rest."
-            .to_owned(),
+        help: format!(
+            "Gzip each finished month or week (Eastern, as the game keeps time) into one file. \
+             Today's log stays plain text, and ;history and the Log window read archives as \
+             they read the rest. {}",
+            disk_used(name)
+        ),
         kind: RowKind::Choice(
             [
                 (Archive::Monthly, "Every month"),
@@ -234,6 +237,22 @@ pub(crate) fn log_settings(dir: &Path, login: &str) -> LogSettings {
         .and_then(|(instance, name)| load(dir, instance, name).ok())
         .and_then(|file| section::<LogSettings>(&file, LOG_SECTION).ok())
         .unwrap_or_default()
+}
+
+/// What `name`'s player log takes on disk, as the page says it.
+fn disk_used(name: &str) -> String {
+    use cena_ui::settings::size;
+    match archive::usage(&writer::root(), name) {
+        Ok(usage) if usage.days == 0 => "Nothing is kept yet.".to_owned(),
+        Ok(usage) => format!(
+            "Kept now: {} days, {} in all ({} plain, {} archived).",
+            usage.days,
+            size(usage.total()),
+            size(usage.plain),
+            size(usage.archived)
+        ),
+        Err(why) => format!("The log could not be read: {why}"),
+    }
 }
 
 /// What keeping `keep_days` days of `name`'s log would remove at the next

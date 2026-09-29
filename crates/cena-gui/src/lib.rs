@@ -22,6 +22,7 @@ mod hub;
 mod keys;
 mod launch;
 mod layout;
+mod logs;
 mod menu;
 mod own;
 mod play;

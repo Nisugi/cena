@@ -72,6 +72,8 @@ pub(crate) enum Asked {
     Settings(Option<String>),
     /// Open the settings menu at Hydra's *Keys* page (step 8).
     Keys,
+    /// Open the character's log window (`plan/25` step 8).
+    Log,
     /// Switch the player's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(bool),
 }
@@ -248,6 +250,7 @@ impl Play {
             Some(draw::Top::Stop) => asked = Some(Asked::Stop),
             Some(draw::Top::Settings) => asked = Some(Asked::Settings(None)),
             Some(draw::Top::Keys) => asked = Some(Asked::Keys),
+            Some(draw::Top::Log) => asked = Some(Asked::Log),
             Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
             Some(draw::Top::Lich(on)) => asked = Some(Asked::Lich(on)),
             Some(draw::Top::Fit) => {
