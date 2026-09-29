@@ -1,6 +1,9 @@
 # 55 — The injury doll
 
-**Status: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
+**Status: steps 0-7 BUILT 2026-09-29** on branch `injury-doll` (§3a lists each commit);
+step 8 waits on the author's word. None has run live.
+
+**Status before that: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
 written to those answers, and §4a's, answered after them.
 
 **Status before that: PROPOSED 2026-09-29.** `plan/49` Stage G named the injury doll as work that
@@ -466,6 +469,34 @@ The architecture page and glossary change in the same commit as each step that a
 The glossary gains *doll*, *anchor*, *overlay* and *style*.
 
 ---
+
+### 3a. As built
+
+| Step | Commit | Where |
+|---|---|---|
+| 0, the model | `0015ad1` | `crates/cena-model/src/state/character/nerves.rs`, `body.rs`; `crates/cena-model/tests/injury_modes.rs` |
+| 0, the session | `2f16c1e` | `crates/cena-session/src/actor/nerves.rs`, `Origin::Hydra`; `crates/cena-session/tests/nerve_health.rs` |
+| 1, the picture cache | `b324d11` | `crates/cena-gui/src/pictures.rs` |
+| 2, the Doll over a body | `11e5e0f` | `crates/cena-gui/src/widget/doll.rs` |
+| 3, pictures and anchors | `a2fa0e2` | `crates/cena-gui/src/calibration.rs`; the widget's page in `play/options.rs` |
+| 4, the calibrator | `4f1f670` | `crates/cena-gui/src/play/calibrator.rs`; `calibration::write`, `cena_session::store::save_bytes` |
+| 5, the Doll plus | `b43b333` | `crates/cena-gui/src/doll_art.rs` |
+| 6, `;doll import` | `4d7bb7e` | `crates/cena-gui/src/doll_import.rs`, `crates/cena/src/doll.rs` |
+| 7, Infinite | `241ab49` | `crates/cena-gui/src/widget/infinite.rs`; `gs_field`, `gs_field_egui` behind `doll-infinite` |
+
+**Where the build departs from the text above, and why:**
+
+- **Infinite is pinned at gs_studio `a739228`, not its newest commit.** gs_studio's `054a86c`
+  (display lighting by default, wound ranks shifted, eyes marked, statuses over wounds) was
+  on the author's machine and not on GitHub when step 7 was built. Hydra fetches gs_studio by
+  commit, so the pin moves to it once it is pushed.
+- **The Doll plus is not a style of its own.** As VellumFE has it, a picture with overlays is
+  the Doll plus: the page offers the Doll and Infinite, and a picture's art does the rest.
+- **The Doll's colours are the palette's, not a calibration's.** VellumFE's `wound_color` and
+  `scar_color` are kept in the picture untouched (`calibration::write` carries them), and a dot
+  takes its level's colour. Dot size and opacity are the calibration's.
+- **Left and right are VellumFE's**, the right arm on the viewer's right, so a calibration
+  made in either client places the same parts.
 
 ## 4. The author's answers, 2026-09-29
 
