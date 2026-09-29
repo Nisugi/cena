@@ -485,13 +485,13 @@ impl<S: ByteSource> SessionActor<S> {
     /// scripts and triggers (an imported trigger's send is already held until
     /// approved, `plan/45` §1 row 1) and their own Lich may; an agent only
     /// while it holds the authority, which its `takeover` level gives it; and
-    /// Hydra's own behaviors never, whatever they hold.
+    /// Hydra's own behaviors never, whatever they hold, nor Hydra's own asking.
     pub(super) fn may_quit(&self, origin: crate::command::Origin) -> bool {
         use crate::command::Origin;
         match origin {
             Origin::Manual | Origin::Script | Origin::Trigger | Origin::Lich => true,
             Origin::Agent(Some(token)) => self.queue.authority() == Some(token),
-            Origin::Agent(None) | Origin::Behavior(_) => false,
+            Origin::Agent(None) | Origin::Behavior(_) | Origin::Hydra => false,
         }
     }
 

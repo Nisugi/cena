@@ -96,6 +96,15 @@ fn nerve_line(lines: &[String]) -> Option<(Track, u8)> {
     })
 }
 
+/// Whether `line` is one of `health`'s six nerve lines about the character:
+/// what a session leaves out of the reply to a `health` it sent itself, as
+/// Lich returns `nil` for them (`xmlparser.rb:843-860`).
+#[must_use]
+pub fn is_nerve_line(line: &str) -> bool {
+    let line = line.trim_start();
+    line.starts_with("You") && LINES.iter().any(|(text, ..)| line.contains(text))
+}
+
 /// The wound and scar a herb leaves, from `wound` and `scar`, if the window's
 /// `rank` is the step it shows next.
 fn herb_step(wound: u8, scar: u8, rank: u8) -> Option<(u8, u8)> {

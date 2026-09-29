@@ -683,6 +683,8 @@ impl<S: ByteSource> SessionActor<S> {
                 // After the prompt's own frame: the report's terminator is
                 // part of what stays out of the story.
                 self.end_quiet_window();
+                // The chunk is read, so the nerves have their verdict.
+                self.ask_nerves();
             }
             // After the frame is published, so an observer sees the prompt
             // that completed the burst and then `Ready`.

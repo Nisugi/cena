@@ -149,6 +149,7 @@
 //! | **Command** | a line for the game, through the session's [`CommandQueue`] | |
 //! | **Hydra command** | a typed line that starts with the command symbol ([`COMMAND_SYMBOL`], `;` unless the character's settings say otherwise). It is Hydra's whether or not anything knows the word, and the game never sees it ([`commands`](crate::commands)) | |
 //! | **Manual input** | what a person types, at a page or the terminal: [`Origin::Manual`]. It goes to the head of the queue, never touches the authority, and never aborts the holder (`plan/12` §4.1) | claimant |
+//! | **Hydra's own asking** | the one command Hydra sends to learn something rather than to act: `health`, when the model cannot work out whether the nerves' rank is a wound or a scar (`cena-model`'s `character/nerves.rs`, `plan/55` §4a). Sent as [`Origin::Hydra`], once per confusion, after the login and never while dead; the nerve lines in its reply are not shown, the rest is | a sync, which runs at login for what the store says is stale |
 //! | **Round trip** | one command and the frames that answer it, until the next prompt or a timeout: [`SessionHandle::send_and_await`], answered with an [`Outcome`]. A timeout means no match in the window, never "it did not happen" | ladder |
 //! | **Gate** | a precondition the actor checks against the live state at the moment it writes, not when the behavior asked: [`Gate`], on [`SessionHandle::send_now`] | guard |
 //! | **Authority** | the right to send a sequence of commands for a session, held by one claimant at a time as an [`AuthorityToken`]: taken with [`SessionHandle::claim`], given back with [`SessionHandle::release`], and refused, not queued, to a second claimant ([`AuthorityHeld`]) | lock |
@@ -368,6 +369,7 @@
 //! [`Origin`]: cena_session::Origin
 //! [`Origin::Manual`]: cena_session::Origin::Manual
 //! [`Origin::Trigger`]: cena_session::Origin::Trigger
+//! [`Origin::Hydra`]: cena_session::Origin::Hydra
 //! [`Act`]: cena_session::trigger::Act
 //! [`Pace`]: cena_session::trigger::Pace
 //! [`Outcome`]: cena_session::Outcome

@@ -110,6 +110,7 @@ impl<S: ByteSource> Session<S> {
                 queue,
                 owed: owed::OwedPrompts::default(),
                 quiet_window: None,
+                nerve_health: None,
                 held: super::hooked::Held::default(),
                 lich_text: None,
                 readiness: super::readiness::Readiness::default(),

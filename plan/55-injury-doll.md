@@ -414,8 +414,11 @@ clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`
 
    **BUILT in the model** (`crates/cena-model/src/state/character/nerves.rs`,
    `crates/cena-model/tests/injury_modes.rs`): the radio, the nerves worked out, and the six
-   lines read. Two mutants of the radio fix were caught. The session's `health` and the
-   hiding of its nerve lines are the rest of step 0.
+   lines read. Two mutants of the radio fix were caught. **The session's half BUILT too**
+   (`crates/cena-session/src/actor/nerves.rs`, `crates/cena-session/tests/nerve_health.rs`):
+   `health` sent once as a new `Origin::Hydra` when the model is confused, its nerve line
+   hidden and the rest shown, a player's own `health` shown whole. Two mutants caught (the
+   hiding off, the asking off). **Step 0 is BUILT.**
 
    The model change is `cena-model`'s, and so is its own test file. `GameState::login`'s note
    that nsys *"is not kept"* (`crates/cena-model/src/state/login.rs:207-219`) is corrected in
