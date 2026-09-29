@@ -274,3 +274,25 @@ fn ammo_container_is_carried_and_the_other_two_are_explained() {
     );
     assert!(!notes.contains("not imported: ammo"), "{notes}");
 }
+
+/// A number bigshot's setup did not write as one is named, not lost: the
+/// key is read, so nothing else would have said it was dropped.
+#[test]
+fn a_number_that_is_not_one_is_said_and_left_unset() {
+    let yaml = "fried: 90%\nencumbered: \"20.0\"\nflee_count: 3\nrest_till_mana: \"\"\n";
+    let brought = import("test", yaml).expect("it reads");
+    assert_eq!(brought.profile.rest.fried, None);
+    assert_eq!(brought.profile.rest.encumbered, None);
+    assert_eq!(brought.profile.flee.count, Some(3), "a number is a number");
+    let said = |key: &str| {
+        brought
+            .notes
+            .iter()
+            .filter(|note| note.starts_with(&format!("{key}: ")))
+            .count()
+    };
+    assert_eq!(said("fried"), 1, "{:?}", brought.notes);
+    assert_eq!(said("encumbered"), 1, "{:?}", brought.notes);
+    assert_eq!(said("flee_count"), 0);
+    assert_eq!(said("rest_till_mana"), 0, "blank is not set, and not wrong");
+}

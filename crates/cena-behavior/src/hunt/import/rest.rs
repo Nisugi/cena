@@ -6,23 +6,23 @@ use super::{Job, flag, health_at_most, list, number, unparenthesised};
 
 impl Job {
     pub(super) fn rest(&mut self) {
-        self.profile.rest.fried = number(&self.take("fried"));
-        self.profile.rest.overkill = number(&self.take("overkill")).unwrap_or(0);
-        self.profile.rest.encumbered = number(&self.take("encumbered"));
+        self.profile.rest.fried = self.counted("fried");
+        self.profile.rest.overkill = self.counted("overkill").unwrap_or(0);
+        self.profile.rest.encumbered = self.counted("encumbered");
         let oom = self.take("oom");
         self.profile.rest.mana_below = number(&oom);
         // bigshot reads a blank `oom` as 0, and only a negative one turns
         // the rest on an unaffordable spell off (`bigshot.lic:3439`, `:5875`).
         self.profile.rest.when.unaffordable = !oom.trim().starts_with('-');
-        self.profile.rest.until.experience = number(&self.take("rest_till_exp"));
-        self.profile.rest.until.mana = number(&self.take("rest_till_mana"));
-        self.profile.rest.until.spirit = number(&self.take("rest_till_spirit"));
-        self.profile.rest.until.stamina = number(&self.take("rest_till_percentstamina"));
+        self.profile.rest.until.experience = self.counted("rest_till_exp");
+        self.profile.rest.until.mana = self.counted("rest_till_mana");
+        self.profile.rest.until.spirit = self.counted("rest_till_spirit");
+        self.profile.rest.until.stamina = self.counted("rest_till_percentstamina");
         self.profile.rest.commands = self.commands("resting_commands");
         self.fog();
         self.profile.rest.wracking = flag(&self.take("use_wracking"));
-        self.profile.rest.lte_boost = number(&self.take("lte_boost")).unwrap_or(0);
-        self.profile.rest.wracking_spirit = number(&self.take("wracking_spirit")).unwrap_or(0);
+        self.profile.rest.lte_boost = self.counted("lte_boost").unwrap_or(0);
+        self.profile.rest.wracking_spirit = self.counted("wracking_spirit").unwrap_or(0);
         self.rest_when();
         self.scripts();
     }
@@ -108,10 +108,8 @@ impl Job {
     /// that is one of the known shapes becomes a threshold; each that is
     /// not is named, and Hydra will not rest on it.
     pub(super) fn rest_when(&mut self) {
-        let when = &mut self.profile.rest.when;
-        when.creeping_dread = number(&self.source.take("creeping_dread")).filter(|n| *n > 0);
-        let when = &mut self.profile.rest.when;
-        when.crushing_dread = number(&self.source.take("crushing_dread")).filter(|n| *n > 0);
+        self.profile.rest.when.creeping_dread = self.counted("creeping_dread").filter(|n| *n > 0);
+        self.profile.rest.when.crushing_dread = self.counted("crushing_dread").filter(|n| *n > 0);
         self.profile.rest.when.wot_poison = flag(&self.source.take("wot_poison"));
         self.profile.rest.when.confused = flag(&self.source.take("confusion"));
         let text = self.take("wounded_eval");

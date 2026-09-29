@@ -179,6 +179,25 @@ impl Job {
         self.notes.push(text);
     }
 
+    /// The key's whole number; `None` when it is blank. One that is
+    /// neither is **said**, and left unset: read as none, `fried: 90%` or
+    /// `encumbered: 20.0` was marked read and lost without a word, which
+    /// this module promises of nothing (the review of 2026-09-29).
+    fn counted(&mut self, key: &str) -> Option<u32> {
+        let text = self.take(key);
+        let text = text.trim();
+        if text.is_empty() {
+            return None;
+        }
+        let read = number(text);
+        if read.is_none() {
+            self.note(format!(
+                "{key}: `{text}` is not a whole number, so it is left unset"
+            ));
+        }
+        read
+    }
+
     fn rooms(&mut self) {
         self.profile.rooms.hunting = self.room("hunting_room_id");
         self.profile.rooms.resting = self.room("resting_room_id");
@@ -284,7 +303,7 @@ impl Job {
         self.profile.loot.delay = flag(&self.take("delay_loot"));
         self.profile.loot.defensive = flag(&self.take("loot_stance"));
         self.profile.loot.box_in_hand = flag(&self.take("box_in_hand"));
-        self.profile.flee.count = number(&self.take("flee_count"));
+        self.profile.flee.count = self.counted("flee_count");
         self.profile.flee.lone_only = flag(&self.take("lone_targets_only"));
         self.unarmed();
         self.profile.aim.ambush = lowercased(list(&self.take("ambush")));
@@ -541,10 +560,9 @@ impl Job {
         mstrike.cooldown = flag(&self.source.take("mstrike_cooldown"));
         let mstrike = &mut self.profile.mstrike;
         mstrike.quickstrike = flag(&self.source.take("mstrike_quickstrike"));
-        self.profile.mstrike.stamina_cooldown = number(&self.take("mstrike_stamina_cooldown"));
-        self.profile.mstrike.stamina_quickstrike =
-            number(&self.take("mstrike_stamina_quickstrike"));
-        if let Some(mob) = number(&self.take("mstrike_mob")) {
+        self.profile.mstrike.stamina_cooldown = self.counted("mstrike_stamina_cooldown");
+        self.profile.mstrike.stamina_quickstrike = self.counted("mstrike_stamina_quickstrike");
+        if let Some(mob) = self.counted("mstrike_mob") {
             self.profile.mstrike.mob = mob;
         }
     }

@@ -254,3 +254,14 @@ fn a_buff_named_before_a_step_goes_up_first_when_it_is_down_or_lapsing() {
         "no spell list seen: nothing is known down"
     );
 }
+
+/// A buff before a step that is waited out, an assault: the buff, then the
+/// assault, then its wait. The buff alone was sent, and the assault never.
+#[test]
+fn a_buff_before_an_assault_is_followed_by_the_assault_and_its_wait() {
+    let mut h = hunt(&["celerity barrage", "kick"]).unwrap();
+    assert_eq!(
+        ticks(&mut h, &with_spells(&[]), 3),
+        ["incant 506", "weapon barrage #42", "wait 1"]
+    );
+}

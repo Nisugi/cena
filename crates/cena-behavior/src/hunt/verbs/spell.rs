@@ -78,6 +78,14 @@ pub(super) fn buff_first(first: &str, rest: &str, target: i64, state: &GameState
             lines.append(&mut step);
             Line::Send(lines)
         }
+        // A step that is waited out after its lines, an assault or a
+        // bearhug, keeps its wait behind the buff's. It fell to the arm
+        // below, which sent the buff alone: `celerity barrage` cast and
+        // never struck (the review of 2026-09-29).
+        Line::Then(mut step, next) => {
+            lines.append(&mut step);
+            Line::Then(lines, next)
+        }
         step if lines.is_empty() => step,
         _ => Line::Send(lines),
     })
