@@ -79,7 +79,15 @@ pub(super) struct Skinning {
     /// Rotting chimeras learned unskinnable, waiting on a `describe`.
     chimeras: Vec<(i64, String)>,
     described: bool,
+    /// The corpse last skinned at, and how many times running.
+    tried: (i64, u8),
 }
+
+/// How many times one corpse is skinned at before it is left: a search's
+/// `SEARCH_TRIES`. A reply no classifier knows (roundtime, a hand that is
+/// not free, the wrong weapon) sent the same `skin` again to the driver's
+/// step cap (the review of 2026-09-29).
+const SKIN_TRIES: u8 = 3;
 
 impl Skinning {
     /// The phase for these corpses, named by the creature registry; corpses
@@ -146,6 +154,7 @@ impl Skinning {
             gem: None,
             chimeras,
             described: false,
+            tried: (0, 0),
         }
     }
 
@@ -239,19 +248,32 @@ impl Skinning {
                         return Some(Step::Cast(BRAVERY.to_owned()));
                     }
                 }
-                let (corpse, _, _) = self.queue.front()?;
+                let corpse = self.queue.front()?.0;
+                if self.spent(corpse) {
+                    self.queue.pop_front();
+                    return self.next(state);
+                }
                 let in_left = self
                     .skinner
                     .as_ref()
                     .is_some_and(|(id, _)| state.left_hand.holds(id));
                 let hand = if in_left { "left" } else { "right" };
-                Some(Step::Skin {
-                    corpse: *corpse,
-                    hand,
-                })
+                Some(Step::Skin { corpse, hand })
             }
             Phase::Stowing => self.stow(state),
         }
+    }
+
+    /// One more try at `corpse`, or `true` when it has had its
+    /// [`SKIN_TRIES`].
+    fn spent(&mut self, corpse: i64) -> bool {
+        let tries = if self.tried.0 == corpse {
+            self.tried.1
+        } else {
+            0
+        };
+        self.tried = (corpse, tries.saturating_add(1));
+        tries >= SKIN_TRIES
     }
 
     /// The skinner back where it lives: its sheath by name, else the

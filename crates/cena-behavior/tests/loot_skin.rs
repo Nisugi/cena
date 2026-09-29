@@ -406,3 +406,34 @@ fn a_learned_unskinnable_creature_is_written_into_the_profile_once() {
         "already there: nothing to write"
     );
 }
+
+#[test]
+fn a_corpse_that_will_not_be_skinned_is_left_after_three_tries() {
+    let mut state = state(Some(("77", "dagger", "curved skinning dagger")));
+    corpse(&mut state, 41, "troll", "cave troll");
+    corpse(&mut state, 42, "golem", "stone golem");
+    let mut plan = Planner::new(profile(skinning()), Memory::default(), &[41, 42]);
+    // An answer that teaches nothing, three times over.
+    for _ in 0..3 {
+        assert_eq!(
+            plan.next(&state),
+            Step::Skin {
+                corpse: 41,
+                hand: "right"
+            }
+        );
+        plan.outcome_in(&Outcome::NeedFreeHand, &state);
+    }
+    assert_eq!(
+        plan.next(&state),
+        Step::Skin {
+            corpse: 42,
+            hand: "right"
+        },
+        "the troll is left, not skinned at to the step cap"
+    );
+    assert!(
+        !plan.memory().unskinnable.contains("cave troll"),
+        "left this once, not learned unskinnable"
+    );
+}
