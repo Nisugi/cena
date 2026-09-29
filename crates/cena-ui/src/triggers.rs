@@ -7,6 +7,10 @@
 //! switches, and the changes it may ask for. As the settings menu's pages
 //! do ([`crate::settings`]).
 
+mod table;
+
+pub use table::{copies, from_table, to_table};
+
 /// Every trigger in the file, and its switches.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Book {

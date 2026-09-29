@@ -1,6 +1,6 @@
 # 54 — The trigger editor
 
-**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Steps 1 and 2 BUILT 2026-09-29.**
+**Status: APPROVED 2026-09-29, the author's answers in §1. Branch `trigger-editor`. Steps 1-3 BUILT 2026-09-29.**
 
 M8 built triggers whole (`plan/45`) and left one door: the file, `;trigger`, and a Wrayth
 import. The author, choosing one file (`plan/45` §1 row 3): *"players won't be accessing the
@@ -123,6 +123,16 @@ settings menu's pages do.
 3. **The live test.** A line and its stream run through the real matcher in the window: the
    line as it would show (painted, squelched, substituted, moved) and what fires; the form's
    unsaved trigger with the saved ones.
+   > **BUILT 2026-09-29.** Along the bottom of the editor (`crates/cena-gui/src/triggers/test.rs`):
+   > a line and its stream, and below, the line as it would be shown (painted, or *not shown:
+   > squelched*, or on another stream), what fires, and what would be sent (a test sends
+   > nothing). The triggers are the file's that are on, not refused and not in a category
+   > switched off, with the form in place of its saved self, so a change is seen before it is
+   > saved; a form the file would refuse says why. The form becomes a `Rule` in the window
+   > (`Form::rule`): the table conversion moved down from the binary to
+   > `crates/cena-ui/src/triggers/table.rs`, so the window and the binary share one. As
+   > `;trigger test`, an *only if* is taken to hold and a condition has no line to test; the
+   > kinds' master switches are not applied.
 4. **From the story, and against the log.** A story line's right-click: *Make a trigger from
    this line*. *What would this have caught?*: the form's trigger over today's player log
    (`plan/25`'s reader), the lines it matches.

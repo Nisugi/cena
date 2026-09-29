@@ -64,7 +64,7 @@ fn harness<'a>() -> Harness<'a, Scene> {
         asked: Vec::new(),
     };
     Harness::builder()
-        .with_size((1100.0, 680.0))
+        .with_size((1100.0, 1200.0))
         .build_ui_state(
             |ui, scene: &mut Scene| {
                 let asked = scene.editor.show(ui, Some(&scene.book), None, &[]);
@@ -263,4 +263,84 @@ fn a_colour_reads_back_as_its_bytes() {
     assert_eq!(super::form::parse_hex("#ff4000"), Some([255, 64, 0]));
     assert_eq!(super::form::parse_hex("ff4000"), None);
     assert_eq!(super::form::parse_hex("#fff"), None);
+}
+
+mod live {
+    //! The live test (`plan/54` step 3), through the real matcher.
+
+    use cena_ui::triggers::{Book, Form, Look};
+
+    use super::super::test::{Test, run};
+    use super::entry;
+
+    fn line(words: &str) -> Test {
+        Test {
+            line: words.to_owned(),
+            stream: String::new(),
+        }
+    }
+
+    fn book() -> Book {
+        let mut rock = entry("rock", "Ignores", "\"a rock\" -> squelch");
+        rock.form.text = "a rock".to_owned();
+        rock.form.look = None;
+        rock.form.squelch = true;
+        Book {
+            triggers: vec![entry("stunned", "Combat", "\"stunned\" -> look"), rock],
+            categories: vec![("Combat".to_owned(), true), ("Ignores".to_owned(), true)],
+            ..Book::default()
+        }
+    }
+
+    #[test]
+    fn a_saved_squelch_hides_the_line() {
+        let outcome = run(&line("You see a rock."), &book(), None);
+        assert_eq!(outcome.fired, ["rock"]);
+        assert!(outcome.shown.is_empty(), "squelched");
+    }
+
+    #[test]
+    fn the_form_stands_in_for_its_saved_self_before_it_is_saved() {
+        let mut form = book().triggers[0].form.clone();
+        form.look = Some(Look {
+            color: "#ff4040".to_owned(),
+            span: "line".to_owned(),
+            ..Look::default()
+        });
+        let outcome = run(
+            &line("You are stunned!"),
+            &book(),
+            Some((Some("stunned"), &form)),
+        );
+        assert_eq!(outcome.fired, ["stunned"], "once, as the form has it");
+        let paint = &outcome.shown[0].paint;
+        assert!(
+            paint
+                .iter()
+                .any(|p| p.color.is_some_and(|c| c.red == 0xff && c.green == 0x40)),
+            "{paint:?}"
+        );
+    }
+
+    #[test]
+    fn a_form_the_file_would_refuse_says_why() {
+        let form = Form {
+            name: "bad".to_owned(),
+            text: "(".to_owned(),
+            regex: true,
+            squelch: true,
+            ..Form::default()
+        };
+        let outcome = run(&line("anything"), &book(), Some((None, &form)));
+        assert!(outcome.refused.is_some());
+    }
+
+    #[test]
+    fn a_category_switched_off_does_not_fire() {
+        let mut book = book();
+        book.categories[1].1 = false;
+        let outcome = run(&line("You see a rock."), &book, None);
+        assert!(outcome.fired.is_empty());
+        assert_eq!(outcome.shown.len(), 1);
+    }
 }

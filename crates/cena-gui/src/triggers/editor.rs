@@ -22,6 +22,8 @@ pub(crate) struct Editor {
     removing: Option<String>,
     /// Categories folded shut.
     folded: BTreeSet<String>,
+    /// The live test's line (`plan/54` step 3).
+    test: super::test::Test,
 }
 
 /// A trigger being edited.
@@ -164,7 +166,8 @@ impl Editor {
             ui.colored_label(ui.visuals().warn_fg_color, notice.as_str());
         }
         ui.separator();
-        let height = ui.available_height();
+        // Room kept below for the live test.
+        let height = (ui.available_height() - 120.0).max(160.0);
         ui.horizontal_top(|ui| {
             ui.vertical(|ui| {
                 ui.set_width(380.0);
@@ -183,6 +186,12 @@ impl Editor {
                     .show(ui, |ui| self.chosen(ui, book, characters, &mut asked));
             });
         });
+        ui.separator();
+        let draft = self
+            .draft
+            .as_ref()
+            .map(|draft| (draft.was.as_deref(), &draft.form));
+        super::test::show(ui, &mut self.test, book, draft);
         asked
     }
 

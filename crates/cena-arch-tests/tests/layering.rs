@@ -300,7 +300,11 @@ fn crate_dependency_edges_match_the_plan() {
 /// of what it may name states that rule directly.
 // M4 D2 explicitly permits serde for presentation DTOs. serde_json exercises
 // their actual wire representation in tests; neither dependency is a toolkit.
-const CENA_UI_MAY_DEPEND_ON: &[&str] = &["cena-model", "serde", "serde_json"];
+// toml (2026-09-29, `plan/54` step 3): the triggers file's format. The trigger
+// editor's form and a trigger's table are turned into each other here, below the
+// binary and the window both, so the window can run a form through the real
+// matcher and the two cannot write a form differently. A file format, not a toolkit.
+const CENA_UI_MAY_DEPEND_ON: &[&str] = &["cena-model", "serde", "serde_json", "toml"];
 
 #[test]
 fn cena_ui_depends_on_no_ui_toolkit() {

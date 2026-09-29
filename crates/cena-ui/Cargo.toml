@@ -7,6 +7,9 @@ publish.workspace = true
 [dependencies]
 cena-model.workspace = true
 serde.workspace = true
+# A trigger's table and the editor's form of it (`src/triggers/table.rs`,
+# `plan/54`): the version the workspace builds, so nothing new.
+toml.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

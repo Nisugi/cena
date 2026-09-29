@@ -43,9 +43,9 @@ pub(crate) fn book(dir: &Path) -> Book {
                         .find(|(name, _)| *name == listed.name)
                         .map(|(_, table)| table.clone())
                         .unwrap_or_default();
-                    let (off_for, changed_for) = super::form::copies(&table);
+                    let (off_for, changed_for) = cena_ui::triggers::copies(&table);
                     Entry {
-                        form: super::form::form_of(&listed.name, &table),
+                        form: cena_ui::triggers::from_table(&listed.name, &table),
                         name: listed.name,
                         category: listed.category,
                         enabled: listed.enabled,
@@ -121,7 +121,7 @@ pub(crate) fn apply(dir: &Path, others: &Changes, change: &Change) -> String {
                     &old,
                     was.as_deref(),
                     &form.name,
-                    super::form::table_of(form),
+                    cena_ui::triggers::to_table(form),
                     approve,
                 )?;
                 let done = match was {
