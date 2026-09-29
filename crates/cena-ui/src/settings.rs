@@ -111,3 +111,38 @@ pub struct Change {
     /// `None` puts it back to its default.
     pub to: Option<String>,
 }
+
+/// Bytes as a person reads them: `980 KB`, `56.8 MB`, `1.2 GB`. What the
+/// *Player log* page, `;history` and the log window say a log takes.
+#[must_use]
+pub fn size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    // Tenths by integer arithmetic, so no float cast is needed.
+    let tenths = |unit: u64| {
+        let t = (bytes.saturating_mul(10) + unit / 2) / unit;
+        format!("{}.{}", t / 10, t % 10)
+    };
+    if bytes >= GB {
+        format!("{} GB", tenths(GB))
+    } else if bytes >= MB {
+        format!("{} MB", tenths(MB))
+    } else {
+        format!("{} KB", bytes.div_ceil(KB))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::size;
+
+    #[test]
+    fn sizes_read_as_a_person_reads_them() {
+        assert_eq!(size(0), "0 KB");
+        assert_eq!(size(1), "1 KB");
+        assert_eq!(size(980 * 1024), "980 KB");
+        assert_eq!(size(66_400 * 1024), "64.8 MB");
+        assert_eq!(size(3 * 1024 * 1024 * 1024 / 2), "1.5 GB");
+    }
+}

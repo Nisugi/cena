@@ -102,8 +102,14 @@ impl Entry {
 /// viewer splits on `/`"*), so `main` keeps `main/combat` as well as `main`, and
 /// `combat` keeps only `main/combat`. Case does not matter: the game's own ids
 /// are mixed (`Spells`).
+///
+/// Or, made with [`Streams::classes`], by the tag's last part alone: what
+/// the log window ticks, where `main` is the story without its combat.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Streams(Vec<String>);
+pub struct Streams {
+    names: Vec<String>,
+    by_class: bool,
+}
 
 impl Streams {
     /// Every tag.
@@ -112,25 +118,41 @@ impl Streams {
         Self::default()
     }
 
-    /// Only these tags. None named is every tag.
+    /// Only these tags, by any part. None named is every tag.
     #[must_use]
     pub fn only<S: Into<String>>(names: impl IntoIterator<Item = S>) -> Self {
-        Self(names.into_iter().map(Into::into).collect())
+        Self {
+            names: names.into_iter().map(Into::into).collect(),
+            by_class: false,
+        }
+    }
+
+    /// Only tags whose last part is one of these: `main` keeps `main` and
+    /// not `main/combat`. None named is every tag.
+    #[must_use]
+    pub fn classes<S: Into<String>>(names: impl IntoIterator<Item = S>) -> Self {
+        Self {
+            by_class: true,
+            ..Self::only(names)
+        }
     }
 
     /// The tags named; none for every tag.
     #[must_use]
     pub fn names(&self) -> &[String] {
-        &self.0
+        &self.names
     }
 
     /// Whether a line tagged `tag` is kept.
     #[must_use]
     pub fn admits(&self, tag: &str) -> bool {
-        self.0.is_empty()
-            || tag
-                .split('/')
-                .any(|part| self.0.iter().any(|w| w.eq_ignore_ascii_case(part)))
+        let named = |part: &str| self.names.iter().any(|w| w.eq_ignore_ascii_case(part));
+        self.names.is_empty()
+            || if self.by_class {
+                tag.rsplit('/').next().is_some_and(named)
+            } else {
+                tag.split('/').any(named)
+            }
     }
 }
 

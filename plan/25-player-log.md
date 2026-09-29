@@ -1,7 +1,7 @@
 # 25 — The player log
 
 **Status: steps 1, 2 and 2b BUILT (2026-09-21); step 3 BUILT (2026-09-29), with
-`;history`; steps 4-7 BUILT the same day; step 8, the GUI, APPROVED 2026-09-29.** Author decisions
+`;history`; steps 4-8 BUILT the same day, step 8 the GUI. Every step built; none run live.** Author decisions
 recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
@@ -511,6 +511,31 @@ Each step leaves the tree green and is independently reviewable.
      a chip. Their presets (*Everything*, *Combat*, *Social*, *Quiet*) and
      *Dedup* are a reading view only: tallies count raw rows (§1, the
      DR-speech pitfall). Every read off the UI thread, flushing first (§5).
+
+   > **BUILT 2026-09-29.** The window: `crates/cena-gui/src/logs.rs` (what it
+   > shows and asks, and the reads it runs) and `logs/draw.rs`; opened by a
+   > *Log* button on the play window's top bar and on every hub card, live or
+   > closed (`crates/cena-gui/src/app/logs.rs`). Its reads go through
+   > `Sessions::read_log`: the writer flushed, the read on a blocking task,
+   > the answer in the window's inbox and the window woken. *Recent* reads a
+   > day whole (the day picker with each day's size, or *archived*);
+   > *Search* a text or a regex, newest first; *Export* the days from one to
+   > another. A line is shown by its **class**, its tag's last part, so
+   > `main` unticked leaves `main/combat` alone; the export writes the same
+   > classes (`Streams::classes`). Presets: *Everything*, *Combat*, *Social*
+   > (thoughts, speech, whispers, talk, ooc) and *Quiet* (all but combat,
+   > atmospherics, arrivals, logons, deaths): Claude's picks, the author's to
+   > change. *Dedup* folds a run of one line into one with its count.
+   > *Open logs folder* opens the character's folder in the system's browser.
+   >
+   > The *Player log* page gained *Archive old days* (with the disk used in
+   > its help) and *Keep logs for (days)* (with what the next login removes).
+   > The page has no row that is only a button, so *Open logs folder* is the
+   > window's, not the page's.
+   >
+   > Six GUI images changed, each only by the new *Log* button: `play`,
+   > `arrange`, `stack`, `tabs`, `hub_live`, `hub_closed`; updated on
+   > Windows, the images' source of truth (`kittest.toml`).
 
 Steps 1–3 are the feature. 4–7 are what make it survivable over years; 8 is
 how a player reads it without typing.

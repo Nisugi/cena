@@ -317,6 +317,33 @@ impl Sessions {
         });
     }
 
+    /// Read `seat`'s player log for its log window, off the window's thread
+    /// (`plan/25` §5): the writer asked to flush first, then `ask` run on a
+    /// blocking task, its answer put in `inbox` and the window woken.
+    pub(crate) fn read_log(
+        &self,
+        seat: &Arc<Seat>,
+        ask: crate::logs::Ask,
+        inbox: crate::logs::Inbox,
+    ) {
+        let (shared, handle, name) = (
+            Arc::clone(&self.shared),
+            seat.handle.clone(),
+            seat.name.clone(),
+        );
+        self.shared.runtime.spawn(async move {
+            handle.flush_player_log().await;
+            let root = cena_session::player_log::writer::root();
+            let read =
+                tokio::task::spawn_blocking(move || crate::logs::run(&root, &name, ask)).await;
+            let reply = read.unwrap_or_else(|_| {
+                crate::logs::Reply::Days(Err("the read stopped before it finished".to_owned()))
+            });
+            lock(&inbox).push(reply);
+            shared.window.wake();
+        });
+    }
+
     /// What the hub draws this frame.
     pub(crate) fn glance(&self) -> Glance {
         self.glance_at(Instant::now())

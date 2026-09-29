@@ -62,6 +62,8 @@ pub(super) enum Top {
     AddWidget,
     /// The settings menu was asked for.
     Settings,
+    /// The character's log window was asked for.
+    Log,
     /// The settings menu's *Keys* page was asked for.
     Keys,
     /// The player's own Lich was switched on, or off.
@@ -96,6 +98,13 @@ pub(super) fn top(
                 .clicked()
             {
                 asked = Some(Top::Settings);
+            }
+            if ui
+                .button("Log")
+                .on_hover_text("What this character saw, read back: by day, searched, or exported")
+                .clicked()
+            {
+                asked = Some(Top::Log);
             }
             if let Some(on) = super::lich_switch(ui, view.lich) {
                 asked = Some(Top::Lich(on));
