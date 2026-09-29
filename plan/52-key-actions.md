@@ -38,7 +38,7 @@ Four sources, measured by two surveys on 2026-09-28:
 
 | Source | What it is | Weight |
 |---|---|---|
-| **Wrayth's stock key set** | set 0, *(default)*, in two of the author's own Wrayth exports (`Mnstr.xml` line 19, identical in `NewLayoutWrayth.xml` line 233): 66 keys, 49 of them `{Action}` tokens | **first**: the official client; what most players' fingers know |
+| **Wrayth's stock key set** | set 0, *(default)*, in two of the author's own Wrayth exports: `Mnstr.xml` line 19, 63 keys, 46 of them `{Action}` tokens; `NewLayoutWrayth.xml` line 233, 76 keys, the same 46 tokens (CORRECTED 2026-09-29: this read *"66 keys, 49 of them"* and *"identical"*; 66 is `Mnstr.xml`'s two sets together. MEASURED: `sed -n 19p Mnstr.xml \| grep -o "<k " \| wc -l` and `grep -o "action='{"`, and line 233 of the other with `action="{"`) | **first**: the official client; what most players' fingers know |
 | Wizard, the older official client | its built-in keys (`reference/wiki_clean/Wizard _front end_.txt:254-293`) | where Wrayth kept them |
 | VellumFE | the author's client: its keyboard actions and their defaults (`reference/VellumFE/src/config/keybinds.rs:419-853`, `defaults/globals/keybinds.toml`) | the names, and the lessons |
 | Genie 5 | DragonRealms' client (`reference/Genie5/src/Genie.App/Views/MainWindow.axaml.cs:621-869`) | a tiebreak |
@@ -230,6 +230,7 @@ first) dropped, since a sent command never touches the input. A token Hydra has 
 action for (`{Rest}`, `{ToggleMusic}`), `@` and `\?` are said, not silently lost. The fixture comes from
 `Mnstr.xml` or `NewLayoutWrayth.xml`: the committed Wrayth fixture is cut from
 `Nisugi3.xml`, which has no `<macros>` (`crates/cena-behavior/tests/fixtures/wrayth.xml`).
+Step 9 cut its own from `Mnstr.xml` (`crates/cena-gui/tests/fixtures/wrayth_macros.xml`).
 
 ## 5. Steps, once §6 is answered
 
@@ -454,6 +455,32 @@ hydra actions"*); `stop` and `settings` came with step 1 and the sets with step 
 - *Tests:* a drawer opened and shut, Lock and Arrange, the second character's closed
   window brought and the ninth nothing, and every action's name read back as itself
   with a label of its own, fifty of them now. Four mutants, all caught.
+
+### Step 9, BUILT 2026-09-29
+
+§4's import:
+
+- **`;keys import <file>`**, typed in a play window, reads a Wrayth settings file's
+  `<macros>` into the character's own keys; `;keys import global <file>` into every
+  character's (`crates/cena-gui/src/app/import.rs`). It is the window's, not the
+  session's, since the keys are the window's: a character running headless has none.
+  `;help` names it.
+- **Each Wrayth set into the Hydra set of the same number** (`keys/wrayth.rs`): Wrayth's
+  key names made Hydra's (`Keypad 8`, `Page Up`, `Alt-Ctrl-E`, `UP`); a token as its
+  action, thirteen of them and `{MacroSet}n`; text ending `\r` sent, text without it
+  typed into the input; `\r` inside a break, `\p` a second's wait, `\x` dropped. A token
+  Hydra has no action for (`{Rest}`, `{ToggleMusic}`, `{Copy}`...), `@` and `\?`, and a
+  key that types or is Enter alone, are said by name, never silently lost.
+- **What is already so is left**: a key of set 0 already doing what Wrayth has it do is
+  not written again, so importing Wrayth's stock set writes only where it differs. Where
+  it differs from a key of Hydra's, the answer names the keys. The stock set's Tab is
+  `{CycleWindows}`, so importing it makes Tab choose the next window, not target: the
+  author's own Tab (§6 answer 3) is one *Restore* away on the Keys page, and the answer
+  says so.
+- *Tests:* the author's own set (`crates/cena-gui/tests/fixtures/wrayth_macros.xml`, cut
+  from `Mnstr.xml`'s `<macros>`), every one of its 66 keys bound or said; waits, breaks,
+  entities and what is refused; `;keys import` in a play window into the character's
+  keys and every character's, nothing sent to the game. Five mutants, all caught.
 
 ## 6. For the author
 

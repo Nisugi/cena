@@ -439,4 +439,5 @@ mod names;
 pub(crate) mod page;
 #[cfg(test)]
 mod tests;
+pub(crate) mod wrayth;
 pub(crate) mod write;

@@ -393,7 +393,11 @@ impl App {
             Some(Asked::ReloadKeys) => self.read_keys(),
             Some(Asked::SavePreset(preset)) => self.presets.keep(preset),
             Some(Asked::ForgetPreset(name)) => self.presets.forget(&name),
-            Some(Asked::Send(line)) => self.sessions.send(seat, line),
+            Some(Asked::Send(line)) => {
+                if !self.keys_command(seat, &line) {
+                    self.sessions.send(seat, line);
+                }
+            }
             Some(Asked::Quietly(line)) => self.sessions.send_quietly(seat, line),
             Some(
                 asked @ (Asked::Settings(_) | Asked::Keys | Asked::UseSet(_) | Asked::Character(_)),
@@ -514,6 +518,7 @@ pub fn run(sessions: Sessions) -> eframe::Result {
     )
 }
 
+mod import;
 mod keyed;
 mod logs;
 mod settings;

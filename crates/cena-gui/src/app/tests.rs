@@ -678,5 +678,6 @@ fn a_line_of_two_commands_is_refused() {
     );
 }
 
+mod import;
 mod pressed;
 mod sending;
