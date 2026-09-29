@@ -62,17 +62,12 @@ use std::collections::{BTreeMap, BTreeSet};
 /// row. Flagged for the author rather than fixed, because editing `plan/12` is
 /// an amendment, not a scaffold change.
 ///
-/// `cena-agent`, `cena-tui`, `cena-gui` and `cena-web` are in `plan/12` §2 but
-/// not in this workspace — `plan/12` §7.1 puts "TUI, GUI, full web" in the Out
-/// column for M1. Their rows are recorded here, commented, so the day a
-/// frontend crate is added its edge set is already written down; in particular
-/// `plan/05:246` forbids a frontend depending on another frontend, which is
-/// also an acyclic edge no compiler will catch.
-///
-/// ```text
-/// cena-agent           (cena-session)
-/// cena-tui/gui/web     (cena-ui, cena-session)   -- and never each other
-/// ```
+/// `cena-agent`, `cena-gui` and `cena-web` have their rows below; `cena-tui`
+/// is in `plan/12` §2 and not in this workspace. (CORRECTED 2026-09-29: this
+/// said all four were absent, from M1, when `plan/12` §7.1 put "TUI, GUI,
+/// full web" in the Out column.) `plan/05:246` forbids a frontend depending
+/// on another frontend, which is an acyclic edge no compiler will catch: the
+/// frontends' rows name `cena-ui` and `cena-session`, and never each other.
 const ALLOWED_EDGES: &[(&str, &[&str])] = &[
     ("cena-platform", &[]),
     ("cena-protocol", &["cena-platform"]),
@@ -348,6 +343,10 @@ fn a_dev_only_edge_stays_out_of_the_shipped_graph() {
     const DEV_ONLY: &[(&str, &str)] = &[
         ("cena-behavior", "cena-platform"),
         ("cena-host", "cena-platform"),
+        // Justified the same way in ALLOWED_EDGES and left off this list
+        // until the review of 2026-09-29: the defect review AR-2 found for
+        // `cena-behavior`, open for the third crate it applies to.
+        ("cena-agent", "cena-platform"),
     ];
 
     for (dependent, dependency) in DEV_ONLY {
