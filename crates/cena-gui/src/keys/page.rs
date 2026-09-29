@@ -387,6 +387,15 @@ impl KeysPage {
                 pressed = Some(Chord::of(&name, *modifiers));
                 false
             });
+            // What the key typed goes with it, as in `Keys::take`.
+            if pressed
+                .as_ref()
+                .is_some_and(|chord| super::types(&chord.key))
+            {
+                input
+                    .events
+                    .retain(|event| !matches!(event, egui::Event::Text(_)));
+            }
         });
         if cancelled {
             self.waiting = None;

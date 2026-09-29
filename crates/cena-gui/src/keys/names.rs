@@ -158,3 +158,11 @@ pub(crate) fn winit_name(key: Key) -> Option<String> {
     };
     Some(renamed.to_owned())
 }
+
+/// Whether the key of this name types something when pressed. A bound
+/// key that does is taken with what it typed: egui sends a letter's text
+/// beside its press unless Ctrl or Cmd is held, so Alt+C did its macro and
+/// typed a `c` as well (the review of 2026-09-29).
+pub(crate) fn types(key: &str) -> bool {
+    TYPING.contains(&key)
+}

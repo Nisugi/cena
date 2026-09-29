@@ -468,3 +468,76 @@ fn the_fork_catches_the_keys_of_the_window_with_the_keyboard() {
     );
     let _ = std::fs::remove_dir_all(&data);
 }
+
+/// A bound key that types, held with Alt: egui sends the letter's text
+/// beside the press (it holds it back for Ctrl and Cmd only), and the text
+/// is taken with the key. Wrayth's own key sets are full of these.
+#[test]
+fn a_bound_letter_with_alt_does_its_macro_and_types_nothing() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    let mut app = App::new(sessions);
+    app.keys = Keybinds::read("[keys]\n\"Alt+KeyC\" = \"look\"\n").0;
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
+    harness.run();
+    // Both in one frame, as winit sends them: the harness's own `event`
+    // gives each a frame of its own.
+    harness.input_mut().events.extend([
+        egui::Event::Key {
+            key: egui::Key::C,
+            physical_key: Some(egui::Key::C),
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::ALT,
+        },
+        egui::Event::Text("c".to_owned()),
+    ]);
+    harness.run();
+    harness.run();
+    assert!(harness.query_by_label(">look").is_some());
+    assert_eq!(
+        harness.get_by_role(Role::TextInput).value().as_deref(),
+        Some(""),
+        "the letter went with the key"
+    );
+}
+
+/// A letter no key binds is typed as ever, with a bound key in the frame
+/// or without one.
+#[test]
+fn a_letter_nothing_binds_is_still_typed() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    let mut app = App::new(sessions);
+    app.keys = Keybinds::read("[keys]\nF5 = \"look\"\n").0;
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), app);
+    harness.run();
+    harness.input_mut().events.extend([
+        egui::Event::Key {
+            key: egui::Key::F5,
+            physical_key: Some(egui::Key::F5),
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        },
+        egui::Event::Text("c".to_owned()),
+    ]);
+    harness.run();
+    harness.run();
+    assert!(harness.query_by_label(">look").is_some());
+    assert_eq!(
+        harness.get_by_role(Role::TextInput).value().as_deref(),
+        Some("c"),
+        "F5 types nothing, so nothing typed is taken"
+    );
+}

@@ -40,8 +40,9 @@ pub use binding::{Action, Macro};
 use file::Layer;
 pub(crate) use file::{KeyFile, SETS, Whose};
 pub(crate) use names::NUM_LOCK;
+pub(crate) use names::types;
 pub(crate) use names::winit_name;
-use names::{CAPTURED, NUMPAD, TYPING, known};
+use names::{CAPTURED, NUMPAD, known};
 pub use page::KeyRow;
 
 /// The keybinds file, in the data folder.
@@ -132,7 +133,7 @@ impl Chord {
     /// not look bindable).
     pub(crate) fn refused(&self) -> Option<String> {
         let written = self.written();
-        if self.held & (CTRL | ALT | CMD) == 0 && TYPING.contains(&self.key.as_str()) {
+        if self.held & (CTRL | ALT | CMD) == 0 && types(&self.key) {
             return Some(format!(
                 "{written} types: hold Ctrl, Alt or Cmd with it, or it could not be typed."
             ));
@@ -349,13 +350,13 @@ impl<'a> Keys<'a> {
 
     /// Take from `input` every key press this binds, and the macros they
     /// do, in order: taken, so no widget sees a bound key. A key whose macro
-    /// `leaves` is not taken, and does nothing here.
+    /// `leaves` is not taken, and does nothing here; what it typed goes too.
     pub(crate) fn take(
         self,
         input: &mut egui::InputState,
         leaves: impl Fn(&Macro) -> bool,
     ) -> Vec<Macro> {
-        let mut lines = Vec::new();
+        let (mut lines, mut typed) = (Vec::new(), false);
         input.events.retain(|event| {
             let egui::Event::Key {
                 key,
@@ -373,11 +374,17 @@ impl<'a> Keys<'a> {
             match self.does(&Chord::of(&name, *modifiers)) {
                 Some(made) if !leaves(made) => {
                     lines.push(made.clone());
+                    typed |= types(&name);
                     false
                 }
                 _ => true,
             }
         });
+        if typed {
+            input
+                .events
+                .retain(|event| !matches!(event, egui::Event::Text(_)));
+        }
         lines
     }
 }
