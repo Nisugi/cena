@@ -398,3 +398,80 @@ pub fn search(
     found.more = within.len() > MAX_DAYS;
     Ok(found)
 }
+
+/// What an export wrote.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Exported {
+    /// The file.
+    pub path: std::path::PathBuf,
+    /// Lines written.
+    pub lines: usize,
+    /// Days they came from.
+    pub days: usize,
+}
+
+/// Write every line from the days `from` to `to` (both kept, `YYYY-MM-DD`)
+/// kept by `streams` to one plain file at `out`, oldest first: `plan/25`
+/// step 6, *"the caller sends range/streams/options; the owner does all
+/// I/O"*. At most [`MAX_DAYS`] days, the newest dropped past that.
+///
+/// Each line is `YYYY-MM-DD HH:MM:SS.mmm [tag] text`, the day in front, since
+/// an export may span many. `out` is written whole or not at all: beside its
+/// name first, then renamed.
+///
+/// # Errors
+///
+/// A failure to read the log or to write `out`.
+pub fn export(
+    root: &Path,
+    character: &str,
+    (from, to): (&str, &str),
+    streams: &Streams,
+    out: &Path,
+) -> io::Result<Exported> {
+    use std::io::Write as _;
+    let mut within: Vec<String> = days(root, character)?
+        .into_iter()
+        .filter(|day| day.as_str() >= from && day.as_str() <= to)
+        .collect();
+    within.reverse();
+    within.truncate(MAX_DAYS);
+    if let Some(parent) = out.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let partial = out.with_extension("partial");
+    let mut file = io::BufWriter::new(fs::File::create(&partial)?);
+    let mut lines = 0;
+    for day in &within {
+        for entry in read_day(root, character, day)? {
+            if streams.admits(&entry.stream) {
+                writeln!(
+                    file,
+                    "{} {} [{}] {}",
+                    entry.day, entry.at, entry.stream, entry.text
+                )?;
+                lines += 1;
+            }
+        }
+    }
+    file.into_inner()
+        .map_err(io::IntoInnerError::into_error)?
+        .sync_all()?;
+    fs::rename(&partial, out)?;
+    Ok(Exported {
+        path: out.to_owned(),
+        lines,
+        days: within.len(),
+    })
+}
+
+/// Where an export of `from` to `to` goes when the player names no place:
+/// `exports/` in the character's log folder, which no read of the log looks
+/// in.
+#[must_use]
+pub fn export_path(root: &Path, character: &str, (from, to): (&str, &str)) -> std::path::PathBuf {
+    let name = writer::file_name(character, &format!("{from}_to_{to}"));
+    writer::dir(root, character)
+        .join("exports")
+        .join(Path::new(&name).with_extension("txt"))
+}

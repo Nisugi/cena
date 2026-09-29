@@ -47,6 +47,7 @@ pub mod archive;
 pub mod channel;
 pub mod feed;
 pub mod reader;
+pub mod retention;
 pub mod tap;
 pub mod writer;
 

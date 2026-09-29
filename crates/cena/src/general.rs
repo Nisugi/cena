@@ -25,6 +25,7 @@ use cena_session::command::claimant;
 use cena_session::player_log::archive::Archive;
 use cena_session::player_log::feed::{LogSettings, SECTION as LOG_SECTION};
 use cena_session::player_log::{Capture, tap};
+use cena_session::player_log::{retention, writer};
 use cena_session::settings_store::{self, SettingsFile};
 use cena_ui::settings::{Page, Row, RowKind, Value};
 
@@ -102,7 +103,7 @@ pub(crate) fn pages(dir: &Path, instance: &str, name: &str) -> Vec<Page> {
     let rows = load(dir, instance, name).and_then(|file| {
         Ok((
             general_rows(&file)?,
-            log_rows(&section(&file, LOG_SECTION)?),
+            log_rows(&section(&file, LOG_SECTION)?, name),
             record_rows(section(&file, RECORD)?),
         ))
     });
@@ -157,7 +158,27 @@ fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
     ])
 }
 
-fn log_rows(log: &LogSettings) -> Vec<Row> {
+fn log_rows(log: &LogSettings, name: &str) -> Vec<Row> {
+    let keep_days = log.keep_days.unwrap_or(0);
+    let keep = Row {
+        key: KEEP.to_owned(),
+        label: "Keep logs for (days)".to_owned(),
+        help: if keep_days == 0 {
+            "0 keeps them forever, and nothing is ever removed.".to_owned()
+        } else {
+            format!(
+                "Days kept, counting today; 0 is forever. {}",
+                retention_preview(name, keep_days)
+            )
+        },
+        kind: RowKind::Whole {
+            min: 0,
+            max: 36_500,
+        },
+        value: Value::Text(keep_days.to_string()),
+        here: log.keep_days.is_some(),
+        from: None,
+    };
     let archive = Row {
         key: ARCHIVE.to_owned(),
         label: "Archive old days".to_owned(),
@@ -184,7 +205,8 @@ fn log_rows(log: &LogSettings) -> Vec<Row> {
         .keys()
         .filter(|feed| FEEDS.iter().all(|(known, _)| known != feed))
         .map(|feed| (feed.as_str(), "a stream the file names"));
-    std::iter::once(archive)
+    [archive, keep]
+        .into_iter()
         .chain(FEEDS.iter().copied().chain(named).map(|(feed, what)| {
             toggle(
                 feed,
@@ -200,16 +222,28 @@ fn log_rows(log: &LogSettings) -> Vec<Row> {
 /// The *Player log* page's key for how old days are kept, beside the feeds.
 const ARCHIVE: &str = "archive";
 
-/// How `login`'s (`GAME:Name`) closed days are kept, as its settings file
-/// says; the default when it says nothing or cannot be read, which is also
-/// what the page shows then.
-pub(crate) fn archive_choice(dir: &Path, login: &str) -> Archive {
+/// The *Player log* page's key for how many days are kept.
+const KEEP: &str = "keep_days";
+
+/// `login`'s (`GAME:Name`) player log settings, as its settings file says:
+/// how closed days are archived and how many are kept. The defaults when it
+/// says nothing or cannot be read, which is also what the page shows then.
+pub(crate) fn log_settings(dir: &Path, login: &str) -> LogSettings {
     crate::pages::who(login)
         .ok()
         .and_then(|(instance, name)| load(dir, instance, name).ok())
         .and_then(|file| section::<LogSettings>(&file, LOG_SECTION).ok())
-        .and_then(|log| log.archive)
         .unwrap_or_default()
+}
+
+/// What keeping `keep_days` days of `name`'s log would remove at the next
+/// login, as the player is told it before it happens (`plan/25` §7).
+fn retention_preview(name: &str, keep_days: u32) -> String {
+    let today = cena_platform::date_dir();
+    retention::doomed(&writer::root(), name, keep_days, &today).map_or_else(
+        |why| format!("The log could not be read: {why}"),
+        |doomed| retention::preview(&doomed),
+    )
 }
 
 fn record_rows(record: Record) -> Vec<Row> {
@@ -301,35 +335,11 @@ fn changed(
                 }
             )
         }
-        (LOG, ARCHIVE) => {
+        (LOG, key) => {
             let mut log: LogSettings = section(&file, LOG_SECTION)?;
-            log.archive = match to {
-                None => None,
-                Some(word) => Some(Archive::from_word(word).ok_or_else(|| {
-                    format!("`{word}` is not a choice: say monthly, weekly or off.")
-                })?),
-            };
+            let done = log_change(&mut log, name, key, to)?;
             put(&mut file, LOG_SECTION, &log)?;
-            match log.archive.unwrap_or_default() {
-                Archive::Off => "Old days stay plain text.".to_owned(),
-                choice => format!(
-                    "Old days are archived {}, from the next login.",
-                    choice.word()
-                ),
-            }
-        }
-        (LOG, feed) => {
-            let mut log: LogSettings = section(&file, LOG_SECTION)?;
-            match switch(key, to)? {
-                Some(on) => log.feeds.insert(feed.to_owned(), on),
-                None => log.feeds.remove(feed),
-            };
-            put(&mut file, LOG_SECTION, &log)?;
-            let on = Capture::default().with(&log).wants(feed);
-            format!(
-                "The player log {} {feed}, from the next login.",
-                if on { "writes" } else { "leaves out" }
-            )
+            done
         }
         (RECORDING, kind @ ("combat" | "loot")) => {
             let mut record: Record = section(&file, RECORD)?;
@@ -350,6 +360,65 @@ fn changed(
     };
     settings_store::save(dir, &file).map_err(|why| format!("Not saved: {why}"))?;
     Ok(done)
+}
+
+/// A change on the *Player log* page, made to `log`: how old days are
+/// archived, how many are kept, or one feed. What was done.
+fn log_change(
+    log: &mut LogSettings,
+    name: &str,
+    key: &str,
+    to: Option<&str>,
+) -> Result<String, String> {
+    Ok(match key {
+        ARCHIVE => {
+            log.archive = match to {
+                None => None,
+                Some(word) => Some(Archive::from_word(word).ok_or_else(|| {
+                    format!("`{word}` is not a choice: say monthly, weekly or off.")
+                })?),
+            };
+            match log.archive.unwrap_or_default() {
+                Archive::Off => "Old days stay plain text.".to_owned(),
+                choice => format!(
+                    "Old days are archived {}, from the next login.",
+                    choice.word()
+                ),
+            }
+        }
+        KEEP => {
+            log.keep_days = match to {
+                None => None,
+                Some(days) => Some(
+                    settings::typed(days)
+                        .as_integer()
+                        .and_then(|days| u32::try_from(days).ok())
+                        .filter(|days| *days <= 36_500)
+                        .ok_or_else(|| {
+                            format!("`{days}` is not a number of days: say 0 for forever.")
+                        })?,
+                ),
+            };
+            match log.keep_days.unwrap_or(0) {
+                0 => "The player log is kept forever.".to_owned(),
+                days => format!(
+                    "The player log keeps {days} days. {}",
+                    retention_preview(name, days)
+                ),
+            }
+        }
+        feed => {
+            match switch(key, to)? {
+                Some(on) => log.feeds.insert(feed.to_owned(), on),
+                None => log.feeds.remove(feed),
+            };
+            let on = Capture::default().with(log).wants(feed);
+            format!(
+                "The player log {} {feed}, from the next login.",
+                if on { "writes" } else { "leaves out" }
+            )
+        }
+    })
 }
 
 /// A symbol a player can type before a command: one mark.
@@ -539,17 +608,51 @@ mod tests {
             value(&pages, LOG, ARCHIVE),
             Some(Value::Text("monthly".to_owned()))
         );
-        assert_eq!(archive_choice(&dir, &login), Archive::Monthly);
+        assert_eq!(
+            log_settings(&dir, &login).archive.unwrap_or_default(),
+            Archive::Monthly
+        );
 
         let kept = kept(&dir);
         kept.change(LOG, ARCHIVE, Some("Weekly")).expect("a choice");
-        assert_eq!(archive_choice(&dir, &login), Archive::Weekly);
+        assert_eq!(
+            log_settings(&dir, &login).archive.unwrap_or_default(),
+            Archive::Weekly
+        );
         assert!(row(&super::pages(&dir, prime(), "Nisugi"), LOG, ARCHIVE).is_some_and(|r| r.here));
         assert!(kept.change(LOG, ARCHIVE, Some("yearly")).is_err());
-        assert_eq!(archive_choice(&dir, &login), Archive::Weekly, "unchanged");
+        assert_eq!(
+            log_settings(&dir, &login).archive.unwrap_or_default(),
+            Archive::Weekly,
+            "unchanged"
+        );
 
         kept.change(LOG, ARCHIVE, None).expect("put back");
-        assert_eq!(archive_choice(&dir, &login), Archive::Monthly);
+        assert_eq!(
+            log_settings(&dir, &login).archive.unwrap_or_default(),
+            Archive::Monthly
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Days kept: forever (0) until changed, a number saved where the
+    /// login's pruning reads it, and what is not a number of days refused.
+    #[test]
+    fn days_kept_are_forever_until_changed() {
+        let dir = scratch("keep");
+        let login = format!("{DEFAULT_GAME_CODE}:Nisugi");
+        let pages = super::pages(&dir, prime(), "Nisugi");
+        assert_eq!(value(&pages, LOG, KEEP), Some(Value::Text("0".to_owned())));
+        assert!(row(&pages, LOG, KEEP).is_some_and(|r| r.help.contains("forever")));
+
+        let kept = kept(&dir);
+        let said = kept.change(LOG, KEEP, Some("30")).expect("a number");
+        assert!(said.starts_with("The player log keeps 30 days."), "{said}");
+        assert_eq!(log_settings(&dir, &login).keep_days, Some(30));
+        for bad in ["-1", "forever", "99999"] {
+            assert!(kept.change(LOG, KEEP, Some(bad)).is_err(), "{bad}");
+        }
+        assert_eq!(log_settings(&dir, &login).keep_days, Some(30), "unchanged");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
