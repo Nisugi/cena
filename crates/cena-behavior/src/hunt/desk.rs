@@ -109,6 +109,16 @@ impl Desk {
         desk
     }
 
+    /// Whether something runs on the desk now: a hunt, a walk home, a
+    /// waggle, a keep.
+    fn running(&self) -> bool {
+        self.running
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|run| !run.stop.is_cancelled())
+    }
+
     /// Stop the hunt under way. `false` when there is none.
     pub fn stop(&self) -> bool {
         let running = self.running.lock().unwrap_or_else(PoisonError::into_inner);
@@ -469,6 +479,12 @@ impl Desk {
         };
         let words: Vec<&str> = words.iter().map(String::as_str).collect();
         match crate::spellcaster::lines(&profile, state, &words) {
+            // Beside what runs, never in its place (`beside.rs`).
+            Ok(lines) if self.running() => {
+                let next = Arc::clone(&self.ids);
+                let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
+                Some(super::beside::cast(handle.clone(), self.token, lines, ids))
+            }
             Ok(lines) => {
                 let machine = Hunt::send_only(lines);
                 Some(self.start(

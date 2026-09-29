@@ -41,6 +41,7 @@
 
 mod aim;
 mod ammo;
+mod beside;
 mod boons;
 mod bounty;
 mod censer;

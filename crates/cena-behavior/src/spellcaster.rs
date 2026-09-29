@@ -113,7 +113,7 @@ pub const TABLE: &[crate::settings::Key] = {
         Key {
             name: "typed",
             label: "Cast typed spell numbers",
-            help: "A typed 401, or an alias, with no ;sc before it, is cast.",
+            help: "A typed 401, or an alias, with no ;sc before it, is cast: beside a running hunt, never in its place.",
             kind: KeyKind::Toggle,
         },
     ]
