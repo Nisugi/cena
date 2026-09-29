@@ -40,14 +40,16 @@ cena-web = { path = "crates/cena-web" }
 cena-agent = { path = "crates/cena-agent" }
 cena-host = { path = "crates/cena-host" }
 cena-gui = { path = "crates/cena-gui" }
-# The GUI's toolkit (plan/47): the author's egui fork, pinned to the commit
-# VellumFE builds with -- egui 0.35.0 with its numpad capture (plan/47 §2).
-egui = { git = "https://github.com/Nisugi/egui.git", rev = "2e2ead359c474102c5f713f86f2ec4a3be5e741b" }
-egui_kittest = { git = "https://github.com/Nisugi/egui.git", rev = "2e2ead359c474102c5f713f86f2ec4a3be5e741b" }
+# The GUI's toolkit (plan/47): the author's egui fork, egui 0.35.0 with its
+# numpad capture (plan/47 §2) and, one commit on from what VellumFE builds
+# with (2e2ead3), its key capture for keys egui has no name for (plan/47
+# step 7). Not the branch's head, which has since merged egui 0.36.
+egui = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b1c3351e38988b045f1bf33335f38" }
+egui_kittest = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b1c3351e38988b045f1bf33335f38" }
 # The window around it, from the same commit. VellumFE's feature set
 # (reference/VellumFE/Cargo.toml:35): wgpu to paint, X11 and Wayland on Linux,
 # the bundled fonts; not glow, not persistence, not eframe's defaults.
-eframe = { git = "https://github.com/Nisugi/egui.git", rev = "2e2ead359c474102c5f713f86f2ec4a3be5e741b", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
+eframe = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b1c3351e38988b045f1bf33335f38", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
 
 # The first and only serialization in the workspace, added for M3 step 8.
 # `research/04-inherited-decisions.md:1878` (C21) argues the character store is

@@ -15,7 +15,7 @@
 //! It is not the specification. `plan/12` decides what gets built and wins
 //! every disagreement; `plan/05` is how it is written; `CLAUDE.md` carries
 //! the one-screen version. This page describes the tree as it stood on
-//! **2026-09-24**, and where it gives a number it gives the command.
+//! **2026-09-28**, and where it gives a number it gives the command.
 //!
 //! # One binary, many heads
 //!
@@ -27,11 +27,14 @@
 //! a consumer above them, never a component between them. A frontend attaches
 //! to a session and never owns it: the native session keeps running when the
 //! last browser tab closes. Automation is curated Rust behaviors configured by
-//! data; there is no scripting runtime, and nothing is designed around one.
+//! data, and Hydra embeds no scripting language. What else acts on a
+//! character runs outside the process and comes in through a door the session
+//! hands out: an agent, the player's scripts, and the player's own Lich
+//! (**Outside programs**, below).
 //!
 //! # The crate graph is the architecture
 //!
-//! Twelve crates, one per layer, with dependencies pointing one way: down.
+//! Thirteen crates, one per layer, with dependencies pointing one way: down.
 //! Cargo enforces the acyclic half. The other half -- a forbidden edge that
 //! happens to close no cycle, such as the projection reaching into the
 //! session -- is `crate_dependency_edges_match_the_plan`
@@ -95,7 +98,9 @@
 //!    how a whole session replays in a test with no network. The source yields
 //!    bytes, not lines and not frames: line reassembly belongs to the parser,
 //!    and a frame-yielding transport would need the parser below the crate it
-//!    lives in.
+//!    lives in. While the player's Lich runs, the bytes are also copied to it
+//!    as they arrive, before the parser, and carried, never read
+//!    ([`LichDoor`](cena_session::script::lich::LichDoor)).
 //! 2. **Frames.** `cena-protocol`'s `Parser` is the **one** thing that turns
 //!    bytes into structure (`plan/12` §3a). It is per-session and stateful,
 //!    hand-rolled because the wire has no root element, and it never errors on
@@ -121,11 +126,24 @@
 //!    ([`UnknownTag`](cena_session::UnknownTag)) so that it reaches a display,
 //!    not merely survives.
 //! 4. **Consumers.** The session's own first: the round trip waiting for its
-//!    answer, the combat recorder, the player log. Then whoever observes
+//!    answer, the combat recorder, the player log, and the line itself,
+//!    finished once, answered by `;sorter` and the character's triggers, and
+//!    published for every viewer ([`Event::Line`](cena_session::Event::Line)).
+//!    Then whoever observes
 //!    ([`SessionObserver`](cena_session::SessionObserver)): the behaviors, the
-//!    terminal, and the projection
+//!    terminal, the window ([`cena_gui`]), the projection
 //!    ([`SessionView::project`](cena_ui::SessionView::project)) that the web
-//!    server encodes ([`ServerMessage`](cena_ui::ServerMessage)) for a browser.
+//!    server encodes ([`ServerMessage`](cena_ui::ServerMessage)) for a
+//!    browser, an agent, and a script runner, which reads each line as the
+//!    game sent it, before `;sorter` and the triggers
+//!    ([`Event::Heard`](cena_session::Event::Heard)).
+//!
+//! **With the player's Lich running, what is shown is Lich's.** What Lich
+//! writes for a frontend is parsed as the game's is and put together into
+//! lines the same way, and the window and the browser draw those in the
+//! game's place, so Lich's squelches and its scripts' messages show. The
+//! game's own parse is still everything else: the model, the log, what the
+//! triggers do, and what a script runner hears (`plan/51` step 3).
 //!
 //! Nothing above `cena-protocol` sees a raw byte or an unparsed string
 //! (`plan/05` Rule 2.1). `wire_text_reaches_the_public_api_only_through_rule_2_2`
@@ -310,8 +328,40 @@
 //! because no window may show two characters' story text (`plan/29` §5a). A
 //! viewer arriving or leaving never starts or stops the native session; the
 //! binary's [`frontend`](crate::frontend) owns the server's lifetime
-//! independently of any tab. The desktop GUI (`plan/28`) is planned over this
-//! same projection.
+//! independently of any tab.
+//!
+//! [`cena_gui`] is the desktop window (`plan/47`, `plan/49`), and what the
+//! binary opens with no arguments: a hub of cards, one per character, and a
+//! play window per character built of widgets, observing the same sessions
+//! as Despana and sending through the same manual path.
+//!
+//! # Outside programs: an agent, scripts and the player's Lich
+//!
+//! Three kinds of program outside Hydra act on a character. Each comes in
+//! through a door of its own that the session hands out, never the
+//! [`SessionHandle`](cena_session::SessionHandle) itself, and all three are
+//! served by [`cena_agent`], whose sources never name the handle
+//! (`the_agent_acts_only_through_the_door`).
+//!
+//! | Who | Door | What it may do | Read |
+//! |---|---|---|---|
+//! | an **agent**, over MCP on loopback | [`agent::Door`](cena_session::agent::Door) | what the character's level allows, each act checked; the player asked for one above it; a denylist at every level | `plan/35`, `crates/cena-agent/CONTRACT.md`, [`Characters`](cena_agent::Characters) |
+//! | the player's **scripts**, in a script runner (Ruby with Lich's engine) | [`script::Door`](cena_session::script::Door) | send lines, read the game's lines and a local copy of the state, and answer hooks within a deadline | `plan/46`, `crates/cena-agent/SCRIPTS.md`, [`scripts`](cena_agent::scripts) |
+//! | the player's own **Lich**, through the Lich relay | [`LichDoor`](cena_session::script::lich::LichDoor) | read the game's bytes as they came, send lines, have what the player types, and show its text in the game's place | `plan/51`, [`cena_agent::lich`], [`script::lich`](cena_session::script::lich) |
+//!
+//! **The Lich relay keeps Hydra's connection to the game.** Lich runs in
+//! pipe mode against a loopback port Hydra holds
+//! ([`run`](cena_agent::lich::run)), is handed the game's bytes as they
+//! arrive, and what it writes to that port is sent as its lines
+//! ([`Origin::Lich`](cena_session::Origin::Lich)). A typed line is Hydra's
+//! with Hydra's command symbol, Lich's with Lich's
+//! ([`LICH_SYMBOL`](cena_session::script::lich::LICH_SYMBOL)), and otherwise
+//! Lich's while it runs, for its aliases and hooks; both symbols start as
+//! `;` and Hydra's is tried first, so a player running Lich gives Hydra
+//! another. A Lich started after the login is handed a login built from the
+//! model; it stays up through a reconnect; and one that stops reading is let
+//! go rather than fed a stream with a hole in it. It is off until the player
+//! turns it on for the character ([`lich`](crate::lich)).
 //!
 //! # The binary is the join
 //!
@@ -330,6 +380,13 @@
 //! | [`travel`](crate::travel) | the map loaded and travel's desk registered on that command line |
 //! | [`learn`](crate::learn) | the character sync, once a login is `Ready` |
 //! | [`frontend`](crate::frontend) | the web server's lifetime, when `--web` asked for one |
+//! | [`gui`](crate::gui) | the windowed run: the hub on the main thread, the session table on the runtime's workers |
+//! | [`pages`](crate::pages) | the settings menu's pages for one character, each change through its `;` command's own writer |
+//! | [`triggers`](crate::triggers) | the one triggers file, given to each session, and `;trigger` |
+//! | [`relay`](crate::relay) | `;to` and `;all`: a line typed on one character and sent on another, or on every one |
+//! | [`agent`](crate::agent) | `--agent`'s MCP listener, and `;agent`, the player's control of what an agent may do |
+//! | [`scripts`](crate::scripts) | `;name args`: the player's Lich script in the character's script runner |
+//! | [`lich`](crate::lich) | `;lich`: the player's own Lich for a character, through the Lich relay, on or off |
 //! | [`watch`](crate::watch) | the terminal's view: Hydra's own lines, tagged by character, and no game text |
 //! | [`interrupt`](crate::interrupt) | Ctrl-C as an orderly quit from every phase; a second one exits at once |
 //! | [`ask`](crate::ask) | asking the person at the keyboard for what a login needs |
@@ -363,14 +420,14 @@
 //! `unsafe_code` are all denied, and clippy's pedantic group is on. Clippy at
 //! `-D warnings` is part of the build, not an optional pass.
 //!
-//! # Measured, 2026-09-26
+//! # Measured, 2026-09-28
 //!
 //! | | count | command |
 //! |---|---|---|
-//! | workspace members | 11 | `sed -n '/^members/,/^\]/p' Cargo.toml \| grep -c '"crates/'` |
+//! | workspace members | 13 | `sed -n '/^members/,/^\]/p' Cargo.toml \| grep -c '"crates/'` |
 //! | known wire tags | 126 | `grep -cE '^    "[^"]+",$' crates/cena-protocol/src/tags.rs` |
 //! | `Frame` variants | 56 | `awk '/^pub enum Frame \{/,/^\}/' crates/cena-protocol/src/frame/vocabulary.rs \| grep -oE '^    [A-Z][A-Za-z0-9]*' \| sort -u \| wc -l` |
-//! | files under `cena-model`'s `state/` | 110 | `find crates/cena-model/src/state -name '*.rs' \| wc -l` |
+//! | files under `cena-model`'s `state/` | 116 | `find crates/cena-model/src/state -name '*.rs' \| wc -l` |
 //! | architecture test files | 10 | `ls crates/cena-arch-tests/tests/*.rs \| wc -l` |
 //!
 //! # Where to read next
@@ -384,6 +441,7 @@
 //! [`actor`](cena_session::actor), [`supervisor`](cena_session::supervisor);
 //! [`cena_behavior`] with [`travel`](cena_behavior::travel) first;
 //! [`cena_ui`], [`cena_gui`] and [`cena_web`] for the viewers; [`cena_host`] for the table;
+//! [`cena_agent`] for the agent, a script runner and the Lich relay;
 //! and [`play`](crate::play) for how the binary ties them together. The
 //! words this page uses, and the ones that already mean two things, are in
 //! [`glossary`](crate::glossary). For the reasoning behind any of it,
