@@ -15,6 +15,7 @@
 //! one kind can live side by side.
 
 mod custom;
+mod drawers;
 mod kept;
 mod moves;
 mod preset;
@@ -26,6 +27,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::widget::Widget;
 pub(crate) use custom::{Cell, Custom, SMALLEST as SMALLEST_CELL, stacks_at, tabs_and_body};
+pub(crate) use drawers::{CLEAR, Drawers, Mode, THINNEST, Zone, Zones};
 #[cfg(test)]
 use kept::file;
 pub(crate) use moves::Taking;
@@ -83,6 +85,9 @@ pub(crate) struct Layout {
     /// when the player chose on its page.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) lines: BTreeMap<u32, crate::widget::Lines>,
+    /// Its four drawers (`plan/49` Stage E, `drawers.rs`).
+    #[serde(default, skip_serializing_if = "Drawers::is_default")]
+    pub(crate) drawers: Drawers,
 }
 
 /// One window in a play window: a standalone window or a custom window.
@@ -90,7 +95,10 @@ pub(crate) struct Layout {
 pub(crate) struct Holder {
     /// Its own id.
     pub(crate) id: u32,
-    /// Its rect from the play area's top left: x, y, width, height.
+    /// The main area or the drawer it lives in.
+    #[serde(default, skip_serializing_if = "Zone::is_main")]
+    pub(crate) zone: Zone,
+    /// Its rect from its zone's top left: x, y, width, height.
     rect: [f32; 4],
     /// What it holds.
     pub(crate) holds: Holds,
@@ -129,7 +137,8 @@ impl Holder {
         }
     }
 
-    /// Where it sits, from the play area's top left.
+    /// Where it sits, from its zone's top left: the play area's, for a
+    /// window in the main area while no drawer pushes it.
     pub(crate) fn rect(&self) -> Rect {
         rect(self.rect)
     }
@@ -183,6 +192,7 @@ impl Layout {
             locked: false,
             rooms: BTreeMap::new(),
             lines: BTreeMap::new(),
+            drawers: Drawers::default(),
         };
         let story = layout.place(Widget::Story);
         layout.add(
@@ -255,6 +265,7 @@ impl Layout {
         self.next += 1;
         self.holders.push(Holder {
             id,
+            zone: Zone::Main,
             rect: kept(at),
             holds,
         });
@@ -302,16 +313,48 @@ impl Layout {
         streams
     }
 
-    /// Where window `id` sits, if it is here.
+    /// Where window `id` sits, if it is here, from its zone's top left.
+    #[cfg(test)]
     pub(crate) fn rect(&self, id: u32) -> Option<Rect> {
         self.holder(id).map(Holder::rect)
     }
 
-    /// Put window `id` at `at`.
+    /// Put window `id` at `at`, from its zone's top left.
+    #[cfg(test)]
     pub(crate) fn set(&mut self, id: u32, at: Rect) {
         if let Some(holder) = self.holders.iter_mut().find(|holder| holder.id == id) {
             holder.set(at);
         }
+    }
+
+    /// Where window `id` is drawn in `zones`, from the play area's top left:
+    /// inside its zone ([`Zones::fit`]); `None` when it is not here or its
+    /// drawer is shut.
+    pub(crate) fn shown(&self, id: u32, zones: &Zones) -> Option<Rect> {
+        let holder = self.holder(id)?;
+        zones.fit(holder.rect(), holder.zone)
+    }
+
+    /// Put window `id` at `at`, from the play area's top left, in the zone
+    /// it lives in: while a gesture lasts, which may carry it anywhere.
+    pub(crate) fn set_shown(&mut self, id: u32, at: Rect, zones: &Zones) {
+        if let Some(holder) = self.holders.iter_mut().find(|holder| holder.id == id) {
+            let kept = zones.keep(at, holder.zone);
+            holder.set(kept);
+        }
+    }
+
+    /// Window `id` let go at `at`, from the play area's top left, into zone
+    /// `zone`: made to fit there, and kept from its corner.
+    pub(crate) fn put(&mut self, id: u32, zone: Zone, at: Rect, zones: &Zones) {
+        let Some(holder) = self.holders.iter_mut().find(|holder| holder.id == id) else {
+            return;
+        };
+        let Some(inside) = zones.inside(at, zone) else {
+            return;
+        };
+        holder.zone = zone;
+        holder.set(zones.keep(inside, zone));
     }
 
     /// The window titled `title`: for a test, which finds a window as a

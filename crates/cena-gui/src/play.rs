@@ -23,6 +23,7 @@
 
 mod arrange;
 mod draw;
+mod drawers;
 mod holders;
 mod links;
 mod menu;
@@ -35,7 +36,7 @@ use cena_session::Snapshot;
 use cena_ui::{HuntView, LifecycleView};
 use egui::Id;
 
-use crate::layout::{GRID, Layout};
+use crate::layout::{Drawers, GRID, Layout, Zones};
 use crate::story::Story;
 use holders::Engaged;
 
@@ -121,9 +122,10 @@ pub(crate) struct Play {
     /// Arrange is on: a custom window's cells take the pointer
     /// (`arrange.rs`). Never saved: a play window opens with it off.
     arranging: bool,
-    /// The grid and the snapping guides are showing: a window pressed has
-    /// moved or changed its size, not merely been clicked.
-    guiding: bool,
+    /// What the gesture under way has done to the windows it let go: the
+    /// grid and the guides show once one has moved or changed its size,
+    /// not merely been clicked (`holders.rs`).
+    moving: holders::Moving,
     /// Fitted with the room's parts in a custom window, for the tests of
     /// arranging cells (`Layout::with_room_parts`).
     #[cfg(test)]
@@ -133,6 +135,9 @@ pub(crate) struct Play {
     /// Each custom window's inside as last drawn, from the play area's top
     /// left: where its cells were when a press comes.
     insides: Vec<(u32, egui::Rect)>,
+    /// Where the main area and each open drawer lie this frame
+    /// (`plan/49` Stage E).
+    zones: Zones,
     /// How far each widget that counts what it says was read, by its id: a
     /// tab not showing shows what came since (`draw.rs`, `unread`).
     read: std::collections::HashMap<u32, u64>,
@@ -181,11 +186,12 @@ impl Play {
             layout,
             engaged: Vec::new(),
             arranging: false,
-            guiding: false,
+            moving: holders::Moving::Not,
             #[cfg(test)]
             room_parts: false,
             cell: None,
             insides: Vec::new(),
+            zones: Zones::default(),
             read: std::collections::HashMap::new(),
             adding: None,
             menu: None,
@@ -213,12 +219,16 @@ impl Play {
         let unsaved = self.unsaved.clone();
         let mut arranging = self.arranging;
         let mut locked = self.layout.as_ref().is_some_and(|layout| layout.locked);
+        let mut drawers = self
+            .layout
+            .as_ref()
+            .map_or_else(Drawers::default, |layout| layout.drawers);
         let top = egui::Panel::top(Id::new(("play-top", session)))
             .show(ui, |ui| {
                 draw::top(
                     ui,
                     view,
-                    &mut grid,
+                    (&mut grid, &mut drawers),
                     (&mut arranging, &mut locked),
                     unsaved.as_deref(),
                 )
@@ -245,6 +255,12 @@ impl Play {
             Some(draw::Top::Grid) => {
                 if let Some(layout) = &mut self.layout {
                     layout.grid = grid;
+                    changed = true;
+                }
+            }
+            Some(draw::Top::Drawers) => {
+                if let Some(layout) = &mut self.layout {
+                    layout.drawers = drawers;
                     changed = true;
                 }
             }

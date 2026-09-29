@@ -20,11 +20,21 @@
 //! chose (`zones.rs`, `should_claim_latch`); here each window the press
 //! reaches is let go, and whichever egui moved is the one kept. The others,
 //! let go but untouched, stay where they were.
+//!
+//! **Zones** (`plan/49` Stage E): each window lives in the main area or a
+//! drawer, drawn inside it (`crate::layout::Zones`). A window moved by a
+//! drag lands in the zone it is let go over, a drawer before the main area
+//! it lies on; one resized stays in its own. While a drag carries a window
+//! it is drawn over every drawer, or one moved from the main area would
+//! pass under the drawer it is being put in; a window resized is not, since
+//! egui lets a resize handle go when its window changes layer.
 
 use egui::{Id, LayerId, Order, Pos2, Rect, Stroke};
 
+use super::drawers::backdrop;
+
 use super::{Play, PlayView, arrange, draw};
-use crate::layout::{Holder, Holds, Layout, SMALLEST};
+use crate::layout::{Holds, Layout, SMALLEST, Zone, Zones};
 use crate::snap::{self, Guide};
 use crate::text::AMBER;
 use crate::widget::{Clicked, Seen};
@@ -46,6 +56,21 @@ pub(super) struct Engaged {
 /// A window's egui id: its own in every play window.
 pub(super) fn id(session: u32, holder: u32) -> Id {
     Id::new(("play-window", session, holder))
+}
+
+/// What a gesture has done to the windows it let go, each more than the
+/// last: once one is carried, the gesture carries.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) enum Moving {
+    /// Nothing yet: a press, perhaps a click.
+    Not,
+    /// One has changed its size, or moved as a resize from its left or top
+    /// edge moves it: the grid and the guides show.
+    Resized,
+    /// One has moved, keeping its size: the grid shows, and it is drawn
+    /// over every drawer until it is let go. Never for a resize, whose
+    /// handle egui lets go when its window changes layer.
+    Carried,
 }
 
 /// Windows drawn this frame, from the play area's top left: each held
@@ -72,6 +97,18 @@ impl Play {
             let fitted = Layout::fitted(area.size());
             self.layout = Some(fitted);
         }
+        let mut changed = self.drawers(&context, area);
+        let zones = self
+            .layout
+            .as_ref()
+            .map(|layout| Zones::of(&layout.drawers, area.size()))
+            .unwrap_or_default();
+        // egui grows a window to the size it is pinned to a frame late, so
+        // a drawer opened, shut or sized asks for the frame that settles it.
+        if zones != self.zones {
+            context.request_repaint();
+            self.zones = zones;
+        }
         self.press(&context, area);
         let open = self
             .layout
@@ -86,10 +123,9 @@ impl Play {
             open: &open,
         };
         let ((drawn, insides), released) = self.draw_windows(&context, area, seen, view.others);
-        let mut changed = false;
         if let (Some(out), Some(layout)) = (released, self.layout.as_mut()) {
             let at = out.at - area.min.to_vec2();
-            layout.release(out.holder, out.taking, at, &insides, area.size());
+            layout.release(out.holder, out.taking, at, &insides, &self.zones);
             changed = true;
         }
         self.insides.clone_from(&insides);
@@ -111,9 +147,14 @@ impl Play {
         if self.arranging && on_cell(context, layout, &self.insides, area, origin, self.session) {
             return;
         }
-        self.engaged = reached(context, layout, area, origin, self.session)
+        let zones = &self.zones;
+        self.engaged = reached(context, layout, zones, area, origin, self.session)
             .into_iter()
-            .filter_map(|holder| layout.rect(holder).map(|start| Engaged { holder, start }))
+            .filter_map(|holder| {
+                layout
+                    .shown(holder, zones)
+                    .map(|start| Engaged { holder, start })
+            })
             .collect();
     }
 
@@ -128,6 +169,7 @@ impl Play {
         others: &[crate::widget::Character],
     ) -> (Drawn, Option<arrange::Released>) {
         let (session, arranging, offset) = (self.session, self.arranging, area.min.to_vec2());
+        let (zones, lifted) = (&self.zones, self.moving == Moving::Carried);
         let (snapshot, story) = (seen.snapshot, seen.story);
         let mut drawn = Vec::new();
         let mut insides = Vec::new();
@@ -148,13 +190,31 @@ impl Play {
             sent: None,
         };
         for holder in &mut layout.holders {
-            let at = holder.rect().translate(offset);
+            let Some(at) = zones.fit(holder.rect(), holder.zone) else {
+                continue;
+            };
+            let at = at.translate(offset);
             let held = self
                 .engaged
                 .iter()
                 .any(|engaged| engaged.holder == holder.id);
             let (id, title) = (holder.id, draw::title(&holder.holds, drawing.follows));
-            let window = holder_window(title, id, at, held, area, session)
+            // Its zone holds it, but a window under a gesture may be carried
+            // anywhere in the play area.
+            let within = if held {
+                area
+            } else {
+                zones
+                    .rect(holder.zone)
+                    .map_or(area, |zone| zone.translate(offset))
+            };
+            let order = if holder.zone == Zone::Main && !(held && lifted) {
+                Order::Middle
+            } else {
+                Order::Foreground
+            };
+            let window = holder_window(title, id, at, held, within, session)
+                .order(order)
                 .movable(!locked)
                 .resizable(!locked);
             let shown = window.show(context, |ui| {
@@ -168,6 +228,10 @@ impl Play {
                     }
                 }
             });
+            if holder.zone != Zone::Main && !(held && lifted) {
+                let layer = LayerId::new(Order::Foreground, self::id(session, id));
+                context.set_sublayer(backdrop(session, holder.zone), layer);
+            }
             if held && let Some(shown) = shown {
                 drawn.push((id, shown.response.rect.translate(-offset)));
             }
@@ -206,8 +270,10 @@ impl Play {
                 input.pointer.is_decidedly_dragging(),
             )
         });
-        let bounds = Rect::from_min_size(Pos2::ZERO, area.size());
+        let zones = &self.zones;
+        let pointer = latest.map(|at| at - area.min.to_vec2());
         let mut guides = Vec::new();
+        let mut landed = Vec::new();
         for engaged in &self.engaged {
             let Some((_, now)) = drawn.iter().find(|(holder, _)| *holder == engaged.holder) else {
                 continue;
@@ -217,14 +283,35 @@ impl Play {
             // not an active drag"). The drag is egui's word -- the pointer
             // past a click's reach -- because a window egui draws off where
             // its layout keeps it has moved, by its rect, at a mere press.
-            self.guiding |= dragging
-                && ((now.min - engaged.start.min).length() > 0.5
-                    || (now.size() - engaged.start.size()).length() > 0.5);
+            let moved = (now.min - engaged.start.min).length() > 0.5;
+            let resized = (now.size() - engaged.start.size()).length() > 0.5;
+            if dragging && (moved || resized) {
+                let now = if resized {
+                    Moving::Resized
+                } else {
+                    Moving::Carried
+                };
+                self.moving = self.moving.max(now);
+            }
+            if !moved && !resized {
+                continue;
+            }
+            // A move lands in the zone under the pointer; a resize stays.
+            let own = layout
+                .holder(engaged.holder)
+                .map_or(Zone::Main, |holder| holder.zone);
+            let zone = match pointer {
+                Some(at) if !resized => zones.at(at),
+                _ => own,
+            };
+            let Some(bounds) = zones.rect(zone) else {
+                continue;
+            };
             let siblings: Vec<Rect> = layout
                 .holders
                 .iter()
-                .filter(|holder| holder.id != engaged.holder)
-                .map(Holder::rect)
+                .filter(|holder| holder.id != engaged.holder && holder.zone == zone)
+                .filter_map(|holder| layout.shown(holder.id, zones))
                 .collect();
             let (snapped, engaged_guides) = if shift {
                 (*now, Vec::new())
@@ -238,31 +325,32 @@ impl Play {
                     layout.grid,
                 )
             };
-            layout.set(engaged.holder, snapped);
+            layout.set_shown(engaged.holder, snapped, zones);
+            landed.push((engaged.holder, zone, snapped));
             guides.extend(engaged_guides);
         }
         if down {
-            if self.guiding {
+            if self.moving != Moving::Not {
                 guide(context, area, layout.grid, &guides, self.session);
             }
             return false;
         }
-        self.guiding = false;
-        let mut changed = self
-            .engaged
-            .iter()
-            .any(|engaged| layout.rect(engaged.holder) != Some(engaged.start));
+        self.moving = Moving::Not;
+        let changed = !landed.is_empty();
+        for &(holder, zone, at) in &landed {
+            layout.put(holder, zone, at, zones);
+        }
         if self.arranging
-            && let Some(at) = latest
+            && let Some(at) = pointer
         {
             // A window moved, not resized, and let go over a custom window's
             // inside, joins it.
             for engaged in &self.engaged {
-                let carried = layout.rect(engaged.holder).is_some_and(|now| {
-                    now != engaged.start && (now.size() - engaged.start.size()).length() < 0.5
+                let carried = landed.iter().any(|&(holder, _, now)| {
+                    holder == engaged.holder && (now.size() - engaged.start.size()).length() < 0.5
                 });
                 if carried {
-                    changed |= layout.join(engaged.holder, at - area.min.to_vec2(), insides);
+                    layout.join(engaged.holder, at, insides, zones);
                 }
             }
         }
@@ -335,6 +423,7 @@ fn holder_window(
 fn reached(
     context: &egui::Context,
     layout: &Layout,
+    zones: &Zones,
     area: Rect,
     origin: Pos2,
     session: u32,
@@ -355,11 +444,12 @@ fn reached(
         .iter()
         .filter(|holder| {
             Some(holder.id) == over_a_window
-                || holder
-                    .rect()
-                    .translate(area.min.to_vec2())
-                    .expand(EDGE)
-                    .contains(origin)
+                || layout.shown(holder.id, zones).is_some_and(|shown| {
+                    shown
+                        .translate(area.min.to_vec2())
+                        .expand(EDGE)
+                        .contains(origin)
+                })
         })
         .map(|holder| holder.id)
         .collect()

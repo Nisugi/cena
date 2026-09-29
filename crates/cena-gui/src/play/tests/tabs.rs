@@ -48,7 +48,12 @@ fn stacked<'a>() -> Harness<'a, Scene> {
             .titled("Hydra")
             .map(crate::layout::Holder::rect)
             .expect("hydra");
-        assert!(layout.join(hunt, hydra.min + egui::vec2(40.0, 10.0), &[]));
+        assert!(layout.join(
+            hunt,
+            hydra.min + egui::vec2(40.0, 10.0),
+            &[],
+            &crate::layout::Zones::default()
+        ));
     }
     harness.run();
     harness.step();
@@ -244,7 +249,12 @@ fn a_tab_stack_as_drawn() {
             .titled("Hydra")
             .map(crate::layout::Holder::rect)
             .expect("hydra");
-        assert!(layout.join(hunt, hydra.min + egui::vec2(40.0, 10.0), &[]));
+        assert!(layout.join(
+            hunt,
+            hydra.min + egui::vec2(40.0, 10.0),
+            &[],
+            &crate::layout::Zones::default()
+        ));
     }
     harness.run();
     harness.step();
