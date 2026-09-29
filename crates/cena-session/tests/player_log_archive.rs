@@ -29,19 +29,21 @@ fn eastern_at(date: eastern::Date, hour: i64) -> i64 {
 fn file(root: &Path, key: &str, texts: &[&str]) -> std::io::Result<()> {
     let path = writer::day_path(root, "Nisugi", key);
     fs::create_dir_all(path.parent().unwrap_or(root))?;
-    let body: String = texts
-        .iter()
-        .map(|t| format!("[12:00:00.000][main] {t}\n"))
-        .collect();
+    let mut body = String::new();
+    for text in texts {
+        body.push_str("[12:00:00.000][main] ");
+        body.push_str(text);
+        body.push('\n');
+    }
     fs::write(path, body)
 }
 
-fn texts(root: &Path, day: &str) -> Vec<String> {
-    reader::read_day(root, "Nisugi", day)
-        .expect("read")
+/// The texts of a day's lines, as the reader gives them.
+fn texts(root: &Path, day: &str) -> std::io::Result<Vec<String>> {
+    Ok(reader::read_day(root, "Nisugi", day)?
         .into_iter()
         .map(|e| e.text)
-        .collect()
+        .collect())
 }
 
 #[test]
@@ -132,13 +134,16 @@ fn a_closed_month_becomes_one_archive_and_reads_back_whole() {
 
     // The day reads the same, one part archived and one not, in order.
     assert_eq!(
-        texts(&root, "2026-09-30"),
+        texts(&root, "2026-09-30").expect("read"),
         [
             "the last evening of september",
             "already october in eastern"
         ]
     );
-    assert_eq!(texts(&root, "2026-09-05"), ["early september"]);
+    assert_eq!(
+        texts(&root, "2026-09-05").expect("read"),
+        ["early september"]
+    );
     assert_eq!(
         reader::days(&root, "Nisugi").expect("days"),
         ["2026-10-02", "2026-09-30", "2026-09-05"]
@@ -167,7 +172,10 @@ fn a_london_mornings_first_hours_go_with_the_week_before() {
     let now = eastern_at((2026, 9, 28), 12);
     let swept = archive::sweep(&root, "Nisugi", Archive::Weekly, now).expect("sweep");
     assert_eq!(swept.archives, ["nisugi_week-2026-09-20.log.gz"]);
-    assert_eq!(texts(&root, "2026-09-27"), ["still last week", "this week"]);
+    assert_eq!(
+        texts(&root, "2026-09-27").expect("read"),
+        ["still last week", "this week"]
+    );
 }
 
 #[test]
@@ -183,7 +191,7 @@ fn off_archives_nothing_and_the_current_period_is_never_touched() {
 
     let swept = archive::sweep(&root, "Nisugi", Archive::Monthly, now).expect("sweep");
     assert_eq!(swept.archives, ["nisugi_2026-08.log.gz"]);
-    assert_eq!(texts(&root, "2026-09-29"), ["this month"]);
+    assert_eq!(texts(&root, "2026-09-29").expect("read"), ["this month"]);
 }
 
 #[test]
@@ -202,8 +210,8 @@ fn a_late_file_is_added_to_its_archive_keeping_what_was_there() {
         archive::names(&archived).expect("manifest"),
         ["nisugi_2026-08-10.log", "nisugi_2026-08-20.log"]
     );
-    assert_eq!(texts(&root, "2026-08-10"), ["first"]);
-    assert_eq!(texts(&root, "2026-08-20"), ["second"]);
+    assert_eq!(texts(&root, "2026-08-10").expect("read"), ["first"]);
+    assert_eq!(texts(&root, "2026-08-20").expect("read"), ["second"]);
 }
 
 #[test]
@@ -215,7 +223,35 @@ fn a_plain_file_wins_over_the_same_name_in_an_archive() {
     archive::sweep(&root, "Nisugi", Archive::Monthly, now).expect("sweep");
     file(&root, "2026-08-10", &["plain copy"]).expect("write");
 
-    assert_eq!(texts(&root, "2026-08-10"), ["plain copy"]);
+    assert_eq!(texts(&root, "2026-08-10").expect("read"), ["plain copy"]);
+}
+
+#[test]
+fn disk_usage_is_plain_and_archived_and_counts_days_once() {
+    let root = temp_dir("usage");
+    assert_eq!(
+        archive::usage(&root, "Nisugi").expect("usage"),
+        archive::Usage::default(),
+        "a character who never played takes nothing"
+    );
+    file(&root, "2026-08-10", &["a rock"]).expect("write");
+    file(&root, "2026-09-26", &["saturday"]).expect("write");
+    file(&root, "2026-09-26_2026-09-27", &["saturday night"]).expect("write");
+    let now = eastern_at((2026, 9, 29), 12);
+    archive::sweep(&root, "Nisugi", Archive::Monthly, now).expect("sweep");
+
+    let usage = archive::usage(&root, "Nisugi").expect("usage");
+    let line =
+        "[12:00:00.000][main] saturday\n".len() + "[12:00:00.000][main] saturday night\n".len();
+    assert_eq!(usage.plain, line as u64, "the two pieces of the 26th");
+    assert_eq!(
+        usage.archived,
+        fs::metadata(archive::path(&root, "Nisugi", "2026-08"))
+            .expect("the archive")
+            .len()
+    );
+    assert_eq!(usage.days, 2, "the 26th is one day in two files");
+    assert_eq!(usage.total(), usage.plain + usage.archived);
 }
 
 #[test]

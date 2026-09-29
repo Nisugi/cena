@@ -1,7 +1,7 @@
 # 25 — The player log
 
 **Status: steps 1, 2 and 2b BUILT (2026-09-21); step 3 BUILT (2026-09-29), with
-`;history`; step 4 BUILT the same day; 5-8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI).** Author decisions
+`;history`; steps 4 and 7 BUILT the same day; 5, 6 and 8 APPROVED 2026-09-29 (D5, D6; step 8 the GUI).** Author decisions
 recorded below are marked **AUTHOR**; everything else is a proposal awaiting one.
 
 The **second** of the two logs `sink/mod.rs` named in 2026-09-18, and the one it
@@ -477,6 +477,10 @@ Each step leaves the tree green and is independently reviewable.
 6. **Export**, per §1's spec shape: a range of days and tags written to one
    plain file the player chooses. APPROVED.
 7. **Disk usage**, broken out raw / archive / total / day count. APPROVED.
+
+   > **BUILT 2026-09-29.** `archive::usage`: plain bytes, archived bytes,
+   > their total, and days kept (a day in two pieces counted once). `;history`
+   > opens its day list with it; the settings page shows it in step 8.
 8. **The GUI** -- missing from this list as first written, as 2b once was.
    The author, 2026-09-29, showing Lichborne's two screens: *"I notice there
    is no gui window in the plan"*. Two parts, both over `reader` and the
