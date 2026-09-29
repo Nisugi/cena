@@ -176,6 +176,10 @@ loaded, and the map alone is 100 MB. A Lich whose scripts touch `Room.current` w
   `.to`) reach Lich only with `;`; plain ones go straight to the game, since a Lich alias
   that expanded into a `.multi` of itself would never end. A player running Lich moves
   Hydra's symbol off `;`, to `.` say. Switching Lich on while both are `;` says so once.
+
+  > **SUPERSEDED 2026-09-29, the author:** *"hydra's default command key should be changed
+  > from ; to ."*. Hydra's symbol now starts as `.` (`DEFAULT_SYMBOL`), so Lich's `;` is
+  > Lich's with nothing moved; the warning is left for a player who sets Hydra's to `;`.
 - **The display** (question 1): for a character with Lich on, the play window's text comes
   from Lich's stdout, parsed by the same parser, so squelches and script output show as they
   would in any frontend. The panels (vitals, room, hands, compass) stay on Hydra's model.

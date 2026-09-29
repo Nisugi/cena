@@ -139,14 +139,14 @@ async fn scripts_import_is_answered_on_the_command_line() {
     let generation = handle.generation();
 
     handle
-        .send_manual_at(generation, ";scripts", DEADLINE)
+        .send_manual_at(generation, ".scripts", DEADLINE)
         .await;
     let told = told_until(&mut events, "run from").await;
     assert!(
         told.iter().any(|l| l.contains("scripts import")),
         "{told:#?}"
     );
-    let typed = format!(";scripts import {}", lich.display());
+    let typed = format!(".scripts import {}", lich.display());
     handle.send_manual_at(generation, &typed, DEADLINE).await;
     let told = told_until(&mut events, "imported from").await;
     assert!(
@@ -156,7 +156,7 @@ async fn scripts_import_is_answered_on_the_command_line() {
     );
     assert!(hydra.join("scripts/wander.lic").is_file());
     handle
-        .send_manual_at(generation, ";scripts import", DEADLINE)
+        .send_manual_at(generation, ".scripts import", DEADLINE)
         .await;
     let told = told_until(&mut events, "from where").await;
     assert!(told.iter().any(|l| l.contains("from where")), "{told:#?}");
@@ -192,7 +192,7 @@ async fn scripts_check_is_answered_on_the_command_line() {
     let generation = handle.generation();
 
     handle
-        .send_manual_at(generation, ";scripts check fine", DEADLINE)
+        .send_manual_at(generation, ".scripts check fine", DEADLINE)
         .await;
     let told = told_until(&mut events, "fine (").await;
     assert!(
@@ -201,7 +201,7 @@ async fn scripts_check_is_answered_on_the_command_line() {
         "{told:#?}"
     );
     handle
-        .send_manual_at(generation, ";scripts check broken", DEADLINE)
+        .send_manual_at(generation, ".scripts check broken", DEADLINE)
         .await;
     let told = told_until(&mut events, "File.exists?").await;
     assert!(
@@ -214,7 +214,7 @@ async fn scripts_check_is_answered_on_the_command_line() {
         "{told:#?}"
     );
     handle
-        .send_manual_at(generation, ";scripts check nosuch", DEADLINE)
+        .send_manual_at(generation, ".scripts check nosuch", DEADLINE)
         .await;
     let told = told_until(&mut events, "no script named").await;
     assert!(
@@ -262,14 +262,14 @@ async fn a_typed_script_runs_and_leaving_the_table_stops_it() {
     scripts.open(id, "Nisugi", "GS3", &handle, &observer, &commands);
     let generation = handle.generation();
 
-    handle.send_manual_at(generation, ";l", DEADLINE).await;
+    handle.send_manual_at(generation, ".l", DEADLINE).await;
     let told = told_until(&mut events, "No scripts").await;
     assert!(
         told.iter().any(|line| line == "No scripts are running."),
         "{told:#?}"
     );
     handle
-        .send_manual_at(generation, ";go2 bank", DEADLINE)
+        .send_manual_at(generation, ".go2 bank", DEADLINE)
         .await;
     let told = told_until(&mut events, "still starting").await;
     assert!(
@@ -277,7 +277,7 @@ async fn a_typed_script_runs_and_leaving_the_table_stops_it() {
         "Hydra's word, not the script's: {told:#?}"
     );
 
-    handle.send_manual_at(generation, ";greet", DEADLINE).await;
+    handle.send_manual_at(generation, ".greet", DEADLINE).await;
     let told = told_until(&mut events, "[greet: done]").await;
     assert!(told.iter().any(|line| line == "[greet: done]"), "{told:#?}");
     assert!(told.iter().any(|line| line == "[greet]>look"), "{told:#?}");

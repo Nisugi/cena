@@ -354,7 +354,7 @@ async fn a_hydra_command_runs_for_each_item() {
         Box::pin(async { Ran::Done })
     });
     let ended = game
-        .foreach("foreach name=*feather in backpack; ;sc 704 item", hydra)
+        .foreach("foreach name=*feather in backpack; .sc 704 item", hydra)
         .await
         .unwrap();
     assert_eq!(ended, Ok(()));

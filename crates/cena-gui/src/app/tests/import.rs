@@ -44,7 +44,7 @@ fn a_wrayth_set_is_imported() {
         harness.key_press(egui::Key::Enter);
         harness.run();
     };
-    typed(&mut harness, ";keys");
+    typed(&mut harness, ".keys");
     assert!(
         said(&seat)
             .iter()
@@ -52,7 +52,7 @@ fn a_wrayth_set_is_imported() {
         "{:?}",
         said(&seat)
     );
-    typed(&mut harness, &format!(";keys import {fixture}"));
+    typed(&mut harness, &format!(".keys import {fixture}"));
     let mine =
         keys::character_path(&data, cena_session::DEFAULT_GAME_CODE, "Ashryn").expect("a path");
     let (file, problems) = keys::KeyFile::load(&mine, keys::Whose::Character);
@@ -88,7 +88,7 @@ fn a_wrayth_set_is_imported() {
         "nothing sent, nothing echoed"
     );
 
-    typed(&mut harness, &format!(";keys import global {fixture}"));
+    typed(&mut harness, &format!(".keys import global {fixture}"));
     let (every, _) = keys::KeyFile::load(&keys::path(&data), keys::Whose::Every);
     assert_eq!(
         every.sets[1].get(&key("F1")),

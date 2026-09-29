@@ -404,10 +404,10 @@ mod tests {
                     .await
             }
         };
-        typed(";lich on").await;
+        typed(".lich on").await;
         assert!(settles(&handle, true).await, "started");
         assert_eq!(switch(&seat), Ok(true), "kept on");
-        typed(";lich off").await;
+        typed(".lich off").await;
         assert!(settles(&handle, false).await, "stopped");
         assert_eq!(switch(&seat), Ok(false), "kept off");
 

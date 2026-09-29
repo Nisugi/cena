@@ -138,19 +138,6 @@ impl Character {
         .await
     }
 
-    /// What the player was told, the first time it has `words` in it.
-    async fn told(&mut self, words: &str) -> Option<String> {
-        self.next(|event| match event {
-            Event::Notice(notice) => notice
-                .lines()
-                .iter()
-                .find(|line| line.contains(words))
-                .cloned(),
-            _ => None,
-        })
-        .await
-    }
-
     /// The lines a viewer is shown, from here on until one says `words`.
     async fn shown_until(&mut self, words: &str) -> Vec<String> {
         let mut shown = Vec::new();
@@ -184,14 +171,12 @@ fn standin(ruby: PathBuf) -> Launch {
 /// script's line goes to the game as Lich's. What the player types goes to
 /// it: a `;` line starts one of its scripts, and a plain one meets its alias
 /// and goes to the game as the player's. It stops when asked. Hydra's symbol
-/// here is Lich's, and the player is told what that means.
+/// is its default, `.`, so Lich's `;` is Lich's (the shared-symbol warning
+/// is `lich.rs`'s own test).
 #[tokio::test(flavor = "multi_thread")]
 async fn lich_takes_hydra_as_its_game() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
     let mut character = Character::start(standin(ruby), &[]);
-
-    let told = character.told("Lich's commands can't be reached").await;
-    assert!(told.is_some_and(|line| line.contains("such as .")));
 
     // Put once the login's prompt reached Lich: the copy missed nothing.
     assert_eq!(character.sent("look").await, Some(Origin::Lich));

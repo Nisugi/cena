@@ -170,7 +170,7 @@ async fn a_runner_hears_its_character_and_acts_as_a_script() {
     let prompts = kind(&events, "prompt");
     assert_eq!(prompts.last().unwrap()["time"], 5);
 
-    for (line, outcome) in [(";known", "ran"), (";nosuch", "unknown")] {
+    for (line, outcome) in [(".known", "ran"), (".nosuch", "unknown")] {
         let answer = call(&app, &token, "send", serde_json::json!({"line": line}))
             .await
             .unwrap();

@@ -153,11 +153,11 @@ async fn a_relay_sends_on_the_character_it_names() {
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     };
-    typed(";to baelor look").await;
+    typed(".to baelor look").await;
     assert_eq!(b_sent.lines(), ["look"]);
     assert!(a_sent.lines().is_empty(), "not on the one it was typed on");
 
-    typed(";all stand").await;
+    typed(".all stand").await;
     assert_eq!(a_sent.lines(), ["stand"]);
     assert_eq!(b_sent.lines(), ["look", "stand"]);
     assert!(
@@ -167,7 +167,7 @@ async fn a_relay_sends_on_the_character_it_names() {
         "all says who"
     );
 
-    typed(";to Lorwyn look").await;
+    typed(".to Lorwyn look").await;
     assert!(
         told(&mut heard)
             .iter()
@@ -178,13 +178,13 @@ async fn a_relay_sends_on_the_character_it_names() {
     *listed
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = three;
-    typed(";to baelor sit").await;
+    typed(".to baelor sit").await;
     assert!(
         told(&mut heard)
             .iter()
             .any(|said| said.contains("more than one game")),
     );
-    typed(";to TWO:Baelor kneel").await;
+    typed(".to TWO:Baelor kneel").await;
     assert_eq!(f_sent.lines(), ["kneel"]);
     assert_eq!(b_sent.lines(), ["look", "stand"], "not the other Baelor");
 }

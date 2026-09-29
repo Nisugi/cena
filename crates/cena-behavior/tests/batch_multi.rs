@@ -325,12 +325,12 @@ async fn an_unknown_hydra_command_stops_the_list_and_says_so() {
     let Err(Halt::Failed(why)) = run.await.unwrap() else {
         panic!("an unknown command did not stop the list");
     };
-    assert!(why.contains(";nosuch"), "{why}");
+    assert!(why.contains(".nosuch"), "{why}");
     assert_eq!(game.transcript.lines(), ["get gem"]);
     assert!(
         game.said()
             .iter()
-            .any(|s| s.contains("I do not know ;nosuch"))
+            .any(|s| s.contains("I do not know .nosuch"))
     );
     assert_eq!(game.handle.holder(), None, "released after all");
 }

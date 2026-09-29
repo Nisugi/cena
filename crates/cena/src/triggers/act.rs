@@ -90,8 +90,8 @@ mod tests {
 
         let now = handle.generation();
         send(&handle, now, "stun", "stand").await;
-        send(&handle, now, "sort", ";sorter on").await;
-        send(&handle, now, "odd", ";frobnicate").await;
+        send(&handle, now, "sort", ".sorter on").await;
+        send(&handle, now, "odd", ".frobnicate").await;
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         assert_eq!(
@@ -108,7 +108,7 @@ mod tests {
         assert!(
             notices
                 .iter()
-                .any(|notice| notice.contains("Trigger `odd`") && notice.contains(";frobnicate")),
+                .any(|notice| notice.contains("Trigger `odd`") && notice.contains(".frobnicate")),
             "{notices:?}"
         );
     }
@@ -196,7 +196,7 @@ mod tests {
         assert!(ready(&mut events).await, "the session reconnects");
         assert_ne!(handle.generation(), then);
         send(&handle, then, "stun", "stand").await;
-        send(&handle, then, "sort", ";sorter on").await;
+        send(&handle, then, "sort", ".sorter on").await;
         tokio::time::sleep(Duration::from_secs(1)).await;
         let now = connections.latest().expect("the new connection");
         assert!(now.lines().is_empty(), "{:?}", now.lines());

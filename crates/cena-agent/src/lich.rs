@@ -483,9 +483,17 @@ async fn finish(mut child: Child, stdin: ChildStdin) {
 
 #[cfg(test)]
 mod tests {
-    use super::accept_keyed;
+    use super::{accept_keyed, shared_symbol};
     use tokio::io::AsyncWriteExt;
     use tokio::net::{TcpListener, TcpStream};
+
+    /// Hydra's default, `.`, leaves Lich's `;` alone; a player who gives
+    /// Hydra `;` is told Lich's commands are out of reach.
+    #[test]
+    fn only_a_shared_symbol_is_warned_of() {
+        assert!(shared_symbol(cena_session::command::COMMAND_SYMBOL).is_none());
+        assert!(shared_symbol(';').is_some());
+    }
 
     /// Something on this machine that reaches the port first, without the
     /// key, is let go, and Lich, with it, is taken.

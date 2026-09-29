@@ -159,7 +159,7 @@ mod tests {
         }
     }
 
-    /// `;multi 1,get gem,;go2 bank,put gem in sack`, typed: the walk the
+    /// `;multi 1,get gem,.go2 bank,put gem in sack`, typed: the walk the
     /// `;go2` starts claims the authority the multi gave back, and the `put`
     /// waits until the walk is over -- through the same command table a
     /// typed `;go2` goes through (`crate::commands`).
@@ -203,7 +203,7 @@ mod tests {
         let typed = handle
             .send_manual_at(
                 handle.generation(),
-                ";multi 1,get gem,;go2 bank,put gem in sack",
+                ".multi 1,get gem,.go2 bank,put gem in sack",
                 DEADLINE,
             )
             .await;
@@ -237,10 +237,10 @@ mod tests {
         ready(waiting).await;
         let generation = handle.generation();
         for line in [
-            ";multi",
-            ";foreach stop",
-            ";multi 3",
-            ";foreach small in bag",
+            ".multi",
+            ".foreach stop",
+            ".multi 3",
+            ".foreach small in bag",
         ] {
             let typed = handle.send_manual_at(generation, line, DEADLINE).await;
             assert_eq!(typed, Outcome::Handled, "{line}");

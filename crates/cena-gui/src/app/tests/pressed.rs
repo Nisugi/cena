@@ -208,7 +208,7 @@ fn a_key_fills_the_input_or_acts() {
     harness.run();
     harness.run();
     assert!(
-        harness.query_by_label(">;stop").is_some(),
+        harness.query_by_label(">.stop").is_some(),
         "Stop, as its button"
     );
 }

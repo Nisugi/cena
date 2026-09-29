@@ -51,7 +51,7 @@ pub(crate) enum Took {
 /// (`plan/44` Q04). Answered before any family is ready, since it needs
 /// nothing but this list.
 pub(crate) const HELP: &[&str] = &[
-    "Hydra's commands start with your command symbol: ; unless you changed it. None of them reaches the game.",
+    "Hydra's commands start with your command symbol: . unless you changed it. None of them reaches the game.",
     "hunt help        hunt on a profile, see and change its settings, lead a group, stop",
     "heal help        heal with herbs: name the herb container, heal, stock it",
     "waggle help      cast a list of spells on people",
@@ -341,7 +341,7 @@ mod tests {
 
         // Before travel registers: its word is told to wait.
         let early = handle
-            .send_manual_at(generation, ";go2 bank", DEADLINE)
+            .send_manual_at(generation, ".go2 bank", DEADLINE)
             .await;
         assert_eq!(early, Outcome::Handled);
         assert!(
@@ -353,22 +353,22 @@ mod tests {
 
         // A word nobody knows, before and after.
         assert_eq!(
-            handle.send_manual_at(generation, ";nosuch", DEADLINE).await,
+            handle.send_manual_at(generation, ".nosuch", DEADLINE).await,
             Outcome::Handled
         );
         assert!(
-            told(&mut events).iter().any(|s| s.contains(";help")),
-            "a word nobody knows points at ;help"
+            told(&mut events).iter().any(|s| s.contains(".help")),
+            "a word nobody knows points at .help"
         );
 
         // Help, before anything else is ready, and nothing sent.
         assert_eq!(
-            handle.send_manual_at(generation, ";help", DEADLINE).await,
+            handle.send_manual_at(generation, ".help", DEADLINE).await,
             Outcome::Handled
         );
         assert!(
             told(&mut events).iter().any(|s| s.contains("hunt help")),
-            ";help lists the families"
+            ".help lists the families"
         );
 
         commands.travel(Arc::new(|line: &str| {
@@ -376,12 +376,12 @@ mod tests {
         }));
         assert_eq!(
             handle
-                .send_manual_at(generation, ";go2 bank", DEADLINE)
+                .send_manual_at(generation, ".go2 bank", DEADLINE)
                 .await,
             Outcome::Handled
         );
         assert_eq!(
-            handle.send_manual_at(generation, ";nosuch", DEADLINE).await,
+            handle.send_manual_at(generation, ".nosuch", DEADLINE).await,
             Outcome::Handled
         );
 
@@ -418,7 +418,7 @@ mod tests {
 
         for expected in ["Stopped: hunt.", "Nothing was running."] {
             assert_eq!(
-                handle.send_manual_at(generation, ";stop", DEADLINE).await,
+                handle.send_manual_at(generation, ".stop", DEADLINE).await,
                 Outcome::Handled
             );
             let said = told(&mut events);

@@ -176,16 +176,16 @@ mod tests {
             told(&mut events)
         };
         assert!(!handle.sorts_containers(), "off until asked");
-        assert_eq!(typed(";sorter on").await, ["Container-look sorting on."]);
+        assert_eq!(typed(".sorter on").await, ["Container-look sorting on."]);
         assert!(handle.sorts_containers());
         assert_eq!(
-            typed(";sorter status").await,
+            typed(".sorter status").await,
             ["Container-look sorting on."]
         );
         assert!(handle.sorts_containers());
-        assert_eq!(typed(";sorter").await, ["Container-look sorting off."]);
+        assert_eq!(typed(".sorter").await, ["Container-look sorting off."]);
         assert!(!handle.sorts_containers());
-        let refused = typed(";sorter edit").await;
+        let refused = typed(".sorter edit").await;
         assert!(
             refused.len() == 1
                 && refused[0].contains("`edit`")
@@ -218,7 +218,7 @@ mod tests {
         assert!(!handle.sorts_containers(), "off until asked");
         tokio::spawn(session.into_actor().run());
         let outcome = handle
-            .send_manual_at(generation, ";sorter on", DEADLINE)
+            .send_manual_at(generation, ".sorter on", DEADLINE)
             .await;
         assert_eq!(outcome, Outcome::Handled);
         assert_eq!(told(&mut events), ["Container-look sorting on."]);

@@ -545,7 +545,7 @@ mod tests {
         assert_eq!(ids, [GENERAL, LOG, RECORDING]);
         assert_eq!(
             value(&pages, GENERAL, "symbol"),
-            Some(Value::Text(";".to_owned()))
+            Some(Value::Text(".".to_owned()))
         );
         assert_eq!(value(&pages, GENERAL, "sorter"), Some(Value::On(false)));
         assert_eq!(value(&pages, LOG, "main"), Some(Value::On(true)));
@@ -610,7 +610,7 @@ mod tests {
         assert!(row(&pages, GENERAL, "symbol").is_some_and(|row| !row.here));
         assert_eq!(
             value(&pages, GENERAL, "symbol"),
-            Some(Value::Text(";".to_owned()))
+            Some(Value::Text(".".to_owned()))
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

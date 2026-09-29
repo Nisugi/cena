@@ -34,8 +34,14 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
 
-/// Lich's `$lich_char`, and every `GemStone` player's habit.
-pub const DEFAULT_SYMBOL: char = ';';
+/// Hydra's command symbol until a character's settings say otherwise.
+///
+/// **`.`, not `;`** (the author, 2026-09-29: *"hydra's default command key
+/// should be changed from ; to ."*). `;` is Lich's `$lich_char` and every
+/// `GemStone` player's habit for Lich's commands, so it stays Lich's: with the
+/// player's own Lich attached (`plan/51`), `;` reaches it without the player
+/// first moving Hydra's symbol. A character that chose a symbol keeps it.
+pub const DEFAULT_SYMBOL: char = '.';
 
 /// The `commands` section of a character's settings (`settings_store`):
 ///
@@ -193,14 +199,14 @@ mod tests {
         (Desk::new(symbol, runner), seen)
     }
 
-    /// The author's rule: `;go22 bank` must never reach the game.
+    /// The author's rule: `.go22 bank` must never reach the game.
     #[test]
     fn a_line_with_the_symbol_is_hydras_known_or_not() {
         let (desk, seen) = desk(None);
-        assert_eq!(desk.claim(";go2 bank"), Some(Claimed::Done));
-        assert_eq!(desk.claim(";go22 bank"), Some(Claimed::Unknown));
-        assert_eq!(desk.claim(";"), Some(Claimed::Unknown));
-        assert_eq!(desk.claim(";   "), Some(Claimed::Unknown));
+        assert_eq!(desk.claim(".go2 bank"), Some(Claimed::Done));
+        assert_eq!(desk.claim(".go22 bank"), Some(Claimed::Unknown));
+        assert_eq!(desk.claim("."), Some(Claimed::Unknown));
+        assert_eq!(desk.claim(".   "), Some(Claimed::Unknown));
         // The symbol is gone, and nothing else is.
         assert_eq!(
             *seen.lock().unwrap(),
@@ -211,7 +217,7 @@ mod tests {
     #[test]
     fn a_line_without_it_is_the_games_and_is_not_even_looked_at() {
         let (desk, seen) = desk(None);
-        for line in ["north", "say ;go2 bank", "", "  ", "go2 bank"] {
+        for line in ["north", "say .go2 bank", "", "  ", "go2 bank"] {
             assert_eq!(desk.claim(line), None, "{line:?}");
         }
         assert!(seen.lock().unwrap().is_empty());
@@ -226,7 +232,7 @@ mod tests {
         assert!(!desk.set_bare(Arc::new(|_: &str| true)), "once");
         assert_eq!(desk.claim("  401 "), Some(Claimed::Done));
         assert_eq!(desk.claim("north"), None);
-        assert_eq!(desk.claim(";go2 bank"), Some(Claimed::Done));
+        assert_eq!(desk.claim(".go2 bank"), Some(Claimed::Done));
         assert_eq!(*seen.lock().unwrap(), ["go2 bank".to_owned()]);
     }
 
@@ -234,8 +240,18 @@ mod tests {
     #[test]
     fn the_symbol_may_be_led_up_to_by_whitespace() {
         let (desk, _) = desk(None);
-        assert_eq!(desk.claim("  ;go2 bank"), Some(Claimed::Done));
-        assert_eq!(desk.claim("\t;go2 bank"), Some(Claimed::Done));
+        assert_eq!(desk.claim("  .go2 bank"), Some(Claimed::Done));
+        assert_eq!(desk.claim("\t.go2 bank"), Some(Claimed::Done));
+    }
+
+    /// `;` is Lich's by default, so Hydra leaves it alone (the author,
+    /// 2026-09-29: the default is `.`).
+    #[test]
+    fn a_semicolon_is_not_hydras_by_default() {
+        let (desk, seen) = desk(None);
+        assert_eq!(DEFAULT_SYMBOL, '.');
+        assert_eq!(desk.claim(";go2 bank"), None);
+        assert!(seen.lock().unwrap().is_empty());
     }
 
     #[test]
@@ -249,7 +265,7 @@ mod tests {
         assert_eq!(said(Some("/")), '/');
         assert_eq!(said(None), DEFAULT_SYMBOL);
         // Neither of these is a symbol, and neither leaves the player without
-        // one: `;` is what their fingers know.
+        // one.
         assert_eq!(said(Some("")), DEFAULT_SYMBOL);
         assert_eq!(said(Some("//")), DEFAULT_SYMBOL);
         // One character, whatever it is made of.
@@ -262,6 +278,6 @@ mod tests {
         assert_eq!(desk.claim("/go2 bank"), Some(Claimed::Done));
         assert_eq!(desk.symbol(), '/');
         // ...and then the old one is the game's again, as it was before.
-        assert_eq!(desk.claim(";go2 bank"), None);
+        assert_eq!(desk.claim(".go2 bank"), None);
     }
 }
