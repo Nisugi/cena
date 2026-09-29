@@ -14,6 +14,7 @@
 
 mod character;
 mod described;
+mod dialog;
 mod draw;
 pub(crate) mod find;
 mod kind;

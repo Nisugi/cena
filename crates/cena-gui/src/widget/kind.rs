@@ -34,6 +34,8 @@ pub(crate) enum Widget {
     Roundtime,
     /// The cast time left.
     CastTime,
+    /// An aimed shot's aim left.
+    Aim,
     /// The room as the game describes it, joined: its name and number, its
     /// description with what is here, who else is, and the ways out; its
     /// parts chosen on its own page (the author, 2026-09-28).
@@ -99,6 +101,9 @@ pub(crate) enum Widget {
     Pulse,
     /// The world events under way.
     WorldEvents,
+    /// One of the game's own dialogs, by its id: the Betrayer panel, the
+    /// combat panel, one an event adds; offered once the game has sent it.
+    Dialog(String),
     /// Everything the model holds for the character, as it prints itself:
     /// for troubleshooting (the author, 2026-09-27).
     GameState,
@@ -160,7 +165,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 38] = [
+    const PLAIN: [Widget; 39] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -170,6 +175,7 @@ impl Widget {
         Widget::LeftHand,
         Widget::Roundtime,
         Widget::CastTime,
+        Widget::Aim,
         Widget::Room,
         Widget::RoomTitle,
         Widget::RoomDescription,
@@ -214,6 +220,7 @@ impl Widget {
             Widget::LeftHand => "Left hand",
             Widget::Roundtime => "Roundtime",
             Widget::CastTime => "Cast time",
+            Widget::Aim => "Aim",
             Widget::Room => "Room",
             Widget::RoomTitle => "Room name",
             Widget::RoomDescription => "Room description",
@@ -246,6 +253,7 @@ impl Widget {
             Widget::Indicator(indicator) => indicator.name(),
             Widget::Effects(category) => category.name(),
             Widget::Stream(id) => return stream_name(id),
+            Widget::Dialog(id) => return dialog_name(id),
         })
     }
 
@@ -262,6 +270,7 @@ impl Widget {
             | Widget::LeftHand
             | Widget::Roundtime
             | Widget::CastTime
+            | Widget::Aim
             | Widget::Creatures
             | Widget::Mind
             | Widget::NextLevel
@@ -281,6 +290,7 @@ impl Widget {
             | Widget::Objectives
             | Widget::Containers
             | Widget::WorldEvents
+            | Widget::Dialog(_)
             | Widget::Effects(_) => Group::Info,
             Widget::Indicator(_) => Group::Indicators,
             Widget::Room
@@ -363,8 +373,8 @@ impl Widget {
             Widget::Objectives | Widget::Effects(_) => (300.0, 100.0),
             Widget::Indicator(_) => (100.0, LINE),
             Widget::Compass => (160.0, 120.0),
-            Widget::Combat => (260.0, 140.0),
-            Widget::Roundtime | Widget::CastTime => (110.0, LINE),
+            Widget::Combat | Widget::Dialog(_) => (260.0, 140.0),
+            Widget::Roundtime | Widget::CastTime | Widget::Aim => (110.0, LINE),
             Widget::Health
             | Widget::Mana
             | Widget::Stamina
@@ -414,4 +424,23 @@ pub(crate) fn stream_name(id: &str) -> Cow<'static, str> {
             .map(|first| first.to_uppercase().chain(chars).collect())
             .unwrap_or_default(),
     )
+}
+
+/// A dialog's name, from its id: `BetrayerPanel` is "Betrayer panel",
+/// `combat` "Combat".
+pub(crate) fn dialog_name(id: &str) -> Cow<'static, str> {
+    let mut name = String::new();
+    let mut last_lower = false;
+    for c in id.chars() {
+        if c.is_uppercase() && last_lower {
+            name.push(' ');
+            name.extend(c.to_lowercase());
+        } else if name.is_empty() {
+            name.extend(c.to_uppercase());
+        } else {
+            name.push(c);
+        }
+        last_lower = c.is_lowercase();
+    }
+    Cow::Owned(name)
 }

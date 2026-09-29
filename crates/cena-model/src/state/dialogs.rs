@@ -210,3 +210,18 @@ impl Dialogs {
         Some(dialog)
     }
 }
+
+impl super::GameState {
+    /// Seconds until an aimed shot's aim is done: `Some(0)` with none
+    /// running, `None` before the game has said what time it is. As
+    /// [`Self::roundtime_remaining`] reads the roundtime.
+    #[must_use]
+    pub fn aim_remaining(&self) -> Option<u32> {
+        let now = self.game_time_now()?;
+        Some(
+            self.dialogs
+                .aim_ends
+                .map_or(0, |ends| ends.saturating_sub(now)),
+        )
+    }
+}

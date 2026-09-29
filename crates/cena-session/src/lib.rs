@@ -59,8 +59,8 @@ pub use cena_model::movement::{self, MoveFeedback};
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
 pub use cena_model::state::{
-    claim, containers, creature, creatures::boons, flags, gameobj, group, hands, incident, inspect,
-    societies, stream_windows, world, worn,
+    claim, containers, creature, creatures::boons, dialogs, flags, gameobj, group, hands, incident,
+    inspect, societies, stream_windows, world, worn,
 };
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).

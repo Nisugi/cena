@@ -73,7 +73,7 @@ impl Play {
         area: Rect,
         others: &[Character],
         library: &Library,
-        received: &[&str],
+        received: &[Widget],
     ) -> bool {
         let Some(shown) = self.layout.as_ref().map(kinds_shown) else {
             return false;
@@ -156,7 +156,7 @@ impl Play {
         context: &egui::Context,
         area: Rect,
         others: &[Character],
-        received: &[&str],
+        received: &[Widget],
     ) -> bool {
         let (secondary, pressed, pointer, escape) = context.input(|input| {
             (
@@ -346,7 +346,7 @@ fn items(
     ui: &mut egui::Ui,
     menu: &mut Menu,
     layout: &Layout,
-    (others, received): (&[Character], &[&str]),
+    (others, received): (&[Character], &[Widget]),
 ) -> Option<Act> {
     let mut act = None;
     let holder = layout.holder(menu.holder)?;
@@ -426,7 +426,7 @@ fn widget_items(
     menu: &mut Menu,
     layout: &Layout,
     (placed, widget): (u32, &Widget),
-    received: &[&str],
+    received: &[Widget],
 ) -> Option<Act> {
     let mut act = None;
     ui.weak(widget.name());
@@ -462,15 +462,14 @@ fn widget_items(
 }
 
 /// Every kind: the catalog's, the streams named among them, and any other
-/// stream this character has `received`: a stream that comes with a
-/// position the game gives appears for the characters that hold it
-/// (`plan/49` §3).
-fn kinds(received: &[&str]) -> Vec<Widget> {
+/// stream or game dialog this character has `received`: a stream that
+/// comes with a position the game gives appears for the characters that
+/// hold it (`plan/49` §3), and a dialog once the game has sent it.
+fn kinds(received: &[Widget]) -> Vec<Widget> {
     let mut every = Widget::all();
-    for id in received {
-        let stream = Widget::Stream((*id).to_owned());
-        if !every.contains(&stream) {
-            every.push(stream);
+    for kind in received {
+        if !every.contains(kind) {
+            every.push(kind.clone());
         }
     }
     every
@@ -482,7 +481,7 @@ pub(super) fn tab_kinds(
     layout: &Layout,
     holder: u32,
     (placed, widget): (u32, &Widget),
-    received: &[&str],
+    received: &[Widget],
 ) -> Vec<Widget> {
     let beside: Vec<&Widget> = match layout.holder(holder).map(|found| &found.holds) {
         Some(Holds::Custom(custom)) => custom

@@ -38,6 +38,7 @@ use egui::Id;
 
 use crate::layout::{Drawers, GRID, Layout, Zones};
 use crate::story::Story;
+use crate::widget::Widget;
 use holders::Engaged;
 
 /// The player's own Lich for the character (`plan/51`): ticked while it
@@ -326,7 +327,12 @@ impl Play {
             self.targets = (targeting.ids().to_vec(), targeting.current());
         }
         changed |= self.arrange(ui, view);
-        let received: Vec<&str> = view.story.streams.ids().collect();
+        let received: Vec<Widget> = (view.story.streams.ids())
+            .map(|id| Widget::Stream(id.to_owned()))
+            .chain(view.snapshot.into_iter().flat_map(|snapshot| {
+                (snapshot.state.dialogs.iter()).map(|(id, _)| Widget::Dialog(id.to_owned()))
+            }))
+            .collect();
         changed |= self.add_list(ui.ctx(), area, view.others, view.presets, &received);
         changed |= self.right_click(ui.ctx(), area, view.others, &received);
         self.object_menu(ui.ctx(), view);

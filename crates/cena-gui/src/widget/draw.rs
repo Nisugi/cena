@@ -58,6 +58,14 @@ pub(super) fn draw(
             return put.map(super::Clicked::Quietly);
         }
         Widget::Pulse => status::pulse(ui, state, &named("Pulse"), look),
+        Widget::Dialog(dialog_id) => {
+            let mut sent = None;
+            let own = seen.who.is_none();
+            scrolled(ui, &mut |ui| {
+                sent = super::dialog::dialog(ui, state, dialog_id, own);
+            });
+            return sent;
+        }
         Widget::WorldEvents => scrolled(ui, &mut |ui| status::world_events(ui, state)),
         Widget::Story => {
             return super::lines::story(ui, seen.story, seen.open, (id, lines));
@@ -110,6 +118,12 @@ pub(super) fn draw(
             ui,
             &named("RT"),
             state.and_then(GameState::roundtime_remaining),
+            AMBER,
+        ),
+        Widget::Aim => clock(
+            ui,
+            &named("Aim"),
+            state.and_then(GameState::aim_remaining),
             AMBER,
         ),
         Widget::CastTime => clock(
