@@ -26,6 +26,7 @@ use std::time::Duration;
 use cena_session::SessionHandle;
 use cena_session::command::claimant::Claimed;
 use cena_session::notice::{Body, Notice, NoticeKind};
+use cena_session::player_log::archive;
 use cena_session::player_log::reader::{self, Entry, Found, MAX_HITS, Moment, Pattern, Streams};
 use cena_session::player_log::writer;
 
@@ -344,11 +345,17 @@ fn days(root: &Path, character: &str) -> std::io::Result<Vec<String>> {
     let Some(oldest) = days.last() else {
         return Ok(vec![format!("History: nothing kept for {character} yet.")]);
     };
-    let mut lines = vec![format!(
-        "History for {character}: {} days, back to {oldest}. {}",
-        days.len(),
-        writer::dir(root, character).display()
-    )];
+    let usage = archive::usage(root, character)?;
+    let mut lines = vec![
+        format!(
+            "History for {character}: {} days, back to {oldest}; {} in all, {} plain and {} archived.",
+            usage.days,
+            size(usage.total()),
+            size(usage.plain),
+            size(usage.archived)
+        ),
+        format!("  {}", writer::dir(root, character).display()),
+    ];
     // A day may be two files (a cut where an Eastern week or month begins),
     // or in an archive, where only the whole archive has a size.
     let plain = writer::days(root, character)?;
@@ -369,6 +376,26 @@ fn days(root: &Path, character: &str) -> std::io::Result<Vec<String>> {
         lines.push(format!("  and {} more", days.len() - DAYS_SHOWN));
     }
     Ok(lines)
+}
+
+/// Bytes as a person reads them: `980 KB`, `56.8 MB`, `1.2 GB`.
+fn size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    // Tenths by integer arithmetic: a log is never large enough for the
+    // rounding to matter, and no float cast is needed.
+    let tenths = |unit: u64| {
+        let t = (bytes * 10 + unit / 2) / unit;
+        format!("{}.{}", t / 10, t % 10)
+    };
+    if bytes >= GB {
+        format!("{} GB", tenths(GB))
+    } else if bytes >= MB {
+        format!("{} MB", tenths(MB))
+    } else {
+        format!("{} KB", bytes.div_ceil(KB))
+    }
 }
 
 /// A window's or a search's lines under `label`: the first [`SHOWN`] of
@@ -518,6 +545,15 @@ mod tests {
         assert_eq!(lines[1], "06:47:13 [main] A kobold dies.");
         assert!(run(&root, "Nisugi", parsed("history search /(/")).is_err());
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn sizes_read_as_a_person_reads_them() {
+        assert_eq!(size(0), "0 KB");
+        assert_eq!(size(1), "1 KB");
+        assert_eq!(size(980 * 1024), "980 KB");
+        assert_eq!(size(66_400 * 1024), "64.8 MB");
+        assert_eq!(size(3 * 1024 * 1024 * 1024 / 2), "1.5 GB");
     }
 
     #[test]

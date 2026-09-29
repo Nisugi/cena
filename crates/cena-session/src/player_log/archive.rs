@@ -174,6 +174,39 @@ pub fn archives(root: &Path, character: &str) -> io::Result<Vec<PathBuf>> {
     Ok(paths)
 }
 
+/// What one character's player log takes on disk (`plan/25` step 7).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Usage {
+    /// Plain day-files, in bytes.
+    pub plain: u64,
+    /// Archives, in bytes.
+    pub archived: u64,
+    /// Days with anything kept, plain or archived.
+    pub days: usize,
+}
+
+impl Usage {
+    /// Plain and archived together.
+    #[must_use]
+    pub const fn total(self) -> u64 {
+        self.plain + self.archived
+    }
+}
+
+/// What `character`'s player log takes on disk.
+///
+/// # Errors
+///
+/// A failure to read the directory or an archive's manifest.
+pub fn usage(root: &Path, character: &str) -> io::Result<Usage> {
+    let size = |path: &PathBuf| fs::metadata(path).map_or(0, |m| m.len());
+    Ok(Usage {
+        plain: writer::days(root, character)?.iter().map(size).sum(),
+        archived: archives(root, character)?.iter().map(size).sum(),
+        days: super::reader::days(root, character)?.len(),
+    })
+}
+
 /// The names of the day-files an archive holds, from its manifest alone.
 ///
 /// # Errors
