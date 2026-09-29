@@ -387,6 +387,7 @@ impl Parser {
         self.bold_depth = 0;
         self.presets.clear();
         self.links.clear();
+        self.links_over = 0;
         self.mono = false;
         self.dialog = None;
     }

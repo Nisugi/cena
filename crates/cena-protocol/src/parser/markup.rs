@@ -57,7 +57,13 @@ impl Parser {
         if text::is_close_tag(tag) {
             match name {
                 "a" | "d" => {
-                    self.links.pop();
+                    // One past the cap was counted, not kept: its close
+                    // closes it, and not the link beneath.
+                    if self.links_over > 0 {
+                        self.links_over -= 1;
+                    } else {
+                        self.links.pop();
+                    }
                 }
                 "preset" | "style" => {
                     self.presets.pop();
@@ -96,6 +102,13 @@ impl Parser {
                         self.presets.pop();
                     }
                 }
+            }
+            // The wire nests links two deep at most (`runs.rs`'s census: 322
+            // nestings, all a `cmd` holding an `exist`). Every open link is
+            // given every run's text, so depth without a bound was work
+            // without one.
+            "a" | "d" if self.links.len() >= MAX_OPEN_LINKS => {
+                self.links_over = self.links_over.saturating_add(1);
             }
             "a" | "d" => self.links.push(open_link(tag)),
             // `<b>` and `<i>` reach here and change nothing, deliberately.
@@ -182,3 +195,7 @@ pub(super) fn is_markup(name: &str) -> bool {
         "a" | "d" | "b" | "preset" | "style" | "pushBold" | "popBold" | "output"
     )
 }
+
+/// The deepest links are kept open: four times what the wire has been seen
+/// to nest.
+const MAX_OPEN_LINKS: usize = 8;

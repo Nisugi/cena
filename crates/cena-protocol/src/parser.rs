@@ -135,6 +135,8 @@ pub struct Parser {
     mono: bool,
     /// Open `<a>` / `<d>` links, outermost first.
     links: Vec<crate::frame::Link>,
+    /// Links opened past the depth that is kept, and not yet closed.
+    links_over: u32,
     /// The `<dialogData id=>` currently open, if any.
     ///
     /// Vitals arrive as `<progressBar>` *inside* `<dialogData id='minivitals'>`,
@@ -234,6 +236,7 @@ impl Parser {
         // the module header). Link state surviving the boundary contradicted
         // that, and the corpus measured no tag spanning a line.
         self.links.clear();
+        self.links_over = 0;
         frames
     }
 

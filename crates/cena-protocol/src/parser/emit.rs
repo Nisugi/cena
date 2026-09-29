@@ -56,9 +56,7 @@ impl Parser {
         //
         // The outermost still gets the whole run, so nothing that reads
         // `link` changes.
-        for link in &mut self.links {
-            link.text.push_str(&content);
-        }
+        self.name_links(&content);
         Frame::Text(TextFrame {
             content,
             stream: self.current_stream(),
@@ -140,6 +138,7 @@ impl Parser {
         let saved_mono = std::mem::take(&mut self.mono);
         let saved_presets = std::mem::take(&mut self.presets);
         let saved_links = std::mem::take(&mut self.links);
+        let saved_over = std::mem::take(&mut self.links_over);
 
         let mut runs = Vec::new();
         let mut buffer = String::new();
@@ -179,6 +178,7 @@ impl Parser {
         self.mono = saved_mono;
         self.presets = saved_presets;
         self.links = saved_links;
+        self.links_over = saved_over;
         Runs { runs }
     }
 
@@ -189,15 +189,35 @@ impl Parser {
         }
         let content = text::strip_control_chars(&text::decode_entities(buffer));
         buffer.clear();
-        for link in &mut self.links {
-            link.text.push_str(&content);
-        }
+        self.name_links(&content);
         runs.push(Run {
             text: content,
             style: self.style(),
             link: self.links.first().cloned(),
             inner_link: self.nested_object(),
         });
+    }
+
+    /// `content` added to the text of every open link, up to
+    /// [`MAX_LINK_TEXT`] each.
+    ///
+    /// **The bound is on work, not on what is kept.** Every run inside a
+    /// link carries a copy of the outermost link, text so far included, so
+    /// a link left open across a long line cost the square of its runs: a
+    /// 256 KiB line of `x<pushBold/>` after one `<a>` made some 2 GiB of
+    /// copies, under the line cap that was meant to bound it (the review of
+    /// 2026-09-29). The run's own `content` is whole either way; a link's
+    /// `text` is the name of what it links. MEASURED over the 1,187 links in
+    /// the committed fixtures: the longest is 49 bytes.
+    fn name_links(&mut self, content: &str) {
+        for link in &mut self.links {
+            let room = MAX_LINK_TEXT.saturating_sub(link.text.len());
+            let mut fits = content.len().min(room);
+            while !content.is_char_boundary(fits) {
+                fits -= 1;
+            }
+            link.text.push_str(&content[..fits]);
+        }
     }
 
     /// The innermost open `<a exist=>`, when the outermost link is not it.
@@ -220,10 +240,63 @@ impl Parser {
     }
 }
 
+/// The most of a link's text that is kept, in bytes: twenty times the
+/// longest the fixtures hold (`name_links`).
+pub(super) const MAX_LINK_TEXT: usize = 1024;
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    /// The text runs among `frames`.
+    fn texts(frames: &[Frame]) -> Vec<&crate::frame::TextFrame> {
+        frames
+            .iter()
+            .filter_map(|frame| match frame {
+                Frame::Text(text) => Some(text),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// A link left open over a long line: every run's copy of it is
+    /// bounded, where each was as long as the line so far.
+    #[test]
+    fn a_link_left_open_costs_no_more_than_its_cap_a_run() {
+        let line = format!(
+            "<a exist=\"1\" noun=\"rock\">{}",
+            "r\u{e9}<pushBold/>".repeat(4000)
+        );
+        let frames = crate::Parser::new().parse_line(&line);
+        let texts = texts(&frames);
+        assert_eq!(texts.len(), 4000, "every run is still there, whole");
+        let longest = texts
+            .iter()
+            .filter_map(|text| text.link.as_ref())
+            .map(|link| link.text.len())
+            .max();
+        assert!(
+            longest.is_some_and(|longest| longest <= MAX_LINK_TEXT && longest > MAX_LINK_TEXT - 4),
+            "kept to the cap, at a character's edge: {longest:?}"
+        );
+    }
+
+    /// Links opened and never closed: no deeper than the cap, and the
+    /// closes that follow take the stack back to empty.
+    #[test]
+    fn links_opened_without_end_stop_at_the_depth_cap() {
+        let mut parser = crate::Parser::new();
+        let opened = "<d cmd=\"look\">".repeat(40);
+        let frames = parser.parse_line(&format!("{opened}x{}y", "</d>".repeat(40)));
+        let texts = texts(&frames);
+        assert_eq!(texts.len(), 2);
+        assert!(texts[0].link.is_some(), "x is in a link");
+        assert!(
+            texts[1].link.is_none(),
+            "y is after them all: each close met its own open"
+        );
+    }
 
     /// A component body: text interleaved with markup and non-markup tags.
     ///
