@@ -456,9 +456,12 @@ impl Hunt {
         if self.wounded(state) {
             return Some(Unrested::Wounded);
         }
+        // Every profile's, as bigshot's `ready_to_hunt?` refuses to leave
+        // encumbered: held only for a profile with `rooms.allowed`, a rest
+        // taken for the weight ended at once and the next tick went to rest
+        // again (the crate review of 2026-09-28).
         let encumbered = state.character.encumbrance_percent;
-        if self.profile.rooms.allowed.is_some()
-            && let Some(under) = self.profile.rest.encumbered
+        if let Some(under) = self.profile.rest.encumbered
             && encumbered.is_none_or(|now| now >= under)
         {
             return Some(Unrested::Encumbered {

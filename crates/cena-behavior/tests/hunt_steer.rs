@@ -279,6 +279,8 @@ fn a_rest_finished_while_held_waits_for_resume() {
     let mut hunt = Hunt::new(profile().unwrap(), 1).steered_by(steering.clone());
     let mut state = state(1_000, "10");
     state.character.experience.mind_percent = Some(100);
+    // Stated, as the game states it: an unstated weight holds a rest.
+    state.character.encumbrance_percent = Some(0);
     hunt.heed();
     assert_eq!(
         hunt.tick(&state, here(10, NO_EXITS), Some(1_000)),

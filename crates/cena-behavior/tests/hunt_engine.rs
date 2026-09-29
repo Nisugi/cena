@@ -569,6 +569,9 @@ fn the_rest_cycle_end_to_end() {
     let mut hunt = Hunt::new(profile().unwrap(), 1);
     let mut state = state(1_000, "10");
     state.character.experience.mind_percent = Some(100);
+    // Stated, as the game states it at login: an unstated weight holds a
+    // rest as an unstated mana does.
+    state.character.encumbrance_percent = Some(0);
     let at_hunting = here(10, NO_EXITS);
     assert_eq!(
         hunt.tick(&state, at_hunting, Some(1_000)),
