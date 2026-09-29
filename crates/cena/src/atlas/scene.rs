@@ -15,15 +15,76 @@ pub(crate) fn lay_out(
     rooms: &[RoomId],
     placeable: &HashSet<RoomId>,
 ) -> Option<cena_ui::MapScene> {
-    let rooms = cena_map_layout::areas::layout_rooms(rooms, map, placeable);
-    if rooms.is_empty() {
+    sheet(
+        area,
+        &Map::from_rooms(cena_map_layout::areas::layout_rooms(rooms, map, placeable)).ok()?,
+    )
+}
+
+/// The places `area`'s sheet leaves off: its hidden rooms
+/// (`cena_map_layout::hidden`), joined by walks either way round, each
+/// place's rooms. Each is laid out on a sheet of its own by [`lay_out_place`]:
+/// the engine's indoor sheet, and `plan/53` §7 step 6's *"indoors, the
+/// building alone"*. Rawknuckle's in the Hinterwilds is one.
+pub(crate) fn places(map: &Map, rooms: &[RoomId], placeable: &HashSet<RoomId>) -> Vec<Vec<RoomId>> {
+    let Ok(subset) = Map::from_rooms(cena_map_layout::areas::layout_rooms(rooms, map, placeable))
+    else {
+        return Vec::new();
+    };
+    let hidden = cena_map_layout::hidden::hidden_rooms(&subset);
+    let mut next: HashMap<RoomId, Vec<RoomId>> = HashMap::new();
+    for room in subset.rooms().iter().filter(|r| hidden.contains(&r.id)) {
+        for exit in room
+            .exits
+            .iter()
+            .filter(|e| cena_map_layout::regions::is_passage(e) && hidden.contains(&e.to))
+        {
+            next.entry(room.id).or_default().push(exit.to);
+            next.entry(exit.to).or_default().push(room.id);
+        }
+    }
+    let mut ids: Vec<RoomId> = hidden.iter().copied().collect();
+    ids.sort_unstable();
+    let mut seen: HashSet<RoomId> = HashSet::new();
+    let mut places = Vec::new();
+    for start in ids {
+        if !seen.insert(start) {
+            continue;
+        }
+        let mut place = vec![start];
+        let mut i = 0;
+        while i < place.len() {
+            for &n in next.get(&place[i]).into_iter().flatten() {
+                if seen.insert(n) {
+                    place.push(n);
+                }
+            }
+            i += 1;
+        }
+        places.push(place);
+    }
+    places
+}
+
+/// Lay out one hidden place on its own sheet, named `key`. All indoors, so
+/// the engine hides none of it.
+pub(crate) fn lay_out_place(map: &Map, key: &str, rooms: &[RoomId]) -> Option<cena_ui::MapScene> {
+    let rooms = rooms
+        .iter()
+        .filter_map(|&id| map.room(id).cloned())
+        .collect();
+    sheet(key, &Map::from_rooms(rooms).ok()?)
+}
+
+/// Lay out `subset` as the sheet named `name`; `None` when it has no room.
+fn sheet(name: &str, subset: &Map) -> Option<cena_ui::MapScene> {
+    if subset.rooms().is_empty() {
         return None;
     }
-    let subset = Map::from_rooms(rooms).ok()?;
-    let layout = cena_map_layout::generate_layout(&subset);
+    let layout = cena_map_layout::generate_layout(subset);
     Some(convert(
-        area,
-        &cena_map_layout::build_scene(area, &layout, &subset),
+        name,
+        &cena_map_layout::build_scene(name, &layout, subset),
     ))
 }
 

@@ -8,6 +8,10 @@
 //! engine's revision: a later launch on the same map reads them back and
 //! lays out nothing. An area a character is in and asks for goes to the
 //! front of the queue.
+//!
+//! A room inside a place its area's sheet leaves off (a tavern, a shop, the
+//! pits) is shown on that place's own sheet, laid out when first asked for
+//! and kept the same way ([`super::scene::places`]).
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
@@ -31,18 +35,33 @@ pub(crate) enum Waiting {
 
 /// The areas, as they are laid out.
 pub(crate) struct Atlas {
+    /// Every sheet laid out, an area's or a place's, by its name.
     scenes: RwLock<HashMap<String, Arc<cena_ui::MapScene>>>,
     /// Each room's own area.
     area_of: HashMap<u32, String>,
+    /// The areas' names, to count them apart from the places.
+    areas: HashSet<String>,
+    /// The hidden places of the areas laid out.
+    places: RwLock<Places>,
     queue: Mutex<Queue>,
     ready: Condvar,
 }
 
-/// The areas left to lay out: those asked for first.
+/// The places left off the areas' sheets: each one's rooms by its name,
+/// and each room's place.
+#[derive(Default)]
+struct Places {
+    rooms: HashMap<String, Vec<RoomId>>,
+    of: HashMap<u32, String>,
+}
+
+/// The sheets left to lay out: those asked for first, then every area.
 #[derive(Default)]
 struct Queue {
     asked: VecDeque<String>,
     rest: VecDeque<String>,
+    /// Taken by a worker: not to be queued again while it is laid out.
+    taken: HashSet<String>,
 }
 
 impl Atlas {
@@ -57,9 +76,11 @@ impl Atlas {
         let atlas = Arc::new(Self {
             scenes: RwLock::default(),
             area_of,
+            areas: areas.keys().cloned().collect(),
+            places: RwLock::default(),
             queue: Mutex::new(Queue {
-                asked: VecDeque::new(),
                 rest: areas.keys().cloned().collect(),
+                ..Queue::default()
             }),
             ready: Condvar::new(),
         });
@@ -89,19 +110,46 @@ impl Atlas {
         atlas
     }
 
-    /// The scene of `room`'s area, or why there is none yet. Asking for an
-    /// area not laid out puts it first in the queue.
+    /// The sheet `room` is drawn on, or why there is none yet: its area's,
+    /// or the place's its area leaves it off. Asking for a sheet not laid
+    /// out puts it first in the queue.
     pub(crate) fn scene_of(&self, room: u32) -> Result<Arc<cena_ui::MapScene>, Waiting> {
         let area = self.area_of.get(&room).ok_or(Waiting::NoArea)?;
-        if let Some(scene) = self.laid(area) {
+        let Some(scene) = self.laid(area) else {
+            self.ask(area);
+            return Err(Waiting::Laying);
+        };
+        if scene.room(room).is_some() {
             return Ok(scene);
         }
+        let place = self
+            .places
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .of
+            .get(&room)
+            .cloned();
+        // A room neither drawn nor in a place: the area's sheet, which
+        // says so.
+        let Some(place) = place else {
+            return Ok(scene);
+        };
+        self.laid(&place).ok_or_else(|| {
+            self.ask(&place);
+            Waiting::Laying
+        })
+    }
+
+    /// Put the sheet `name` first in the queue, unless it is there already
+    /// or being laid out.
+    fn ask(&self, name: &str) {
         let mut queue = self.queue.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some(at) = queue.rest.iter().position(|a| a == area) {
+        if let Some(at) = queue.rest.iter().position(|a| a == name) {
             queue.rest.remove(at);
-            queue.asked.push_back(area.clone());
+        } else if queue.taken.contains(name) || queue.asked.iter().any(|a| a == name) {
+            return;
         }
-        Err(Waiting::Laying)
+        queue.asked.push_back(name.to_owned());
     }
 
     /// How many areas are laid out, of how many.
@@ -110,9 +158,10 @@ impl Atlas {
             .scenes
             .read()
             .unwrap_or_else(PoisonError::into_inner)
-            .len();
-        let queue = self.queue.lock().unwrap_or_else(PoisonError::into_inner);
-        (done, done + queue.asked.len() + queue.rest.len())
+            .keys()
+            .filter(|name| self.areas.contains(*name))
+            .count();
+        (done, self.areas.len())
     }
 
     fn laid(&self, area: &str) -> Option<Arc<cena_ui::MapScene>> {
@@ -123,8 +172,9 @@ impl Atlas {
             .cloned()
     }
 
-    /// One worker: the next area, from the cache or laid out, until none
-    /// is left.
+    /// One worker: the next sheet, from the cache or laid out, until none
+    /// is left. An area's places are known before its sheet is, so a room
+    /// left off it always finds its place.
     fn work(
         &self,
         map: &Map,
@@ -135,24 +185,60 @@ impl Atlas {
         loop {
             let next = {
                 let mut queue = self.queue.lock().unwrap_or_else(PoisonError::into_inner);
-                queue.asked.pop_front().or_else(|| queue.rest.pop_front())
+                let next = queue.asked.pop_front().or_else(|| queue.rest.pop_front());
+                if let Some(name) = &next {
+                    queue.taken.insert(name.clone());
+                }
+                next
             };
-            let Some(area) = next else { return };
-            let file = cache.map(|dir| dir.join(file_name(&area)));
-            let scene = file.as_deref().and_then(read).or_else(|| {
-                let scene = super::scene::lay_out(map, &area, &areas[&area], placeable)?;
-                if let Some(file) = &file {
+            let Some(name) = next else { return };
+            let file = cache.map(|dir| dir.join(file_name(&name)));
+            let scene = file.as_deref().and_then(read);
+            let scene = if let Some(rooms) = areas.get(&name) {
+                self.remember_places(&name, super::scene::places(map, rooms, placeable));
+                scene.or_else(|| super::scene::lay_out(map, &name, rooms, placeable))
+            } else {
+                let rooms = self
+                    .places
+                    .read()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .rooms
+                    .get(&name)
+                    .cloned()
+                    .unwrap_or_default();
+                scene.or_else(|| super::scene::lay_out_place(map, &name, &rooms))
+            };
+            if let Some(scene) = scene {
+                if let Some(file) = file.as_deref().filter(|f| !f.exists()) {
                     write(file, &scene);
                 }
-                Some(scene)
-            });
-            if let Some(scene) = scene {
                 self.scenes
                     .write()
                     .unwrap_or_else(PoisonError::into_inner)
-                    .insert(area, Arc::new(scene));
+                    .insert(name.clone(), Arc::new(scene));
                 self.ready.notify_all();
             }
+            self.queue
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .taken
+                .remove(&name);
+        }
+    }
+
+    /// Keep `area`'s places, each named by the area and its least room:
+    /// `the-hinterwilds@29877`.
+    fn remember_places(&self, area: &str, places: Vec<Vec<RoomId>>) {
+        let mut known = self.places.write().unwrap_or_else(PoisonError::into_inner);
+        for rooms in places {
+            let Some(least) = rooms.iter().min() else {
+                continue;
+            };
+            let name = format!("{area}@{}", least.0);
+            for room in &rooms {
+                known.of.insert(room.0, name.clone());
+            }
+            known.rooms.insert(name, rooms);
         }
     }
 }
@@ -247,6 +333,36 @@ mod tests {
             .expect("made")
             .join(file_name("icemule-trace-ranger-guild"));
         assert_eq!(read(&cached).as_ref(), Some(scene.as_ref()));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A room its area's sheet leaves off is shown on its place's own
+    /// sheet: Rawknuckle's tavern, entered off Cold River's thoroughfare,
+    /// where the author stood and saw no map (2026-09-29).
+    #[test]
+    fn a_room_inside_is_on_its_place_s_own_sheet() {
+        let map = Arc::new(cena_behavior::travel::read_map(cena_gs_map::GS_MAP).expect("decodes"));
+        let dir = std::env::temp_dir().join(format!("hydra-atlas-in-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let tavern = 29877;
+
+        let atlas = Atlas::start(&map, "fedcba9876543210", &dir);
+        let scene = wait_for(&atlas, tavern);
+        assert!(
+            scene.area.contains('@'),
+            "the area's sheet, not the place's: {}",
+            scene.area
+        );
+        assert!(
+            scene.room(tavern).is_some(),
+            "the tavern is on its own sheet"
+        );
+        let area = &atlas.area_of[&tavern];
+        let street = atlas.laid(area).expect("the area laid out first");
+        assert!(
+            street.room(tavern).is_none(),
+            "the tavern is left off the street"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 

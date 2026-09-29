@@ -622,6 +622,12 @@ added, walking the Landing and Hinterwilds.
   window; a worker per spare core; each area's scene kept as JSON under
   `atlas/<map hash>-<engine rev>/` in the data folder, other maps' caches removed; an area
   a character asks for moved to the front. `ENGINE` is held to `Cargo.lock` by a test.
+- **Indoors, the place alone** (the author in Rawknuckle's, 2026-09-29: *"these rooms are
+  assigned to this area, but they're on an interior map or something?"*). A room its area's
+  sheet leaves off (`cena_map_layout::hidden`) was drawn as *"You are not on this area's
+  map"*. Each area's hidden places are now known as it is laid out
+  (`atlas/scene.rs`, `places`), and a room inside one is shown on that place's own sheet,
+  laid out when first asked for and cached like an area (`atlas/service.rs`).
 - **Where you are** (`atlas/follow.rs`): `room_of` with the guard of §6 item 4, unit-tested.
   A room not found says so, where the map would be; a room in no area, likewise.
 - **The widget** (`cena-gui/src/widget/minimap.rs`): *Minimap* under Hydra's own. Rooms,
