@@ -71,6 +71,7 @@ impl PartialEq for GameState {
             inventory,
             inventory_snapshot,
             learned_commands,
+            dialogs,
             group,
             containers,
             bank,
@@ -135,6 +136,7 @@ impl PartialEq for GameState {
             // a longer walk -- and criterion 7's replay determinism is about
             // the facts, not the route.
             && learned_commands == &other.learned_commands
+            && dialogs == &other.dialogs
             && status == &other.status
             && effects == &other.effects
             && game_time == &other.game_time

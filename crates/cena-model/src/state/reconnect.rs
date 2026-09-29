@@ -67,6 +67,7 @@
 //! | `worn`, `reserve` | kept | a logged-off character neither dons nor stows; a list half-arrived is dropped (`worn.rs`) |
 //! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
 //! | `learned_commands` | kept | what a menu coordinate MEANS is a fact about the game, and the push is not repeated on reconnect |
+//! | `dialogs` | kept | a logged-off character's panels say what they said; the burst re-sends those it opens, and an aim ends by the server's clock |
 //!
 //! The three that remain cleared have nothing to do with elapsed game time.
 //! Two are facts about the dead connection, and one is a local clock that
@@ -190,6 +191,7 @@ impl GameState {
             containers,
             bank,
             learned_commands,
+            dialogs,
         } = self;
 
         // --- KEPT: a logged-off character is out of the world -------------
@@ -402,6 +404,8 @@ impl GameState {
         // to the shipped table's older copy of a row the server has since
         // changed.
         let _ = learned_commands;
+        // Kept, as the table above says (`dialogs.rs`).
+        let _ = dialogs;
 
         // An absolute server epoch: a roundtime that ends at server second N
         // ends at N whether or not the socket survived. §5.2 forbids reporting

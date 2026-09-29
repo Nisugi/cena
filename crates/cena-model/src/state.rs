@@ -54,6 +54,7 @@ pub mod creature;
 pub mod creature_message;
 pub mod creatures;
 pub mod departure;
+pub mod dialogs;
 pub mod disk;
 pub mod doses;
 pub mod equality;
@@ -209,6 +210,8 @@ pub struct GameState {
     /// Dictionary rows the server has taught us this session
     /// (`<cmdlist>`), layered over the shipped table when a menu resolves.
     pub learned_commands: LearnedCommands,
+    /// The game's dialogs no one else reads, and the aim timer (`dialogs.rs`).
+    pub dialogs: dialogs::Dialogs,
     /// The whole-inventory snapshot (`<inventoryManager>`).
     ///
     /// Distinct from [`Self::inventory`], which is the passive container
@@ -343,6 +346,7 @@ impl GameState {
     /// resolve a waiter; folding and window-closing are the same walk over the
     /// frame, so splitting them would mean matching twice.
     pub fn apply(&mut self, frame: &Frame) -> bool {
+        self.dialogs.read(frame);
         match frame {
             Frame::RoomId { id } => self.arrive(id.as_deref()),
             Frame::StreamWindow { .. } => self.apply_stream_window(frame),
