@@ -226,6 +226,24 @@ impl Host {
         self.sessions.iter().map(|(id, hosted)| (*id, hosted))
     }
 
+    /// The sessions for `character` on `game` that stopped on their own and
+    /// are still on the table, oldest first. Names compare without regard to
+    /// case. Adding the character again takes these off first, so the table
+    /// never holds a dead one beside the live one (the crate review of
+    /// 2026-09-28: re-adding the character found the dead one).
+    #[must_use]
+    pub fn ended(&self, game: &str, character: &str) -> Vec<SessionId> {
+        self.sessions
+            .iter()
+            .filter(|(_, hosted)| {
+                !hosted.is_running()
+                    && hosted.who.game.eq_ignore_ascii_case(game)
+                    && hosted.who.character.eq_ignore_ascii_case(character)
+            })
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
     /// One session.
     #[must_use]
     pub fn get(&self, id: SessionId) -> Option<&Hosted> {

@@ -261,6 +261,15 @@ impl Table {
         let (account, game) = (typed.account.clone(), typed.game_code.clone());
         let proven = Proven::of(&typed);
         let login = format!("{game}:{character}");
+        // A session of this character that ended on its own leaves the table
+        // first, as `reconnect` takes it off: otherwise the new one sits
+        // beside it and a lookup by name finds the dead one.
+        let ended = self.host.lock().await.ended(&game, &character);
+        for id in ended {
+            if let Some((.., closed)) = self.take_off(id).await {
+                let _ = closed.await;
+            }
+        }
         let who = Who {
             account: account.clone(),
             character: character.clone(),
@@ -503,7 +512,9 @@ impl Table {
             .find(|(_, one)| one.login.eq_ignore_ascii_case(login))
             .map(|(id, _)| *id)?;
         let host = self.host.lock().await;
-        host.get(id).map(|hosted| hosted.handle.clone())
+        host.get(id)
+            .filter(|hosted| hosted.is_running())
+            .map(|hosted| hosted.handle.clone())
     }
 
     /// Log a stopped character back in: off the table, then started again

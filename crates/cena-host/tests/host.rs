@@ -228,9 +228,13 @@ async fn a_session_that_stopped_on_its_own_does_not_hold_its_account() {
     );
 
     let (retry, _) = game();
-    assert!(
-        host.add(who("ACCT1", "Nisugi"), retry, |s| s).is_ok(),
-        "a stopped session does not hold its account"
+    let again = host.add(who("ACCT1", "Nisugi"), retry, |s| s);
+    assert!(again.is_ok(), "a stopped session does not hold its account");
+    assert_eq!(
+        host.ended("gs3", "NISUGI"),
+        [refused],
+        "the dead one is named, for the caller to take off, and the live one is not"
     );
+    assert!(host.ended("GS3", "Maravel").is_empty());
     let _ = stop_all(host.take_all()).await;
 }

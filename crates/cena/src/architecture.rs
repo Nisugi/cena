@@ -296,7 +296,10 @@
 //! lock: [`Host::take`](cena_host::Host::take) removes a session at once, and
 //! the slow part, `quit` and waiting for the game to hang up, is
 //! [`Hosted::stop`](cena_host::Hosted::stop), awaited with the lock released,
-//! so no frontend waits on another character's goodbye.
+//! so no frontend waits on another character's goodbye. A session that ended
+//! on its own stays on the table so a hub can say why, until the character is
+//! added again: [`Host::ended`](cena_host::Host::ended) names it, and the
+//! binary takes it off first, so a lookup by name never finds the dead one.
 //!
 //! It is a crate rather than part of the binary because its callers include
 //! the web hub, and a frontend cannot depend on the binary. Yet `cena-web` has
