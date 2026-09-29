@@ -15,16 +15,18 @@
 //! window that last had the keyboard, its character's own among them
 //! (`plan/52` step 2).
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use eframe::NumpadCaptureMode;
+use winit::keyboard::KeyCode;
 
 use super::App;
 use crate::keys::binding::Step;
 use crate::keys::{self, Action, KeyFile, Macro, Whose};
-use crate::play::Asked;
+use crate::play::{Asked, Play};
 use crate::sessions::Seat;
 
 /// How the fork catches the numpad: everything while the Keys page waits
@@ -43,6 +45,32 @@ pub(super) fn numpad_mode(waiting: bool, clear: Option<bool>, always: bool) -> N
     }
 }
 
+/// The macros the keys pressed in a play window this frame do, and whether
+/// it has the keyboard: those egui saw, taken from its input before anything
+/// draws so no widget sees a bound key, then, while it has the keyboard,
+/// those the fork `caught`. One on the command input while something else
+/// has the keyboard is left to that (`plan/52` step 3).
+pub(super) fn pressed(
+    ui: &egui::Ui,
+    keys: keys::Keys<'_>,
+    play: &Play,
+    caught: &mut Vec<keys::Chord>,
+) -> (Vec<Macro>, bool) {
+    let typing = play.typing(ui.ctx());
+    let aside = |made: &Macro| matches!(made, Macro::Act(action) if action.on_input() && !typing);
+    let mut pressed = ui.ctx().input_mut(|input| keys.take(input, aside));
+    let focused = ui.input(|input| input.focused);
+    if focused {
+        pressed.extend(
+            caught
+                .drain(..)
+                .filter_map(|chord| keys.does(&chord).cloned())
+                .filter(|made| !aside(made)),
+        );
+    }
+    (pressed, focused)
+}
+
 /// A command a send macro sends once its wait is over.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Later {
@@ -55,13 +83,20 @@ pub(super) struct Later {
 }
 
 /// What a play window asks for when a key performs `action`: what its own
-/// button asks.
-pub(super) fn asked(action: Action) -> Asked {
-    match action {
+/// button asks. An action on its command input it does itself
+/// (`Play::act`), and the line it sends is asked to be sent.
+pub(super) fn asked(window: &mut Play, action: Action) -> Option<Asked> {
+    Some(match action {
         Action::Stop => Asked::Stop,
         Action::Settings => Asked::Settings(None),
         Action::Set(set) => Asked::UseSet(set),
-    }
+        Action::SendOrRepeat
+        | Action::RepeatLast
+        | Action::RepeatSecondLast
+        | Action::HistoryBack
+        | Action::HistoryForward
+        | Action::ClearInput => return window.act(action).map(Asked::Send),
+    })
 }
 
 impl App {
@@ -107,6 +142,7 @@ impl App {
     /// `file`, has the keyboard: the fork catches its keys, and is told so
     /// when it did not have it before.
     pub(super) fn took_keyboard(&mut self, session: u32, file: Option<PathBuf>) {
+        self.keyboard_now = Some(session);
         if self.focused.as_ref().map(|(had, _)| *had) != Some(session) {
             self.focused = Some((session, file));
             self.catch_again = true;
@@ -128,6 +164,16 @@ impl App {
         }
         if !self.later.is_empty() {
             context.request_repaint();
+        }
+    }
+
+    /// No play window had the keyboard this frame: the hub, the settings or
+    /// another program has it, and the fork is told to catch none of the
+    /// play windows' keys, so a bound `NumpadEnter` still sends the hub's
+    /// login form.
+    pub(super) fn left_keyboard(&mut self) {
+        if self.keyboard_now.is_none() && self.focused.take().is_some() {
+            self.catch_again = true;
         }
     }
 
@@ -171,7 +217,8 @@ impl App {
 
     /// Tell the fork which keys to catch, when that has changed: the Keys
     /// page began or stopped waiting for a key, the keybinds were read
-    /// again, or Clear switched the numpad.
+    /// again, Clear switched the numpad, or the keyboard went to another
+    /// play window or to none.
     pub(super) fn catch(&mut self, frame: &mut eframe::Frame) {
         let waiting = self.menu.waiting_for_key();
         if waiting != self.menu_waits {
@@ -187,6 +234,21 @@ impl App {
             mac.then_some(self.clear_sends),
             self.keys.numpad_always(),
         ));
+        let (numpad, captured) = self.keys_to_catch(waiting, mac);
+        frame.set_numpad_capture_keys(numpad);
+        frame.set_key_capture(captured);
+    }
+
+    /// What the fork is to catch: the numpad keys by the fork's names, all
+    /// of them for `None`, and the keys egui has no name for. While the
+    /// Keys page is `waiting` for a key, every one; while a play window has
+    /// the keyboard, those its keys bind; while none has, none of them. On
+    /// a Mac (`mac`), always Clear, the numpad's switch.
+    pub(super) fn keys_to_catch(
+        &mut self,
+        waiting: bool,
+        mac: bool,
+    ) -> (Option<HashSet<String>>, HashSet<KeyCode>) {
         let file = self.focused.as_ref().and_then(|(_, file)| file.clone());
         self.load_mine(file.as_deref());
         let mine = file
@@ -194,16 +256,15 @@ impl App {
             .and_then(|file| self.mine.get(file))
             .map(|(mine, _)| mine);
         let keys = self.keys.of(mine);
-        frame.set_numpad_capture_keys((!waiting).then(|| keys.numpad_caught()));
-        let mut captured = if waiting {
-            keys::capturable()
-        } else {
-            keys.key_capture()
+        let (numpad, mut captured) = match (waiting, self.focused.is_some()) {
+            (true, _) => (None, keys::capturable()),
+            (false, true) => (Some(keys.numpad_caught()), keys.key_capture()),
+            (false, false) => (Some(HashSet::new()), HashSet::new()),
         };
         if mac {
             captured.insert(keys::NUM_LOCK);
         }
-        frame.set_key_capture(captured);
+        (numpad, captured)
     }
 
     /// The fork's presses this frame, of the numpad (`numpad`) and of the

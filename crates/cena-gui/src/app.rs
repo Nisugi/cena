@@ -60,9 +60,12 @@ pub struct App {
     /// Each character's own keys, by its keys file, with what is wrong in
     /// it: read when first needed, and again once a change is written.
     mine: HashMap<PathBuf, (KeyFile, Vec<String>)>,
-    /// The play window that last had the keyboard, by session, and its
-    /// character's keys file: whose keys the fork catches.
+    /// The play window that has the keyboard, by session, and its
+    /// character's keys file: whose keys the fork catches. `None` while no
+    /// play window has it, and the fork catches none.
     focused: Option<(u32, Option<PathBuf>)>,
+    /// The play window that had the keyboard this frame, by session.
+    keyboard_now: Option<u32>,
     /// The keys the fork caught this frame -- the numpad's, and those egui
     /// has no name for -- bound for the play window with the keyboard.
     caught: Vec<Chord>,
@@ -113,6 +116,7 @@ impl App {
             catch_again: true,
             mine: HashMap::new(),
             focused: None,
+            keyboard_now: None,
             caught: Vec::new(),
             later: Vec::new(),
             numlock: None,
@@ -243,6 +247,7 @@ impl App {
         if let Some(next) = self.send_due(&seats, Instant::now()) {
             ui.ctx().request_repaint_after(next);
         }
+        self.keyboard_now = None;
         for seat in &seats {
             // The character's own settings, by its roster name.
             match self.play(ui.ctx(), seat, &seats) {
@@ -260,6 +265,7 @@ impl App {
                 _ => {}
             }
         }
+        self.left_keyboard();
         self.settings(ui.ctx(), &glance);
         self.log_windows(ui.ctx(), &seats);
     }
@@ -339,20 +345,14 @@ impl App {
             builder,
             |ui, _class| {
                 closed |= ui.input(|input| input.viewport().close_requested());
-                // Taken before anything draws, so no widget sees a bound key.
-                let mut pressed = ui.ctx().input_mut(|input| keys.take(input));
-                if ui.input(|input| input.focused) {
-                    focused = true;
-                    pressed.extend(
-                        caught
-                            .drain(..)
-                            .filter_map(|chord| keys.does(&chord).cloned()),
-                    );
-                }
+                let (pressed, has) = keyed::pressed(ui, keys, &window.play, caught);
+                focused |= has;
                 for made in pressed {
                     match made {
                         Macro::Fill(text) => window.play.fill(&text),
-                        Macro::Act(action) => asked = asked.take().or(Some(keyed::asked(action))),
+                        Macro::Act(action) => {
+                            asked = asked.take().or(keyed::asked(&mut window.play, action));
+                        }
                         send @ Macro::Send(_) => sends.push(send),
                     }
                 }

@@ -318,6 +318,38 @@ The author: *"step 2 let's go"*. In `crates/cena-gui/src/keys/`:
   image). Nineteen mutants: eighteen caught; the one left, writing `set = n` unchecked on
   read-back, is equivalent, since a line above the tables cannot fail to read back.
 
+### Step 3, BUILT 2026-09-29
+
+The author: *"step 3"*. §3's sending table, with Wrayth's keys:
+
+- **Six actions** (`crates/cena-gui/src/keys/binding.rs`): `send_or_repeat`
+  (NumpadEnter), `repeat_last` (Ctrl+Enter, Ctrl+NumpadEnter), `repeat_second_last`
+  (Alt+Enter, Alt+NumpadEnter), `history_back` and `history_forward` (Up, Down), and
+  `clear_input` (Escape), done by the play window on its command input and history
+  (`crates/cena-gui/src/play.rs`, `Play::act`). The history is what was typed, as
+  `VellumFE`'s is (`reference/VellumFE/src/frontend/gui/app/command_input.rs:46`): a
+  repeat is not typed and changes nothing in it, so Alt+Enter sends the same command
+  each time until another is typed. Up and Down are no longer wired into the input; a
+  player who binds them elsewhere has them elsewhere.
+- **Enter alone is bound to nothing** (§3: *"a key that cannot be bound should not look
+  bindable"*): the file, the writer and the Keys page refuse it, as they refuse a key
+  that types, and say so (`Chord::refused`). Enter with a modifier binds.
+- **An action on the input waits for it** (`Action::on_input`, `Play::typing`): the
+  history's and `clear_input` act while the command input has the keyboard, or nothing
+  does, with nothing open -- the object's menu, a widget's, the list of widgets to add,
+  a drop-down, a menu of the bar. Otherwise the key is left to what has it, so Escape
+  closes a menu and keeps the line (§3's *"when nothing is open to close"*). A key the
+  fork caught waits the same way. The sending ones act whatever has the keyboard.
+- **No play window with the keyboard, no keys caught** (`app/keyed.rs`,
+  `keys_to_catch`): the fork catches a bound numpad key wherever the keyboard is, so a
+  default `NumpadEnter` would have stopped the hub's login form taking one. While the hub,
+  the settings or another program has the keyboard, the fork is told to catch none of
+  the play windows' keys (Clear, on a Mac, still).
+- *Tests:* the repeats, `NumpadEnter` through the fork sending or repeating, Up and
+  Escape in a play window, Escape and a caught key left to an open menu, another field
+  with the keyboard, Enter alone refused, the fork's keys with and without a window
+  (`crates/cena-gui/src/app/tests/sending.rs`). Thirteen mutants, all caught.
+
 ## 6. For the author
 
 The first seven were asked 2026-09-28 and answered the same day, the author's words

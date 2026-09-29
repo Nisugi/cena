@@ -115,40 +115,6 @@ fn the_window_shows_what_a_player_glances_at() {
     );
 }
 
-/// Enter sends and clears; up and down walk back through what was sent.
-#[test]
-fn enter_sends_and_up_walks_back() {
-    let mut harness = harness();
-    harness.run();
-    for line in ["look", "north"] {
-        harness.get_by_role(Role::TextInput).type_text(line);
-        harness.run();
-        harness.key_press(egui::Key::Enter);
-        harness.run();
-    }
-    assert_eq!(
-        harness.state().asked,
-        [
-            Asked::Send("look".to_owned()),
-            Asked::Send("north".to_owned())
-        ]
-    );
-    let typed = |harness: &Harness<'_, Scene>| harness.state().play.input.clone();
-    assert_eq!(typed(&harness), "", "cleared once sent");
-    let mut walked = Vec::new();
-    for key in [
-        egui::Key::ArrowUp,
-        egui::Key::ArrowUp,
-        egui::Key::ArrowDown,
-        egui::Key::ArrowDown,
-    ] {
-        harness.key_press(key);
-        harness.run();
-        walked.push(typed(&harness));
-    }
-    assert_eq!(walked, ["north", "look", "north", ""]);
-}
-
 #[test]
 fn stop_asks_to_stop() {
     let mut harness = harness();
@@ -433,6 +399,7 @@ fn layout<'a>(harness: &'a Harness<'_, Scene>) -> &'a crate::layout::Layout {
 
 mod arrange;
 mod drag;
+mod input;
 mod links;
 mod menus;
 mod pages;

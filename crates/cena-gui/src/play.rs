@@ -223,6 +223,52 @@ impl Play {
         Id::new(("play-input", self.session))
     }
 
+    /// Whether the command input has the keyboard, or nothing does, with
+    /// nothing open that a key would close or move in first: the object's
+    /// menu, a widget's, the list of widgets to add, a drop-down or a menu
+    /// of the bar. What an action on the input waits for
+    /// ([`Action::on_input`](crate::keys::Action::on_input)).
+    pub(crate) fn typing(&self, context: &egui::Context) -> bool {
+        let focused = context.memory(egui::Memory::focused);
+        focused.is_none_or(|id| id == self.input_id())
+            && self.asking.is_none()
+            && self.menu.is_none()
+            && self.adding.is_none()
+            && !egui::Popup::is_any_open(context)
+    }
+
+    /// Do `action`, one of those on the command input or sending from it
+    /// (`plan/52` step 3); the line to send, if it sends one.
+    pub(crate) fn act(&mut self, action: crate::keys::Action) -> Option<String> {
+        use crate::keys::Action;
+        let typed = |back: usize| {
+            self.history
+                .len()
+                .checked_sub(back)
+                .and_then(|at| self.history.get(at).cloned())
+        };
+        match action {
+            Action::SendOrRepeat if self.input.trim().is_empty() => typed(1),
+            Action::SendOrRepeat => self.enter(),
+            Action::RepeatLast => typed(1),
+            Action::RepeatSecondLast => typed(2),
+            Action::HistoryBack => {
+                self.walk(true);
+                None
+            }
+            Action::HistoryForward => {
+                self.walk(false);
+                None
+            }
+            Action::ClearInput => {
+                self.input.clear();
+                self.back = None;
+                None
+            }
+            Action::Stop | Action::Settings | Action::Set(_) => None,
+        }
+    }
+
     /// Draw the window into `ui` -- a viewport's whole area -- and return
     /// what the player asked for, if anything.
     pub(crate) fn show(&mut self, ui: &mut egui::Ui, view: &PlayView<'_>) -> Option<Asked> {
@@ -313,7 +359,8 @@ impl Play {
             .map(|why| why.to_string());
     }
 
-    /// The command input: Enter sends, up and down walk what was sent.
+    /// The command input: Enter sends. Up and down walk what was sent as
+    /// the keys' actions do (`plan/52` step 3), which may be bound elsewhere.
     fn input(&mut self, ui: &mut egui::Ui) -> Option<String> {
         let id = self.input_id();
         let response = ui.add(
@@ -331,25 +378,18 @@ impl Play {
             state.store(ui.ctx(), id);
             response.request_focus();
         }
-        if response.has_focus() {
-            let (up, down) = ui.input(|input| {
-                (
-                    input.key_pressed(egui::Key::ArrowUp),
-                    input.key_pressed(egui::Key::ArrowDown),
-                )
-            });
-            if up {
-                self.walk(true);
-            } else if down {
-                self.walk(false);
-            }
-        }
         let entered =
             response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
         if !entered {
             return None;
         }
         response.request_focus();
+        self.enter()
+    }
+
+    /// What is typed, sent: taken from the input, and kept in the history
+    /// unless it is the last line again. Nothing for an empty line.
+    fn enter(&mut self) -> Option<String> {
         let line = std::mem::take(&mut self.input);
         self.back = None;
         if line.trim().is_empty() {

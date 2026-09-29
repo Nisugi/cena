@@ -404,10 +404,8 @@ impl KeysPage {
         note: &mut Option<String>,
     ) -> Option<KeyChange> {
         let written = chord.written();
-        if chord.types() {
-            *note = Some(format!(
-                "{written} types: hold Ctrl, Alt or Cmd with it, or it could not be typed."
-            ));
+        if let Some(why) = chord.refused() {
+            *note = Some(why);
             return None;
         }
         let waiting = self.waiting.take()?;
