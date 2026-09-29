@@ -147,6 +147,19 @@ impl CommandQueue {
         self.authority.holder()
     }
 
+    /// What sent a command of `origin`, as its echo names it: a behavior's
+    /// run, by the name it was given (`SessionHandle::name_behavior`).
+    /// `None` for anything else, for a run nobody named, and for a `quiet`
+    /// command: its report is kept out of the story, and an echo of it would
+    /// put back what quiet hid.
+    #[must_use]
+    pub fn sender_name(&self, origin: crate::command::Origin, quiet: bool) -> Option<String> {
+        match origin {
+            crate::command::Origin::Behavior(token) if !quiet => self.authority.name_of(token),
+            _ => None,
+        }
+    }
+
     /// Hold the authority in `cell`, the session's, rather than this queue's
     /// own: what makes it outlive a connection (SE-4).
     pub(crate) fn share_authority(&mut self, cell: crate::command::authority::Authority) {

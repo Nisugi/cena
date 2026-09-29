@@ -319,6 +319,7 @@ impl<S: ByteSource> SessionActor<S> {
         let _ = self.events.send(super::Event::Sent {
             line: EXIT_COMMAND.to_owned(),
             origin: Origin::Manual,
+            by: None,
         });
         self.log(&format!("quit: sent, awaiting EOF within {timeout:?}"));
         self.quitting = Some(super::Quitting {
@@ -429,6 +430,7 @@ impl<S: ByteSource> SessionActor<S> {
         let cursor = self.events.numbered(Event::Sent {
             line: line.to_owned(),
             origin,
+            by: self.queue.sender_name(origin, false),
         });
         Sent::Ok { at, cursor }
     }
@@ -565,6 +567,7 @@ impl<S: ByteSource> SessionActor<S> {
             let _ = self.events.send(Event::Sent {
                 line: envelope.line.clone(),
                 origin: envelope.origin,
+                by: self.queue.sender_name(envelope.origin, envelope.quiet),
             });
             self.queue.open_window(
                 envelope.id,

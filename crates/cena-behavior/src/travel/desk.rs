@@ -266,6 +266,8 @@ impl Desk {
             if let Some(before) = before {
                 before.over.cancelled().await;
             }
+            // Its commands echoed as the player starts it: `go2>north`.
+            handle.name_behavior(desk.token, "go2");
             let Traveller {
                 mut file,
                 mut notes,

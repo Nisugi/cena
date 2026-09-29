@@ -34,10 +34,11 @@ pub(crate) const ALERT_FOR: Duration = Duration::from_secs(10);
 pub(crate) enum Shown {
     /// A line the game sent, as the session painted it.
     Game(Vec<StyledRun>),
-    /// What the player typed here, echoed as sent after the prompt it
-    /// followed.
+    /// A command echoed as sent: what the player typed here, after the
+    /// prompt it followed, or what a behavior sent, after its name.
     Typed {
-        /// The last prompt shown before it: `>`, `R>`.
+        /// The last prompt shown before it, `>` or `R>`; or the behavior's
+        /// name as a prompt, `go2>`.
         prompt: String,
         /// What was typed.
         line: String,
@@ -133,6 +134,15 @@ impl Story {
             // player's Lich runs, the frame comes before Lich's lines and
             // this after them (`cena_session::Event::Prompt`).
             Event::Prompt(text) => self.prompted(text),
+            // A behavior's command, echoed with its name as Lich echoes a
+            // script's (the author, 2026-09-29: *"go2>look"*). What the
+            // player typed is echoed as it is sent (`typed`), not here.
+            Event::Sent {
+                line, by: Some(by), ..
+            } => self.push(Shown::Typed {
+                prompt: format!("{by}>"),
+                line: line.clone(),
+            }),
             Event::Frame(frame) => {
                 if let Frame::MenuResponse(menu) = frame.as_ref() {
                     let count = self.menu.as_ref().map_or(0, |(count, _)| count + 1);
@@ -168,13 +178,6 @@ impl Story {
     }
 }
 
-/// Whether a line has anything to read: a blank one earns no prompt, as in
-/// `VellumFE`, which counts a line toward the next prompt only for text that
-/// is not whitespace (`core/messages/flush_line.rs`, `chunk_has_main_text`).
-pub(crate) fn visible(runs: &[StyledRun]) -> bool {
-    runs.iter().any(|run| !run.text.trim().is_empty())
-}
-
 /// Whether a line is on the main stream: the wire writes main's text with an
 /// empty stream id and declares the window `main`.
 fn is_main(stream: &str) -> bool {
@@ -186,6 +189,7 @@ mod said;
 mod stamp;
 mod streams;
 
+pub(crate) use prompt::visible;
 pub(crate) use stamp::{Hours, Stamp};
 
 #[cfg(test)]

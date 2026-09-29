@@ -66,7 +66,7 @@ mod tests {
         let (mut sent, mut notices) = (Vec::new(), Vec::new());
         while let Ok(event) = events.try_recv() {
             match event {
-                Event::Sent { line, origin } => sent.push((line, origin)),
+                Event::Sent { line, origin, .. } => sent.push((line, origin)),
                 Event::Notice(notice) => notices.push(notice.lines().join(" ")),
                 _ => {}
             }

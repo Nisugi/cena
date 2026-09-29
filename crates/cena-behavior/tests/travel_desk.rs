@@ -49,6 +49,8 @@ struct Playing {
     observer: SessionObserver,
     transcript: TranscriptHandle,
     told: Receiver<Event>,
+    /// Every command as the session published it going out.
+    sends: Receiver<Event>,
     dir: PathBuf,
 }
 
@@ -61,6 +63,7 @@ impl Playing {
         let session = Session::new(source);
         let (handle, observer) = (session.handle(), session.observer());
         let (_, told) = session.subscribe();
+        let (_, sends) = session.subscribe();
         let (_, ready) = session.subscribe();
         tokio::spawn(session.into_actor().run());
         ready::until_ready(ready).await.ok()?;
@@ -85,6 +88,7 @@ impl Playing {
             observer,
             transcript,
             told,
+            sends,
             dir,
         })
     }
@@ -107,6 +111,20 @@ impl Playing {
         said
     }
 
+    /// Each command a named run sent, as a frontend echoes it: `go2>north`.
+    fn echoed(&mut self) -> Vec<String> {
+        let mut echoed = Vec::new();
+        while let Ok(event) = self.sends.try_recv() {
+            if let Event::Sent {
+                line, by: Some(by), ..
+            } = event
+            {
+                echoed.push(format!("{by}>{line}"));
+            }
+        }
+        echoed
+    }
+
     /// What went to the game, less what the test typed to set the scene.
     fn sent(&self) -> Vec<String> {
         let scene = |line: &String| line == "look" || line == "glance";
@@ -125,6 +143,11 @@ async fn go2_bank_typed_while_playing_walks_there_and_remembers_where_it_stopped
     let walk = playing.types("go2 bank").await.unwrap();
     assert_eq!(walk.await.unwrap().ended, Ended::Arrived);
     assert_eq!(playing.sent(), ["north"]);
+    assert_eq!(
+        playing.echoed(),
+        ["go2>north"],
+        "named as the player starts it"
+    );
     let said = playing.told();
     assert!(
         said.contains("[Town, Bank]"),

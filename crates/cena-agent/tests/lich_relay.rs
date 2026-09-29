@@ -130,7 +130,9 @@ impl Character {
     /// Who sent `line` to the game, once it has been sent.
     async fn sent(&mut self, line: &str) -> Option<Origin> {
         self.next(|event| match event {
-            Event::Sent { line: sent, origin } if sent == line => Some(origin),
+            Event::Sent {
+                line: sent, origin, ..
+            } if sent == line => Some(origin),
             _ => None,
         })
         .await

@@ -200,7 +200,8 @@ async fn late_viewer_gets_native_panels_and_manual_input_preserves_behavior_auth
         sent.event,
         Event::Sent {
             line: "look".into(),
-            origin: Origin::Manual
+            origin: Origin::Manual,
+            by: None
         }
     );
     assert_eq!(sent.cursor, native.cursor + 1);

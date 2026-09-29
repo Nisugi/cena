@@ -174,7 +174,7 @@ pub async fn subscribe(
 /// The session's own events that are happenings as they are.
 fn direct(event: &Event) -> Option<Happening> {
     match event {
-        Event::Sent { line, origin } => Some(Happening::Sent {
+        Event::Sent { line, origin, .. } => Some(Happening::Sent {
             line: line.clone(),
             origin: origin.word().to_owned(),
         }),

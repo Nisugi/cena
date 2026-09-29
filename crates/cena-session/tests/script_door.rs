@@ -129,7 +129,7 @@ async fn a_scripts_line_goes_out_as_the_scripts_and_says_where() {
     let found = tokio::time::timeout(DEADLINE, async {
         loop {
             let event = numbered.recv().await.unwrap();
-            if let Event::Sent { line, origin } = event.event {
+            if let Event::Sent { line, origin, .. } = event.event {
                 return (event.cursor, line, origin);
             }
         }

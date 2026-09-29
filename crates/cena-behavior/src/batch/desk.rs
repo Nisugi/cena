@@ -143,6 +143,8 @@ impl Desk {
             );
             return Err(BehaviorError::AuthorityHeld.into());
         }
+        // Its commands echoed as the player starts it: `foreach>get gem`.
+        handle.name_behavior(self.token, &self.name.to_ascii_lowercase());
         let heartbeat = Heartbeat::default();
         let ended = {
             let mut driver = Driver::new(

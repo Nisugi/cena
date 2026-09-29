@@ -38,15 +38,37 @@ pub const PREEMPT_GRACE: Duration = Duration::from_millis(250);
 /// How often a preemption looks to see whether the holder has let go.
 const PREEMPT_POLL: Duration = Duration::from_millis(10);
 
-/// The one authority cell of a session.
+/// The one authority cell of a session, and what each run that claims it
+/// is called.
 ///
 /// A lock, never held across an await: every use is a read or a swap.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct Authority(Arc<Mutex<Option<AuthorityToken>>>);
+pub(crate) struct Authority(
+    Arc<Mutex<Option<AuthorityToken>>>,
+    Arc<Mutex<Vec<(AuthorityToken, String)>>>,
+);
 
 impl Authority {
     fn with<T>(&self, f: impl FnOnce(&mut Option<AuthorityToken>) -> T) -> T {
         f(&mut self.0.lock().unwrap_or_else(PoisonError::into_inner))
+    }
+
+    /// The run holding `token` from now on is called `name`: what its
+    /// commands are echoed with (`go2>look`).
+    pub(crate) fn name(&self, token: AuthorityToken, name: &str) {
+        let mut names = self.1.lock().unwrap_or_else(PoisonError::into_inner);
+        names.retain(|(named, _)| *named != token);
+        names.push((token, name.to_owned()));
+    }
+
+    /// What the run holding `token` is called, if it was named.
+    pub(crate) fn name_of(&self, token: AuthorityToken) -> Option<String> {
+        self.1
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .find(|(named, _)| *named == token)
+            .map(|(_, name)| name.clone())
     }
 
     /// Grant it, or say who has it.
