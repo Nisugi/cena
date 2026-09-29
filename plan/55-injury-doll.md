@@ -398,8 +398,15 @@ clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`
      scar. With Both, or no radio seen, it clears both, as it does today.
    - `Nsys1`-`3` is kept as a nerve rank of unknown kind, and shown as a wound until the game
      says otherwise.
-   - The six `health` lines (§1a) are read when the player's own `health` brings them, and
-     settle the kind. Hydra never sends `health`, or anything else, to learn it (§4a).
+   - When an `Nsys` rank above 0 differs from the one held, Hydra sends `health` once, as
+     Lich does (§4a). It goes through the session's sync, never over the player's typing, and
+     never while dead. The six nerve lines in the reply settle the kind and are not shown;
+     the rest of the reply shows, as Lich's does. A player's own `health` settles it the same
+     way.
+
+   Tests, beyond those above: a repeated rank sends nothing; a changed rank sends one
+   `health`; rank 0 sends nothing and clears the nerve entry; the six lines hidden, the rest
+   shown.
 
    Tests: each radio over a scarred part and a wounded one; `Nsys2`; each of the six lines.
 
@@ -481,20 +488,28 @@ Nothing gs_studio depends on requires a licence of Hydra either: among all its d
 can be taken as Apache. Whether to take the stray lines out of gs_studio's manifests is
 gs_studio's to decide.
 
-### 4a. A nerve rank's kind: ANSWERED, Hydra sends nothing
+### 4a. A nerve rank's kind: ANSWERED, Lich's way, refined
 
-`Nsys2` does not say whether it is a wound or a scar, and Lich sends `health` itself to find
-out. The author, 2026-09-29:
+`Nsys2` does not say whether it is a wound or a scar. Lich sends `health` to find out each
+time a nerve rank above 0 arrives, and reads one of six lines
+(`reference/lich-5/lib/common/xmlparser.rb:816-872`). The author: *"lich sending health is a
+fairly new development, they use to just live with the issue"*.
 
-> *"hydra should not send anything. Hydra should record the injury data that the game sends
-> you, the only time injury mode needs to be sent is for a heal or something and it's to
-> verify you have the most up to date wound/scar data. health is never sent or any other
-> command."*
+The author's first answer was that Hydra sends nothing: *"health is never sent or any other
+command"*. Once the `Nsys` case was explained, it became Lich's way with one refinement:
+
+> *"when an Nsys comes in that is different from the one we have in the buffer and is > 0"*
+> ... *"Yes, hydra will do what lich does with my refinement"*
 
 So:
 
-- The doll and the model are **readers only**. Nothing in this plan sends a command.
-- An unknown nerve rank shows as a wound until the player's own `health` brings a line that
-  settles it.
-- Setting the game's injury radio belongs to a heal, to make sure the wound and scar data is
-  current before healing. It is never the doll's.
+- **When it is sent.** Hydra sends `health` only when an `Nsys` rank above 0 differs from the
+  one it holds. A repeat sends nothing.
+- **How it is sent.** Through the session's sync, so it never lands over the player's typing,
+  and never while dead, as Lich waits.
+- **What shows.** The six nerve lines in the reply are read and not shown, as Lich returns
+  `nil` for them. The rest of the reply shows, as Lich's does.
+- **Nothing else is sent.** This is the one command; the doll sends none.
+- **The injury radio** still belongs to a heal, to check the data is current before healing
+  (*"the only time injury mode needs to be sent is for a heal or something"*). It is never
+  the doll's.
