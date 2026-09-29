@@ -224,3 +224,82 @@ fn a_reopened_window_takes_no_answer_from_before() {
     harness.run();
     assert!(harness.query_by_label("attack").is_some(), "its own");
 }
+
+/// A press at `from`, dragged to `to` and let go there, then copied: what
+/// the copy put on the clipboard.
+fn dragged_and_copied(
+    harness: &mut Harness<'_, Scene>,
+    from: egui::Pos2,
+    to: egui::Pos2,
+) -> Vec<String> {
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+    harness.hover_at(from);
+    harness.step();
+    harness.event(button(from, true));
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(from + (to - from) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.event(button(to, false));
+    harness.step();
+    harness.event(egui::Event::Copy);
+    harness.step();
+    harness
+        .output()
+        .platform_output
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            egui::OutputCommand::CopyText(text) => Some(text.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// A line with a link in it is selected as any other: a drag across it
+/// selects its words, the link's among them, and a selection runs on from a
+/// plain line into it; a drag is not a click on the link (the author,
+/// 2026-09-28: *"It selects lines with just normal text, but I think links
+/// in the lines break text selection"*).
+#[test]
+fn a_line_with_a_link_is_selected_and_copied() {
+    let mut harness = harness();
+    heard(harness.state_mut(), &[("You swing.", None)]);
+    heard(
+        harness.state_mut(),
+        &[
+            ("You see ", None),
+            ("a grey rat", Some(rat())),
+            (" here.", None),
+        ],
+    );
+    harness.run();
+    let plain = harness.get_by_label("You swing.").rect();
+    let line = harness.get_by_label("You see a grey rat here.").rect();
+    let (start, end) = (
+        egui::pos2(line.left() + 1.0, line.center().y),
+        egui::pos2(line.right() - 1.0, line.center().y),
+    );
+    let copied = dragged_and_copied(&mut harness, start, end);
+    assert!(
+        copied
+            .iter()
+            .any(|text| text.contains("You see a grey rat here.")),
+        "the one line: {copied:?}"
+    );
+    let above = egui::pos2(plain.left() + 1.0, plain.center().y);
+    let copied = dragged_and_copied(&mut harness, above, end);
+    assert!(
+        copied
+            .iter()
+            .any(|text| text.contains("You swing.") && text.contains("a grey rat here.")),
+        "on from a plain line: {copied:?}"
+    );
+    assert!(harness.state().asked.is_empty(), "a drag is not a click");
+}
