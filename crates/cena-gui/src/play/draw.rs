@@ -54,6 +54,8 @@ pub(super) enum Top {
     Fit,
     /// The grid's pitch was changed.
     Grid,
+    /// A drawer was opened, shut, or changed (`plan/49` Stage E).
+    Drawers,
     /// The keybinds were to be read again.
     ReloadKeys,
     /// A new custom window was asked for.
@@ -76,7 +78,7 @@ pub(super) enum Top {
 pub(super) fn top(
     ui: &mut egui::Ui,
     view: &PlayView<'_>,
-    grid: &mut f32,
+    (grid, drawers): (&mut f32, &mut crate::layout::Drawers),
     (arranging, locked): (&mut bool, &mut bool),
     unsaved: Option<&str>,
 ) -> Option<Top> {
@@ -144,6 +146,11 @@ pub(super) fn top(
                 if ui.button("Lay out afresh").clicked() {
                     asked = Some(Top::Fit);
                     ui.close();
+                }
+            });
+            ui.menu_button("Drawers", |ui| {
+                if super::drawers::menu(ui, drawers) {
+                    asked = Some(Top::Drawers);
                 }
             });
             // On the bar, lit while it is on, so the mode is seen and left in

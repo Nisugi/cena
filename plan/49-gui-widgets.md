@@ -196,7 +196,8 @@ never has to be told its id.
 | Pulse Timer | `Frame::Pulse` is parsed and dropped (`state.rs:494`) | MODEL FIRST |
 | Command | the play window's one input (`plan/47` §1 row 2) | GUI: placed like a widget, never two |
 | Hotbar | buttons that send a line, as keybinds do (`crates/cena-gui/src/keys.rs`) | GUI |
-| Almanac, Badge | none found | UNKNOWN |
+| Almanac | none on the wire (`<prompt time=>` is the only clock, `plan/15-wrayth-protocol.md`); the date, time of day, constellation, next holiday and season follow from it in Eastern time by the calendar's rules (`reference/wiki_clean/Elanthian calendar.txt`, `reference/wiki_clean/Constellations of the Northern Sky.txt`); Liabo's phase is estimated from a known full moon (`reference/lich_repo_mirror/lib/astrolabe.lic:15-17`, a period of 7.449 days); Lornon, Tilaok and Makiri have no known model | COMPUTED, not built; see §5 item 7 |
+| Badge | a picture the player picks for each character (the author, 2026-09-28: *"just a custom image. Like a way to distinguish characters. It's shown on the login screen and can be shown on the play screen"*) | GUI, not built |
 
 ### Hydra's own
 
@@ -843,6 +844,43 @@ A main area and four drawers, each clipping or pushing, with translucency and cl
 derived from opacity (`plan/28` §7d.5, settled). A widget or custom window lives in the
 main area or a drawer (Saga's *Main* column).
 
+**BUILT 2026-09-28** (the author: *"Lets knock those drawers out."*), in one step, on branch
+`drawers`. The model is `crates/cena-gui/src/layout/drawers.rs`; the drawing is
+`crates/cena-gui/src/play/drawers.rs`; the windows' part is `play/holders.rs`.
+
+- *Four drawers*, top and bottom across the play area, left and right between them. Each
+  is open or shut, sized by dragging its inner edge (not while the layout is locked), and
+  pushes or clips. The top bar's *Drawers* menu has each one's switch, *Push* or *Clip*,
+  and a clip drawer's opacity. All of it is kept with the layout; a layout from before
+  has four shut drawers and loads unchanged.
+- *A window lives in a zone*, the main area or a drawer, its rect kept from that zone's
+  corner. Dragged by its title and let go over an open drawer, it lives there, made to fit;
+  let go over the main area, it lives there. A drop lands in a drawer before the main area
+  it lies on, however clear the drawer (§7d.5). A resize keeps a window in its own zone. A
+  shut drawer's windows are not drawn and are there again when it opens.
+- *Push squeezes, it does not shove.* A push drawer's strip comes out of the main area and
+  the main area's windows are drawn in what is left, in proportion, as `VellumFE`'s
+  `Reserve` does. The first version moved each window over by the drawer's width, and its
+  own test showed the right-hand column pushed back over the story. What is kept is never
+  changed by a drawer, so shutting it puts every window back.
+- *Layers.* The main area's windows are egui's `Middle`; a drawer's backdrop is
+  `Foreground`, over them, and the drawer's windows and edge are sublayers of the backdrop,
+  so they are always just above it. A window being moved is drawn over every drawer until
+  let go, or one carried from the main area would pass under the drawer it is going into.
+  A window being resized is not: egui lets go of a resize handle when its window changes
+  layer, which a test caught.
+- *Click-through* below an opacity of 0.2 (`CLEAR`, a tuning value). Found while building:
+  egui's hit test stops at **any** widget in a layer, even the one an `Area` makes when it
+  is not interactable, so `Area::interactable(false)` did not let a press through. A
+  clear drawer's backdrop is only painted, with no widget at all; one that can be seen
+  keeps an area that takes a press on its bare backdrop.
+- *Tests:* six of the model, five of the window (squeeze, clip, a window carried into a
+  drawer and saved there, an edge that sizes it and is saved, a press stopped and let
+  through). Eight mutants, all caught once one test was widened to read the saved file.
+- *Not built:* a keybind or `;` command that opens a drawer (a key sends a line today,
+  and the drawers are the window's, not the session's); a window's own opacity (Stage F,
+  `plan/28` §7d.4 item 4).
+
 ### Stage F — look
 
 Themes, skins, fonts, per-window appearance (`plan/28` §7d.4 items 2, 3, 6, 10).
@@ -878,11 +916,14 @@ bundle on macOS, a `.desktop` entry on Linux.
 6. ~~**Which stage makes the UI proper**, so the M6 live run can go?~~ **DECIDED, the
    author, 2026-09-27:** *"When I feel the GUI is done."* No stage is the gate; the author's
    judgment is. (Claude had recommended A and B.)
-7. **Loot** (Stage B step 6): the model empties its loot queue each prompt into the ledger
-   (`plan/34`), so no standing list is kept. Should a Loot widget show the last things
-   looted this run (the model keeping, say, the last fifty), or the ledger's totals, which
-   the binary would hand the window? And what do Saga's *Combat Actions*, *Almanac* and
-   *Badge* show? Asked 2026-09-27; not built until answered.
+7. ~~**Loot** (Stage B step 6)~~ **ANSWERED 2026-09-28, in part.** The author: *"skip loot
+   widget for now, it's just a stream window in lich/saga. But I have ideas how we can
+   spruce it up when we are ready to implement."* Left until then. *Badge* is *"just a
+   custom image ... to distinguish characters"*, shown on the login screen and, if the
+   player likes, the play window (§3). *Almanac* is *"sky information"*; asked whether the
+   XML has a feed for it, the answer measured is no: everything Saga shows but the moons
+   follows from the server's clock, and of the moons only Liabo has a known model (§3).
+   *Combat Actions* is still open.
 
 ---
 

@@ -63,7 +63,7 @@ pub(super) fn rat() -> LinkKind {
 /// A click at `at`: pressed and let go there, the pointer staying, as
 /// kittest's `drop_at` does not (it removes the pointer as it lets go, and
 /// egui then has no place for the click).
-fn click_at(harness: &mut Harness<'_, Scene>, at: egui::Pos2) {
+pub(super) fn click_at(harness: &mut Harness<'_, Scene>, at: egui::Pos2) {
     let button = |pressed| egui::Event::PointerButton {
         pos: at,
         button: egui::PointerButton::Primary,

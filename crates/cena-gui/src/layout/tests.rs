@@ -281,7 +281,13 @@ fn a_widget_let_go_in_the_open_gets_a_window_of_its_own() {
     let area = Vec2::new(900.0, 600.0);
     let mut layout = Layout::with_room_parts(area);
     let (room, exits) = room_with(&layout, &Widget::Exits);
-    layout.release(room, Taking::Cell(exits), pos2(890.0, 300.0), &[], area);
+    layout.release(
+        room,
+        Taking::Cell(exits),
+        pos2(890.0, 300.0),
+        &[],
+        &Zones::of(&Drawers::default(), area),
+    );
     let window = layout.titled("Exits").expect("a window of its own");
     assert!(matches!(&window.holds, Holds::One(placed) if placed.id == exits));
     assert!(window.rect().max.x <= area.x + 0.5, "{:?}", window.rect());
@@ -303,7 +309,7 @@ fn a_widget_let_go_on_a_custom_window_joins_it() {
         Taking::Tab(exits),
         pos2(50.0, 80.0),
         &[(fresh, inside)],
-        area,
+        &Zones::of(&Drawers::default(), area),
     );
     assert_eq!(widgets_in(&layout, "Custom window"), [Widget::Exits]);
     let Some(Holds::Custom(custom)) = layout.holder(fresh).map(|holder| &holder.holds) else {
@@ -311,7 +317,13 @@ fn a_widget_let_go_on_a_custom_window_joins_it() {
     };
     // At the pointer, as far right as the inside lets a widget 260 across go.
     assert_eq!(custom.cells[0].rect().min, pos2(28.0, 20.0));
-    layout.release(fresh, Taking::Cell(exits), pos2(890.0, 590.0), &[], area);
+    layout.release(
+        fresh,
+        Taking::Cell(exits),
+        pos2(890.0, 590.0),
+        &[],
+        &Zones::of(&Drawers::default(), area),
+    );
     assert!(
         layout.holder(fresh).is_none(),
         "its last widget took it along"
@@ -333,9 +345,19 @@ fn a_standalone_window_joins_the_custom_window_it_is_dropped_on() {
         .map(|holder| holder.id)
         .expect("a room");
     let inside = Rect::from_min_size(pos2(600.0, 400.0), Vec2::new(290.0, 100.0));
-    assert!(!layout.join(hunt, pos2(10.0, 100.0), &[(room, inside)]));
+    assert!(!layout.join(
+        hunt,
+        pos2(10.0, 100.0),
+        &[(room, inside)],
+        &Zones::default()
+    ));
     assert!(layout.titled("Hunt").is_some());
-    assert!(layout.join(hunt, pos2(620.0, 420.0), &[(room, inside)]));
+    assert!(layout.join(
+        hunt,
+        pos2(620.0, 420.0),
+        &[(room, inside)],
+        &Zones::default()
+    ));
     assert!(layout.titled("Hunt").is_none());
     assert!(widgets_in(&layout, "Room").contains(&Widget::Hunt));
 }
@@ -376,7 +398,7 @@ fn a_window_dropped_on_anothers_title_stacks_with_it() {
         .expect("a hunt");
     let hydra = layout.titled("Hydra").map(Holder::rect).expect("hydra");
     let title = hydra.min + Vec2::new(40.0, 10.0);
-    assert!(layout.join(hunt, title, &[]));
+    assert!(layout.join(hunt, title, &[], &Zones::default()));
     assert!(layout.titled("Hunt").is_none());
     let stacked = layout.titled("Hydra").expect("still there");
     assert_eq!(stacked.rect(), hydra, "where it was");
@@ -499,7 +521,13 @@ fn a_stack_let_go_in_the_open_keeps_together() {
             .expect("a stack");
         stacked.showing = 1;
     }
-    layout.release(room, Taking::Cell(creatures), pos2(300.0, 300.0), &[], area);
+    layout.release(
+        room,
+        Taking::Cell(creatures),
+        pos2(300.0, 300.0),
+        &[],
+        &Zones::of(&Drawers::default(), area),
+    );
     let window = layout.titled("Objects").expect("a window of the stack");
     let Holds::Custom(custom) = &window.holds else {
         panic!("a custom window");

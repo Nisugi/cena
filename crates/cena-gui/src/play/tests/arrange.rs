@@ -368,15 +368,24 @@ fn the_grid_shows_only_once_a_window_moves() {
     harness.drag_at(grip);
     harness.step();
     harness.step();
-    assert!(!harness.state().play.guiding, "a press alone shows no grid");
+    assert!(
+        harness.state().play.moving == super::holders::Moving::Not,
+        "a press alone shows no grid"
+    );
     harness.hover_at(grip + egui::vec2(-40.0, 30.0));
     harness.step();
     harness.step();
-    assert!(harness.state().play.guiding, "moving, it shows");
+    assert!(
+        harness.state().play.moving != super::holders::Moving::Not,
+        "moving, it shows"
+    );
     harness.drop_at(grip + egui::vec2(-40.0, 30.0));
     harness.step();
     harness.step();
-    assert!(!harness.state().play.guiding, "let go, it goes");
+    assert!(
+        harness.state().play.moving == super::holders::Moving::Not,
+        "let go, it goes"
+    );
 }
 
 /// A click on a window shows no grid even when egui draws it off where its
@@ -404,7 +413,10 @@ fn a_click_on_a_window_drawn_off_its_place_shows_no_grid() {
     harness.drag_at(grip);
     harness.step();
     harness.step();
-    assert!(!harness.state().play.guiding, "a press alone shows no grid");
+    assert!(
+        harness.state().play.moving == super::holders::Moving::Not,
+        "a press alone shows no grid"
+    );
     harness.drop_at(grip);
     harness.step();
 }
