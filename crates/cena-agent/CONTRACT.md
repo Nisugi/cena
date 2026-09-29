@@ -197,7 +197,14 @@ meant**: `completed`, `answered` means the game sent something before its next p
 `unknown`, `no_answer` that it sent nothing but the prompt, or nothing in time (it may still
 have acted); `no_opportunity` with `roundtime`, `stunned` and their kind, that the session
 would not send it; `unknown` with `disconnected` or `session_ended`, that the answer was lost.
-Read the text, or `state`, for what happened. A sent line cannot be steered.
+Read the text, or `state`, for what happened.
+
+**Until the session writes the line, it can be stopped**, and is then never written:
+`interrupted` with `stopped` (your `stop`, or the player's `agent stop`) or `level_lowered`
+(the player lowered the level). A line never written for any other reason ends
+`no_opportunity`, with the word saying why, and `disconnected` there means the connection it
+was allowed on ended before it went: it goes on that connection or not at all. Once written,
+a line is the game's: a `stop` is refused saying so.
 
 **The denylist**, refused at every level and never put to the player (`plan/35` §3, from
 LAB's, `crates/cena-session/src/agent/denylist.rs`): more than one line or a control

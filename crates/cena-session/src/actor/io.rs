@@ -167,6 +167,14 @@ impl<S: ByteSource> SessionActor<S> {
                 // Live since M4: `cena-web` sends typed lines through
                 // `send_manual_at`, so a player typing `quit` reaches here.
                 if is_exit_intent(&envelope.line) {
+                    if envelope
+                        .revocable
+                        .as_ref()
+                        .is_some_and(|line| !line.write())
+                    {
+                        let _ = envelope.reply.send(Outcome::Interrupted);
+                        return None;
+                    }
                     // The caller asked for a command outcome, and the honest
                     // one is `Disconnected`: §5.1 defines it as "this
                     // connection is ending", which is precisely what was just
@@ -528,6 +536,16 @@ impl<S: ByteSource> SessionActor<S> {
             // out (`gate.rs`). Refused, not written.
             if let Err(refusal) = self.check_gate(envelope.gate) {
                 let _ = envelope.reply.send(Outcome::Refused(refusal));
+                continue;
+            }
+            // An agent's line taken back first is never written
+            // (`agent/revocable.rs`); from here, it is written.
+            if envelope
+                .revocable
+                .as_ref()
+                .is_some_and(|line| !line.write())
+            {
+                let _ = envelope.reply.send(Outcome::Interrupted);
                 continue;
             }
             // ONE write of the finished message. See

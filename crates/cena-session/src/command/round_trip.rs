@@ -138,6 +138,38 @@ impl SessionHandle {
             matcher,
             quiet,
             gate,
+            revocable: None,
+        };
+        self.submit_and_await(envelope, answer, deadline).await
+    }
+
+    /// An agent's line (`crate::operation::send`), as
+    /// [`Self::send_and_await`] sends one, but fenced twice at the write: to
+    /// `generation`, the connection it was allowed on, not the one current
+    /// when this runs; and by `revocable`, which a stop takes back until the
+    /// line is written (the integrated crate review of 2026-09-28, I1 and I2).
+    pub(crate) async fn agent_round_trip(
+        &self,
+        generation: Generation,
+        line: &str,
+        origin: Origin,
+        deadline: std::time::Duration,
+        revocable: crate::agent::Revocable,
+    ) -> Outcome {
+        let (reply, answer) = oneshot::channel();
+        let envelope = Envelope {
+            id: CommandId(0),
+            line: line.to_owned(),
+            origin,
+            reply,
+            generation,
+            // As typed input's: whatever the game sends before its next
+            // prompt answers it; the prompt alone closes the window
+            // unanswered (`queue.rs`, `close_window`).
+            matcher: crate::queue::any_frame,
+            quiet: false,
+            gate: Gate::None,
+            revocable: Some(revocable),
         };
         self.submit_and_await(envelope, answer, deadline).await
     }
@@ -268,6 +300,7 @@ impl SessionHandle {
             matcher: crate::queue::any_frame,
             quiet: false,
             gate: Gate::None,
+            revocable: None,
         };
         self.submit_and_await(envelope, answer, deadline).await
     }

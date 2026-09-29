@@ -67,10 +67,13 @@
 
 mod denylist;
 mod door;
+mod perform;
+mod revocable;
 mod takeover;
 
 pub use denylist::refused;
 pub use door::{Call, Door};
+pub use revocable::Revocable;
 pub use takeover::{OWNER_IDLE, TOKEN};
 pub(crate) use takeover::{drop_level, ended_badly, holding as takeover_token};
 
@@ -82,7 +85,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::Instant;
 
 use crate::lifecycle::Generation;
-use crate::notice::{Body, Notice, NoticeKind};
+
 use crate::operation::{Control, Report, Table};
 use crate::{Event, SessionHandle};
 
@@ -361,6 +364,8 @@ struct Inner {
     takeover: Option<takeover::Holding>,
     /// When the agent last touched the character, reading or acting.
     last_seen: Option<Instant>,
+    /// The agent's lines not yet written, which a lowered level takes back.
+    unsent: Vec<Revocable>,
 }
 
 #[derive(Debug)]
@@ -422,6 +427,14 @@ impl Access {
     /// The session's operations, for `crate::operation`.
     pub(crate) fn with_operations<T>(&self, f: impl FnOnce(&mut Table) -> T) -> T {
         f(&mut self.lock().operations)
+    }
+
+    /// Keep `line` among the agent's lines not yet written, for a lowered
+    /// level to take back; the ones since written or taken back go.
+    pub(crate) fn keep_unsent(&self, line: Revocable) {
+        let mut inner = self.lock();
+        inner.unsent.retain(Revocable::waiting);
+        inner.unsent.push(line);
     }
 }
 
@@ -505,6 +518,13 @@ impl SessionHandle {
             if inner.level == level {
                 return;
             }
+            // Lowered, it takes back every line of the agent's still waiting
+            // to be written: what it was allowed, it no longer is.
+            if level < inner.level {
+                for line in std::mem::take(&mut inner.unsent) {
+                    line.take_back("level_lowered");
+                }
+            }
             inner.level = level;
             inner.told_of_reads = None;
             inner.reads_untold = 0;
@@ -557,7 +577,7 @@ impl SessionHandle {
     pub fn approve_agent(&self, id: u64) -> Result<(), String> {
         let waiting = self.take_request(id)?;
         let done = if waiting.generation == self.generation() {
-            self.perform(&waiting.act, &waiting.because, Some(id))
+            self.perform(&waiting.act, &waiting.because, Some(id), waiting.generation)
         } else {
             Err("it was asked on a connection that has since ended".to_owned())
         };
@@ -620,77 +640,5 @@ impl SessionHandle {
 
     fn decided(&self, change: Change) {
         self.publish(Event::Agent(change));
-    }
-
-    /// Do an act the level, or the player, allowed, as the approval numbered
-    /// `approval` when it was one. The player is told what the agent did and
-    /// why: the audit trail, in their stream and their log.
-    fn perform(&self, act: &Act, because: &str, approval: Option<u64>) -> Result<Admitted, String> {
-        match act {
-            Act::TellPlayer { text } => {
-                let mut lines: Vec<String> = text.lines().map(str::to_owned).collect();
-                if let Some(first) = lines.first_mut() {
-                    *first = format!("Agent: {first}");
-                }
-                lines.push(format!("  (because: {because})"));
-                self.say(Notice {
-                    kind: NoticeKind::Info,
-                    body: Body::Lines(lines),
-                });
-                Ok(Admitted::Told)
-            }
-            Act::Perform { line } => {
-                let report = crate::operation::start(self, line, approval)?;
-                self.say(Notice::line(
-                    NoticeKind::Info,
-                    format!(
-                        "Agent: `{line}` (operation {}), because: {because}",
-                        report.id
-                    ),
-                ));
-                Ok(Admitted::Operation(report))
-            }
-            Act::Command { line } => {
-                let report = crate::operation::send(self, line, approval);
-                self.say(Notice::line(
-                    NoticeKind::Info,
-                    format!(
-                        "Agent: sent `{line}` (operation {}), because: {because}",
-                        report.id
-                    ),
-                ));
-                Ok(Admitted::Operation(report))
-            }
-            Act::TakeOver => {
-                let report = takeover::take_over(self, approval)?;
-                self.say(Notice::line(
-                    NoticeKind::Warn,
-                    format!(
-                        "Agent: taking the character over (operation {}), because: {because}. {}agent stop takes it back.",
-                        report.id,
-                        self.symbol()
-                    ),
-                ));
-                Ok(Admitted::Operation(report))
-            }
-            Act::Control { operation, control } => {
-                let report = crate::operation::steer(self, *operation, *control)?;
-                self.say(Notice::line(
-                    NoticeKind::Info,
-                    format!(
-                        "Agent: {} operation {operation} (`{}`), because: {because}",
-                        control.word(),
-                        report.line
-                    ),
-                ));
-                Ok(Admitted::Operation(report))
-            }
-        }
-    }
-
-    /// The player's command symbol, for the words that name a command.
-    fn symbol(&self) -> char {
-        self.command_symbol()
-            .unwrap_or(crate::command::claimant::DEFAULT_SYMBOL)
     }
 }

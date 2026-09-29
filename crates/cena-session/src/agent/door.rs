@@ -188,14 +188,17 @@ impl Door {
     fn act(&self, act: Act, because: &str, call: Call<'_>) -> Result<Admitted, Denied> {
         let handle = &self.handle;
         let because = clean(because, MAX_BECAUSE, false);
-        if let Some(expected) = call.generation {
-            let now = handle.generation();
-            if expected != now {
-                return Err(Denied::Invalid(format!(
-                    "that was for connection {}; the character is on connection {} now",
-                    expected.0, now.0
-                )));
-            }
+        // The connection it is allowed on, carried to the write: checked
+        // here only, a reconnect before the write sent it on the new one
+        // (the integrated crate review of 2026-09-28, I2).
+        let admitted = handle.generation();
+        if let Some(expected) = call.generation
+            && expected != admitted
+        {
+            return Err(Denied::Invalid(format!(
+                "that was for connection {}; the character is on connection {} now",
+                expected.0, admitted.0
+            )));
         }
         let act = self.canonical(act)?;
         let needed = act.needs();
@@ -242,7 +245,7 @@ impl Door {
             Next::Stale(why) => Err(Denied::Invalid(why)),
             Next::Unasked => Err(Denied::Level(self.refuse_unasked(needed, level))),
             Next::Do => {
-                let done = handle.perform(&act, &because, None);
+                let done = handle.perform(&act, &because, None, admitted);
                 let mut inner = handle.agent.lock();
                 match &done {
                     Ok(admitted) => inner.settle(call.request, Answer::of(admitted)),

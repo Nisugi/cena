@@ -455,31 +455,67 @@ pub const SEND_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10
 /// meant**: that is in what the game said, which the caller reads.
 ///
 /// [`Origin::Agent`]: crate::Origin::Agent
-pub(crate) fn send(handle: &SessionHandle, line: &str, approval: Option<u64>) -> Report {
+///
+/// **Until the session writes it, it can be stopped** (`crate::agent::Revocable`):
+/// by the agent's `stop`, the player's `agent stop`, or a lowered level, and
+/// it is then never written. It goes on connection `generation`, the one it
+/// was allowed on, or not at all.
+pub(crate) fn send(
+    handle: &SessionHandle,
+    line: &str,
+    approval: Option<u64>,
+    generation: crate::Generation,
+) -> Report {
     let sender = handle.clone();
     let sent = line.to_owned();
     let holding = crate::agent::takeover_token(handle);
+    let revocable = crate::agent::Revocable::default();
+    handle.agent.keep_unsent(revocable.clone());
+    let steered = revocable.clone();
     begin(handle, line, approval, false, move |_reporter| Started {
         ended: Box::pin(async move {
-            let outcome = sender
-                .send_and_await(
-                    crate::CommandId(0),
-                    &sent,
-                    crate::Origin::Agent(holding),
-                    SEND_DEADLINE,
-                    // As typed input's: whatever the game sends before its
-                    // next prompt answers it; the prompt alone closes the
-                    // window unanswered (`queue.rs`, `close_window`).
-                    crate::queue::any_frame,
-                )
-                .await;
-            answered(&outcome)
+            let origin = crate::Origin::Agent(holding);
+            let trip = sender.agent_round_trip(
+                generation,
+                &sent,
+                origin,
+                SEND_DEADLINE,
+                revocable.clone(),
+            );
+            let outcome = tokio::select! {
+                biased;
+                why = revocable.taken_back() => {
+                    return Ended::plainly(Work::Interrupted, why);
+                }
+                outcome = trip => outcome,
+            };
+            // Unwritten by now is never written: said as not sent.
+            if revocable.take_back("not_sent") {
+                return Ended::plainly(Work::NoOpportunity, answer(&outcome).1);
+            }
+            if revocable.written() {
+                answered(&outcome)
+            } else {
+                Ended::plainly(Work::Interrupted, revocable.taken_back().await)
+            }
         }),
-        steer: Arc::new(|control: Control| {
-            Err(format!(
-                "a line sent to the game cannot be told to {}: it is already the game's",
-                control.word()
-            ))
+        steer: Arc::new(move |control: Control| {
+            if control == Control::Stop && steered.take_back("stopped") {
+                return Ok(());
+            }
+            Err(if steered.written() {
+                format!(
+                    "a line sent to the game cannot be told to {}: it is already the game's",
+                    control.word()
+                )
+            } else if control == Control::Stop {
+                "it is already stopped, and was never sent".to_owned()
+            } else {
+                format!(
+                    "a line not yet sent can only be stopped, not told to {}",
+                    control.word()
+                )
+            })
         }),
         token: None,
     })
@@ -487,8 +523,14 @@ pub(crate) fn send(handle: &SessionHandle, line: &str, approval: Option<u64>) ->
 
 /// A game command's round trip, as an operation's result.
 fn answered(outcome: &crate::Outcome) -> Ended {
+    let (work, reason) = answer(outcome);
+    Ended::plainly(work, reason)
+}
+
+/// A round trip's outcome as a result's work and word.
+fn answer(outcome: &crate::Outcome) -> (Work, &'static str) {
     use crate::{Outcome, Refusal};
-    let (work, reason) = match outcome {
+    match outcome {
         Outcome::Confirmed(_) => (Work::Completed, "answered"),
         Outcome::Timeout => (Work::Unknown, "no_answer"),
         Outcome::Refused(Refusal::Roundtime) => (Work::NoOpportunity, "roundtime"),
@@ -503,8 +545,7 @@ fn answered(outcome: &crate::Outcome) -> Ended {
         Outcome::Dead => (Work::Unknown, "session_ended"),
         Outcome::Interrupted => (Work::Unknown, "interrupted"),
         Outcome::Handled => (Work::Unknown, "handled"),
-    };
-    Ended::plainly(work, reason)
+    }
 }
 
 /// Register an operation `make` starts, and watch it to its end. A `run` --
@@ -585,5 +626,53 @@ impl SessionHandle {
     /// The registered performer, once there is one.
     pub(crate) fn performer(&self) -> Option<Performer> {
         self.performer.get().cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // An agent's line goes on the connection it was allowed on, or not at all
+    // (the integrated crate review of 2026-09-28, I2).
+
+    use std::time::Duration;
+
+    use super::{Lifecycle, Work};
+    use crate::{Event, Session, State};
+
+    /// Allowed on a connection the session is not on, it is never written, and
+    /// is said as not sent. It was stamped with the connection current when its
+    /// task ran, so a reconnect between the admission and the send put it on the
+    /// new one; this sends it to a session on another connection than the one
+    /// it was allowed on, which only that stamp could tell apart.
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_line_goes_on_the_connection_it_was_allowed_on_or_not_at_all() {
+        let (source, transcript) =
+            cena_platform::AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+        let session = Session::new(source);
+        let handle = session.handle();
+        let (_, mut events) = session.subscribe();
+        tokio::spawn(session.into_actor().run());
+        while !matches!(events.recv().await, Ok(Event::StateChanged(State::Ready))) {}
+
+        let allowed_on = handle.generation().next();
+        let report = super::send(&handle, "look", None, allowed_on);
+        let door = handle.agent_door();
+        let mut ended = None;
+        for _ in 0..400 {
+            match door.operation(report.id) {
+                Some(report) if report.lifecycle == Lifecycle::Ended => {
+                    ended = report.ended;
+                    break;
+                }
+                _ => tokio::time::sleep(Duration::from_millis(5)).await,
+            }
+        }
+        let ended = ended.expect("it ends");
+        assert_eq!(ended.work, Work::NoOpportunity, "{ended:?}");
+        assert!(
+            !transcript.lines().iter().any(|line| line == "look"),
+            "{:?}",
+            transcript.lines()
+        );
     }
 }

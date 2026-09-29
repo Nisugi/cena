@@ -102,6 +102,7 @@ async fn a_manual_command_jumps_the_queue_ahead_of_the_behaviors() {
             matcher: cena_session::queue::any_frame,
             quiet: false,
             gate: cena_session::Gate::None,
+            revocable: None,
         });
     }
 
@@ -143,6 +144,7 @@ async fn a_manual_command_does_not_revoke_the_authority() {
         matcher: cena_session::queue::any_frame,
         quiet: false,
         gate: cena_session::Gate::None,
+        revocable: None,
     });
     let _ = queue.take_next();
 

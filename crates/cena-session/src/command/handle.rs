@@ -71,6 +71,10 @@ pub struct Envelope {
     /// The last check the session makes as the command goes out
     /// ([`SessionHandle::send_gated`]).
     pub gate: super::verdict::Gate,
+    /// An agent's line, which a stop or a lowered level can still take back
+    /// until the session writes it ([`crate::agent::Revocable`]); `None` for
+    /// every other line.
+    pub revocable: Option<crate::agent::Revocable>,
 }
 
 /// What the session's inbox carries.
