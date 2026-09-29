@@ -45,7 +45,7 @@ use std::path::{Path, PathBuf};
 
 use cena_platform::Redactions;
 
-use super::{LogLine, LogSink};
+use super::{Arrival, LogLine, LogSink};
 
 /// Flush once this many lines are buffered.
 ///
@@ -133,14 +133,13 @@ impl PlayerWriter {
     /// The directory this character's files live in.
     #[must_use]
     pub fn dir(&self) -> PathBuf {
-        self.root.join(SUBDIR).join(safe_name(&self.character))
+        dir(&self.root, &self.character)
     }
 
     /// The file one day's lines go to.
     #[must_use]
     pub fn path_for(&self, day: &str) -> PathBuf {
-        self.dir()
-            .join(format!("{}_{day}.log", safe_name(&self.character)))
+        day_path(&self.root, &self.character, day)
     }
 
     /// Write one line, opening or rolling the file if the day changed.
@@ -259,12 +258,28 @@ impl PlayerWriter {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             tokio::select! {
-                line = sink.recv() => {
-                    let Some(line) = line else { break };
-                    if self.write(&line).is_err() {
-                        sink.note_dropped();
+                arrival = sink.next() => match arrival {
+                    None => break,
+                    Some(Arrival::Line(line)) => {
+                        if self.write(&line).is_err() {
+                            sink.note_dropped();
+                        }
                     }
-                }
+                    // A reader wants the file whole. What was recorded before
+                    // it asked may still be queued behind the request, so
+                    // that is written first.
+                    Some(Arrival::Flush(ack)) => {
+                        while let Some(line) = sink.try_recv() {
+                            if self.write(&line).is_err() {
+                                sink.note_dropped();
+                            }
+                        }
+                        if self.flush().is_err() {
+                            sink.note_dropped();
+                        }
+                        let _ = ack.send(());
+                    }
+                },
                 _ = tick.tick() => {
                     if self.buffered > 0 && self.flush().is_err() {
                         sink.note_dropped();
@@ -391,8 +406,7 @@ pub fn parse_line(line: &str) -> Option<(&str, &str, &str)> {
 /// a character who has never played has no logs, which is a fact rather than a
 /// failure.
 pub fn days(root: &Path, character: &str) -> io::Result<Vec<PathBuf>> {
-    let dir = root.join(SUBDIR).join(safe_name(character));
-    let entries = match fs::read_dir(&dir) {
+    let entries = match fs::read_dir(dir(root, character)) {
         Ok(entries) => entries,
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(err) => return Err(err),
@@ -406,4 +420,33 @@ pub fn days(root: &Path, character: &str) -> io::Result<Vec<PathBuf>> {
     // order -- which is the reason for that format rather than a locale one.
     paths.sort_unstable_by(|a, b| b.cmp(a));
     Ok(paths)
+}
+
+/// The directory one character's day-files live in, under `root`.
+#[must_use]
+pub fn dir(root: &Path, character: &str) -> PathBuf {
+    root.join(SUBDIR).join(safe_name(character))
+}
+
+/// The file one character's lines for `day` (`YYYY-MM-DD`) go to, under `root`.
+#[must_use]
+pub fn day_path(root: &Path, character: &str, day: &str) -> PathBuf {
+    dir(root, character).join(format!("{}_{day}.log", safe_name(character)))
+}
+
+/// The day a day-file is for, `YYYY-MM-DD`, read off its name
+/// (`<character>_<day>.log`); `None` for a file not named that way.
+#[must_use]
+pub fn day_of(path: &Path) -> Option<String> {
+    let stem = path.file_stem()?.to_str()?;
+    let (_, day) = stem.rsplit_once('_')?;
+    let well_formed = day.len() == 10
+        && day.bytes().enumerate().all(|(i, b)| {
+            if i == 4 || i == 7 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        });
+    well_formed.then(|| day.to_owned())
 }

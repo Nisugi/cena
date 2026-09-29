@@ -377,6 +377,7 @@
 //! | [`roster`](crate::roster) | which account and game each character is on; holds no secret |
 //! | [`setup`](crate::setup) | what every session is given: wire log, stores, combat recorder, player log, and how each is flushed |
 //! | [`commands`](crate::commands) | Hydra's own command line: the symbol decides, the word routes, nothing reaches the game |
+//! | [`history`](crate::history) | `;history`: the player log read back, its days, tail, a time window and search, over [`reader`](cena_session::player_log::reader) |
 //! | [`travel`](crate::travel) | the map loaded and travel's desk registered on that command line |
 //! | [`learn`](crate::learn) | the character sync, once a login is `Ready` |
 //! | [`frontend`](crate::frontend) | the web server's lifetime, when `--web` asked for one |

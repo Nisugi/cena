@@ -66,12 +66,23 @@ pub struct LogLine {
     pub generation: Generation,
 }
 
+/// How many reads may be waiting on the writer's flush at once. A reader
+/// finding it full waits its turn; the flush it waits behind covers it too.
+const FLUSHES_WAITING: usize = 8;
+
+/// How long a read waits for the writer to say it has flushed.
+///
+/// The writer flushes on its own every [`FLUSH_EVERY`](super::writer::FLUSH_EVERY),
+/// so waiting longer than that buys nothing but a stalled read.
+const FLUSH_WAIT: std::time::Duration = super::writer::FLUSH_EVERY;
+
 /// The session's end of the player log.
 ///
 /// Cheap to clone; every clone shares one channel and one counter.
 #[derive(Clone, Debug)]
 pub struct PlayerLog {
     tx: tokio::sync::mpsc::Sender<LogLine>,
+    flushes: tokio::sync::mpsc::Sender<tokio::sync::oneshot::Sender<()>>,
     dropped: Arc<AtomicU64>,
 }
 
@@ -81,7 +92,18 @@ pub struct PlayerLog {
 #[derive(Debug)]
 pub struct LogSink {
     rx: tokio::sync::mpsc::Receiver<LogLine>,
+    flushes: tokio::sync::mpsc::Receiver<tokio::sync::oneshot::Sender<()>>,
     dropped: Arc<AtomicU64>,
+}
+
+/// What reaches the writer: a line, or a reader asking for everything so far
+/// to be on disk (`plan/25` §5: *"reads flush the writer's buffer first"*).
+#[derive(Debug)]
+pub enum Arrival {
+    /// A line to write.
+    Line(LogLine),
+    /// Write what is queued, flush, then answer here.
+    Flush(tokio::sync::oneshot::Sender<()>),
 }
 
 impl PlayerLog {
@@ -104,14 +126,40 @@ impl PlayerLog {
     pub fn with_capacity(capacity: usize) -> (Self, LogSink) {
         assert!(capacity > 0, "a log with no room records nothing");
         let (tx, rx) = tokio::sync::mpsc::channel(capacity);
+        let (flush_tx, flush_rx) = tokio::sync::mpsc::channel(FLUSHES_WAITING);
         let dropped = Arc::new(AtomicU64::new(0));
         (
             Self {
                 tx,
+                flushes: flush_tx,
                 dropped: Arc::clone(&dropped),
             },
-            LogSink { rx, dropped },
+            LogSink {
+                rx,
+                flushes: flush_rx,
+                dropped,
+            },
         )
+    }
+
+    /// Ask the writer to put every line recorded so far on disk, and wait
+    /// until it has: what a read does first, or a search of the live session
+    /// misses its last second (`plan/25` §1, Lichborne's rule).
+    ///
+    /// **Never call this from the actor.** It waits, up to the writer's
+    /// [`FLUSH_EVERY`](super::writer::FLUSH_EVERY);
+    /// [`Self::record`] is the actor's, and never does.
+    ///
+    /// `true` when the writer answered; `false` when there is no writer or it
+    /// did not answer in time. Either way the read goes ahead: the file holds
+    /// what it holds.
+    pub async fn flush(&self) -> bool {
+        let (ack, done) = tokio::sync::oneshot::channel();
+        let asked = async {
+            self.flushes.send(ack).await.ok()?;
+            done.await.ok()
+        };
+        matches!(tokio::time::timeout(FLUSH_WAIT, asked).await, Ok(Some(())))
     }
 
     /// Hand one line to the writer, or count it dropped.
@@ -157,6 +205,15 @@ impl LogSink {
     /// The next line, or `None` once every [`PlayerLog`] is gone.
     pub async fn recv(&mut self) -> Option<LogLine> {
         self.rx.recv().await
+    }
+
+    /// The next line or flush request, or `None` once every [`PlayerLog`] is
+    /// gone. What the writer waits on.
+    pub async fn next(&mut self) -> Option<Arrival> {
+        tokio::select! {
+            line = self.rx.recv() => line.map(Arrival::Line),
+            Some(ack) = self.flushes.recv() => Some(Arrival::Flush(ack)),
+        }
     }
 
     /// The next line if one is already waiting, without awaiting.

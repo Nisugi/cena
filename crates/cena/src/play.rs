@@ -345,8 +345,8 @@ impl Table {
     }
 
     /// What reads this character once it is on the table: the loot and
-    /// combat reports over its database, the agent, its scripts, its web page
-    /// and its window. Moved
+    /// combat reports over its database, `;history` over its player log, the
+    /// agent, its scripts, its web page and its window. Moved
     /// out of [`Self::start`] when M8's triggers and M7's agent together
     /// took it past clippy's line limit.
     fn open_readers(
@@ -358,6 +358,7 @@ impl Table {
         commands: &Commands,
     ) {
         let database = loot::reports(&hosted.handle, commands, &self.dir, game, character);
+        crate::history::open(&hosted.handle, commands, character);
         if let Some(agent) = &self.agent {
             agent.seat(
                 id,
