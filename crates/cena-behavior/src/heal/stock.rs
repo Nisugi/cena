@@ -151,7 +151,7 @@ pub enum Stocked {
     /// The bank would not cover it.
     NoSilver,
     /// The herbalist took the order for this herb and would not sell it,
-    /// [`BUY_TRIES`] times running.
+    /// three times running (`BUY_TRIES`).
     NotSold(&'static str),
 }
 
