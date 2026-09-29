@@ -323,8 +323,8 @@ async fn the_live_prompt_settles_as_roundtime_ends() {
     // it, asked after each tick; then out again.
     let script = Script::new([
         Ok(ending(0, 1_000)),
-        Ok(ending(2, 1_003)),
-        Ok(ending(2, 1_000)),
+        Ok(ending(3, 1_003)),
+        Ok(ending(3, 1_000)),
     ]);
     let (seat, _task) = start(&script);
     settle().await;

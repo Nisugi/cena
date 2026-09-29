@@ -8,14 +8,13 @@
 //! or not.
 
 use std::borrow::Cow;
-use std::collections::VecDeque;
 
 use cena_ui::StyledRun;
 use egui::Id;
 use serde::{Deserialize, Serialize};
 
 use super::{Clicked, Seen};
-use crate::story::{Hours, Shown, Stamp};
+use crate::story::{Hours, Shown, Stamp, Story};
 use crate::text::{self, WRONG};
 
 /// Where a line's time goes.
@@ -110,30 +109,11 @@ impl Lines {
         ui.label(job);
         None
     }
-
-    /// A scrolled body of lines, newest at the bottom, where it stays unless
-    /// the player scrolls back; sideways too when lines do not wrap.
-    fn scrolled(self, ui: &mut egui::Ui, id: Id, add: impl FnOnce(&mut egui::Ui)) {
-        let area = if self.wrap {
-            egui::ScrollArea::vertical()
-        } else {
-            egui::ScrollArea::both()
-        };
-        area.min_scrolled_height(0.0)
-            .id_salt(id)
-            .stick_to_bottom(true)
-            .auto_shrink(false)
-            .show(ui, |ui| {
-                if !self.wrap {
-                    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                }
-                add(ui);
-            });
-    }
 }
 
-/// The story, a stream's lines left out while a widget of it is `open`;
-/// the link clicked in it, if one was.
+/// The story, a stream's lines left out while a widget of it is `open`,
+/// split when the player scrolls back (`split.rs`); the link clicked in it,
+/// if one was.
 ///
 /// A prompt is drawn only when a line was drawn since the last one drawn, or
 /// when it changed (`R>` to `>`): `VellumFE`'s rule (`core/messages/element.rs`,
@@ -143,14 +123,16 @@ impl Lines {
 /// the story for every line another widget showed.
 pub(super) fn story(
     ui: &mut egui::Ui,
-    lines: &VecDeque<(Stamp, Shown)>,
+    story: &Story,
     open: &[String],
     (id, options): (Id, Lines),
 ) -> Option<Clicked> {
     let mut clicked = None;
-    options.scrolled(ui, id.with("story"), |ui| {
+    let first = (story.dropped, options.wrap);
+    super::split::scrolled(ui, id.with("story"), first, |ui, tops| {
         let mut prompts = Prompts::default();
-        for (at, shown) in lines {
+        for (at, shown) in &story.lines {
+            tops.mark(ui);
             match shown {
                 Shown::Game(runs) => {
                     prompts.line(runs);
@@ -212,7 +194,8 @@ impl<'a> Prompts<'a> {
     }
 }
 
-/// One of the game's streams; the link clicked in it, if one was.
+/// One of the game's streams, split when the player scrolls back; the link
+/// clicked in it, if one was.
 pub(super) fn stream(
     ui: &mut egui::Ui,
     seen: &Seen<'_>,
@@ -220,18 +203,28 @@ pub(super) fn stream(
     (id, options): (Id, Lines),
 ) -> Option<Clicked> {
     let mut clicked = None;
-    options.scrolled(ui, id.with("stream"), |ui| {
-        match seen.story.streams.get(stream) {
+    let kept = seen.story.streams.get(stream);
+    // Its first kept line's number: what it heard, less what it keeps.
+    let first = kept.map_or(0, |kept| {
+        kept.heard
+            .saturating_sub(u64::try_from(kept.lines.len()).unwrap_or(u64::MAX))
+    });
+    super::split::scrolled(
+        ui,
+        id.with("stream"),
+        (first, options.wrap),
+        |ui, tops| match kept {
             Some(kept) => {
                 for (at, runs) in &kept.lines {
+                    tops.mark(ui);
                     clicked = clicked.take().or(options.label(ui, *at, runs));
                 }
             }
             None => {
                 ui.weak("Nothing yet.");
             }
-        }
-    });
+        },
+    );
     clicked
 }
 
