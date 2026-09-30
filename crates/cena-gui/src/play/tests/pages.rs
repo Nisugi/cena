@@ -505,4 +505,22 @@ fn the_injury_dolls_page_takes_a_picture() {
         .expect("changed");
     let kept = layout(&harness).dolls.get(&doll).map(|look| look.style);
     assert_eq!(kept, Some(crate::widget::doll::Style::Infinite));
+
+    // Its skin, one of gs_studio's; an unknown one refused.
+    #[cfg(feature = "doll-infinite")]
+    skin_kept(&mut harness, &page, doll);
+}
+
+/// The Injuries page `page` keeps the skin chosen for the doll `doll`.
+#[cfg(feature = "doll-infinite")]
+fn skin_kept(harness: &mut Harness<'_, Scene>, page: &str, doll: u32) {
+    let play = &mut harness.state_mut().play;
+    assert!(play.widget_change(page, "skin", Some("paper")).is_err());
+    play.widget_change(page, "skin", Some("sheruvian_monk"))
+        .expect("changed");
+    let kept = layout(harness).dolls.get(&doll).cloned();
+    assert_eq!(
+        kept.and_then(|look| look.skin).as_deref(),
+        Some("sheruvian_monk")
+    );
 }

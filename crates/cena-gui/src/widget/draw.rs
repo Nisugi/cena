@@ -52,7 +52,12 @@ pub(super) fn draw(
                 .doll
                 .as_ref()
                 .is_some_and(|look| look.style == super::doll::Style::Infinite)
-                && super::infinite::infinite(ui, state, id)
+                && super::infinite::infinite(
+                    ui,
+                    state,
+                    id,
+                    chosen.doll.as_ref().and_then(|look| look.skin.as_deref()),
+                )
             {
                 return None;
             }

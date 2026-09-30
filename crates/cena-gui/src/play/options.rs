@@ -22,6 +22,8 @@ use crate::bar::{Fills, Look, Place};
 use crate::layout::Holds;
 use crate::story::Hours;
 use crate::widget::doll::{DollLook, Style};
+#[cfg(feature = "doll-infinite")]
+use crate::widget::infinite::BARE;
 use crate::widget::{Lines, RoomParts, Stamps, Widget};
 
 /// What a widget page's id begins with; the widget's id follows.
@@ -539,6 +541,30 @@ fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
         here: picture.is_some(),
         from: None,
     });
+    #[cfg(feature = "doll-infinite")]
+    if infinite {
+        let skin = look.and_then(|look| look.skin.clone());
+        let mut skins = vec![
+            (String::new(), "Lay figure".to_owned()),
+            (BARE.to_owned(), "The form's own".to_owned()),
+        ];
+        skins.extend(
+            crate::widget::infinite::skins()
+                .into_iter()
+                .map(|skin| (skin.clone(), skin.replace('_', " "))),
+        );
+        rows.push(Row {
+            key: "skin".to_owned(),
+            label: "Skin".to_owned(),
+            help: "What the Infinite puppet wears: the lay figure, the form's own \
+                   texture, or any skin gs_studio has for it."
+                .to_owned(),
+            kind: RowKind::Choice(skins),
+            value: Value::Text(skin.clone().unwrap_or_default()),
+            here: skin.is_some(),
+            from: None,
+        });
+    }
     rows
 }
 
@@ -547,6 +573,20 @@ fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), Stri
     match key {
         "picture" => {
             look.picture = to.filter(|path| !path.is_empty()).map(str::to_owned);
+            Ok(())
+        }
+        #[cfg(feature = "doll-infinite")]
+        "skin" => {
+            let skin = to.filter(|skin| !skin.is_empty());
+            if let Some(skin) = skin
+                && skin != BARE
+                && !crate::widget::infinite::skins()
+                    .iter()
+                    .any(|one| one == skin)
+            {
+                return Err(format!("Injuries has no skin {skin}."));
+            }
+            look.skin = skin.map(str::to_owned);
             Ok(())
         }
         "style" => {

@@ -283,6 +283,10 @@ pub(crate) struct DollLook {
     /// Infinite, `gs_studio`'s puppet, where this build has it.
     #[serde(default, skip_serializing_if = "Style::is_doll")]
     pub(crate) style: Style,
+    /// The skin the Infinite puppet wears, one of `gs_studio`'s for its
+    /// form, or `-` for the form's own; with none, the lay figure.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) skin: Option<String>,
 }
 
 /// An Injuries widget's style (`plan/55` §2a).
@@ -639,6 +643,7 @@ diameter = 0.1
         let look = super::DollLook {
             picture: Some(path.to_string_lossy().into_owned()),
             style: super::Style::Doll,
+            skin: None,
         };
         let hurt = injuries(&[("head", 2, 0), ("chest", 0, 3), ("leftFoot", 1, 0)]);
         let mut harness = egui_kittest::Harness::builder()
@@ -674,6 +679,7 @@ diameter = 0.1
         let look = super::DollLook {
             picture: Some(base.to_string_lossy().into_owned()),
             style: super::Style::Doll,
+            skin: None,
         };
         let hurt = injuries(&[("chest", 2, 1), ("head", 1, 0)]);
         let mut harness = egui_kittest::Harness::builder()

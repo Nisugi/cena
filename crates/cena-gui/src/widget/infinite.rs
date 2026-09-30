@@ -7,7 +7,8 @@
 //! what the character is under. So this is an adapter and nothing more. The
 //! feet it folds into the legs itself, and every character is `humanoid` for
 //! now (the author: *"we will probably make puppets for all races, but just
-//! humanoid for now"*).
+//! humanoid for now"*). It wears the skin the player chose of those
+//! `gs_studio` has for the form ([`skins`]), the lay figure with none chosen.
 //!
 //! Built only with the `doll-infinite` feature, on by default (*"optional at
 //! build time, on by default"*). Each doll is its own view of `gs_studio`'s
@@ -26,6 +27,38 @@ use gs_field_egui::{doll_view, field_gpu};
 
 /// The puppet every character is drawn as, for now.
 const FORM: &str = "humanoid";
+
+/// The skin a doll wears when the player chose none: muted, and bare of
+/// anything a wound could be mistaken for.
+const SKIN: &str = "lay_figure";
+
+/// The skin setting that means the form's own texture, no skin over it.
+pub(crate) const BARE: &str = "-";
+
+/// The skins `gs_studio` has for the form, by name.
+pub(crate) fn skins() -> Vec<String> {
+    let set = gs_field::puppets::puppets();
+    let mut skins: Vec<String> = set
+        .skins()
+        .filter(|(form, _)| *form == FORM)
+        .map(|(_, skin)| skin.to_owned())
+        .collect();
+    skins.sort();
+    skins
+}
+
+/// The puppet `gs_studio` draws for `chosen`: the form in that skin, in the
+/// lay figure with none chosen, and the form's own texture where the player
+/// asked for it or `gs_studio` has not the skin.
+fn form(chosen: Option<&str>) -> String {
+    let skin = chosen.unwrap_or(SKIN);
+    let set = gs_field::puppets::puppets();
+    if skin == BARE || set.skin(FORM, skin).is_none() {
+        FORM.to_owned()
+    } else {
+        format!("{FORM}#{skin}")
+    }
+}
 
 /// What the character is, as `gs_studio` reads it.
 fn doll_state(state: &GameState) -> DollState {
@@ -56,18 +89,24 @@ fn doll_state(state: &GameState) -> DollState {
     DollState::from_game(wounds, scars, statuses)
 }
 
-/// Draw the puppet for `state` in what is left of `ui`, as the doll `id`;
-/// `false` when it could not be, and nothing was.
-pub(super) fn infinite(ui: &mut egui::Ui, state: Option<&GameState>, id: egui::Id) -> bool {
+/// Draw the puppet for `state` in what is left of `ui`, as the doll `id`
+/// in the skin `chosen`; `false` when it could not be, and nothing was.
+pub(super) fn infinite(
+    ui: &mut egui::Ui,
+    state: Option<&GameState>,
+    id: egui::Id,
+    chosen: Option<&str>,
+) -> bool {
     let Some(state) = state else {
         return false;
     };
     let rect = ui.available_rect_before_wrap();
     let context = ui.ctx().clone();
     let form: Arc<str> = context.data_mut(|data| {
-        data.get_temp_mut_or_insert_with(egui::Id::new("infinite-form"), || -> Arc<str> {
-            Arc::from(FORM)
-        })
+        data.get_temp_mut_or_insert_with(
+            egui::Id::new(("infinite-form", chosen)),
+            || -> Arc<str> { Arc::from(form(chosen)) },
+        )
         .clone()
     });
     let doll = doll_state(state);
@@ -108,8 +147,19 @@ pub(crate) fn open(creation: &eframe::CreationContext<'_>, data: &std::path::Pat
 
 #[cfg(test)]
 mod tests {
-    use super::doll_state;
+    use super::{doll_state, form, skins};
     use cena_session::{Frame, GameState};
+
+    /// The doll wears what the player chose of `gs_studio`'s skins, the
+    /// form's own texture when asked or when the skin is not to be had.
+    #[test]
+    fn the_doll_wears_the_chosen_skin() {
+        let skins = skins();
+        let one = skins.first().expect("gs_studio has humanoid skins");
+        assert_eq!(form(Some(one)), format!("humanoid#{one}"));
+        assert_eq!(form(Some(super::BARE)), "humanoid");
+        assert_eq!(form(Some("no such skin")), "humanoid");
+    }
 
     /// The character's wounds, scars and what it is under, as `gs_studio`
     /// reads them: its foot on its leg, its stun and its debuff.
