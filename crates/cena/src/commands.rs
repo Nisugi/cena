@@ -150,6 +150,15 @@ pub(crate) struct Commands {
     stoppers: Arc<std::sync::Mutex<Vec<(&'static str, Stopper)>>>,
 }
 
+/// A family's handler, set once: a second registration is said and the
+/// first kept. The one body of the thirteen methods below (the review of
+/// 2026-09-29).
+fn once<T>(slot: &OnceLock<T>, family: &str, handler: T) {
+    if slot.set(handler).is_err() {
+        eprintln!("  !! [commands] {family} was registered twice; keeping the first");
+    }
+}
+
 impl Commands {
     /// Put the command line on `handle`, with the default symbol until the
     /// character's own is known (`SessionHandle::set_command_symbol`).
@@ -271,95 +280,69 @@ impl Commands {
     /// Route travel's words to `handler` from now on. Once: a second call is
     /// ignored, as the session's own `set_desk` is.
     pub(crate) fn travel(&self, handler: Starter) {
-        if self.travel.set(handler).is_err() {
-            eprintln!("  !! [commands] travel was registered twice; keeping the first");
-        }
+        once(&self.travel, "travel", handler);
     }
 
     /// Route hunt's words to `handler` from now on. Once, as for travel.
     pub(crate) fn hunt(&self, handler: Starter) {
-        if self.hunt.set(handler).is_err() {
-            eprintln!("  !! [commands] hunt was registered twice; keeping the first");
-        }
+        once(&self.hunt, "hunt", handler);
     }
 
     /// Route `;loot` to `handler` from now on. Once, as for travel.
     pub(crate) fn loot(&self, handler: Handler) {
-        if self.loot.set(handler).is_err() {
-            eprintln!("  !! [commands] loot was registered twice; keeping the first");
-        }
+        once(&self.loot, "loot", handler);
     }
 
     /// Route `;combat` to `handler` from now on. Once, as for travel.
     pub(crate) fn combat(&self, handler: Handler) {
-        if self.combat.set(handler).is_err() {
-            eprintln!("  !! [commands] combat was registered twice; keeping the first");
-        }
+        once(&self.combat, "combat", handler);
     }
 
     /// Route `;history` to `handler` from now on. Once, as for travel.
     pub(crate) fn history(&self, handler: Handler) {
-        if self.history.set(handler).is_err() {
-            eprintln!("  !! [commands] history was registered twice; keeping the first");
-        }
+        once(&self.history, "history", handler);
     }
 
     /// Route `;doll` to `handler` from now on. Once, as for travel.
     pub(crate) fn doll(&self, handler: Handler) {
-        if self.doll.set(handler).is_err() {
-            eprintln!("  !! [commands] doll was registered twice; keeping the first");
-        }
+        once(&self.doll, "doll", handler);
     }
 
     /// Route `;sorter` to `handler` from now on. Once, as for travel.
     pub(crate) fn sorter(&self, handler: Handler) {
-        if self.sorter.set(handler).is_err() {
-            eprintln!("  !! [commands] sorter was registered twice; keeping the first");
-        }
+        once(&self.sorter, "sorter", handler);
     }
 
     /// Route `;agent` to `handler` from now on. Once, as for travel.
     pub(crate) fn agent(&self, handler: Handler) {
-        if self.agent.set(handler).is_err() {
-            eprintln!("  !! [commands] agent was registered twice; keeping the first");
-        }
+        once(&self.agent, "agent", handler);
     }
 
     /// Route `;lich` to `handler` from now on. Once, as for travel.
     pub(crate) fn lich(&self, handler: Handler) {
-        if self.lich.set(handler).is_err() {
-            eprintln!("  !! [commands] lich was registered twice; keeping the first");
-        }
+        once(&self.lich, "lich", handler);
     }
 
     /// Route `;trigger` to `handler` from now on. Once, as for travel.
     pub(crate) fn trigger(&self, handler: Handler) {
-        if self.trigger.set(handler).is_err() {
-            eprintln!("  !! [commands] trigger was registered twice; keeping the first");
-        }
+        once(&self.trigger, "trigger", handler);
     }
 
     /// Route `;to` and `;all` to `handler` from now on. Once, as for travel.
     pub(crate) fn relay(&self, handler: Starter) {
-        if self.relay.set(handler).is_err() {
-            eprintln!("  !! [commands] relay was registered twice; keeping the first");
-        }
+        once(&self.relay, "relay", handler);
     }
 
     /// Route the player's scripts to `handler` from now on, after every
     /// other word. Once, as for travel.
     pub(crate) fn scripts(&self, handler: Handler) {
-        if self.scripts.set(handler).is_err() {
-            eprintln!("  !! [commands] scripts were registered twice; keeping the first");
-        }
+        once(&self.scripts, "scripts", handler);
     }
 
     /// Route `;multi` and `;foreach` to `handler` from now on. Once, as for
     /// travel.
     pub(crate) fn batch(&self, handler: Starter) {
-        if self.batch.set(handler).is_err() {
-            eprintln!("  !! [commands] batch was registered twice; keeping the first");
-        }
+        once(&self.batch, "batch", handler);
     }
 }
 
