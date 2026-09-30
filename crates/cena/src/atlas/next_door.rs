@@ -228,7 +228,10 @@ mod tests {
                     let Some(other) = sheet_of.get(&exit.to).filter(|o| **o != name) else {
                         continue;
                     };
-                    if !dirs.get(id, exit.to).is_some_and(|d| d.is_compass()) {
+                    if !dirs
+                        .get(id, exit.to)
+                        .is_some_and(cena_map_layout::Dir::is_compass)
+                    {
                         continue;
                     }
                     let pair = (
