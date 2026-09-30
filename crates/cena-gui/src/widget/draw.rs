@@ -3,11 +3,12 @@
 
 use cena_session::hands::Hand;
 use cena_session::{Body, GameState, Notice, NoticeKind, RoomItem, Snapshot, Vital};
+use cena_ui::StyledRun;
 use egui::{Color32, Id, RichText};
 
 use super::{Seen, Widget, character, lists, room, status};
 use crate::bar::{self, Amount, Bar};
-use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER, WRONG};
+use crate::text::{self, AMBER, CREATURE, OBJECT, WRONG};
 
 /// Draw `widget` for `seen` into `ui`. Following another character, a
 /// one-line widget puts its name before what it says, and the rest a line
@@ -193,25 +194,15 @@ pub(super) fn draw(
                 None => ui.weak("Description unknown"),
             };
         }),
-        Widget::Creatures => scrolled(ui, &mut |ui| {
-            let known = state.filter(|state| state.room.component("room objs").is_some());
-            items(
-                ui,
-                "Creatures",
-                known.map(|state| &state.room.creatures[..]),
-                CREATURE,
-            );
-        }),
-        Widget::Objects => scrolled(ui, &mut |ui| {
-            let known = state.filter(|state| state.room.component("room objs").is_some());
-            items(
-                ui,
-                "Also here",
-                known.map(|state| &state.room.objects[..]),
-                OBJECT,
-            );
-        }),
-        Widget::Players => scrolled(ui, &mut |ui| players(ui, seen.snapshot)),
+        Widget::Creatures | Widget::Objects | Widget::Players => {
+            let items = room_list(widget, seen.snapshot);
+            let (listing, own) = (chosen.list.unwrap_or_default(), seen.who.is_none());
+            let mut clicked = None;
+            scrolled(ui, &mut |ui| {
+                clicked = super::listed::list(ui, items.clone(), listing, own);
+            });
+            return clicked;
+        }
         Widget::Stance => character::stance(ui, state, &named, look),
         Widget::Encumbrance => character::encumbrance(ui, state, &named, look),
         Widget::EncumbranceDetail => line(
@@ -455,49 +446,31 @@ fn hunt(ui: &mut egui::Ui, hunt: Option<&cena_ui::HuntView>) {
 
 /// A labelled list of room items, each with its status when it has one;
 /// `None` while the room's contents are not yet known.
-fn items(ui: &mut egui::Ui, label: &str, items: Option<&[RoomItem]>, color: Color32) {
-    ui.horizontal_wrapped(|ui| {
-        ui.weak(format!("{label}:"));
-        match items {
-            None => {
-                ui.weak("unknown");
-            }
-            Some([]) => {
-                ui.weak("none");
-            }
-            Some(items) => {
-                for item in items {
-                    let text = match &item.status {
-                        Some(status) => format!("{} ({status})", item.text),
-                        None => item.text.clone(),
-                    };
-                    ui.colored_label(color, text);
-                }
-            }
-        }
-    });
-}
-
-/// The room's players, each painted by the character's triggers as Despana
-/// paints them ([`cena_ui::room_player`]).
-fn players(ui: &mut egui::Ui, snapshot: Option<&Snapshot>) {
-    ui.horizontal_wrapped(|ui| {
-        ui.weak("Players:");
-        let Some(snapshot) = snapshot.filter(|snapshot| snapshot.state.room.saw_players()) else {
-            ui.weak("unknown");
-            return;
-        };
-        let (state, room) = (&snapshot.state, &snapshot.state.room);
-        if room.players.is_empty() {
-            ui.weak("none");
-        }
-        for player in &room.players {
-            match cena_ui::room_player(&player.text, &snapshot.triggers, state) {
-                Some(runs) => ui.label(text::job(&runs, ui.style())),
-                None => ui.colored_label(PLAYER, &player.text),
-            };
-        }
-    });
+/// The names a room list shows, each its runs: its creatures or objects
+/// once the game has said what is here, or its players, each painted by the
+/// character's triggers as Despana paints them ([`cena_ui::room_player`]).
+/// `None` until the game has said.
+fn room_list(widget: &Widget, snapshot: Option<&Snapshot>) -> Option<Vec<Vec<StyledRun>>> {
+    let snapshot = snapshot?;
+    let room = &snapshot.state.room;
+    let things = |items: &[RoomItem], color| {
+        room.component("room objs").is_some().then(|| {
+            items
+                .iter()
+                .map(|item| super::described::item_runs(item, color))
+                .collect()
+        })
+    };
+    match widget {
+        Widget::Creatures => things(&room.creatures, CREATURE),
+        Widget::Objects => things(&room.objects, OBJECT),
+        _ => room.saw_players().then(|| {
+            room.players
+                .iter()
+                .map(|player| super::described::player_runs(snapshot, player))
+                .collect()
+        }),
+    }
 }
 
 /// Hydra's own messages, the newest at the bottom.

@@ -160,19 +160,43 @@ fn players(snapshot: &Snapshot) -> Vec<StyledRun> {
         if at > 0 {
             runs.push(plain(", "));
         }
-        let link = Some(object(player));
-        match cena_ui::room_player(&player.text, &snapshot.triggers, &snapshot.state) {
-            Some(painted) => runs.extend(painted.into_iter().map(|run| StyledRun {
+        runs.extend(player_runs(snapshot, player));
+    }
+    runs
+}
+
+/// A player in the room, a link to them, painted as the triggers paint a
+/// name.
+pub(super) fn player_runs(snapshot: &Snapshot, player: &RoomItem) -> Vec<StyledRun> {
+    let link = Some(object(player));
+    match cena_ui::room_player(&player.text, &snapshot.triggers, &snapshot.state) {
+        Some(painted) => painted
+            .into_iter()
+            .map(|run| StyledRun {
                 link: link.clone(),
                 ..run
-            })),
-            None => runs.push(StyledRun {
-                text: player.text.clone(),
-                color: Some(colour(PLAYER)),
-                link,
-                ..StyledRun::default()
-            }),
-        }
+            })
+            .collect(),
+        None => vec![StyledRun {
+            text: player.text.clone(),
+            color: Some(colour(PLAYER)),
+            link,
+            ..StyledRun::default()
+        }],
+    }
+}
+
+/// A creature or an object in the room, in `color`, a link to it, and what
+/// it is doing when the game says (`dead`, `lying down`).
+pub(super) fn item_runs(item: &RoomItem, color: Color32) -> Vec<StyledRun> {
+    let mut runs = vec![StyledRun {
+        text: item.text.clone(),
+        color: Some(colour(color)),
+        link: Some(object(item)),
+        ..StyledRun::default()
+    }];
+    if let Some(status) = &item.status {
+        runs.push(plain(&format!(" ({status})")));
     }
     runs
 }
@@ -247,7 +271,7 @@ fn styled(runs: &cena_session::Runs, creatures: bool) -> Vec<StyledRun> {
 }
 
 /// Words with no style of their own.
-fn plain(text: &str) -> StyledRun {
+pub(super) fn plain(text: &str) -> StyledRun {
     StyledRun {
         text: text.to_owned(),
         ..StyledRun::default()
@@ -271,15 +295,7 @@ fn listed(
         if at > 0 {
             runs.push(plain(", "));
         }
-        runs.push(StyledRun {
-            text: item.text.clone(),
-            color: Some(colour(color)),
-            link: Some(object(item)),
-            ..StyledRun::default()
-        });
-        if let Some(status) = &item.status {
-            runs.push(plain(&format!(" ({status})")));
-        }
+        runs.extend(item_runs(item, color));
     }
     said(ui, &runs);
 }

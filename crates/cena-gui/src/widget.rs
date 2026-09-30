@@ -23,6 +23,7 @@ pub(crate) mod find;
 pub(crate) mod infinite;
 mod kind;
 mod lines;
+mod listed;
 mod lists;
 pub(crate) mod minimap;
 mod room;
@@ -40,6 +41,7 @@ use crate::story::Story;
 pub(crate) use described::RoomParts;
 pub(crate) use kind::{Group, Widget};
 pub(crate) use lines::{Lines, Stamps, line_under};
+pub(crate) use listed::Listing;
 pub(crate) use split::{Scroll, ask as ask_scroll};
 pub(crate) use status::{Category, Indicator};
 
@@ -157,6 +159,8 @@ pub(crate) struct Chosen {
     pub(crate) doll: Option<doll::DollLook>,
     /// The minimap's zooms and maps next door.
     pub(crate) minimap: Option<minimap::MinimapLook>,
+    /// How a room list lays out its names.
+    pub(crate) list: Option<listed::Listing>,
 }
 
 /// One line of text, or a bar: what a one-line widget asks for.

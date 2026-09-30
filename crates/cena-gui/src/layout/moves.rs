@@ -122,10 +122,19 @@ impl Layout {
                 }
             }
         }
-        self.follows.remove(&placed);
-        self.looks.remove(&placed);
-        self.rooms.remove(&placed);
-        self.lines.remove(&placed);
+        self.forget(placed);
+    }
+
+    /// What the player chose for widget `id`, forgotten with it: whom it
+    /// follows and every setting on its page.
+    fn forget(&mut self, id: u32) {
+        self.follows.remove(&id);
+        self.looks.remove(&id);
+        self.rooms.remove(&id);
+        self.lines.remove(&id);
+        self.dolls.remove(&id);
+        self.minimaps.remove(&id);
+        self.lists.remove(&id);
     }
 
     /// Window `holder` gone, with every widget in it.
@@ -136,10 +145,7 @@ impl Layout {
         let gone = self.holders.remove(at);
         let ids: Vec<u32> = gone.holds.placed().map(|placed| placed.id).collect();
         for id in ids {
-            self.follows.remove(&id);
-            self.looks.remove(&id);
-            self.rooms.remove(&id);
-            self.lines.remove(&id);
+            self.forget(id);
         }
     }
 

@@ -71,7 +71,7 @@ fn each_widget_draws_what_it_shows() {
         "[Rawknuckle's, Watering Hole]",
         "Description unknown",
         "a kobold",
-        "Also here:",
+        "Also here: Maravel",
         "Maravel",
         "Obvious exits: north, out",
         "Hunt: resting until mana is 50%.",

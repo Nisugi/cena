@@ -23,7 +23,7 @@ use crate::story::Hours;
 use crate::widget::doll::{DollLook, Style};
 #[cfg(feature = "doll-infinite")]
 use crate::widget::infinite::BARE;
-use crate::widget::{Lines, RoomParts, Stamps, Widget};
+use crate::widget::{Lines, Listing, RoomParts, Stamps, Widget};
 
 /// What a widget page's id begins with; the widget's id follows.
 pub(crate) const PREFIX: &str = "widget:";
@@ -155,6 +155,9 @@ impl Play {
                         doll_rows(layout.dolls.get(&one.id), &pictures.dolls)
                     }
                     (Widget::Room, None) => room_rows(layout.rooms.get(&one.id)),
+                    (Widget::Creatures | Widget::Objects | Widget::Players, None) => {
+                        list_rows(layout.lists.get(&one.id).copied())
+                    }
                     (Widget::Minimap, None) => {
                         crate::widget::minimap::look::rows(layout.minimaps.get(&one.id))
                     }
@@ -208,6 +211,11 @@ impl Play {
             Widget::Room => keep(&mut layout.rooms, placed, &RoomParts::default(), |parts| {
                 room_set(parts, key, to)
             })?,
+            Widget::Creatures | Widget::Objects | Widget::Players => {
+                keep(&mut layout.lists, placed, &Listing::default(), |listing| {
+                    list_set(listing, key, to)
+                })?;
+            }
             Widget::Injuries => keep(&mut layout.dolls, placed, &DollLook::default(), |look| {
                 doll_set(look, key, to)
             })?,
@@ -498,6 +506,37 @@ fn overlay_choice(overlays: &[PathBuf]) -> RowKind {
         (path.display().to_string(), called)
     }));
     RowKind::Choice(images)
+}
+
+/// A room list's one row: across with commas, or down.
+fn list_rows(listing: Option<Listing>) -> Vec<Row> {
+    let now = listing.unwrap_or_default();
+    vec![Row {
+        key: "list".to_owned(),
+        label: "List them".to_owned(),
+        help: "On a line with commas between, or one to a line.".to_owned(),
+        kind: RowKind::Choice(
+            Listing::CHOICES
+                .iter()
+                .map(|(_, value, called)| ((*value).to_owned(), (*called).to_owned()))
+                .collect(),
+        ),
+        value: Value::Text(now.value().to_owned()),
+        here: now != Listing::default(),
+        from: None,
+    }]
+}
+
+/// A room list's `key` set to `to`, or back to across.
+fn list_set(listing: &mut Listing, key: &str, to: Option<&str>) -> Result<(), String> {
+    match (key, to) {
+        ("list", None) => *listing = Listing::default(),
+        ("list", Some(to)) => {
+            *listing = Listing::of(to).ok_or_else(|| format!("A list is not laid out `{to}`."))?;
+        }
+        _ => return Err(format!("A room list has no setting {key}.")),
+    }
+    Ok(())
 }
 
 /// The Injuries widget's rows: its picture, any in the data folder's

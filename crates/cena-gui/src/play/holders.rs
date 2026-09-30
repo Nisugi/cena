@@ -189,6 +189,7 @@ impl Play {
             lines: &layout.lines,
             dolls: &layout.dolls,
             minimaps: &layout.minimaps,
+            lists: &layout.lists,
             session,
             read: &mut self.read,
             sent: None,

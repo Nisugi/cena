@@ -93,6 +93,10 @@ pub(crate) struct Layout {
     /// (`plan/53` §8c step 4).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) minimaps: BTreeMap<u32, crate::widget::minimap::MinimapLook>,
+    /// How each room list (creatures, objects, players) lays out its
+    /// names, by the widget's id, when the player chose on its page.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) lists: BTreeMap<u32, crate::widget::Listing>,
     /// Its four drawers (`plan/49` Stage E, `drawers.rs`).
     #[serde(default, skip_serializing_if = "Drawers::is_default")]
     pub(crate) drawers: Drawers,
@@ -199,6 +203,7 @@ impl Layout {
             looks: BTreeMap::new(),
             locked: false,
             rooms: BTreeMap::new(),
+            lists: BTreeMap::new(),
             lines: BTreeMap::new(),
             dolls: BTreeMap::new(),
             minimaps: BTreeMap::new(),
