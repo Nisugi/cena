@@ -207,7 +207,7 @@ fn the_characters_widgets_say_what_it_is() {
     ashryn.state.prepared = Some("Spirit Warding I".to_owned());
     let harness = drawn(Some(ashryn), None);
     for label in [
-        "Stance: defensive (100%)",
+        "Stance: defensive 100%",
         "Encumbrance: Light 20%",
         "You feel slightly weighed down.",
         "Mind: clear as a bell 0%",

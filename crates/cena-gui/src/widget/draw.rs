@@ -207,8 +207,8 @@ pub(super) fn draw(
             );
         }),
         Widget::Players => scrolled(ui, &mut |ui| players(ui, seen.snapshot)),
-        Widget::Stance => character::stance(ui, state, &named),
-        Widget::Encumbrance => character::encumbrance(ui, state, &named),
+        Widget::Stance => character::stance(ui, state, &named, look),
+        Widget::Encumbrance => character::encumbrance(ui, state, &named, look),
         Widget::EncumbranceDetail => line(
             ui,
             named(
@@ -217,8 +217,8 @@ pub(super) fn draw(
                     .unwrap_or("Encumbrance unknown"),
             ),
         ),
-        Widget::Mind => character::mind(ui, state, &named),
-        Widget::NextLevel => character::next_level(ui, state, &named),
+        Widget::Mind => character::mind(ui, state, &named, look),
+        Widget::NextLevel => character::next_level(ui, state, &named, look),
         Widget::Level => line(ui, named(&character::level(state))),
         Widget::TrainingPoints => line(ui, named(&character::training(state))),
         Widget::ExperienceTotals => scrolled(ui, &mut |ui| character::experience(ui, state)),

@@ -20,6 +20,7 @@ const ALL: Says = Says {
     label: true,
     numbers: true,
     percent: true,
+    words: false,
 };
 
 /// Where each bar landed, in the order drawn.
@@ -119,6 +120,7 @@ fn gallery(ui: &mut egui::Ui, drawn: &mut Drawn) {
                     label: false,
                     numbers: false,
                     percent: true,
+                    words: false,
                 }),
         );
     });

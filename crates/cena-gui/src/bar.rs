@@ -22,6 +22,14 @@ pub const MANA: Color32 = Color32::from_rgb(0x47, 0x84, 0xd9);
 pub const STAMINA: Color32 = Color32::from_rgb(0x55, 0xb8, 0x6c);
 /// Spirit's colour, `VellumFE`'s.
 pub const SPIRIT: Color32 = Color32::from_rgb(0xcb, 0xa9, 0x42);
+/// Stance's colour.
+pub const STANCE: Color32 = Color32::from_rgb(0x4f, 0xa3, 0xa5);
+/// Encumbrance's colour.
+pub const ENCUMBRANCE: Color32 = Color32::from_rgb(0xb0, 0x7a, 0x3c);
+/// The mind's colour.
+pub const MIND: Color32 = Color32::from_rgb(0x8e, 0x6b, 0xc9);
+/// The next level's colour.
+pub const LEVEL: Color32 = Color32::from_rgb(0xc9, 0xa2, 0x3c);
 
 /// Which way a bar fills as its value grows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -62,9 +70,14 @@ pub enum Place {
     Hidden,
 }
 
-/// What a bar's text says, in this order: its label, its numbers
-/// (`current/max`), its percent. Any combination; none is no text.
+/// What a bar's text says, in this order: its label, the game's word for
+/// its state, its numbers (`current/max`), its percent. Any combination;
+/// none is no text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "what a bar's text says: each part on or off on its own, as the player picks"
+)]
 pub struct Says {
     /// The bar's label: "HP".
     pub label: bool,
@@ -72,6 +85,13 @@ pub struct Says {
     pub numbers: bool,
     /// Its percent: "87%".
     pub percent: bool,
+    /// What the game calls its state, after the label: "offensive",
+    /// "Light", "clear as a bell". Only a bar the game words has any: stance,
+    /// encumbrance, the mind and the next level (the author, 2026-09-29:
+    /// *"just percentage, stance word (offensive/defensive), label
+    /// (stance:), or any combination of the three"*).
+    #[serde(default)]
+    pub words: bool,
 }
 
 impl Default for Says {
@@ -81,6 +101,7 @@ impl Default for Says {
             label: true,
             numbers: false,
             percent: true,
+            words: false,
         }
     }
 }
@@ -153,6 +174,7 @@ pub struct Amount {
 #[must_use = "a bar draws nothing until added to a Ui"]
 pub struct Bar<'a> {
     label: &'a str,
+    state: Option<&'a str>,
     value: Option<Amount>,
     fill: Option<Color32>,
     fills: Fills,
@@ -174,6 +196,7 @@ impl<'a> Bar<'a> {
     pub fn new(label: &'a str, value: Option<Amount>) -> Self {
         Self {
             label,
+            state: None,
             value,
             fill: None,
             fills: Fills::default(),
@@ -209,6 +232,13 @@ impl<'a> Bar<'a> {
     /// Where its text goes.
     pub fn text(mut self, place: Place) -> Self {
         self.place = place;
+        self
+    }
+
+    /// What the game calls its state, `words`, said when [`Says::words`]
+    /// asks for it.
+    pub fn state(mut self, words: Option<&'a str>) -> Self {
+        self.state = words;
         self
     }
 
@@ -283,8 +313,18 @@ impl<'a> Bar<'a> {
     #[must_use]
     pub fn words(&self) -> String {
         let mut parts = Vec::new();
+        let state = self
+            .state
+            .filter(|words| self.says.words && !words.is_empty());
         if self.says.label && !self.label.is_empty() {
-            parts.push(self.label.to_owned());
+            // `Stance: offensive`, and `Stance 80%` with no word after it.
+            parts.push(match state {
+                Some(_) => format!("{}:", self.label),
+                None => self.label.to_owned(),
+            });
+        }
+        if let Some(state) = state {
+            parts.push(state.to_owned());
         }
         match self.value {
             Some(amount) => {

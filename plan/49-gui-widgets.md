@@ -429,7 +429,11 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    **Step 1 BUILT 2026-09-27** (`crates/cena-gui/src/widget/character.rs`). Twelve kinds:
    *Stance*, *Encumbrance* and *Mind* and *Next level* as bars, each labelled in the
    game's words (*"Stance: defensive (100%)"*, which says its percent already, so the bar
-   does not say it twice) and plain while unknown (*"Stance ?"*); *Encumbrance, in words*;
+   does not say it twice) and plain while unknown (*"Stance ?"*). **Since 2026-09-29 each is
+   a bar as a vital is** (the author: *"It's basically a progress bar right? So it should
+   have all the same things"*): the vitals' page, fill, orb or ring, colour, the three
+   images, and its text any combination of its label, the game's word and its percent
+   (*"Stance: defensive 100%"*, `bar::Says::words`); *Encumbrance, in words*;
    *Level*; *Training points*; *Experience*, the numbers the game has told, grouped as it
    writes them; *Prepared spell* (named *Spell hand* since 2026-09-29, and a link like
    the hands, below); *Society* with its rank; *Resources* (the profession's

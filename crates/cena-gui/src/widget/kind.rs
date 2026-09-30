@@ -319,22 +319,38 @@ impl Widget {
     /// one bar: a vital says its label, numbers and percent; the pulse its
     /// words. `None` for a widget that is not a bar.
     pub(crate) fn bar_look(&self) -> Option<crate::bar::Look> {
-        use crate::bar::{Fills, HEALTH, Look, MANA, Place, SPIRIT, STAMINA, Says};
+        use crate::bar::{
+            ENCUMBRANCE, Fills, HEALTH, LEVEL, Look, MANA, MIND, Place, SPIRIT, STAMINA, STANCE,
+            Says,
+        };
         let vital = Says {
             label: true,
             numbers: true,
             percent: true,
+            words: false,
+        };
+        let worded = Says {
+            label: true,
+            numbers: false,
+            percent: true,
+            words: true,
         };
         let (says, color) = match self {
             Widget::Health => (vital, HEALTH),
             Widget::Mana => (vital, MANA),
             Widget::Stamina => (vital, STAMINA),
             Widget::Spirit => (vital, SPIRIT),
+            // The game words these: the label, its word and the percent.
+            Widget::Stance => (worded, STANCE),
+            Widget::Encumbrance => (worded, ENCUMBRANCE),
+            Widget::Mind => (worded, MIND),
+            Widget::NextLevel => (worded, LEVEL),
             Widget::Pulse => (
                 Says {
                     label: true,
                     numbers: false,
                     percent: false,
+                    words: false,
                 },
                 MANA,
             ),

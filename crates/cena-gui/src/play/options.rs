@@ -350,6 +350,7 @@ fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(
         ("label", to) => look.says.label = to.map_or(Ok(default.says.label), on)?,
         ("numbers", to) => look.says.numbers = to.map_or(Ok(default.says.numbers), on)?,
         ("percent", to) => look.says.percent = to.map_or(Ok(default.says.percent), on)?,
+        ("words", to) => look.says.words = to.map_or(Ok(default.says.words), on)?,
         ("color", Some(to)) => {
             look.color = crate::menu::rgb(to).ok_or_else(|| format!("`{to}` is not a colour."))?;
         }
@@ -663,17 +664,28 @@ fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf]) -> Vec<Ro
         says(
             "label",
             "Says its label",
-            "HP, MP, SP, Sp.",
+            "Its name: HP, MP, Stance, Mind.",
             now.says.label,
             default.says.label,
         ),
-        says(
-            "numbers",
-            "Says current/max",
-            "350/400, when the game has said both.",
-            now.says.numbers,
-            default.says.numbers,
-        ),
+        // A bar the game words has its word to say, and no current/max.
+        if default.says.words {
+            says(
+                "words",
+                "Says the game's word",
+                "What the game calls it: offensive, Light, clear as a bell.",
+                now.says.words,
+                default.says.words,
+            )
+        } else {
+            says(
+                "numbers",
+                "Says current/max",
+                "350/400, when the game has said both.",
+                now.says.numbers,
+                default.says.numbers,
+            )
+        },
         says(
             "percent",
             "Says its percent",

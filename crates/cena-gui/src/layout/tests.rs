@@ -747,6 +747,7 @@ fn a_bars_look_is_kept_with_the_layout() {
             label: true,
             numbers: false,
             percent: true,
+            words: false,
         },
         color: [0x10, 0x20, 0x30],
         overlay: Some("C:/overlays/gloss.png".to_owned()),

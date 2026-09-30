@@ -283,6 +283,7 @@ pub(super) fn effects(ui: &mut egui::Ui, category: Category, state: Option<&Game
                     label: true,
                     numbers: false,
                     percent: false,
+                    words: false,
                 }),
         );
     }

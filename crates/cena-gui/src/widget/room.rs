@@ -192,6 +192,7 @@ fn fighter(ui: &mut egui::Ui, fighter: &Fighter, color: Color32) {
             label: false,
             numbers: false,
             percent: false,
+            words: false,
         });
         ui.add(bar);
     }

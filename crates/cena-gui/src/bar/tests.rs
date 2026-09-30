@@ -20,6 +20,7 @@ fn the_words_are_any_combination_in_one_order() {
         label,
         numbers,
         percent,
+        words: false,
     };
     let bar = |s| Bar::new("HP", Some(amount(87))).says(s).words();
     assert_eq!(bar(says(true, true, true)), "HP 348/400 87%");
@@ -35,6 +36,7 @@ fn unknown_is_a_question_and_missing_numbers_are_left_out() {
         label: true,
         numbers: true,
         percent: true,
+        words: false,
     };
     assert_eq!(Bar::new("HP", None).says(all).words(), "HP ?");
     let percent_only = Some(Amount {
@@ -170,4 +172,31 @@ fn text_reads_on_light_and_dark() {
     assert_eq!(readable_on(Color32::from_rgb(20, 20, 20)), Color32::WHITE);
     assert_eq!(readable_on(SPIRIT), Color32::BLACK);
     assert_eq!(readable_on(HEALTH), Color32::WHITE);
+}
+
+/// A bar the game words says its word after its label, which takes a colon
+/// only when the word follows it; a bar with no word says none.
+#[test]
+fn the_games_word_follows_the_label() {
+    let says = |label, words, percent| Says {
+        label,
+        numbers: false,
+        percent,
+        words,
+    };
+    let bar = |s| {
+        Bar::new("Stance", Some(amount(80)))
+            .state(Some("offensive"))
+            .says(s)
+            .words()
+    };
+    assert_eq!(bar(says(true, true, true)), "Stance: offensive 80%");
+    assert_eq!(bar(says(true, false, true)), "Stance 80%");
+    assert_eq!(bar(says(false, true, false)), "offensive");
+    assert_eq!(
+        Bar::new("HP", Some(amount(87)))
+            .says(says(true, true, true))
+            .words(),
+        "HP 87%"
+    );
 }

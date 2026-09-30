@@ -527,3 +527,56 @@ fn skin_kept(harness: &mut Harness<'_, Scene>, page: &str, doll: u32) {
         Some("sheruvian_monk")
     );
 }
+
+/// Stance is a bar as a vital is (the author, 2026-09-29: *"It's basically
+/// a progress bar right?"*): the same page, with the game's word where a
+/// vital has current/max, and its label, word and percent in any
+/// combination.
+#[test]
+fn stance_is_a_bar_with_its_word() {
+    let mut harness = harness();
+    harness.run();
+    let stance = harness
+        .state_mut()
+        .play
+        .layout
+        .as_mut()
+        .map(|layout| layout.add_widget(Widget::Stance, None))
+        .expect("laid out");
+    let character = &mut harness.state_mut().snapshot.state.character;
+    character.stance = Some("offensive (80%)".to_owned());
+    character.stance_percent = Some(80);
+    harness.run();
+    assert!(harness.query_by_label("Stance: offensive 80%").is_some());
+    let page = format!("widget:{stance}");
+    let pages = harness
+        .state()
+        .play
+        .widget_pages(&crate::play::Pictures::default());
+    let own = pages
+        .iter()
+        .find(|found| found.id == page)
+        .expect("its page");
+    let keys: Vec<&str> = own.rows.iter().map(|row| row.key.as_str()).collect();
+    assert_eq!(
+        &keys[..6],
+        ["fills", "ring", "text", "label", "words", "percent"]
+    );
+
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "words", Some("off"))
+        .expect("changed");
+    harness.run();
+    assert!(harness.query_by_label("Stance 80%").is_some(), "no word");
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&page, "words", None).expect("changed");
+    play.widget_change(&page, "label", Some("off"))
+        .expect("changed");
+    play.widget_change(&page, "percent", Some("off"))
+        .expect("changed");
+    harness.run();
+    assert!(
+        harness.query_by_label("offensive").is_some(),
+        "the word alone"
+    );
+}

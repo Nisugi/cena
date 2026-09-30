@@ -7,50 +7,49 @@
 use std::fmt::Write as _;
 
 use cena_session::GameState;
-use egui::Color32;
 
-use crate::bar::{Amount, Bar, Says};
+use crate::bar::{self, Amount, Bar, ENCUMBRANCE, LEVEL, MIND, STANCE};
 
-/// Stance's fill.
-const STANCE: Color32 = Color32::from_rgb(0x4f, 0xa3, 0xa5);
-/// Encumbrance's fill.
-const ENCUMBRANCE: Color32 = Color32::from_rgb(0xb0, 0x7a, 0x3c);
-/// The mind's fill.
-const MIND: Color32 = Color32::from_rgb(0x8e, 0x6b, 0xc9);
-/// The next level's fill.
-const LEVEL: Color32 = Color32::from_rgb(0xc9, 0xa2, 0x3c);
-
-/// A bar as wide as it is given: `label` and, when known, how full, said
-/// as a percent unless `label` says it already.
-pub(super) fn gauge(ui: &mut egui::Ui, label: &str, percent: Option<u32>, color: Color32) {
+/// A bar the game words, as a vital is drawn (the author, 2026-09-29:
+/// *"It's basically a progress bar right? So it should have all the same
+/// things"*): `label`, the game's `words` for its state, and how full,
+/// each said as `look` asks, filling what it is given as `look` fills.
+fn gauge(
+    ui: &mut egui::Ui,
+    (label, words): (&str, Option<&str>),
+    percent: Option<u32>,
+    color: egui::Color32,
+    look: Option<&bar::Look>,
+) {
     let amount = percent.map(|percent| Amount {
         percent,
         current: None,
         max: None,
     });
-    ui.add(
-        Bar::new(label, amount)
-            .fill(color)
-            .size([ui.available_width(), 18.0])
-            .says(Says {
-                label: true,
-                numbers: false,
-                percent: !label.ends_with("%)"),
-            }),
-    );
+    let drawn = super::draw::as_looks(ui, Bar::new(label, amount).fill(color).state(words), look);
+    ui.add(drawn.fitted(ui));
 }
 
-/// A bar's label: `name`, and what the game calls its state when it has.
-fn called(name: &str, text: Option<&str>) -> String {
-    text.map_or_else(|| name.to_owned(), |text| format!("{name}: {text}"))
+/// The game's words for a state without the percent it adds to some:
+/// stance's `defensive (100%)` is `defensive`, the percent the bar's own.
+fn worded(text: &str) -> &str {
+    match text.rsplit_once(" (") {
+        Some((words, rest)) if rest.ends_with("%)") => words,
+        _ => text,
+    }
 }
 
 /// Stance as a bar: what the game calls it, and how much of it guards.
-pub(super) fn stance(ui: &mut egui::Ui, state: Option<&GameState>, named: &dyn Fn(&str) -> String) {
+pub(super) fn stance(
+    ui: &mut egui::Ui,
+    state: Option<&GameState>,
+    named: &dyn Fn(&str) -> String,
+    look: Option<&bar::Look>,
+) {
     let character = state.map(|state| &state.character);
-    let text = character.and_then(|c| c.stance.as_deref());
+    let text = character.and_then(|c| c.stance.as_deref()).map(worded);
     let percent = character.and_then(|c| c.stance_percent);
-    gauge(ui, &named(&called("Stance", text)), percent, STANCE);
+    gauge(ui, (&named("Stance"), text), percent, STANCE, look);
 }
 
 /// Encumbrance as a bar.
@@ -58,24 +57,31 @@ pub(super) fn encumbrance(
     ui: &mut egui::Ui,
     state: Option<&GameState>,
     named: &dyn Fn(&str) -> String,
+    look: Option<&bar::Look>,
 ) {
     let character = state.map(|state| &state.character);
-    let text = character.and_then(|c| c.encumbrance.as_deref());
+    let text = character.and_then(|c| c.encumbrance.as_deref()).map(worded);
     let percent = character.and_then(|c| c.encumbrance_percent);
     gauge(
         ui,
-        &named(&called("Encumbrance", text)),
+        (&named("Encumbrance"), text),
         percent,
         ENCUMBRANCE,
+        look,
     );
 }
 
 /// The mind as a bar: how full of experience, in the game's words.
-pub(super) fn mind(ui: &mut egui::Ui, state: Option<&GameState>, named: &dyn Fn(&str) -> String) {
+pub(super) fn mind(
+    ui: &mut egui::Ui,
+    state: Option<&GameState>,
+    named: &dyn Fn(&str) -> String,
+    look: Option<&bar::Look>,
+) {
     let experience = state.map(|state| &state.character.experience);
-    let text = experience.and_then(|e| e.mind_state.as_deref());
+    let text = experience.and_then(|e| e.mind_state.as_deref()).map(worded);
     let percent = experience.and_then(|e| e.mind_percent);
-    gauge(ui, &named(&called("Mind", text)), percent, MIND);
+    gauge(ui, (&named("Mind"), text), percent, MIND, look);
 }
 
 /// How near the next level, as a bar.
@@ -83,11 +89,12 @@ pub(super) fn next_level(
     ui: &mut egui::Ui,
     state: Option<&GameState>,
     named: &dyn Fn(&str) -> String,
+    look: Option<&bar::Look>,
 ) {
     let experience = state.map(|state| &state.character.experience);
-    let text = experience.and_then(|e| e.next_level.as_deref());
+    let text = experience.and_then(|e| e.next_level.as_deref()).map(worded);
     let percent = experience.and_then(|e| e.next_level_percent);
-    gauge(ui, &named(&called("Next level", text)), percent, LEVEL);
+    gauge(ui, (&named("Next level"), text), percent, LEVEL, look);
 }
 
 /// The level, as the game words it.
