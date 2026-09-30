@@ -22,7 +22,10 @@ fn recipe() -> Recipe {
 
 /// The tokens the contrast floor is for: what is drawn on a surface.
 fn on_a_surface(token: Token) -> bool {
-    matches!(token.role(), Role::Free { .. } | Role::Anchored { .. })
+    matches!(
+        token.role(),
+        Role::Free { .. } | Role::Anchored { .. } | Role::Onto { .. }
+    )
 }
 
 #[test]

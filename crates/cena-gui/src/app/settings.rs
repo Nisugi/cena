@@ -19,7 +19,9 @@ impl App {
         if !self.menu.open {
             return;
         }
-        let own = [self.own.page()];
+        let own = [self
+            .own
+            .page(&self.themes.names(), self.theme_problem.as_deref())];
         let shown = self.shown_play();
         let overlays = match shown {
             Some(_) => self.overlays(),
@@ -100,6 +102,7 @@ impl App {
             MenuAsked::Own { key, to } => {
                 let said = self.own.change(&key, to.as_deref());
                 self.hub.card_width = self.own.card_width();
+                self.worn = None;
                 said
             }
             MenuAsked::Key { character, change } => {

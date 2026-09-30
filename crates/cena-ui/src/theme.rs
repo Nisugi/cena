@@ -10,9 +10,11 @@
 //! 2026-09-30: *"There is no theme applied. I'm not sure all black should
 //! be a theme"*).
 
+mod file;
 mod harmony;
 mod oklch;
 
+pub use file::{RecipeFile, Theme, Themes};
 pub use harmony::{Group, Recipe, Role, Scheme, generate, hue_variants, seed_swatches};
 pub use oklch::{contrast, delta_e, hue_distance};
 
@@ -43,6 +45,25 @@ pub fn hex([red, green, blue]: Rgb) -> String {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Token {
+    // Surfaces and the text on them: what egui's own visuals are set from.
+    /// The window's and every panel's ground.
+    Canvas,
+    /// A control's ground at rest: a button, a frame.
+    Surface,
+    /// A control's ground under the pointer or pressed.
+    Raised,
+    /// A ground sunk into the surface: a text field, a scroll trough.
+    Inset,
+    /// A separator, a frame's edge.
+    Line,
+    /// An edge with attention: the window's, a hovered control's.
+    LineStrong,
+    /// Text.
+    Text,
+    /// Weak text.
+    Muted,
+    /// Behind selected text.
+    Selection,
     // Accents and Hydra's own text.
     /// The accent: what is chosen, a guide while arranging, a find's hit.
     Accent,
@@ -179,7 +200,16 @@ pub enum Token {
 
 impl Token {
     /// Every token, in the order they are listed.
-    pub const ALL: [Token; 62] = [
+    pub const ALL: [Token; 71] = [
+        Token::Canvas,
+        Token::Surface,
+        Token::Raised,
+        Token::Inset,
+        Token::Line,
+        Token::LineStrong,
+        Token::Text,
+        Token::Muted,
+        Token::Selection,
         Token::Accent,
         Token::Link,
         Token::Hydra,
@@ -248,6 +278,15 @@ impl Token {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
+            Token::Canvas => "canvas",
+            Token::Surface => "surface",
+            Token::Raised => "raised",
+            Token::Inset => "inset",
+            Token::Line => "line",
+            Token::LineStrong => "line_strong",
+            Token::Text => "text",
+            Token::Muted => "muted",
+            Token::Selection => "selection",
             Token::Accent => "accent",
             Token::Link => "link",
             Token::Hydra => "hydra",
@@ -331,6 +370,23 @@ impl Token {
             Role::Anchored { dl, dc }
         }
         match self {
+            // Surfaces step up from the background; the text on them is the
+            // seed's hue nearly greyed, lifted to read.
+            Token::Canvas => Role::Surface { dl: 0.0 },
+            Token::Surface => Role::Surface { dl: 0.05 },
+            Token::Raised => Role::Surface { dl: 0.09 },
+            Token::Inset => Role::Surface { dl: -0.02 },
+            Token::Line => Role::Surface { dl: 0.14 },
+            Token::LineStrong => free(0, -0.3, -0.05),
+            Token::Text => Role::Onto {
+                dl: 0.75,
+                dc: -0.28,
+            },
+            Token::Muted => Role::Onto {
+                dl: 0.55,
+                dc: -0.28,
+            },
+            Token::Selection => free(0, -0.2, 0.0),
             // Accents and Hydra's own text: the seed's own hue, and the next.
             Token::Accent => free(0, 0.0, 0.0),
             Token::Link => free(0, -0.06, 0.02),
@@ -396,8 +452,8 @@ impl Token {
             Token::MapRoomEdge => free(0, 0.15, -0.05),
             Token::MapLine => free(0, 0.0, -0.1),
             Token::MapConnector => free(0, -0.25, -0.1),
-            Token::MapYou => free(0, 0.25, -0.3),
-            Token::MapMuted => free(0, 0.0, -0.3),
+            Token::MapYou => Role::Onto { dl: 0.75, dc: -0.3 },
+            Token::MapMuted => Role::Onto { dl: 0.5, dc: -0.3 },
             // Chrome is not a colour.
             Token::Veil | Token::Grid | Token::Mark => Role::Fixed,
         }
@@ -407,6 +463,15 @@ impl Token {
     #[must_use]
     pub const fn group(self) -> Group {
         match self {
+            Token::Canvas
+            | Token::Surface
+            | Token::Raised
+            | Token::Inset
+            | Token::Line
+            | Token::LineStrong
+            | Token::Text
+            | Token::Muted
+            | Token::Selection => Group::Surfaces,
             Token::Accent
             | Token::Link
             | Token::Hydra
@@ -476,6 +541,15 @@ impl Token {
     #[must_use]
     pub const fn bare(self) -> Rgb {
         match self {
+            // egui's dark visuals, which the window wore (`Visuals::dark`).
+            Token::Canvas => [0x1b, 0x1b, 0x1b],
+            Token::Surface | Token::Line => [0x3c, 0x3c, 0x3c],
+            Token::Raised => [0x46, 0x46, 0x46],
+            Token::Inset => [0x0a, 0x0a, 0x0a],
+            Token::LineStrong => [0x96, 0x96, 0x96],
+            Token::Text => [0xb4, 0xb4, 0xb4],
+            Token::Muted => [0x8c, 0x8c, 0x8c],
+            Token::Selection => [0x00, 0x5c, 0x80],
             Token::Accent | Token::Warning | Token::RoomName => [0xd7, 0xad, 0x63],
             Token::Link => [0x47, 0x7a, 0xb3],
             Token::Hydra => [0x8f, 0xc9, 0xa8],

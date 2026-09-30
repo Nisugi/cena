@@ -104,6 +104,12 @@ pub struct App {
     triggers: crate::triggers::Editor,
     /// The trigger import's question, while one is asked (`import.rs`).
     asking: trigger_import::Asking,
+    /// The themes there are: the built-ins and the `themes` folder's.
+    themes: cena_ui::theme::Themes,
+    /// The theme worn, by name; `None` until one is, or after a change.
+    worn: Option<String>,
+    /// Why the theme asked for is not worn, shown on the *Window* page.
+    theme_problem: Option<String>,
 }
 
 /// One character's play window.
@@ -140,6 +146,9 @@ impl App {
             numlock: None,
             menu: Menu::default(),
             own: Own::default(),
+            themes: cena_ui::theme::Themes::built_in(),
+            worn: None,
+            theme_problem: None,
             menu_waits: false,
             caught_for_page: None,
             clear_sends: false,
@@ -162,12 +171,44 @@ impl App {
             presets: Library::load(Some(data.join("layouts"))),
             keys_file: Some(keys::path(data)),
             placements: Placements::load(data),
+            themes: cena_ui::theme::Themes::load(&data.join("themes")),
             ..Self::new(sessions)
         };
         app.hub.card_width = own.card_width();
         app.own = own;
         app.read_keys();
         app
+    }
+
+    /// Wear the theme Hydra's own settings choose, once, and again after a
+    /// change: the one chosen, or the light one while the computer is in
+    /// light mode and the setting follows it (`plan/57` step 2). A theme
+    /// that cannot be worn is said on the hub, and Despana is worn.
+    fn wear_theme(&mut self, context: &egui::Context) {
+        let light =
+            self.own.follow_computer() && context.system_theme() == Some(egui::Theme::Light);
+        let wanted = if light {
+            self.own.light_theme()
+        } else {
+            self.own.theme()
+        };
+        if self.worn.as_deref() == Some(wanted) {
+            return;
+        }
+        let palette = match self.themes.palette(wanted) {
+            Ok(palette) => {
+                self.theme_problem = None;
+                palette
+            }
+            Err(why) => {
+                self.theme_problem = Some(format!("{wanted} is not worn: {why}"));
+                self.themes
+                    .palette(cena_ui::theme::Theme::DEFAULT)
+                    .unwrap_or_default()
+            }
+        };
+        crate::theme::wear(context, &palette);
+        self.worn = Some(wanted.to_owned());
     }
 
     /// Read the keybinds file again, and say what it bound; each
@@ -202,6 +243,7 @@ impl App {
     /// what a test drives directly.
     pub fn draw(&mut self, ui: &mut egui::Ui) {
         crate::carry::set_key(ui.ctx(), self.own.drag_with());
+        self.wear_theme(ui.ctx());
         let glance = self.sessions.glance();
         let seats = self.sessions.seated();
         self.seat(&seats);

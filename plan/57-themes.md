@@ -252,6 +252,25 @@ On a branch `themes` once the author approves.
    twelve tokens) and a **light** one generated from a recipe; the choice on Hydra's *Window*
    page, and *Follow the computer*: a theme for dark and one for light, egui's reading of the
    system picking between them. The images change here, once, and are reviewed.
+
+   **BUILT 2026-09-30.** Nine more tokens, the surfaces and the text on them (`Canvas`,
+   `Surface`, `Raised`, `Inset`, `Line`, `LineStrong`, `Text`, `Muted`, `Selection`; 71 in
+   all), from which egui's own visuals are set (`crates/cena-gui/src/theme.rs`, `visuals`):
+   dark or light by the canvas, the surfaces on every control, the text and lines, the
+   selection, the link, a warning and a wrong. Text takes a new role, *onto*: its lightness
+   measured from the background's, toward the light on a dark ground and the dark on a light
+   one. The file (`crates/cena-ui/src/theme/file.rs`): `name`, `base`, `[recipe]` with each
+   dial optional, `[pins]` by token name, a bad value refused when read; `Themes` holds the
+   two built-ins and every `.toml` in the `themes` folder in the data folder, and resolves a
+   theme over its bases (eight deep at most, a circle refused). **Despana** is every token
+   pinned to what Hydra drew, with the web page's chrome round it; **Light** is generated
+   from Despana's link blue on a warm white, nothing pinned. The app wears the theme once
+   and again after a change (`App::wear_theme`); on the *Window* page, *Theme*, *Follow the
+   computer's dark or light mode* and *Light theme*, kept in `window.toml`; a theme that
+   cannot be worn is said on its row and Despana worn. Wearing a theme pins egui's own
+   dark-or-light choice, so the computer's mode changing does not swap the visuals out from
+   under the palette. One image added, `despana`, the hub and a play window worn; the
+   widgets' own images are drawn without the app and did not change.
 3. **A character's own.** Its theme and its accent in its settings file; its play window
    wearing it. UNVERIFIED: whether egui lets one window take a style the others do not; if it
    cannot be set per window, it is set at the top of each window's drawing. Checked first.

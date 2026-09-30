@@ -132,6 +132,15 @@ pub enum Role {
         /// Added to the seed's chroma.
         dc: f64,
     },
+    /// Text on the surfaces: the seed's hue nearly greyed, its lightness
+    /// `dl` away from the background's, toward the light on a dark ground
+    /// and toward the dark on a light one.
+    Onto {
+        /// How far from the background's lightness.
+        dl: f64,
+        /// Added to the seed's chroma.
+        dc: f64,
+    },
     /// A surface: the background, its lightness moved by `dl`. Never lifted
     /// to the contrast floor, which is for what is drawn *on* a surface.
     Surface {
@@ -150,6 +159,8 @@ pub enum Role {
 /// map line are never on one screen at once, so they need not differ.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Group {
+    /// The surfaces and the text on them.
+    Surfaces,
     /// The story's and the room's text, the accents.
     Text,
     /// The bars.
@@ -218,6 +229,7 @@ fn hue_for(token: Token, recipe: &Recipe, seed_hue: f64) -> f64 {
             let off = recipe.scheme.offsets();
             (seed_hue + off[slot % off.len()] * recipe.variance).rem_euclid(360.0)
         }
+        Role::Onto { .. } => seed_hue,
         _ => to_lch(token.bare())[2],
     }
 }
@@ -327,6 +339,10 @@ pub fn generate(recipe: &Recipe) -> Palette {
         }
         let (dl, dc) = match token.role() {
             Role::Free { dl, dc, .. } | Role::Anchored { dl, dc } => (dl, dc),
+            Role::Onto { dl, dc } => {
+                let away = if background[0] < 0.5 { dl } else { -dl };
+                (background[0] + away - seed[0], dc)
+            }
             Role::Surface { dl } => {
                 let l = (background[0] + dl).clamp(0.0, 1.0);
                 palette.set(token, from_lch([l, background[1], background[2]]));
