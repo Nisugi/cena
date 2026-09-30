@@ -192,10 +192,14 @@ async fn a_runner_hears_its_character_and_acts_as_a_script() {
     .unwrap();
     assert_eq!(said["said"], true);
     let told = std::iter::from_fn(|| legacy.try_recv().ok()).find_map(|event| match event {
-        Event::Notice(notice) => Some(notice.body),
+        Event::Notice(notice) => Some((notice.body, notice.answer)),
         _ => None,
     });
-    assert_eq!(told, Some(Said::Mono(vec!["[trollspeak: hi]".to_owned()])));
+    // In the story, as Lich puts a script's words in its main window.
+    assert_eq!(
+        told,
+        Some((Said::Mono(vec!["[trollspeak: hi]".to_owned()]), true))
+    );
 
     assert!(runners.typed(&token, "trollspeak say hi"));
     let events = heard_until(&app, &token, |events| !kind(events, "typed").is_empty())

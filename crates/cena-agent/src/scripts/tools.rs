@@ -277,7 +277,11 @@ impl Scripting {
         } else {
             Notice::prose(kind, lines)
         };
-        seat.door.say(notice);
+        // In the story, among the game's lines, as Lich puts a script's
+        // `respond`, `echo` and `Lich::Messaging` in the main window (the
+        // author, 2026-09-30: *"the point of the relay is to work like lich
+        // did essentially, atleast appear to"*).
+        seat.door.say(notice.answering());
         json(&serde_json::json!({ "said": true }))
     }
 

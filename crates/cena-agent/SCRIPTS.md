@@ -196,8 +196,9 @@ after it.
 
 Show the player `text` (at most 20000 characters) as a script's `respond` and `echo` do:
 split at each line break, every piece a line, so `""` is one blank line. `kind` colours it: `info` (absent), `warn`, `error`, `debug`. `mono`
-keeps its columns, never re-wrapped, for a table. It never reaches the game. Answers
-`{"said": true}`.
+keeps its columns, never re-wrapped, for a table. It is shown in the story, among the
+game's lines, as Lich shows a script's words in its main window (since 2026-09-30; it went
+to the Hydra window before). It never reaches the game. Answers `{"said": true}`.
 
 Text only: markup a script writes (`<pushBold/>`, `<preset>`) is not drawn. Hydra never puts
 text the game did not send among the game's lines (`crates/cena-session/src/notice.rs`).
