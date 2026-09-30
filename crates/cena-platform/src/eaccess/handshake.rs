@@ -47,6 +47,11 @@ use std::path::Path;
 /// goals were never in conflict.
 const STAGE_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// How long the server's hash key is: 32 bytes on every login captured
+/// (`plan/10` §4's table, `K | 32`), read whole in one record. A reply of
+/// any other length is refused as this attempt's, before it is hashed with.
+const KEY_LEN: usize = 32;
+
 /// One read, bounded by [`STAGE_DEADLINE`].
 ///
 /// S4 (`plan/10` §12.1): **no response carries a terminator** -- not `\n`, not
@@ -282,8 +287,19 @@ async fn prove_identity(
     // `tests/eaccess_mandated_vectors.rs` pin only the hash's arithmetic, and
     // stayed green with a trim restored on this line (review finding 4).
     let key = key_raw.as_slice();
-    if key.is_empty() {
-        return Err(err("k_response", "MALFORMED_K_RESPONSE (empty)"));
+    if key.len() != KEY_LEN {
+        // Transient: a read that came up short is this attempt's, not the
+        // account's. Unchecked, a short key reached `hash_password`, which
+        // hashed against it (a wrong password sent, one strike) or refused a
+        // password longer than it as FATAL, which stops the retries and
+        // skips the web login (the review of 2026-09-29).
+        return Err(err(
+            "k_response",
+            format!(
+                "MALFORMED_K_RESPONSE ({} bytes, {KEY_LEN} expected)",
+                key.len()
+            ),
+        ));
     }
     progress(&format!(
         "[stage: k_response] {} bytes, used whole (not printed -- key material)",

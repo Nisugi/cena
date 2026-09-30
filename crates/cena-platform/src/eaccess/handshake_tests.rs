@@ -134,6 +134,22 @@ async fn the_a_request_carries_the_hash_of_the_whole_key_as_sent() {
     );
 }
 
+/// A `K` reply that is not 32 bytes is this attempt's fault, refused before
+/// anything is hashed with it and without a strike: nothing after `K` is
+/// sent, and the error is not fatal.
+#[tokio::test(start_paused = true)]
+async fn a_hash_key_of_the_wrong_length_is_refused_as_transient() {
+    for key in [&key_with_leading_space()[..20], &[7u8; 33][..]] {
+        let (mut source, script) = scripted_server(key, L_OK);
+        let (result, _) = run(&mut source, creds("GS3")).await;
+        let error = result.expect_err("a key of the wrong length");
+        assert_eq!(error.stage, "k_response", "{error}");
+        assert!(!error.fatal, "{error}");
+        assert!(error.to_string().contains("32 expected"), "{error}");
+        assert_eq!(script.lines(), ["K"], "nothing sent after K");
+    }
+}
+
 #[tokio::test(start_paused = true)]
 async fn a_game_code_the_server_does_not_offer_is_fatal() {
     // **Finding 1.** A mistyped code -- web login's spelling of Prime is the
