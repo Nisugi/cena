@@ -126,6 +126,22 @@ impl RecipeFile {
         *self == Self::default()
     }
 
+    /// What `recipe` says that `base` does not, as a file writes it; the
+    /// pins are the theme's own and not here.
+    #[must_use]
+    pub fn differing(recipe: &Recipe, base: &Recipe) -> Self {
+        let differs = |a: f64, b: f64| ((a - b).abs() > 1e-9).then_some(a);
+        Self {
+            seed: (recipe.seed != base.seed).then(|| hex(recipe.seed)),
+            background: (recipe.background != base.background).then(|| hex(recipe.background)),
+            scheme: (recipe.scheme != base.scheme).then(|| recipe.scheme.name().to_owned()),
+            variance: differs(recipe.variance, base.variance),
+            contrast: differs(recipe.contrast, base.contrast),
+            separation: differs(recipe.separation, base.separation),
+            room_spread: differs(recipe.room_spread, base.room_spread),
+        }
+    }
+
     /// `recipe` with what this file sets laid over it.
     ///
     /// # Errors

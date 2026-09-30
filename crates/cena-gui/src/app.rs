@@ -102,6 +102,11 @@ pub struct App {
     placements: Placements,
     /// The trigger editor (`plan/54`).
     triggers: crate::triggers::Editor,
+    /// The theme editor (`plan/57` step 6).
+    themer: crate::theme_editor::Editor,
+    /// The editor's draft, worn on the whole window while it is open and
+    /// asked to; `None`, the theme chosen.
+    preview: Option<cena_ui::theme::Outfit>,
     /// The trigger import's question, while one is asked (`import.rs`).
     asking: trigger_import::Asking,
     /// The themes there are: the built-ins and the `themes` folder's.
@@ -125,6 +130,9 @@ struct Window {
     /// Its session was closed, when last drawn.
     ended: bool,
 }
+
+/// What `worn` holds while the theme editor's draft is worn: no theme's name.
+const PREVIEW: &str = "\u{1}preview";
 
 impl App {
     /// The hub over `sessions`, on its first tab, its play windows keeping
@@ -162,6 +170,8 @@ impl App {
             logs: BTreeMap::new(),
             placements: Placements::default(),
             triggers: crate::triggers::Editor::default(),
+            themer: crate::theme_editor::Editor::default(),
+            preview: None,
             asking: trigger_import::Asking::default(),
         }
     }
@@ -197,6 +207,15 @@ impl App {
             self.fonts = Some(data.map_or_else(Vec::new, |data| {
                 crate::fonts::load(context, &data.join("fonts")).1
             }));
+        }
+        // The editor's draft, while it is worn: over whatever is chosen.
+        if let Some(outfit) = &self.preview {
+            if self.worn.as_deref() != Some(PREVIEW) {
+                crate::theme::wear(context, outfit);
+                self.worn = Some(PREVIEW.to_owned());
+                self.looks.wear_again();
+            }
+            return;
         }
         let light =
             self.own.follow_computer() && context.system_theme() == Some(egui::Theme::Light);
@@ -306,6 +325,7 @@ impl App {
             }
             Some(HubAction::Settings) => self.menu.open_for(None),
             Some(HubAction::Triggers) => self.open_triggers(),
+            Some(HubAction::Theme) => self.open_theme_editor(),
             Some(HubAction::Lich(session, on)) => {
                 if let Some(seat) = seats.iter().find(|seat| seat.id.0 == session) {
                     self.hydras(seat, lich_word(on));
@@ -349,6 +369,7 @@ impl App {
         self.left_keyboard();
         self.settings(ui.ctx(), &glance);
         self.trigger_window(ui.ctx(), &glance);
+        self.theme_window(ui.ctx());
         self.import_question(ui.ctx(), glance.import.as_ref());
         self.log_windows(ui.ctx(), &seats);
         if let Some(after) = self.placements.save_due(Instant::now()) {
@@ -599,5 +620,6 @@ mod looks;
 mod settings;
 #[cfg(test)]
 mod tests;
+mod theme_window;
 mod trigger_import;
 mod triggers;

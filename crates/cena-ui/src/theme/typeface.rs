@@ -60,6 +60,22 @@ impl TypeFile {
         *self == Self::default()
     }
 
+    /// What `kind` says that `base` does not, as a file writes it; a font
+    /// the base names and this does not is written empty, egui's own.
+    #[must_use]
+    pub fn differing(kind: &Type, base: &Type) -> Self {
+        let font = |a: &Option<String>, b: &Option<String>| {
+            (a != b).then(|| a.clone().unwrap_or_default())
+        };
+        let differs = |a: f32, b: f32| ((a - b).abs() > f32::EPSILON).then_some(a);
+        Self {
+            ui_font: font(&kind.ui_font, &base.ui_font),
+            story_font: font(&kind.story_font, &base.story_font),
+            ui_size: differs(kind.ui_size, base.ui_size),
+            story_size: differs(kind.story_size, base.story_size),
+        }
+    }
+
     /// `kind` with what this file sets laid over it; an empty font name is
     /// egui's own, and a size is kept between 6 and 48.
     #[must_use]

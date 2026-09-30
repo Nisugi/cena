@@ -27,6 +27,7 @@ impl App {
             Asked::Stop => self.hydras(seat, "stop"),
             Asked::Log => self.open_log(seat),
             Asked::Triggers => self.open_triggers(),
+            Asked::Theme => self.open_theme_editor(),
             Asked::TriggerFrom(line) => {
                 self.open_triggers();
                 self.triggers.start_from(&line);

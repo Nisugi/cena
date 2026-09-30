@@ -96,6 +96,8 @@ pub(super) enum Top {
     Log,
     /// The trigger editor was asked for.
     Triggers,
+    /// The theme editor was asked for.
+    Theme,
     /// The settings menu's *Keys* page was asked for.
     Keys,
     /// The player's own Lich was switched on, or off.
@@ -121,6 +123,11 @@ fn windows(ui: &mut egui::Ui) -> Option<Top> {
             "Log",
             "What this character saw, read back: by day, searched, or exported",
             Top::Log,
+        ),
+        (
+            "Theme",
+            "Make a theme: its colours, shape and type",
+            Top::Theme,
         ),
     ] {
         if ui.button(label).on_hover_text(hover).clicked() {

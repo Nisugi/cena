@@ -315,6 +315,24 @@ On a branch `themes` once the author approves.
 6. **The editor.** A *Theme* page in the settings menu: Generate first (seed, scheme, the
    dials, a preview of the whole palette and a sample of story text, live), then each token
    with its pin, then Type and Shape. *Save as* makes a file; a built-in is never written over.
+
+   **BUILT 2026-09-30**, as a window of its own beside *Settings* and *Triggers* rather than a
+   page of the menu, since the menu draws rows and this needs swatches and a sample: *Theme*
+   on the hub and on a play window's bar (`crates/cena-gui/src/theme_editor.rs`, its parts
+   under `theme_editor/`, the app's window `crates/cena-gui/src/app/theme_window.rs`). *Start
+   from* a theme: a built-in becomes the base of a new theme named *My ...*, a file's theme is
+   edited as it is over its own base. The draft is held whole, resolved, and saved as only
+   what differs from its base (`RecipeFile::differing`, `ShapeFile::differing`,
+   `TypeFile::differing`), so a file says only what it changes. *Generate*: the seed and the
+   background as colour buttons, seeds offered from the theme begun from (`seed_swatches`),
+   the scheme, and the four dials; *Pins*: every token by group, its colour as it comes out,
+   pinned with a click or a colour, and for a free token six other hues (`hue_variants`);
+   *Shape* and *Type* as controls, the fonts from those loaded. The preview: a sample of story
+   text through the story's own layout, on the draft's canvas in its fonts, four bars, and
+   every token a swatch. *Wear while editing* puts the draft on the whole window, sent again
+   only when it changes; *Save* writes the file to the themes folder (a built-in's name, no
+   name, and a theme as its own base refused), reads the themes again and says where. One
+   image, `theme_editor`; the play window's and the hub's moved by the button.
 7. **The web.** The theme sent to the page as a new wire message (`crates/cena-ui/WIRE.md`,
    a version's step), the page's CSS variables set from it. The page's design is not touched.
 

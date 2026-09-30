@@ -37,6 +37,7 @@ mod snap;
 mod story;
 mod text;
 mod theme;
+mod theme_editor;
 mod triggers;
 mod widget;
 

@@ -80,6 +80,8 @@ pub(crate) enum Asked {
     Log,
     /// Open the trigger editor (`plan/54`).
     Triggers,
+    /// Open the theme editor (`plan/57` step 6).
+    Theme,
     /// Open the trigger editor on a new trigger for this line's words
     /// (`plan/54` step 4).
     TriggerFrom(String),
@@ -212,6 +214,22 @@ pub(crate) struct Play {
     targets: (Vec<i64>, Option<i64>),
 }
 
+/// What a top-bar button asks of the app, for the buttons that change
+/// nothing in the window itself: stop, and the windows they open.
+fn opened(top: draw::Top) -> Option<Asked> {
+    Some(match top {
+        draw::Top::Stop => Asked::Stop,
+        draw::Top::Settings => Asked::Settings(None),
+        draw::Top::Keys => Asked::Keys,
+        draw::Top::Log => Asked::Log,
+        draw::Top::Triggers => Asked::Triggers,
+        draw::Top::Theme => Asked::Theme,
+        draw::Top::ReloadKeys => Asked::ReloadKeys,
+        draw::Top::Lich(on) => Asked::Lich(on),
+        _ => return None,
+    })
+}
+
 impl Play {
     /// A play window for session `session`, the character `name` on the
     /// game `instance` names, with its layout from `layouts` when one was
@@ -308,13 +326,6 @@ impl Play {
         }
         let mut changed = false;
         match top {
-            Some(draw::Top::Stop) => asked = Some(Asked::Stop),
-            Some(draw::Top::Settings) => asked = Some(Asked::Settings(None)),
-            Some(draw::Top::Keys) => asked = Some(Asked::Keys),
-            Some(draw::Top::Log) => asked = Some(Asked::Log),
-            Some(draw::Top::Triggers) => asked = Some(Asked::Triggers),
-            Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
-            Some(draw::Top::Lich(on)) => asked = Some(Asked::Lich(on)),
             Some(draw::Top::Fit) => {
                 self.layout = None;
                 changed = true;
@@ -339,6 +350,7 @@ impl Play {
                     changed = true;
                 }
             }
+            Some(top) => asked = opened(top),
             None => {}
         }
         egui::Panel::bottom(Id::new(("play-input-panel", session))).show(ui, |ui| {

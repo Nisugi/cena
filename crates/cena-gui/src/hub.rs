@@ -55,6 +55,8 @@ pub enum HubAction {
     Settings,
     /// Open the trigger editor (`plan/54`).
     Triggers,
+    /// Open the theme editor (`plan/57` step 6).
+    Theme,
     /// Switch this session's own Lich on, or off (`;lich on`, `;lich off`).
     Lich(u32, bool),
     /// Open this session's log window (`plan/25` step 8).
@@ -151,6 +153,9 @@ impl Hub {
                 }
                 if ui.button("Triggers").clicked() {
                     asked = Some(HubAction::Triggers);
+                }
+                if ui.button("Theme").clicked() {
+                    asked = Some(HubAction::Theme);
                 }
                 if shut.clicked() {
                     if playing {

@@ -102,6 +102,19 @@ impl ShapeFile {
         *self == Self::default()
     }
 
+    /// What `shape` says that `base` does not, as a file writes it.
+    #[must_use]
+    pub fn differing(shape: &Shape, base: &Shape) -> Self {
+        let differs = |a: f32, b: f32| ((a - b).abs() > f32::EPSILON).then_some(a);
+        Self {
+            corner: (shape.corner != base.corner).then_some(shape.corner),
+            stroke: differs(shape.stroke, base.stroke),
+            density: (shape.density != base.density).then_some(shape.density),
+            scrollbar: differs(shape.scrollbar, base.scrollbar),
+            shadows: (shape.shadows != base.shadows).then_some(shape.shadows),
+        }
+    }
+
     /// `shape` with what this file sets laid over it.
     #[must_use]
     pub fn over(&self, shape: Shape) -> Shape {
