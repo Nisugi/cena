@@ -10,9 +10,34 @@
 //! 2026-09-30: *"There is no theme applied. I'm not sure all black should
 //! be a theme"*).
 
+mod harmony;
+mod oklch;
+
+pub use harmony::{Group, Recipe, Role, Scheme, generate, hue_variants, seed_swatches};
+pub use oklch::{contrast, delta_e, hue_distance};
+
 /// A colour: red, green, blue, as a bar's look and the settings pages
 /// already write one.
 pub type Rgb = [u8; 3];
+
+/// `#rrggbb` (or `#rgb`, or `#rrggbbaa` with the alpha ignored) as a colour.
+#[must_use]
+pub fn parse_hex(text: &str) -> Option<Rgb> {
+    let digits = text.trim().strip_prefix('#')?;
+    let expanded: String = match digits.len() {
+        3 => digits.chars().flat_map(|c| [c, c]).collect(),
+        6 | 8 => digits[..6].to_owned(),
+        _ => return None,
+    };
+    let byte = |at: usize| u8::from_str_radix(expanded.get(at..at + 2)?, 16).ok();
+    Some([byte(0)?, byte(2)?, byte(4)?])
+}
+
+/// A colour as `#rrggbb`.
+#[must_use]
+pub fn hex([red, green, blue]: Rgb) -> String {
+    format!("#{red:02x}{green:02x}{blue:02x}")
+}
 
 /// A colour Hydra draws, by its meaning.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -32,6 +57,9 @@ pub enum Token {
     // The game's text.
     /// A room's name, the `roomName` preset.
     RoomName,
+    /// The plate under a room's name, where one is drawn; no widget draws
+    /// it yet.
+    RoomPlate,
     /// A creature's name: `monsterbold`, the room window's creatures.
     Creature,
     /// A player's name in the room window.
@@ -151,13 +179,14 @@ pub enum Token {
 
 impl Token {
     /// Every token, in the order they are listed.
-    pub const ALL: [Token; 61] = [
+    pub const ALL: [Token; 62] = [
         Token::Accent,
         Token::Link,
         Token::Hydra,
         Token::Warning,
         Token::Wrong,
         Token::RoomName,
+        Token::RoomPlate,
         Token::Creature,
         Token::Player,
         Token::Object,
@@ -225,6 +254,7 @@ impl Token {
             Token::Warning => "warning",
             Token::Wrong => "wrong",
             Token::RoomName => "room_name",
+            Token::RoomPlate => "room_plate",
             Token::Creature => "creature",
             Token::Player => "player",
             Token::Object => "object",
@@ -289,6 +319,157 @@ impl Token {
         Token::ALL.into_iter().find(|token| token.name() == name)
     }
 
+    /// How the harmony gives it a colour (`plan/57` §3a): a slot in the
+    /// scheme where the hue is free, its own hue where the hue carries its
+    /// meaning, and the rest as the role says.
+    #[must_use]
+    pub const fn role(self) -> Role {
+        const fn free(slot: usize, dl: f64, dc: f64) -> Role {
+            Role::Free { slot, dl, dc }
+        }
+        const fn anchored(dl: f64, dc: f64) -> Role {
+            Role::Anchored { dl, dc }
+        }
+        match self {
+            // Accents and Hydra's own text: the seed's own hue, and the next.
+            Token::Accent => free(0, 0.0, 0.0),
+            Token::Link => free(0, -0.06, 0.02),
+            Token::Hydra => free(1, 0.06, -0.02),
+            // The game's text, as VellumFE's roles had them.
+            Token::RoomName => free(4, -0.04, -0.06),
+            Token::RoomPlate => Role::Plate,
+            Token::Creature => free(3, 0.02, 0.02),
+            Token::Player => free(2, -0.04, 0.0),
+            Token::Object => free(4, 0.08, -0.2),
+            Token::Speech => free(1, 0.04, 0.0),
+            Token::Whisper => free(1, -0.08, -0.03),
+            Token::Thought => free(2, 0.06, 0.0),
+            // A warning is amber and a wrong is red always; the vitals keep
+            // their hues, blood darker than health; the pulse and a wrong a
+            // little lighter; the map's door and route, and the marks, a
+            // legend, keep their colours.
+            Token::Warning
+            | Token::Stunned
+            | Token::Health
+            | Token::Mana
+            | Token::Stamina
+            | Token::Spirit
+            | Token::Stance
+            | Token::Encumbrance
+            | Token::Mind
+            | Token::Level
+            | Token::Poisoned
+            | Token::ActiveSpells
+            | Token::MapDoor
+            | Token::MapRoute
+            | Token::MarkBank
+            | Token::MarkFurrier
+            | Token::MarkGemshop
+            | Token::MarkPawnshop
+            | Token::MarkGuild
+            | Token::MarkLocksmith
+            | Token::MarkHealer
+            | Token::MarkHerbalist
+            | Token::MarkAlchemist => anchored(0.0, 0.0),
+            Token::Wrong | Token::Pulse => anchored(0.06, 0.0),
+            Token::Blood => anchored(-0.15, 0.0),
+            // Injuries: a wound's ramp is in its hues (brown, orange, red),
+            // a scar's in lightness alone, greys.
+            Token::Unhurt => anchored(-0.3, -0.3),
+            Token::Wound1 => anchored(-0.08, 0.0),
+            Token::Wound2 => anchored(0.0, 0.04),
+            Token::Wound3 => anchored(0.0, 0.08),
+            Token::Scar1 => anchored(0.12, -0.3),
+            Token::Scar2 => anchored(0.0, -0.3),
+            Token::Scar3 => anchored(-0.12, -0.3),
+            Token::Body => Role::Surface { dl: 0.18 },
+            // Status: each echoes the signal or the vital it means.
+            Token::Bleeding | Token::Debuffs => anchored(-0.06, 0.0),
+            Token::Hidden | Token::Cooldowns => anchored(0.0, -0.08),
+            Token::Silenced => anchored(0.0, -0.02),
+            Token::Posture => anchored(0.0, -0.04),
+            Token::Buffs => anchored(0.04, 0.0),
+            // The map: from the background and the seed; the route and a
+            // door keep their colours.
+            Token::MapBackground => Role::Surface { dl: 0.02 },
+            Token::MapRoom => free(0, -0.1, 0.0),
+            Token::MapRoomEdge => free(0, 0.15, -0.05),
+            Token::MapLine => free(0, 0.0, -0.1),
+            Token::MapConnector => free(0, -0.25, -0.1),
+            Token::MapYou => free(0, 0.25, -0.3),
+            Token::MapMuted => free(0, 0.0, -0.3),
+            // Chrome is not a colour.
+            Token::Veil | Token::Grid | Token::Mark => Role::Fixed,
+        }
+    }
+
+    /// The group it keeps its distance within.
+    #[must_use]
+    pub const fn group(self) -> Group {
+        match self {
+            Token::Accent
+            | Token::Link
+            | Token::Hydra
+            | Token::Warning
+            | Token::Wrong
+            | Token::RoomName
+            | Token::RoomPlate
+            | Token::Creature
+            | Token::Player
+            | Token::Object
+            | Token::Speech
+            | Token::Whisper
+            | Token::Thought => Group::Text,
+            Token::Health
+            | Token::Mana
+            | Token::Stamina
+            | Token::Spirit
+            | Token::Blood
+            | Token::Stance
+            | Token::Encumbrance
+            | Token::Mind
+            | Token::Level => Group::Vitals,
+            Token::Unhurt
+            | Token::Wound1
+            | Token::Wound2
+            | Token::Wound3
+            | Token::Scar1
+            | Token::Scar2
+            | Token::Scar3
+            | Token::Body => Group::Injuries,
+            Token::Stunned
+            | Token::Bleeding
+            | Token::Poisoned
+            | Token::Hidden
+            | Token::Silenced
+            | Token::Posture
+            | Token::ActiveSpells
+            | Token::Buffs
+            | Token::Debuffs
+            | Token::Cooldowns
+            | Token::Pulse => Group::Status,
+            Token::MapBackground
+            | Token::MapRoom
+            | Token::MapRoomEdge
+            | Token::MapLine
+            | Token::MapConnector
+            | Token::MapDoor
+            | Token::MapYou
+            | Token::MapMuted
+            | Token::MapRoute => Group::Map,
+            Token::MarkBank
+            | Token::MarkFurrier
+            | Token::MarkGemshop
+            | Token::MarkPawnshop
+            | Token::MarkGuild
+            | Token::MarkLocksmith
+            | Token::MarkHealer
+            | Token::MarkHerbalist
+            | Token::MarkAlchemist => Group::Marks,
+            Token::Veil | Token::Grid | Token::Mark => Group::Chrome,
+        }
+    }
+
     /// The colour Hydra drew for it before it had themes
     /// (`crates/cena-gui`'s literals as they were, most of them Despana's
     /// or `VellumFE`'s).
@@ -324,7 +505,7 @@ impl Token {
             Token::Stunned => [0xd8, 0xb4, 0x3a],
             Token::Poisoned => [0x6d, 0xa8, 0x3c],
             Token::Hidden | Token::Cooldowns => [0x7a, 0x86, 0xa8],
-            Token::MapBackground => [0x11, 0x16, 0x1b],
+            Token::MapBackground | Token::RoomPlate => [0x11, 0x16, 0x1b],
             Token::MapRoom => [0x49, 0x7f, 0xa3],
             Token::MapRoomEdge => [0xa2, 0xc8, 0xdf],
             Token::MapLine => [0x6e, 0x99, 0xb5],
@@ -415,6 +596,16 @@ mod tests {
             assert_eq!(palette.get(token), token.bare(), "{}", token.name());
         }
         assert_eq!(palette.get(Token::Health), [0xcd, 0x4d, 0x4d]);
+    }
+
+    #[test]
+    fn hex_parses_its_three_forms_and_writes_one() {
+        assert_eq!(parse_hex("#4a7ab3"), Some([0x4a, 0x7a, 0xb3]));
+        assert_eq!(parse_hex("#abc"), Some([0xaa, 0xbb, 0xcc]));
+        assert_eq!(parse_hex("#ad0d0dff"), Some([0xad, 0x0d, 0x0d]));
+        assert_eq!(parse_hex("#12345"), None);
+        assert_eq!(parse_hex("not a colour"), None);
+        assert_eq!(hex([0x4a, 0x7a, 0xb3]), "#4a7ab3");
     }
 
     #[test]

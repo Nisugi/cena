@@ -231,6 +231,22 @@ On a branch `themes` once the author approves.
 1. **Harmony.** The engine ported whole into `cena-ui` with its sixteen tests, Niffy
    credited. The roles widened to §3a's table. New tests: every vital stays in its band under
    every scheme; every token clears the floor on a dark and on a light background.
+
+   **BUILT 2026-09-30.** `crates/cena-ui/src/theme/oklch.rs` (the colour maths, over `Rgb`
+   rather than hex strings) and `crates/cena-ui/src/theme/harmony.rs` (`Recipe`, `Scheme`,
+   `generate`, `hue_variants`, `seed_swatches`), Niffy credited in each module's first
+   lines. Every token has a `Role` (`Token::role`): *free* in a slot of the scheme; *anchored*,
+   keeping the hue of its bare colour, so the vitals' bands are measured from what Hydra has
+   always drawn rather than typed; a *surface* from the background; the room's *plate*; or
+   *fixed*, for chrome that is not a colour. Each token keeps its distance within its `Group`
+   (`Token::group`: text, vitals, injuries, status, map, marks, chrome), as `VellumFE` kept the
+   prompt's apart from the story's. A 62nd token, `RoomPlate`, which no widget draws yet.
+   `crates/cena-ui/src/theme/harmony/tests.rs` holds the promises: the same recipe gives the
+   same palette; every drawn token clears the floor on four backgrounds, two of them light,
+   under all eight schemes; tokens in a group stay apart; a pin survives; an anchored token
+   keeps its hue under every scheme and seed; health is still red and mana still blue with a
+   green seed on the golden scheme; the plate hits its spread. Nothing applies a palette yet:
+   that is step 2.
 2. **The theme applied.** The file's form, `base`, recipe and pins; egui's visuals set from
    the surfaces and text; the two built-ins, **Despana** (the default, from the web page's
    twelve tokens) and a **light** one generated from a recipe; the choice on Hydra's *Window*
