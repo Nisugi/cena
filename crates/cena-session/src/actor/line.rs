@@ -161,15 +161,15 @@ impl<S: ByteSource> SessionActor<S> {
         &self,
         envelope: &mut super::Envelope,
     ) -> Option<crate::command::Outcome> {
-        let length = self.events.tags_creatures()?;
+        let style = self.events.tags_creatures()?;
         if envelope.origin != crate::command::Origin::Manual {
             return None;
         }
-        let here = self.state.room.creatures.iter();
+        let here = self.state.creatures().in_room();
         match cena_model::targetid::resolve(
             &envelope.line,
-            here.filter_map(|item| item.id.parse().ok()),
-            length,
+            here.filter_map(|c| Some((c.id, c.mark()?))),
+            style,
         )? {
             Ok(line) => {
                 envelope.line = line;
@@ -188,10 +188,13 @@ impl<S: ByteSource> SessionActor<S> {
         // Each creature's tag after its name, when shown: after the triggers
         // read the line, so a trigger on `kobold swings` still fires
         // (`cena_model::targetid`).
-        let lines = if let Some(length) = self.events.tags_creatures() {
+        let lines = if let Some(style) = self.events.tags_creatures() {
+            let creature = |id| cena_model::targetid::of(self.state.creatures().get(id)?);
             lines
                 .into_iter()
-                .map(|line| cena_model::targetid::tagged(&line, length).map_or(line, Arc::new))
+                .map(|line| {
+                    cena_model::targetid::tagged(&line, style, creature).map_or(line, Arc::new)
+                })
                 .collect()
         } else {
             lines

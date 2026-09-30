@@ -166,7 +166,7 @@ pub struct SessionHandle {
     /// Where [`Self::say`] publishes. The session's own publisher, which
     /// lives as long as the session does, reconnects included -- so a notice
     /// reaches the fenced observer stream as well as the legacy one.
-    events: crate::observation::EventPublisher,
+    pub(super) events: crate::observation::EventPublisher,
     /// The player log, once one is attached. Shared with every clone.
     log: crate::player_log::tap::Slot,
     /// Who runs the player's own commands, once anything does. Shared
@@ -244,43 +244,6 @@ impl SessionHandle {
     /// an advanced option"* (`plan/29` §5b).
     pub fn let_pages_attend(&self, on: bool) {
         self.attendance.let_pages_attend(on);
-    }
-
-    /// `;sorter`: publish this session's container looks one line per
-    /// category, or as the game sent them (`cena_model::sorter`). Every
-    /// viewer gets what is published, and it holds across a reconnect; the
-    /// model and the player log keep the look whole either way.
-    pub fn sort_containers(&self, on: bool) {
-        self.events.sort_containers(on);
-    }
-
-    /// Whether this session's container looks are published sorted.
-    #[must_use]
-    pub fn sorts_containers(&self) -> bool {
-        self.events.sorts_containers()
-    }
-
-    /// Show each creature's tag, `length` long (`None`: none), after its
-    /// name, to every viewer, and take a
-    /// tag the player types after a tag verb for its creature
-    /// (`cena_model::targetid`, `.targetid`), or stop. It holds across a
-    /// reconnect, as `;sorter` does.
-    pub fn tag_creatures(&self, length: Option<usize>) {
-        self.events.tag_creatures(length);
-    }
-
-    /// How long each creature's tag shown after its name is; `None` when
-    /// none is shown.
-    #[must_use]
-    pub fn tags_creatures(&self) -> Option<usize> {
-        self.events.tags_creatures()
-    }
-
-    /// Publish each finished line as the game sent it too
-    /// ([`Event::Heard`](crate::Event::Heard)), for a script runner, or
-    /// stop. It holds across a reconnect, as `;sorter` does.
-    pub fn hear_lines(&self, on: bool) {
-        self.events.hear_lines(on);
     }
 
     /// Attach the player's Lich (`crate::script::lich`).

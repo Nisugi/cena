@@ -30,6 +30,44 @@ use cena_ui::StyledRun;
 
 use super::{Shown, Story};
 
+impl super::Story {
+    /// A game line's pieces, `lines`, each a line of the story on `stream`,
+    /// in the game's `style` when it has one for them.
+    ///
+    /// A blank line before anything to read since the prompt is left out:
+    /// what a line moved to its own window, or a dialog's update, leaves
+    /// behind (the author, 2026-09-30: *"I'm also getting blank lines in the
+    /// story window"*). `VellumFE`'s rule (`flush_line.rs:284`); a blank line
+    /// inside what the game says stays. Only a line with something to read
+    /// earns the prompt after it.
+    pub(super) fn take_lines(
+        &mut self,
+        stream: &str,
+        lines: Vec<cena_ui::StoryLine>,
+        style: Option<&str>,
+    ) {
+        let main = super::is_main(stream);
+        for shown in lines {
+            let mut runs = shown.runs;
+            if main && !self.since_prompt && !visible(&runs) {
+                continue;
+            }
+            self.since_prompt |= visible(&runs);
+            if let Some(style) = &style {
+                for run in runs.iter_mut().filter(|run| run.preset.is_none()) {
+                    run.preset = Some((*style).to_owned());
+                }
+            }
+            self.push(if main {
+                Shown::Game(runs)
+            } else {
+                Shown::From(stream.to_owned(), runs)
+            });
+            self.heard += 1;
+        }
+    }
+}
+
 impl Story {
     /// The player typed `line` here.
     pub(crate) fn typed(&mut self, line: &str) {

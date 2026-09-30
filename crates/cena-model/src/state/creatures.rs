@@ -221,8 +221,15 @@ impl Creatures {
                 return None;
             }
         }
-        self.instances
-            .insert(id, CreatureInstance::new(id, noun, name, now));
+        // Its tag's characters: one no other creature here has (`targetid`).
+        let taken = self
+            .in_room()
+            .filter(|c| c.id != id)
+            .filter_map(|c| c.mark().map(|mark| mark.unique));
+        let mark = crate::targetid::assign(id, taken);
+        let mut creature = CreatureInstance::new(id, noun, name, now);
+        creature.set_mark(mark);
+        self.instances.insert(id, creature);
         self.instances.get_mut(&id)
     }
 

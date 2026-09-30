@@ -104,7 +104,7 @@ pub(crate) const HELP: &[&str] = &[
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
     "history help     read back what you saw: history tail, history last 15m, history search <text>",
     "sorter           show a container's contents one line per category: sorter on, off or status",
-    "targetid         a tag after each creature's name, tk <tag> and the rest as the script's: targetid on, off, status or length",
+    "targetid         a tag after each creature's name, tk <tag> and the rest as the script's: targetid on, off, status, slot or health",
     "doll import <folder>   your VellumFE injury dolls into Hydra, each calibration kept in its picture",
     "multi help, foreach help   run commands several times, or once for each item",
     "agent help       what an agent (a program such as Claude Code) may do with this character",

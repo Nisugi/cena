@@ -121,7 +121,7 @@ pub(crate) struct PlayView<'a> {
     pub(crate) minimap: Option<&'a cena_ui::MinimapView>,
     /// How long each creature's tag after its name is, when shown
     /// (`.targetid`).
-    pub(crate) tags: Option<usize>,
+    pub(crate) tags: Option<cena_session::targetid::Style>,
     /// `NumLock`, once a numpad press has shown it.
     pub(crate) numlock: Option<bool>,
     /// The macro set the character uses over set 0; 0 for none.

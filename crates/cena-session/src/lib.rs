@@ -55,7 +55,6 @@ pub use actor::{EndReason, Event, Line, SETUP_DEADLINE, Session, SessionActor, S
 // takes one, and the binary that calls it has no edge to `cena-model`.
 pub use cena_model::crit::CritTables;
 pub use cena_model::movement::{self, MoveFeedback};
-pub use cena_model::targetid;
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;
@@ -88,7 +87,7 @@ pub use cena_model::{Task, TaskKind};
 // The herbs eherbs knows and where they are sold (`plan/36`), and the
 // wound and scar reader the healing chooses by; the guard words and the
 // triggers (`plan/45`).
-pub use cena_model::{guard, herbs, state::character::body, state::kit, trigger};
+pub use cena_model::{guard, herbs, state::character::body, state::kit, targetid, trigger};
 pub use cena_platform::{DEFAULT_GAME_CODE, GAMES, instance};
 pub use cena_protocol::InventoryItem;
 pub use cena_protocol::frame::{Amount, Link, LinkKind, Menu, ProgressBar, Style, TextFrame};

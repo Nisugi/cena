@@ -17,6 +17,7 @@ pub mod claimant;
 mod farewell;
 mod handle;
 mod round_trip;
+mod shown;
 mod verdict;
 
 pub use authority::{PREEMPT_GRACE, Preempted};

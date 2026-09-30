@@ -162,6 +162,9 @@ pub struct CreatureInstance {
     /// author, 2026-09-30: *"If first time they are seen, they are recorded
     /// as hostile, then that's it, hostile can't change"*).
     first_hostile: Option<bool>,
+    /// Its creature tag's characters, handed out as it was registered and
+    /// gone with it (`crate::targetid`).
+    mark: Option<crate::targetid::Mark>,
     /// Wound rank per part.
     injuries: BTreeMap<BodyPart, u8>,
     /// Parts that are gone.
@@ -217,6 +220,7 @@ impl CreatureInstance {
             statuses: BTreeMap::new(),
             flags: BTreeMap::new(),
             first_hostile: None,
+            mark: None,
             injuries: BTreeMap::new(),
             amputated: BTreeSet::new(),
             damage_taken: 0,
@@ -584,6 +588,17 @@ impl CreatureInstance {
     #[must_use]
     pub fn hostile_when_first_seen(&self) -> Option<bool> {
         self.first_hostile
+    }
+
+    /// Hand it its creature tag's characters, as it is registered.
+    pub(super) const fn set_mark(&mut self, mark: crate::targetid::Mark) {
+        self.mark = Some(mark);
+    }
+
+    /// Its creature tag's characters (`crate::targetid`).
+    #[must_use]
+    pub const fn mark(&self) -> Option<crate::targetid::Mark> {
+        self.mark
     }
 
     /// Should this be attacked? (`valid_target?`, `creature.rb:642-651`):
