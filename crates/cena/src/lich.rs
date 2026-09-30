@@ -116,7 +116,7 @@ impl Lichs {
             Some(Claimed::Done)
         }));
         match switch(seat) {
-            Ok(true) => self.start(handle, seat),
+            Ok(true) => self.start(handle, seat, false),
             Ok(false) => {}
             Err(why) => handle.say(Notice::line(
                 NoticeKind::Warn,
@@ -153,11 +153,11 @@ impl Lichs {
             None => Ok(status(handle, seat)),
             Some("help") => {
                 let lines = HELP.iter().map(|&line| line.to_owned()).collect();
-                handle.say(Notice::table(NoticeKind::Info, lines));
+                handle.say(Notice::table(NoticeKind::Info, lines).answering());
                 return;
             }
             Some("on") => keep_switch(seat, true).map(|()| {
-                self.start(handle, seat);
+                self.start(handle, seat, true);
                 String::new()
             }),
             Some("off") => keep_switch(seat, false).map(|()| {
@@ -172,20 +172,30 @@ impl Lichs {
         };
         match said {
             Ok(said) if said.is_empty() => {}
-            Ok(said) => handle.say(Notice::line(NoticeKind::Info, said)),
-            Err(why) => handle.say(Notice::line(NoticeKind::Warn, format!("Lich: {why}"))),
+            Ok(said) => handle.say(Notice::line(NoticeKind::Info, said).answering()),
+            Err(why) => {
+                handle.say(Notice::line(NoticeKind::Warn, format!("Lich: {why}")).answering());
+            }
         }
     }
 
     /// Start the character's Lich, unless it runs; say why not when it
-    /// cannot. The relay says how it ends.
-    fn start(&self, handle: &SessionHandle, seat: &Seat) {
+    /// cannot, `answering` the player's `lich on` or on Hydra's own at
+    /// login. The relay says how it ends.
+    fn start(&self, handle: &SessionHandle, seat: &Seat, answering: bool) {
+        let say = |notice: Notice| {
+            handle.say(if answering {
+                notice.answering()
+            } else {
+                notice
+            });
+        };
         let mut running = self.lock();
         if running
             .get(&seat.id)
             .is_some_and(|one| !one.task.is_finished())
         {
-            handle.say(Notice::line(
+            say(Notice::line(
                 NoticeKind::Info,
                 "Lich already runs for this character.",
             ));
@@ -194,14 +204,14 @@ impl Lichs {
         let launch = match launch(&seat.dir) {
             Ok(launch) => launch,
             Err(why) => {
-                handle.say(Notice::line(
+                say(Notice::line(
                     NoticeKind::Warn,
                     format!("Lich: {why} -- Lich was not started."),
                 ));
                 return;
             }
         };
-        handle.say(Notice::line(
+        say(Notice::line(
             NoticeKind::Info,
             format!("Lich is starting, from {}.", launch.lich.display()),
         ));

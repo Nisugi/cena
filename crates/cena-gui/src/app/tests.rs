@@ -654,8 +654,8 @@ fn the_drag_key_chosen_is_the_windows() {
 }
 
 /// A line that is not one command -- a key bound to two lines, say -- is
-/// neither echoed nor sent, echoed or not, and is said in Hydra's pane (the
-/// crate review of 2026-09-28, R10).
+/// neither echoed nor sent, echoed or not (the crate review of 2026-09-28,
+/// R10); why is said in the story, an answer to what the player did.
 #[test]
 fn a_line_of_two_commands_is_refused() {
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -666,10 +666,21 @@ fn a_line_of_two_commands_is_refused() {
     sessions.send(&seat, "look\nkill".to_owned());
     sessions.send_quietly(&seat, "_drag #1 drop\r".to_owned());
     let story = lock(&seat.story);
-    assert!(story.lines.is_empty(), "nothing echoed");
+    assert!(
+        !story
+            .lines
+            .iter()
+            .any(|(_, shown)| matches!(shown, crate::story::Shown::Typed { .. })),
+        "nothing echoed"
+    );
+    assert!(story.said.is_empty(), "not in Hydra's pane");
     let said: Vec<&str> = story
-        .said
+        .lines
         .iter()
+        .filter_map(|(_, shown)| match shown {
+            crate::story::Shown::Said(notice) => Some(notice),
+            _ => None,
+        })
         .flat_map(cena_session::Notice::lines)
         .map(String::as_str)
         .collect();

@@ -6,7 +6,7 @@
 
 use cena_behavior::travel::{Map, RoomId};
 use cena_session::SessionHandle;
-use cena_session::{Body, Notice, NoticeKind};
+use cena_session::{Notice, NoticeKind};
 
 use crate::commands::Took;
 
@@ -19,7 +19,7 @@ pub(crate) fn command(map: &Map, handle: &SessionHandle, line: &str) -> Option<T
         }),
         Err(why) => Notice::line(NoticeKind::Error, why),
     };
-    handle.say(said);
+    handle.say(said.answering());
     Some(Took::Done)
 }
 
@@ -64,15 +64,13 @@ fn described(map: &Map, id: u32, brief: bool) -> Option<Notice> {
     let mut lines = vec![format!("#{id}{uid}:"), format!("{title}{location}")];
     lines.extend(room.description.last().cloned());
     lines.extend(room.paths.last().cloned());
-    Some(Notice {
-        kind: NoticeKind::Info,
-        body: Body::Lines(lines),
-    })
+    Some(Notice::prose(NoticeKind::Info, lines))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cena_session::Body;
 
     #[test]
     fn room_takes_a_number_and_perhaps_number() {

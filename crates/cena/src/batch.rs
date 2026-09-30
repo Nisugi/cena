@@ -47,7 +47,7 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
         let command = match batch::parse(line, symbol)? {
             Ok(command) => command,
             Err(why) => {
-                told.say(Notice::line(NoticeKind::Error, why));
+                told.say(Notice::line(NoticeKind::Error, why).answering());
                 return Some(Took::Done);
             }
         };
@@ -57,15 +57,18 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
         };
         match command {
             Command::Help(kind) => {
-                told.say(Notice::table(NoticeKind::Info, kind.usage()));
+                told.say(Notice::table(NoticeKind::Info, kind.usage()).answering());
                 Some(Took::Done)
             }
             Command::Stop(kind) => {
                 if !desk(kind).stop() {
-                    told.say(Notice::line(
-                        NoticeKind::Info,
-                        format!("{}: nothing is running.", kind.name()),
-                    ));
+                    told.say(
+                        Notice::line(
+                            NoticeKind::Info,
+                            format!("{}: nothing is running.", kind.name()),
+                        )
+                        .answering(),
+                    );
                 }
                 Some(Took::Done)
             }
@@ -91,13 +94,16 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
                                     let _ = run.await;
                                 }
                             }
-                            Err(e) => handle.say(Notice::line(
-                                NoticeKind::Error,
-                                format!(
-                                    "{}: I could not read the session -- {e:?}.",
-                                    job.kind().name()
-                                ),
-                            )),
+                            Err(e) => handle.say(
+                                Notice::line(
+                                    NoticeKind::Error,
+                                    format!(
+                                        "{}: I could not read the session -- {e:?}.",
+                                        job.kind().name()
+                                    ),
+                                )
+                                .answering(),
+                            ),
                         }
                     }),
                     stopper,

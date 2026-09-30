@@ -50,6 +50,7 @@ fn texts(story: &Story) -> Vec<String> {
             Shown::Typed { prompt, line } => format!("{prompt}{line}"),
             Shown::Prompt(prompt) => prompt.clone(),
             Shown::Gap => "(gap)".to_owned(),
+            Shown::Said(notice) => notice.lines().join(" "),
         })
         .collect()
 }
@@ -419,4 +420,25 @@ fn after_a_gap_a_quiet_story_shows_again() {
     story.missed();
     story.hear(&observed(0, said("", "ordinary line")), None);
     assert_eq!(texts(&story), ["(gap)", "ordinary line"]);
+}
+
+/// Hydra's answer to something the player did is in the story, among the
+/// game's lines; what it says of its own accord is in its pane (the author,
+/// 2026-09-29: *"shift + click on a room in the minimap should send that
+/// room description to the story window not the hydra window"*).
+#[test]
+fn an_answer_is_in_the_story_and_the_rest_in_hydras_pane() {
+    use cena_session::{Notice, NoticeKind};
+    let mut story = Story::default();
+    story.tell(Notice::line(NoticeKind::Info, "#228 Town Square").answering());
+    story.tell(Notice::line(
+        NoticeKind::Info,
+        "Hunt: resting until mana is 50%.",
+    ));
+    assert!(matches!(
+        story.lines.back(),
+        Some((_, Shown::Said(notice))) if notice.lines() == ["#228 Town Square"]
+    ));
+    assert_eq!(story.lines.len(), 1, "only the answer");
+    assert_eq!(story.said.len(), 1, "only Hydra's own");
 }

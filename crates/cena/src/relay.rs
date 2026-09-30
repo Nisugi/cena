@@ -147,7 +147,7 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, characters: Char
         let relay = match parse(line)? {
             Ok(relay) => relay,
             Err(how) => {
-                told.say(Notice::line(NoticeKind::Error, how));
+                told.say(Notice::line(NoticeKind::Error, how).answering());
                 return Some(Took::Done);
             }
         };
@@ -165,31 +165,37 @@ async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[Running]) {
         Relay::To { name, line } => match pick(name, running) {
             Ok(one) => (vec![one.clone()], line),
             Err(why) => {
-                told.say(Notice::line(NoticeKind::Error, why));
+                told.say(Notice::line(NoticeKind::Error, why).answering());
                 return;
             }
         },
         Relay::All { who, line } => match chosen(who, running) {
             Ok(targets) => (targets, line),
             Err(why) => {
-                told.say(Notice::line(NoticeKind::Error, why));
+                told.say(Notice::line(NoticeKind::Error, why).answering());
                 return;
             }
         },
     };
     if targets.is_empty() {
-        told.say(Notice::line(
-            NoticeKind::Warn,
-            format!("All: {line} -- nobody is left to send it on."),
-        ));
+        told.say(
+            Notice::line(
+                NoticeKind::Warn,
+                format!("All: {line} -- nobody is left to send it on."),
+            )
+            .answering(),
+        );
         return;
     }
     if matches!(relay, Relay::All { .. }) {
         let names: Vec<String> = targets.iter().map(|one| one.label(running)).collect();
-        told.say(Notice::line(
-            NoticeKind::Info,
-            format!("All: {line} -- on {}.", names.join(", ")),
-        ));
+        told.say(
+            Notice::line(
+                NoticeKind::Info,
+                format!("All: {line} -- on {}.", names.join(", ")),
+            )
+            .answering(),
+        );
     }
     let mut sending = tokio::task::JoinSet::new();
     for target in targets {
@@ -204,7 +210,7 @@ async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[Running]) {
     }
     while let Some(Ok((name, outcome))) = sending.join_next().await {
         if let Some(why) = unsent(&outcome) {
-            told.say(Notice::line(NoticeKind::Warn, format!("To {name}: {why}")));
+            told.say(Notice::line(NoticeKind::Warn, format!("To {name}: {why}")).answering());
         }
     }
 }

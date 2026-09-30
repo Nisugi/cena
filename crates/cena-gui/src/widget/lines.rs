@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use super::find::Seek;
 use super::{Clicked, Seen};
 use crate::story::{Hours, Shown, Stamp, Story};
-use crate::text::{self, WRONG};
+use crate::text::{self, HYDRA, WRONG};
 
 /// Where a line's time goes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -199,6 +199,10 @@ pub(super) fn story(
                 Shown::Gap => {
                     ui.colored_label(WRONG, "Some lines were missed here.");
                 }
+                Shown::Said(notice) => {
+                    prompts.said();
+                    super::draw::notice_lines(ui, notice, HYDRA);
+                }
             };
             // Each line by its own number, never its place: a selection is
             // kept by the ids of the lines it runs between, and a place's
@@ -230,6 +234,7 @@ fn said<'a>(shown: &'a Shown, open: &[String], options: Lines) -> Option<Cow<'a,
     match shown {
         Shown::Game(runs) => Some(plain(runs)),
         Shown::From(stream, runs) if !open.contains(stream) => Some(plain(runs)),
+        Shown::Said(notice) => Some(Cow::Owned(notice.lines().join("\n"))),
         Shown::Typed { prompt, line } if options.echo => {
             Some(Cow::Owned(format!("{prompt}{line}")))
         }
@@ -259,6 +264,11 @@ impl<'a> Prompts<'a> {
     /// read (`crate::story::visible`).
     fn line(&mut self, runs: &[StyledRun]) {
         self.since |= crate::story::visible(runs);
+    }
+
+    /// Hydra answered: that earns the next prompt as a line does.
+    fn said(&mut self) {
+        self.since = true;
     }
 
     /// Whether `prompt`, next, is drawn: after a line drawn, or changed.

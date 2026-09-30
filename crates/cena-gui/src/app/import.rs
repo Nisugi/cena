@@ -6,7 +6,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use cena_session::{Body, Notice, NoticeKind};
+use cena_session::{Notice, NoticeKind};
 
 use super::App;
 use crate::keys::page::{KeyChange, Place};
@@ -51,10 +51,7 @@ impl App {
         } else {
             NoticeKind::Info
         };
-        seat.story().tell(Notice {
-            kind,
-            body: Body::Lines(said),
-        });
+        seat.story().tell(Notice::prose(kind, said));
         true
     }
 

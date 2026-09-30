@@ -160,19 +160,22 @@ impl Commands {
         let runner: Runner = Arc::new(move |line: &str| {
             if asks_for_help(line) {
                 let lines = HELP.iter().map(|&line| line.to_owned()).collect();
-                told.say(Notice::table(NoticeKind::Info, lines));
+                told.say(Notice::table(NoticeKind::Info, lines).answering());
                 return Claimed::Done;
             }
             if asks_to_stop(line) {
                 let stopped = routes.stop();
-                told.say(Notice::line(
-                    NoticeKind::Info,
-                    if stopped.is_empty() {
-                        "Nothing was running.".to_owned()
-                    } else {
-                        format!("Stopped: {}.", stopped.join(", "))
-                    },
-                ));
+                told.say(
+                    Notice::line(
+                        NoticeKind::Info,
+                        if stopped.is_empty() {
+                            "Nothing was running.".to_owned()
+                        } else {
+                            format!("Stopped: {}.", stopped.join(", "))
+                        },
+                    )
+                    .answering(),
+                );
                 return Claimed::Done;
             }
             // A task it started runs on by itself: nobody typing waits.
@@ -196,7 +199,7 @@ impl Commands {
                     format!(
                         "{family} is still starting; nothing was sent. Try again once logged in."
                     ),
-                ));
+                ).answering());
                 return Claimed::Done;
             }
             // The player's own scripts come last: a word of Hydra's, or of a

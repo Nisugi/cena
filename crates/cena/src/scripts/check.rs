@@ -24,20 +24,26 @@ pub(super) const SAID: usize = 15;
 pub(super) fn check(word: &str, shared: &Arc<Shared>, told: &SessionHandle) {
     let word = word.trim().to_ascii_lowercase();
     if word.is_empty() {
-        told.say(Notice::line(
-            NoticeKind::Error,
-            "Scripts: check which? scripts check <script>",
-        ));
+        told.say(
+            Notice::line(
+                NoticeKind::Error,
+                "Scripts: check which? scripts check <script>",
+            )
+            .answering(),
+        );
         return;
     }
     let Some(path) = super::find_script(&shared.dir.join("scripts"), &word) else {
-        told.say(Notice::line(
-            NoticeKind::Error,
-            format!(
-                "Scripts: no script named {word} in {}.",
-                shared.dir.join("scripts").display()
-            ),
-        ));
+        told.say(
+            Notice::line(
+                NoticeKind::Error,
+                format!(
+                    "Scripts: no script named {word} in {}.",
+                    shared.dir.join("scripts").display()
+                ),
+            )
+            .answering(),
+        );
         return;
     };
     let (shared, told) = (Arc::clone(shared), told.clone());
@@ -46,7 +52,7 @@ pub(super) fn check(word: &str, shared: &Arc<Shared>, told: &SessionHandle) {
             Ok(checked) => said(&checked),
             Err(why) => Notice::line(NoticeKind::Error, format!("Scripts: {why}")),
         };
-        told.say(said);
+        told.say(said.answering());
     });
 }
 

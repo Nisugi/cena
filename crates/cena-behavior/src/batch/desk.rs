@@ -90,14 +90,17 @@ impl Desk {
         let running = {
             let mut slot = self.running.lock().unwrap_or_else(PoisonError::into_inner);
             if slot.is_some() {
-                handle.say(Notice::line(
-                    NoticeKind::Warn,
-                    format!(
-                        "{}: one is already running; `{} stop` stops it.",
-                        self.name,
-                        self.name.to_ascii_lowercase()
-                    ),
-                ));
+                handle.say(
+                    Notice::line(
+                        NoticeKind::Warn,
+                        format!(
+                            "{}: one is already running; `{} stop` stops it.",
+                            self.name,
+                            self.name.to_ascii_lowercase()
+                        ),
+                    )
+                    .answering(),
+                );
                 return None;
             }
             let running = Running {

@@ -198,7 +198,7 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, database: PathBu
         let command = match parse(line)? {
             Ok(command) => command,
             Err(why) => {
-                handler.say(Notice::line(NoticeKind::Error, format!("Loot: {why}")));
+                handler.say(Notice::line(NoticeKind::Error, format!("Loot: {why}")).answering());
                 return Some(Claimed::Done);
             }
         };
@@ -208,8 +208,10 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, database: PathBu
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
             match run(&database, command, now) {
-                Ok(lines) => handle.say(Notice::table(NoticeKind::Info, lines)),
-                Err(why) => handle.say(Notice::line(NoticeKind::Error, format!("Loot: {why}"))),
+                Ok(lines) => handle.say(Notice::table(NoticeKind::Info, lines).answering()),
+                Err(why) => {
+                    handle.say(Notice::line(NoticeKind::Error, format!("Loot: {why}")).answering());
+                }
             }
         });
         Some(Claimed::Done)

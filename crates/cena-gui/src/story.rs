@@ -51,6 +51,9 @@ pub(crate) enum Shown {
     /// that stream's window is closed: kept apart from the story's own, so
     /// the story leaves it out while a widget of the stream is open.
     From(String, Vec<StyledRun>),
+    /// Hydra's answer to something the player did, among the game's lines
+    /// ([`cena_session::Notice::answer`]).
+    Said(Notice),
 }
 
 /// What a play window shows of one character, kept by its feed.

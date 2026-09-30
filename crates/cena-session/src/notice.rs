@@ -36,11 +36,11 @@
 //!
 //! # What is built, and what is not
 //!
-//! The kind and the two bodies, because each has a user today. **Not** the
-//! command link or the target window: nothing here would send one yet, and a
-//! field with no writer is the option-with-one-value `plan/05` section -1
-//! forbids. They are named here so they are found when their first user
-//! arrives.
+//! The kind and the two bodies, because each has a user today, and whether
+//! it answers the player ([`Notice::answer`]). **Not** the command link:
+//! nothing here would send one yet, and a field with no writer is the
+//! option-with-one-value `plan/05` section -1 forbids. It is named here so
+//! it is found when its first user arrives.
 
 /// What a notice is about, which is how a frontend colours it.
 ///
@@ -54,7 +54,8 @@ pub enum NoticeKind {
     Error,
     /// Something is off, and nothing has failed yet. Lich's `thought`.
     Warn,
-    /// An answer to something the player asked. Lich's `whisper`.
+    /// Something worth saying: an answer to the player, or what Hydra is
+    /// doing. Lich's `whisper`.
     Info,
     /// For whoever is chasing a fault. Lich drops these unless debug
     /// messaging is on (`messaging.rb:128`); here that is the frontend's
@@ -80,15 +81,30 @@ pub struct Notice {
     pub kind: NoticeKind,
     /// The words: prose to wrap, or a fixed-width table.
     pub body: Body,
+    /// It answers something the player did -- a command typed, a room
+    /// shift-clicked on the minimap -- and so is shown among the game's
+    /// lines, as Lich's `respond` puts a script's words in the main window.
+    /// Otherwise it is Hydra's own: what it is doing, and what went wrong
+    /// that nobody asked about, in its own pane (the author, 2026-09-29:
+    /// *"I thought it was like a debug or info window into what hydra is
+    /// doing or errors"*).
+    pub answer: bool,
 }
 
 impl Notice {
     /// One line of prose.
     #[must_use]
     pub fn line(kind: NoticeKind, text: impl Into<String>) -> Notice {
+        Notice::prose(kind, vec![text.into()])
+    }
+
+    /// Prose, `lines` of it.
+    #[must_use]
+    pub fn prose(kind: NoticeKind, lines: Vec<String>) -> Notice {
         Notice {
             kind,
-            body: Body::Lines(vec![text.into()]),
+            body: Body::Lines(lines),
+            answer: false,
         }
     }
 
@@ -98,7 +114,15 @@ impl Notice {
         Notice {
             kind,
             body: Body::Mono(lines),
+            answer: false,
         }
+    }
+
+    /// This, as an answer to something the player did ([`Notice::answer`]).
+    #[must_use]
+    pub fn answering(mut self) -> Notice {
+        self.answer = true;
+        self
     }
 
     /// The lines, whichever body holds them: what a plain terminal prints.

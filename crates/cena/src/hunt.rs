@@ -101,7 +101,7 @@ pub(crate) fn open(
         let command = match parse_command(line)? {
             Ok(command) => command,
             Err(why) => {
-                handler.say(Notice::line(NoticeKind::Error, format!("Hunt: {why}")));
+                handler.say(Notice::line(NoticeKind::Error, format!("Hunt: {why}")).answering());
                 return Some(Took::Done);
             }
         };
@@ -121,7 +121,7 @@ pub(crate) fn open(
                     handler.say(Notice::line(
                         NoticeKind::Error,
                         "Hunt: there is no map, so there is no hunting. Set the map and start Hydra again.",
-                    ));
+                    ).answering());
                     return Some(Took::Done);
                 };
                 let (task, controls) = start(&desk, &handler, &observer, command);
@@ -132,7 +132,7 @@ pub(crate) fn open(
                     handler.say(Notice::line(
                         NoticeKind::Error,
                         "Hunt: a group needs a map and a character who has logged in.",
-                    ));
+                    ).answering());
                     return Some(Took::Done);
                 };
                 Took::Started(form(&seats, &desk, &handler, &observer, &leader, name, &with))
@@ -215,10 +215,13 @@ fn start_controlled(
                     let _ = run.task.await;
                 }
             }
-            Err(e) => handle.say(Notice::line(
-                NoticeKind::Error,
-                format!("Hunt: I could not read the session -- {e:?}."),
-            )),
+            Err(e) => handle.say(
+                Notice::line(
+                    NoticeKind::Error,
+                    format!("Hunt: I could not read the session -- {e:?}."),
+                )
+                .answering(),
+            ),
         }
     })
 }
@@ -227,7 +230,7 @@ fn start_controlled(
 type Say<'a> = &'a dyn Fn(NoticeKind, String);
 
 fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, command: Command) {
-    let say = |kind: NoticeKind, text: String| handle.say(Notice::line(kind, text));
+    let say = |kind: NoticeKind, text: String| handle.say(Notice::line(kind, text).answering());
     match command {
         Command::Import { path, name } => import(dir, &path, name.as_deref(), &say),
         Command::ImportLoot { path } => import_loot(dir, who, &path, &say),

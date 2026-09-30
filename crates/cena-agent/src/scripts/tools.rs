@@ -275,10 +275,7 @@ impl Scripting {
         let notice = if said.mono.unwrap_or(false) {
             Notice::table(kind, lines)
         } else {
-            Notice {
-                kind,
-                body: cena_session::Body::Lines(lines),
-            }
+            Notice::prose(kind, lines)
         };
         seat.door.say(notice);
         json(&serde_json::json!({ "said": true }))

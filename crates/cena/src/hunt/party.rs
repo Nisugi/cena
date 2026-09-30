@@ -157,7 +157,7 @@ pub(super) fn form(
                 format!(
                     "Hunt: {member} is not a character this Hydra is running; hunting without them."
                 ),
-            )),
+            ).answering()),
         }
     }
     start_placed(

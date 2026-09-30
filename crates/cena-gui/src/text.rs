@@ -172,6 +172,8 @@ pub(crate) fn linked(ui: &mut egui::Ui, job: LayoutJob, runs: &[StyledRun]) -> O
 /// (`defaults/globals/colors.toml`).
 pub(crate) const LINK: Color32 = Color32::from_rgb(0x47, 0x7a, 0xb3);
 
+/// Hydra's own words among the game's in the story: its answers.
+pub(crate) const HYDRA: Color32 = Color32::from_rgb(0x8f, 0xc9, 0xa8);
 /// Despana's amber: a room's name, a warning.
 pub(crate) const AMBER: Color32 = Color32::from_rgb(0xd7, 0xad, 0x63);
 /// A creature's colour, Despana's room window's and `monsterbold`'s.

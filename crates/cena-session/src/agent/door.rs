@@ -14,7 +14,7 @@ use super::{
 };
 use crate::SessionHandle;
 use crate::lifecycle::Generation;
-use crate::notice::{Body, Notice, NoticeKind};
+use crate::notice::{Notice, NoticeKind};
 use crate::operation::{Control, Lifecycle, Report};
 
 /// How long after telling the player of a refusal that asked them nothing
@@ -379,9 +379,9 @@ impl Door {
     /// Ask the player about request `id`.
     fn ask(&self, id: u64, act: &Act, because: &str, level: Level) {
         let symbol = self.handle.symbol();
-        self.handle.say(Notice {
-            kind: NoticeKind::Warn,
-            body: Body::Lines(vec![
+        self.handle.say(Notice::prose(
+            NoticeKind::Warn,
+            vec![
                 format!("An agent asks to {}, because: {because}", act.described()),
                 format!(
                     "That needs the {} level; this character's is {}.",
@@ -392,8 +392,8 @@ impl Door {
                     "{symbol}agent approve {id} lets it, once. {symbol}agent deny {id} refuses. Unanswered, it lapses in {} minutes.",
                     APPROVAL_LIFETIME.as_secs() / 60
                 ),
-            ]),
-        });
+            ],
+        ));
     }
 }
 

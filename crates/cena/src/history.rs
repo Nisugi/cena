@@ -25,7 +25,7 @@ use std::time::Duration;
 
 use cena_session::SessionHandle;
 use cena_session::command::claimant::Claimed;
-use cena_session::notice::{Body, Notice, NoticeKind};
+use cena_session::notice::{Notice, NoticeKind};
 use cena_session::player_log::reader::{self, Entry, Found, MAX_HITS, Moment, Pattern, Streams};
 use cena_session::player_log::writer;
 use cena_session::player_log::{archive, retention};
@@ -252,7 +252,7 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, character: &str,
         let command = match parse(line)? {
             Ok(command) => command,
             Err(why) => {
-                handler.say(Notice::line(NoticeKind::Error, format!("History: {why}")));
+                handler.say(Notice::line(NoticeKind::Error, format!("History: {why}")).answering());
                 return Some(Claimed::Done);
             }
         };
@@ -272,17 +272,21 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, character: &str,
             })
             .await;
             match read {
-                Ok(Ok(lines)) => handle.say_unlogged(Notice {
-                    kind: NoticeKind::Info,
-                    body: Body::Lines(lines),
-                }),
-                Ok(Err(why)) => {
-                    handle.say(Notice::line(NoticeKind::Error, format!("History: {why}")));
+                Ok(Ok(lines)) => {
+                    handle.say_unlogged(Notice::prose(NoticeKind::Info, lines).answering());
                 }
-                Err(_) => handle.say(Notice::line(
-                    NoticeKind::Error,
-                    "History: the read stopped before it finished.",
-                )),
+                Ok(Err(why)) => {
+                    handle.say(
+                        Notice::line(NoticeKind::Error, format!("History: {why}")).answering(),
+                    );
+                }
+                Err(_) => handle.say(
+                    Notice::line(
+                        NoticeKind::Error,
+                        "History: the read stopped before it finished.",
+                    )
+                    .answering(),
+                ),
             }
         });
         Some(Claimed::Done)

@@ -256,15 +256,18 @@ impl SessionHandle {
         if let Some(claimed) = self.typed(line) {
             if claimed == super::Claimed::Unknown {
                 let symbol = self.command_symbol().unwrap_or(super::COMMAND_SYMBOL);
-                self.say(crate::notice::Notice::line(
-                    crate::notice::NoticeKind::Error,
-                    format!(
-                        "I do not know {}{}. {}help lists Hydra's commands.",
-                        symbol,
-                        line.trim_start().trim_start_matches(symbol).trim(),
-                        symbol,
-                    ),
-                ));
+                self.say(
+                    crate::notice::Notice::line(
+                        crate::notice::NoticeKind::Error,
+                        format!(
+                            "I do not know {}{}. {}help lists Hydra's commands.",
+                            symbol,
+                            line.trim_start().trim_start_matches(symbol).trim(),
+                            symbol,
+                        ),
+                    )
+                    .answering(),
+                );
             }
             return Outcome::Handled;
         }

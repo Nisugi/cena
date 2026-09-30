@@ -187,7 +187,7 @@ impl Scripts {
                 }
             };
             if let Some(said) = said {
-                told.say(Notice::line(NoticeKind::Warn, said));
+                told.say(Notice::line(NoticeKind::Warn, said).answering());
             }
             Some(Claimed::Done)
         }));
@@ -285,7 +285,7 @@ fn answer(line: &str, shared: &Arc<Shared>, told: &SessionHandle) {
                     .to_owned(),
                 "<script> [args]   run one; k, l, p, u as in Lich".to_owned(),
             ],
-        ));
+        ).answering());
         return;
     };
     let folder = folder.trim().trim_matches('"');
@@ -293,14 +293,14 @@ fn answer(line: &str, shared: &Arc<Shared>, told: &SessionHandle) {
         told.say(Notice::line(
             NoticeKind::Error,
             "Scripts: import from where? Name your Lich folder, the one with data and scripts in it.",
-        ));
+        ).answering());
         return;
     }
     let (from, into, told) = (PathBuf::from(folder), hydra.to_owned(), told.clone());
     tokio::task::spawn_blocking(move || {
         let said = match import::import(&from, &into) {
-            Ok(imported) => Notice::line(NoticeKind::Info, imported.said(&from)),
-            Err(why) => Notice::line(NoticeKind::Error, format!("Scripts: {why}")),
+            Ok(imported) => Notice::line(NoticeKind::Info, imported.said(&from)).answering(),
+            Err(why) => Notice::line(NoticeKind::Error, format!("Scripts: {why}")).answering(),
         };
         told.say(said);
     });
@@ -392,13 +392,13 @@ async fn desk(
                 if running.is_none() {
                     let word = first_word(&line);
                     if LICH_WORDS.contains(&word.as_str()) && !STARTING.contains(&word.as_str()) {
-                        seat.door.say(Notice::line(NoticeKind::Info, "No scripts are running."));
+                        seat.door.say(Notice::line(NoticeKind::Info, "No scripts are running.").answering());
                         continue;
                     }
                     match start(&shared, &seat).await {
                         Ok(started) => running = Some(started),
                         Err(why) => {
-                            seat.door.say(Notice::line(NoticeKind::Error, format!("Scripts: {why}")));
+                            seat.door.say(Notice::line(NoticeKind::Error, format!("Scripts: {why}")).answering());
                             continue;
                         }
                     }
@@ -406,7 +406,7 @@ async fn desk(
                 if let Some(runner) = &running
                     && !shared.runners.typed(&runner.token, &line)
                 {
-                    seat.door.say(Notice::line(NoticeKind::Error, "Scripts: the runner is gone."));
+                    seat.door.say(Notice::line(NoticeKind::Error, "Scripts: the runner is gone.").answering());
                 }
             }
             status = ended(&mut running) => {

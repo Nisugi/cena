@@ -175,7 +175,7 @@ impl Desk {
         command: Command,
         place: Place,
     ) -> Option<Underway<HuntEnd>> {
-        let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
+        let say = answer(handle);
         let (command, quick, bounty) = match command {
             Command::Quick(name) => (Command::Run(name), true, false),
             Command::Bounty(name) => (Command::Run(name), false, true),
@@ -405,7 +405,7 @@ impl Desk {
         instance: Option<&str>,
         name: Option<&str>,
     ) -> Option<LootProfile> {
-        let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
+        let say = answer(handle);
         let path = loot::path(&self.dir, instance?, name?)?;
         let text = match std::fs::read_to_string(&path) {
             Ok(text) => text,
@@ -469,10 +469,10 @@ impl Desk {
         }) {
             Stored::Found(profile) => profile,
             Stored::Broken(why) => {
-                handle.say(Notice::line(
-                    NoticeKind::Error,
-                    format!("Sc: nothing was cast: {why}"),
-                ));
+                handle.say(
+                    Notice::line(NoticeKind::Error, format!("Sc: nothing was cast: {why}"))
+                        .answering(),
+                );
                 return None;
             }
             Stored::Missing => crate::spellcaster::CasterProfile::default(),
@@ -495,7 +495,7 @@ impl Desk {
                 ))
             }
             Err(why) => {
-                handle.say(Notice::line(NoticeKind::Warn, format!("Sc: {why}")));
+                handle.say(Notice::line(NoticeKind::Warn, format!("Sc: {why}")).answering());
                 None
             }
         }
@@ -513,14 +513,14 @@ impl Desk {
         }) {
             Stored::Found(profile) if !profile.cast_list.is_empty() => profile,
             Stored::Broken(why) => {
-                handle.say(Notice::line(NoticeKind::Error, format!("Waggle: {why}")));
+                handle.say(Notice::line(NoticeKind::Error, format!("Waggle: {why}")).answering());
                 return None;
             }
             _ => {
                 handle.say(Notice::line(
                     NoticeKind::Error,
                     "Waggle: no spells to cast yet. `waggle set cast_list [101, 107, 401]` names them; `waggle show` lists the rest.",
-                ));
+                ).answering());
                 return None;
             }
         };
@@ -544,24 +544,30 @@ impl Desk {
         }) {
             Stored::Found(profile) if !profile.spells.is_empty() => profile,
             Stored::Broken(why) => {
-                handle.say(Notice::line(NoticeKind::Error, format!("Keep: {why}")));
+                handle.say(Notice::line(NoticeKind::Error, format!("Keep: {why}")).answering());
                 return None;
             }
             _ => {
-                handle.say(Notice::line(
-                    NoticeKind::Error,
-                    "Hunt: nothing to keep up: `keep add <spell>` first.",
-                ));
+                handle.say(
+                    Notice::line(
+                        NoticeKind::Error,
+                        "Hunt: nothing to keep up: `keep add <spell>` first.",
+                    )
+                    .answering(),
+                );
                 return None;
             }
         };
-        handle.say(Notice::line(
-            NoticeKind::Info,
-            format!(
-                "Hunt: keeping up {:?}; `hunt stop` ends it.",
-                profile.spells
-            ),
-        ));
+        handle.say(
+            Notice::line(
+                NoticeKind::Info,
+                format!(
+                    "Hunt: keeping up {:?}; `hunt stop` ends it.",
+                    profile.spells
+                ),
+            )
+            .answering(),
+        );
         Some(self.start(
             ("keep", "keep"),
             handle.clone(),
@@ -587,7 +593,7 @@ impl Desk {
             handle.say(Notice::line(
                 NoticeKind::Error,
                 "Hunt: no heal profile yet. `heal set container <your herb container>` makes one; `heal show` lists the rest.",
-            ));
+            ).answering());
             return None;
         };
         Some(self.start(
@@ -627,10 +633,13 @@ impl Desk {
         place: Option<Place>,
     ) -> HuntEnd {
         if handle.claim(self.token).await.is_err() {
-            handle.say(Notice::line(
-                NoticeKind::Error,
-                "Hunt: something else holds the session; stop it first.",
-            ));
+            handle.say(
+                Notice::line(
+                    NoticeKind::Error,
+                    "Hunt: something else holds the session; stop it first.",
+                )
+                .answering(),
+            );
             return HuntEnd::Stopped(BehaviorError::AuthorityHeld);
         }
         let heartbeat = Heartbeat::default();
@@ -768,5 +777,13 @@ fn unskinnable(handle: &SessionHandle, file: Option<&std::path::Path>, names: &[
                 names.join(", ")
             ),
         ),
+    }
+}
+
+/// What the hunt answers the player with, on `handle`: a line after its
+/// name, in the story (`cena_session::Notice::answer`).
+fn answer(handle: &SessionHandle) -> impl Fn(NoticeKind, String) + Copy + '_ {
+    move |kind, text| {
+        handle.say(Notice::line(kind, format!("Hunt: {text}")).answering());
     }
 }

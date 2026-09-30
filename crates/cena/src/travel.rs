@@ -129,13 +129,16 @@ fn open_travel(
             // Travel's word, well-formed or not: without a map, either way
             // the answer is the same.
             let _ = parse_command(line)?;
-            told.say(Notice::line(
-                NoticeKind::Error,
-                format!(
-                    "Travel has no map, so nothing was sent. Set {MAP_ENV} to your \
+            told.say(
+                Notice::line(
+                    NoticeKind::Error,
+                    format!(
+                        "Travel has no map, so nothing was sent. Set {MAP_ENV} to your \
                      combined map file and start Hydra again."
-                ),
-            ));
+                    ),
+                )
+                .answering(),
+            );
             Some(Took::Done)
         }));
         return;
@@ -206,7 +209,7 @@ fn travel_command(handle: &SessionHandle, line: &str) -> Option<Command> {
         Ok(command) => Some(command),
         // Travel's, and answered here: not another system's to try.
         Err(why) => {
-            handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")));
+            handle.say(Notice::line(NoticeKind::Error, format!("Travel: {why}")).answering());
             Some(Command::Nothing)
         }
     }
@@ -232,10 +235,13 @@ async fn run_fresh(
                 walked(walk.task.await);
             }
         }
-        Err(e) => handle.say(Notice::line(
-            NoticeKind::Error,
-            format!("Travel: I could not read the session -- {e:?}."),
-        )),
+        Err(e) => handle.say(
+            Notice::line(
+                NoticeKind::Error,
+                format!("Travel: I could not read the session -- {e:?}."),
+            )
+            .answering(),
+        ),
     }
 }
 

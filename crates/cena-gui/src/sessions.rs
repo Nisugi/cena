@@ -547,10 +547,9 @@ impl Sessions {
     /// `line`, one command, sent on the connection `seat`'s window last saw.
     fn deliver(&self, seat: &Arc<Seat>, line: String) {
         let Some(generation) = lock(&seat.snapshot).as_ref().map(|shot| shot.generation) else {
-            lock(&seat.story).tell(Notice::line(
-                NoticeKind::Warn,
-                "Not connected yet; nothing was sent.",
-            ));
+            lock(&seat.story).tell(
+                Notice::line(NoticeKind::Warn, "Not connected yet; nothing was sent.").answering(),
+            );
             return;
         };
         let (seat, window) = (Arc::clone(seat), self.shared.window.clone());
@@ -560,7 +559,7 @@ impl Sessions {
                 .send_typed_at(generation, &line, SEND_DEADLINE)
                 .await;
             if let Some(why) = unsent(&outcome) {
-                lock(&seat.story).tell(Notice::line(NoticeKind::Warn, why));
+                lock(&seat.story).tell(Notice::line(NoticeKind::Warn, why).answering());
                 window.wake();
             }
         });
@@ -614,7 +613,7 @@ fn refused(seat: &Seat, line: &str) -> bool {
     let Err(why) = cena_ui::validate_line(line) else {
         return false;
     };
-    lock(&seat.story).tell(Notice::line(NoticeKind::Warn, format!("Not sent: {why}.")));
+    lock(&seat.story).tell(Notice::line(NoticeKind::Warn, format!("Not sent: {why}.")).answering());
     true
 }
 

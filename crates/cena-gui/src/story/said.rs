@@ -1,5 +1,5 @@
-//! What Hydra says to the player beside the story: its messages, in their
-//! own pane, and a trigger's banners, each up for a while. Moved out of
+//! What Hydra says to the player: an answer in the story, its own news in
+//! its own pane, and a trigger's banners, each up for a while. Moved out of
 //! `story.rs` when the story's own rules took it to its cap.
 
 use std::time::Instant;
@@ -9,9 +9,15 @@ use cena_session::{Notice, NoticeKind};
 use super::{ALERT_FOR, MAX_ALERTS, MAX_SAID, Story};
 
 impl Story {
-    /// Hydra says `notice` to the player, in the messages pane.
+    /// Hydra says `notice` to the player: an answer to something the
+    /// player did in the story, among the game's lines, and the rest in
+    /// Hydra's own pane (the author, 2026-09-29, `plan/49`).
     pub(crate) fn tell(&mut self, notice: Notice) {
         if notice.kind == NoticeKind::Debug {
+            return;
+        }
+        if notice.answer {
+            self.push(super::Shown::Said(notice));
             return;
         }
         self.said.push_back(notice);

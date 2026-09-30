@@ -57,13 +57,13 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands) {
         let asked = match parse(line)? {
             Ok(asked) => asked,
             Err(why) => {
-                told.say(Notice::line(NoticeKind::Error, why));
+                told.say(Notice::line(NoticeKind::Error, why).answering());
                 return Some(Claimed::Done);
             }
         };
         let folder = match asked {
             Asked::Help => {
-                told.say(Notice::line(NoticeKind::Info, HELP));
+                told.say(Notice::line(NoticeKind::Info, HELP).answering());
                 return Some(Claimed::Done);
             }
             Asked::Import(folder) => folder,
@@ -74,9 +74,10 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands) {
             let brought =
                 tokio::task::spawn_blocking(move || cena_gui::import_dolls(&folder, &into)).await;
             let said = match brought {
-                Ok(Ok(brought)) => Notice::line(NoticeKind::Info, said(&brought)),
-                Ok(Err(why)) => Notice::line(NoticeKind::Error, format!("Doll: {why}")),
-                Err(_) => Notice::line(NoticeKind::Error, "Doll: the import stopped.".to_owned()),
+                Ok(Ok(brought)) => Notice::line(NoticeKind::Info, said(&brought)).answering(),
+                Ok(Err(why)) => Notice::line(NoticeKind::Error, format!("Doll: {why}")).answering(),
+                Err(_) => Notice::line(NoticeKind::Error, "Doll: the import stopped.".to_owned())
+                    .answering(),
             };
             told.say(said);
         });

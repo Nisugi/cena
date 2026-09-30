@@ -136,7 +136,9 @@ impl Desk {
         joined: (Snapshot, impl Into<Heard>),
         command: Command,
     ) -> Option<Underway<Travelled>> {
-        let say = |kind, text: String| handle.say(Notice::line(kind, format!("Travel: {text}")));
+        let say = |kind, text: String| {
+            handle.say(Notice::line(kind, format!("Travel: {text}")).answering());
+        };
         let state = &joined.0.state;
         let mut traveller = self.traveller(handle, state);
         let walker = walker_from(state, &traveller.notes, state.game_time().unwrap_or(0));
@@ -149,12 +151,12 @@ impl Desk {
             }
             Command::Help => {
                 let lines = super::command::HELP.iter().map(|&l| l.to_owned()).collect();
-                handle.say(Notice::table(NoticeKind::Info, lines));
+                handle.say(Notice::table(NoticeKind::Info, lines).answering());
                 return None;
             }
             Command::Places => {
                 let lines = places(&self.map, &walker, &traveller.notes.targets);
-                handle.say(Notice::table(NoticeKind::Info, lines));
+                handle.say(Notice::table(NoticeKind::Info, lines).answering());
                 return None;
             }
             Command::List => {
@@ -166,7 +168,7 @@ impl Desk {
                         .iter()
                         .map(|(name, rooms)| format!("   {name:<15} = {rooms:?}")),
                 );
-                handle.say(Notice::table(NoticeKind::Info, lines));
+                handle.say(Notice::table(NoticeKind::Info, lines).answering());
                 return None;
             }
             Command::Forget { name, global } => {
@@ -224,10 +226,7 @@ impl Desk {
             );
             return None;
         };
-        handle.say(Notice::table(
-            NoticeKind::Info,
-            table(&self.map, here, &legs),
-        ));
+        handle.say(Notice::table(NoticeKind::Info, table(&self.map, here, &legs)).answering());
         if !matches!(command, Command::Go(_)) {
             return None;
         }
@@ -389,7 +388,9 @@ impl Desk {
         rooms: &[String],
         global: bool,
     ) {
-        let say = |kind, text: String| handle.say(Notice::line(kind, format!("Travel: {text}")));
+        let say = |kind, text: String| {
+            handle.say(Notice::line(kind, format!("Travel: {text}")).answering());
+        };
         let room = |said: &String| match said.as_str() {
             "current" => Some(here),
             other => match other.strip_prefix('u') {
@@ -440,10 +441,13 @@ impl Desk {
     fn say_what_fits(&self, handle: &SessionHandle, to: &str) {
         let fits = described(&self.map, to);
         if fits.is_empty() {
-            handle.say(Notice::line(
-                NoticeKind::Error,
-                format!("Travel: I do not know a room called {to:?}."),
-            ));
+            handle.say(
+                Notice::line(
+                    NoticeKind::Error,
+                    format!("Travel: I do not know a room called {to:?}."),
+                )
+                .answering(),
+            );
             return;
         }
         let mut lines = vec![format!(
@@ -456,6 +460,6 @@ impl Desk {
             let at = room.location.as_deref().unwrap_or("");
             Some(format!("{:>7}  {title}  {at}", id.0))
         }));
-        handle.say(Notice::table(NoticeKind::Warn, lines));
+        handle.say(Notice::table(NoticeKind::Warn, lines).answering());
     }
 }

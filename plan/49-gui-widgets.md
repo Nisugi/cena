@@ -204,6 +204,14 @@ never has to be told its id.
 Not Saga's: Hydra's messages and the Hunt panel (M10), and the room split into its title,
 description, players, objects and exits, each a widget.
 
+> **Hydra's messages are Hydra's own, 2026-09-29** (the author: *"I thought it was like a debug
+> or info window into what hydra is doing or errors. shift + click on a room in the minimap
+> should send that room description to the story window"*; answered **1**, answers only).
+> An answer to something the player did, a command typed or clicked, is shown in the story
+> among the game's lines, in Hydra's green (`cena_session::Notice::answer`,
+> `crates/cena-gui/src/story/said.rs`); what Hydra does of its own accord, a behavior's
+> running words, and what went wrong that nobody asked about stay in the Hydra window.
+
 ---
 
 ## 4. Stages

@@ -66,7 +66,7 @@ pub(crate) fn command(
     commands.trigger(Arc::new(move |line: &str| {
         let parsed = words::parse(line)?;
         for (kind, text) in answer(parsed, &told, &dir, &character, &others) {
-            told.say(Notice::line(kind, format!("Triggers: {text}")));
+            told.say(Notice::line(kind, format!("Triggers: {text}")).answering());
         }
         Some(Claimed::Done)
     }));

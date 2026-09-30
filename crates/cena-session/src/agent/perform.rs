@@ -4,7 +4,7 @@
 use super::{Act, Admitted, takeover};
 use crate::SessionHandle;
 use crate::lifecycle::Generation;
-use crate::notice::{Body, Notice, NoticeKind};
+use crate::notice::{Notice, NoticeKind};
 
 impl SessionHandle {
     /// Do an act the level, or the player, allowed on connection
@@ -25,10 +25,7 @@ impl SessionHandle {
                     *first = format!("Agent: {first}");
                 }
                 lines.push(format!("  (because: {because})"));
-                self.say(Notice {
-                    kind: NoticeKind::Info,
-                    body: Body::Lines(lines),
-                });
+                self.say(Notice::prose(NoticeKind::Info, lines));
                 Ok(Admitted::Told)
             }
             Act::Perform { line } => {

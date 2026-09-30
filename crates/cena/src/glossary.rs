@@ -143,6 +143,7 @@
 //! | **Observer** | reads a snapshot and every numbered event after it ([`SessionObserver::subscribe`], [`ObservedEvent`]); cannot mutate, cannot suppress, confers no authority | |
 //! | **Lagged** | what an observer that fell behind is told instead of meeting a silent hole; the recovery is to subscribe again | |
 //! | **Notice** | Hydra speaking to the player, not the game: [`Notice`], the port of `Lich::Messaging` | message |
+//! | **Answer** | a [`Notice`] that answers something the player did, a command typed or a room shift-clicked: [`Notice::answer`], shown in the story among the game's lines as Lich's `respond` is. Every other notice is Hydra's own, in the Hydra window: what it is doing, and what went wrong that nobody asked about | reply |
 //! | **Player log** | what the player saw and sent, as text, one file per character per day (`plan/25`): written by [`PlayerWriter`](cena_session::PlayerWriter), read back by [`reader`](cena_session::player_log::reader), which `;history` puts on the command line. The command is not `;log`, which is Lich's `log.lic` | the wire log, which is bytes and churns |
 //! | **Stretch** | the days between two Eastern midnights where a week or a month begins ([`starts_period`](cena_platform::eastern::starts_period)), named by its first date. The player log cuts its file at each one ([`file_key`](cena_session::player_log::writer::file_key)) so a file never straddles two [archives](cena_session::player_log::archive) | a period, which is a whole month or week: an archive holds one or more stretches |
 //! | **Handle** | the only path that sends: [`SessionHandle`] | |
@@ -366,6 +367,7 @@
 //! [`Merger`]: cena_ui::Merger
 //! [`movement`]: cena_session::movement
 //! [`Notice`]: cena_session::Notice
+//! [`Notice::answer`]: cena_session::Notice::answer
 //! [`ObservedEvent`]: cena_session::ObservedEvent
 //! [`Origin`]: cena_session::Origin
 //! [`Origin::Manual`]: cena_session::Origin::Manual

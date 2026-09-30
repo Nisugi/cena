@@ -210,7 +210,7 @@ pub(crate) fn control(
         let words: Vec<String> = words.map(str::to_ascii_lowercase).collect();
         let words: Vec<&str> = words.iter().map(String::as_str).collect();
         let who = who.as_ref().map(|(i, n)| (i.as_str(), n.as_str()));
-        told.say(answer(&told, &dir, who, &words));
+        told.say(answer(&told, &dir, who, &words).answering());
         Some(Claimed::Done)
     }));
 }
@@ -367,10 +367,7 @@ fn status(handle: &SessionHandle) -> Notice {
             request.id
         ));
     }
-    Notice {
-        kind: NoticeKind::Info,
-        body: cena_session::Body::Lines(lines),
-    }
+    Notice::prose(NoticeKind::Info, lines)
 }
 
 /// The levels, as a player types them.

@@ -120,7 +120,7 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, kept: Option<Kep
     let told = handle.clone();
     commands.sorter(Arc::new(move |line: &str| {
         let parsed = parse(line)?;
-        told.say(answer(parsed, &told, kept.as_ref()));
+        told.say(answer(parsed, &told, kept.as_ref()).answering());
         Some(Claimed::Done)
     }));
 }

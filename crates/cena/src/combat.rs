@@ -85,14 +85,16 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands, database: PathBu
         let command = match parse(line)? {
             Ok(command) => command,
             Err(why) => {
-                handler.say(Notice::line(NoticeKind::Error, format!("Combat: {why}")));
+                handler.say(Notice::line(NoticeKind::Error, format!("Combat: {why}")).answering());
                 return Some(Claimed::Done);
             }
         };
         let (handle, database) = (handler.clone(), database.clone());
         tokio::task::spawn_blocking(move || match run(&database, &command) {
-            Ok(lines) => handle.say(Notice::table(NoticeKind::Info, lines)),
-            Err(why) => handle.say(Notice::line(NoticeKind::Error, format!("Combat: {why}"))),
+            Ok(lines) => handle.say(Notice::table(NoticeKind::Info, lines).answering()),
+            Err(why) => {
+                handle.say(Notice::line(NoticeKind::Error, format!("Combat: {why}")).answering());
+            }
         });
         Some(Claimed::Done)
     }));

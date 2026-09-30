@@ -512,17 +512,18 @@ fn hydra(ui: &mut egui::Ui, said: &std::collections::VecDeque<Notice>, id: Id) {
                 ui.weak("Nothing yet.");
             }
             for notice in said {
-                notice_lines(ui, notice);
+                notice_lines(ui, notice, ui.visuals().text_color());
             }
         });
 }
 
-/// One of Hydra's messages, coloured by what it is about.
-fn notice_lines(ui: &mut egui::Ui, notice: &Notice) {
+/// One of Hydra's messages, coloured by what it is about: `info` for
+/// what is neither wrong nor off.
+pub(super) fn notice_lines(ui: &mut egui::Ui, notice: &Notice, info: Color32) {
     let color = match notice.kind {
         NoticeKind::Error => WRONG,
         NoticeKind::Warn => AMBER,
-        NoticeKind::Info | NoticeKind::Debug => ui.visuals().text_color(),
+        NoticeKind::Info | NoticeKind::Debug => info,
     };
     match &notice.body {
         Body::Lines(lines) => {
