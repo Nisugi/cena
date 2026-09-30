@@ -54,7 +54,11 @@ pub const TIME_FORMAT: &str = "%H:%M:%S%.3f";
 /// though for a different reason than the one that matters here.
 pub const LOG_DIR_ENV: &str = "CENA_LOG_DIR";
 
-/// Where logs go when [`LOG_DIR_ENV`] is unset: `./logs` beside the binary.
+/// Where logs go when [`LOG_DIR_ENV`] is unset: `logs` in the **working
+/// directory** (the binary joins it as it is), not beside the binary as this
+/// said, and not in the data folder, which `plan/50` §7 step 7 moved to
+/// Hydra's own folder in the player's application data. The two default to
+/// different roots; whether they should is the author's to answer.
 ///
 /// Relative deliberately. An absolute default is right for exactly one machine
 /// and silently wrong everywhere else.
@@ -91,8 +95,8 @@ pub fn log_dir() -> PathBuf {
 /// returned, bounded by the session's read buffer:
 ///
 /// ```text
-/// $ grep -n 'const READ_BUF' crates/cena-session/src/actor.rs
-/// 147:const READ_BUF: usize = 8 * 1024;
+/// $ grep 'const READ_BUF' crates/cena-session/src/actor.rs
+/// const READ_BUF: usize = 8 * 1024;
 /// ```
 ///
 /// So the worst case is 30,000 x 8,192 = **245,760,000 bytes (~234 MiB)** per

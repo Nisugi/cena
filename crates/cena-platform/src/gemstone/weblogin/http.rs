@@ -95,8 +95,11 @@ const MAX_REDIRECTS: usize = 5;
 ///
 /// # Errors
 ///
-/// [`WebLoginFailure`], whose [`is_fatal`](WebLoginFailure::is_fatal) says
-/// whether anything else is worth trying.
+/// [`WebLoginFailure`]. Only [`WebLoginFailure::LoginRejected`] is evidence
+/// against trying anything else; the caller matches it by name, since the
+/// predicate this once linked was taken out (`failure.rs`, the note after
+/// `is_refusal`). The link outlived it unnoticed because this module is
+/// `pub(crate)`, so rustdoc's link check never reads it.
 pub async fn authenticate_via_web(
     request: WebLoginRequest<'_>,
     progress: &mut impl FnMut(&str),

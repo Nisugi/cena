@@ -517,5 +517,5 @@ pub fn expect_echo(response: &str, letter: char, stage: &'static str) -> Result<
 // was removed.
 //
 // A dead function whose test asserts a behaviour we deliberately eliminated is
-// worse than no function: it reads as a specification. `handshake.rs:177`
-// records why nothing is trimmed.
+// worse than no function: it reads as a specification. `handshake.rs`
+// records why nothing is trimmed, at the K read ("The key is used WHOLE").
