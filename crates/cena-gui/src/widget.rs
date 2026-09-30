@@ -23,7 +23,7 @@ pub(crate) mod infinite;
 mod kind;
 mod lines;
 mod lists;
-mod minimap;
+pub(crate) mod minimap;
 mod room;
 mod split;
 mod state;
@@ -154,6 +154,8 @@ pub(crate) struct Chosen {
     pub(crate) lines: Option<Lines>,
     /// The injury doll's picture.
     pub(crate) doll: Option<doll::DollLook>,
+    /// The minimap's zooms and maps next door.
+    pub(crate) minimap: Option<minimap::MinimapLook>,
 }
 
 /// One line of text, or a bar: what a one-line widget asks for.

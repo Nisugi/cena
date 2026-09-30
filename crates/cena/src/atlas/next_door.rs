@@ -29,6 +29,16 @@ pub(crate) struct Join {
     step: (i32, i32),
 }
 
+/// A map drawn: its name, its sheet, where its cells sit, and how many
+/// maps out it is.
+#[derive(Clone)]
+struct Placed {
+    name: String,
+    scene: Arc<MapScene>,
+    at: (i32, i32),
+    ring: u8,
+}
+
 impl Atlas {
     /// The maps next door to the sheet `sheet` (an area, or a place opened
     /// on one), `rings` deep: each placed as its first walk from a map
@@ -40,27 +50,38 @@ impl Atlas {
             return Vec::new();
         };
         let mut taken = cells(&home, (0, 0));
-        let mut placed: Vec<(String, Arc<MapScene>, (i32, i32))> =
-            vec![(base.to_owned(), home, (0, 0))];
+        let mut placed = vec![Placed {
+            name: base.to_owned(),
+            scene: home,
+            at: (0, 0),
+            ring: 0,
+        }];
         let mut ring = vec![0];
-        for _ in 0..rings {
+        for out in 1..=rings {
             let mut next = Vec::new();
             for from in ring {
-                let (name, scene, offset) = placed[from].clone();
+                let Placed {
+                    name, scene, at, ..
+                } = placed[from].clone();
                 for (other, join) in self.joins(map, &name) {
-                    if placed.iter().any(|(placed, ..)| *placed == other) {
+                    if placed.iter().any(|p| p.name == other) {
                         continue;
                     }
                     let Some(there) = self.laid(&other) else {
                         self.ask(&other);
                         continue;
                     };
-                    let Some(at) = beside(&scene, offset, &there, join, &taken) else {
+                    let Some(beside) = beside(&scene, at, &there, join, &taken) else {
                         continue;
                     };
-                    taken.extend(cells(&there, at));
+                    taken.extend(cells(&there, beside));
                     next.push(placed.len());
-                    placed.push((other, there, at));
+                    placed.push(Placed {
+                        name: other,
+                        scene: there,
+                        at: beside,
+                        ring: u8::try_from(out).unwrap_or(u8::MAX),
+                    });
                 }
             }
             ring = next;
@@ -68,10 +89,14 @@ impl Atlas {
         placed
             .into_iter()
             .skip(1)
-            .map(|(_, scene, (x, y))| {
+            .map(|p| {
                 #[allow(clippy::cast_precision_loss)]
-                let offset = (x as f32, y as f32);
-                NextDoor { scene, offset }
+                let offset = (p.at.0 as f32, p.at.1 as f32);
+                NextDoor {
+                    scene: p.scene,
+                    offset,
+                    ring: p.ring,
+                }
             })
             .collect()
     }

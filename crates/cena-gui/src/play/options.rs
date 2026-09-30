@@ -166,6 +166,9 @@ impl Play {
                         doll_rows(layout.dolls.get(&one.id), &pictures.dolls)
                     }
                     (Widget::Room, None) => room_rows(layout.rooms.get(&one.id)),
+                    (Widget::Minimap, None) => {
+                        crate::widget::minimap::look::rows(layout.minimaps.get(&one.id))
+                    }
                     (Widget::Story | Widget::Stream(_), None) => {
                         lines_rows(layout.lines.get(&one.id), one.widget == Widget::Story)
                     }
@@ -227,6 +230,12 @@ impl Play {
             Widget::Injuries => keep(&mut layout.dolls, placed, &DollLook::default(), |look| {
                 doll_set(look, key, to)
             })?,
+            Widget::Minimap => keep(
+                &mut layout.minimaps,
+                placed,
+                &crate::widget::minimap::MinimapLook::default(),
+                |look| crate::widget::minimap::look::set(look, key, to),
+            )?,
             Widget::Story | Widget::Stream(_) => {
                 let story = widget == Widget::Story;
                 keep(&mut layout.lines, placed, &Lines::default(), |lines| {

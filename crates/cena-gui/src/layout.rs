@@ -89,6 +89,10 @@ pub(crate) struct Layout {
     /// Each Injuries widget's picture, by the widget's id (`plan/55`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub(crate) dolls: BTreeMap<u32, crate::widget::doll::DollLook>,
+    /// Each minimap's zooms and maps next door, by the widget's id
+    /// (`plan/53` §8c step 4).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub(crate) minimaps: BTreeMap<u32, crate::widget::minimap::MinimapLook>,
     /// Its four drawers (`plan/49` Stage E, `drawers.rs`).
     #[serde(default, skip_serializing_if = "Drawers::is_default")]
     pub(crate) drawers: Drawers,
@@ -197,6 +201,7 @@ impl Layout {
             rooms: BTreeMap::new(),
             lines: BTreeMap::new(),
             dolls: BTreeMap::new(),
+            minimaps: BTreeMap::new(),
             drawers: Drawers::default(),
         };
         let story = layout.place(Widget::Story);

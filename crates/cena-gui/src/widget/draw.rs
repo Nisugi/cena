@@ -70,7 +70,13 @@ pub(super) fn draw(
         // Another character's minimap only shows: a click would walk this
         // window's character.
         Widget::Minimap => {
-            return super::minimap::minimap(ui, seen.minimap, id, seen.who.is_none());
+            return super::minimap::minimap(
+                ui,
+                seen.minimap,
+                id,
+                seen.who.is_none(),
+                chosen.minimap.unwrap_or_default(),
+            );
         }
         // Another character's room only shows: its ids are not this
         // window's character's to send.

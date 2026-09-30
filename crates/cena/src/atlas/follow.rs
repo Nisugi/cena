@@ -14,9 +14,10 @@ use cena_ui::MinimapView;
 
 use super::{Atlas, Waiting};
 
-/// How many maps out from the one a character is on are drawn beside it
-/// (`plan/53` §8b's setting, 1 until its page).
-const AREAS_OUT: usize = 1;
+/// How many maps out from the one a character is on are worked out: the
+/// most the minimap's page offers (`plan/53` §8c step 4), each tagged with
+/// its ring for the widget to draw as many as it is set to.
+const AREAS_OUT: usize = 2;
 
 /// A character's minimap source: a follower of its own over the one map
 /// and atlas every character shares, routing to the room clicked as

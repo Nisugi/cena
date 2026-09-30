@@ -28,6 +28,8 @@ pub(super) struct Drawing<'a> {
     pub(super) lines: &'a BTreeMap<u32, crate::widget::Lines>,
     /// Each Injuries widget's picture, by id (`Layout::dolls`).
     pub(super) dolls: &'a BTreeMap<u32, crate::widget::doll::DollLook>,
+    /// Each minimap's zooms and maps next door, by id (`Layout::minimaps`).
+    pub(super) minimaps: &'a BTreeMap<u32, crate::widget::minimap::MinimapLook>,
     /// Which session: every id in the window is its own.
     pub(super) session: u32,
     /// How far each widget that counts what it says was read, by id.
@@ -53,6 +55,7 @@ impl Drawing<'_> {
             room: self.rooms.get(&placed).copied(),
             lines: self.lines.get(&placed).copied(),
             doll: self.dolls.get(&placed).cloned(),
+            minimap: self.minimaps.get(&placed).copied(),
         }
     }
 }

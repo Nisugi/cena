@@ -40,6 +40,8 @@ pub struct NextDoor {
     pub scene: Arc<MapScene>,
     /// Added to each of its cells and points to draw it beside this one.
     pub offset: (f32, f32),
+    /// How many maps out it is: 1 beside this one, 2 beside one of those.
+    pub ring: u8,
 }
 
 /// One laid-out area.

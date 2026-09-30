@@ -106,6 +106,7 @@ pub(super) fn minimap(
     view: Option<&MinimapView>,
     id: Id,
     own: bool,
+    look: MinimapLook,
 ) -> Option<Clicked> {
     let size = ui.available_size().max(vec2(80.0, 60.0));
     let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
@@ -138,6 +139,18 @@ pub(super) fn minimap(
         waiting(&painter, rect, "You are not on this area's map.");
         return None;
     };
+    // The maps next door as many out as its page says.
+    let next_door: Vec<NextDoor> = next_door
+        .iter()
+        .filter(|n| n.ring <= look.maps_out)
+        .cloned()
+        .collect();
+    let next_door = next_door.as_slice();
+    let default = if inside.is_some() {
+        look.inside
+    } else {
+        look.outside
+    };
     let camera = aimed(
         ui,
         id,
@@ -145,7 +158,7 @@ pub(super) fn minimap(
         rect,
         (scene, next_door),
         here_cell,
-        inside.is_some(),
+        (inside.is_some(), default),
     );
     let now = ui.input(|i| i.time);
     let (centre, zoom) = camera.drawn(now);
@@ -246,10 +259,9 @@ fn aimed(
     rect: Rect,
     (scene, next_door): (&MapScene, &[NextDoor]),
     here: Vec2,
-    inside: bool,
+    (inside, default): (bool, f32),
 ) -> Camera {
     let now = ui.input(|i| i.time);
-    let default = if inside { ZOOM_INSIDE } else { ZOOM };
     // A place is opened on its area's sheet: its sheet is named for the
     // area and the place (`area@room`), and is the same area.
     let area_of =
@@ -525,5 +537,8 @@ fn cell((x, y): (i32, i32)) -> Vec2 {
     vec2(x as f32, y as f32)
 }
 
+pub(crate) mod look;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use look::MinimapLook;

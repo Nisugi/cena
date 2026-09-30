@@ -743,7 +743,12 @@ tried in the mapper for one small stretch if the join looks wrong.
    it off any room already drawn (up to 12 steps); drawn dimmed, clicked like the map you are
    on, the route crossing onto it. Crossing into it, the view moves by where it was drawn, so
    nothing jumps. One map out until the settings page (step 4).
-4. **The settings page** (step 7's, brought forward): both zooms and the areas out.
+4. **The settings page** (step 7's, brought forward): both zooms and the areas out. **BUILT
+   2026-09-29** (`cena-gui/src/widget/minimap/look.rs`): the minimap's right-click opens its
+   page: *Zoom outside* (7), *Zoom inside* (16), each the zoom a door resets to, and *Maps
+   next door*, 0 to 2 (1). Kept with the layout, by the widget. The binary works out two rings
+   of maps next door, each tagged with its ring, and the widget draws as many as its page
+   says.
 
 > **CHANGED 2026-09-29 (the author):** hydra-mapper *"updates a lot"*, so Hydra follows its
 > `main` (`branch = "main"` in the root `Cargo.toml`) instead of a `rev`. `Cargo.lock` still

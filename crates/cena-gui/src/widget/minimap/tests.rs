@@ -73,7 +73,13 @@ fn drawn(view: MinimapView) -> Harness<'static, ()> {
     Harness::builder()
         .with_size((260.0, 200.0))
         .build_ui(move |ui| {
-            minimap(ui, Some(&view), Id::new("minimap"), true);
+            minimap(
+                ui,
+                Some(&view),
+                Id::new("minimap"),
+                true,
+                MinimapLook::default(),
+            );
         })
 }
 
@@ -119,6 +125,7 @@ fn farm() -> NextDoor {
             ..MapScene::default()
         }),
         offset: (12.0, 0.0),
+        ring: 1,
     }
 }
 
@@ -157,7 +164,13 @@ fn crossing_into_a_map_next_door_does_not_jump() {
         .with_size((260.0, 200.0))
         .build_ui(move |ui| {
             let view = shown.lock().expect("unpoisoned").clone();
-            minimap(ui, Some(&view), Id::new("minimap"), true);
+            minimap(
+                ui,
+                Some(&view),
+                Id::new("minimap"),
+                true,
+                MinimapLook::default(),
+            );
         });
     harness.run();
     let camera = |harness: &Harness<'_, ()>| {
@@ -171,6 +184,7 @@ fn crossing_into_a_map_next_door_does_not_jump() {
     let town = NextDoor {
         scene: Arc::new(town()),
         offset: (-12.0, 0.0),
+        ring: 1,
     };
     *view.lock().expect("unpoisoned") = MinimapView::Here {
         scene: Arc::clone(&farm().scene),
@@ -214,7 +228,13 @@ fn a_door_crossed_zooms_to_that_sides_default() {
         .with_size((260.0, 200.0))
         .build_ui(move |ui| {
             let view = shown.lock().expect("unpoisoned").clone();
-            minimap(ui, Some(&view), Id::new("minimap"), true);
+            minimap(
+                ui,
+                Some(&view),
+                Id::new("minimap"),
+                true,
+                MinimapLook::default(),
+            );
         });
     let camera = |harness: &Harness<'_, ()>| {
         harness
@@ -273,7 +293,13 @@ fn click(
     let mut harness = Harness::builder()
         .with_size((260.0, 200.0))
         .build_ui(move |ui| {
-            if let Some(clicked) = minimap(ui, Some(&view), Id::new("minimap"), own) {
+            if let Some(clicked) = minimap(
+                ui,
+                Some(&view),
+                Id::new("minimap"),
+                own,
+                MinimapLook::default(),
+            ) {
                 *out.lock().expect("unpoisoned") = Some(clicked);
             }
         });
@@ -397,4 +423,61 @@ fn the_camera_moves_only_past_the_dead_zone() {
         vec2(4.0, 0.0),
         "moved past what brings you back"
     );
+}
+
+/// The page's settings take: with no maps next door the farm is not there
+/// to click, and a door goes to the page's inside zoom.
+#[test]
+fn the_page_sets_the_zooms_and_the_maps_next_door() {
+    let run = |view: MinimapView, look: MinimapLook, at: Option<Pos2>| {
+        let asked = Arc::new(std::sync::Mutex::new(None));
+        let out = Arc::clone(&asked);
+        let mut harness = Harness::builder()
+            .with_size((260.0, 200.0))
+            .build_ui(move |ui| {
+                if let Some(clicked) = minimap(ui, Some(&view), Id::new("minimap"), true, look) {
+                    *out.lock().expect("unpoisoned") = Some(clicked);
+                }
+            });
+        harness.run();
+        if let Some(at) = at {
+            for pressed in [true, false] {
+                harness
+                    .input_mut()
+                    .events
+                    .push(egui::Event::PointerMoved(at));
+                harness.input_mut().events.push(egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                });
+                harness.run();
+            }
+        }
+        let zoom = harness
+            .ctx
+            .data(|d| d.get_temp::<Camera>(Id::new("minimap")))
+            .expect("kept")
+            .zoom;
+        let asked = asked.lock().expect("unpoisoned").clone();
+        (asked, zoom)
+    };
+    // You at room 3 (8, 0), the view's middle; the barn at (16, 0).
+    let barn = Pos2::new(8.0f32.mul_add(ZOOM, 130.0), 100.0);
+    let one = MinimapLook::default();
+    let none = MinimapLook {
+        maps_out: 0,
+        ..MinimapLook::default()
+    };
+    assert_eq!(
+        run(with_farm(3), one, Some(barn)).0,
+        Some(Clicked::Aim(Some(91)))
+    );
+    assert_eq!(run(with_farm(3), none, Some(barn)).0, None);
+    let inside = MinimapLook {
+        inside: 24.0,
+        ..MinimapLook::default()
+    };
+    assert!((run(here(5, None, &[]), inside, None).1 - 24.0).abs() < 1e-3);
 }
