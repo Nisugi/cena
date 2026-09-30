@@ -29,6 +29,12 @@ fn hurt(state: &mut GameState, part: &str, rank: &str) {
         dialog: Some("injuries".to_owned()),
         attrs: Default::default(),
     });
+    // The prompt closes the chunk, where a nerve rank is read (`plan/55`
+    // §4a), as the game always sends one after the image.
+    state.apply(&Frame::Prompt {
+        time: "1000".into(),
+        text: ">".into(),
+    });
 }
 
 fn health(state: &mut GameState, current: i32, max: i32) {
