@@ -60,8 +60,8 @@ eframe = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b1c3351
 # renderer, at one commit, built on the same egui commit as above (gs_studio
 # pins it so; two egui builds could not share a `Ui`). Only `cena-gui` uses
 # them, behind its `doll-infinite` feature.
-gs_field = { git = "https://github.com/Nisugi/gs_studio", rev = "a73922803fb110d5541ec5e83fe1b7d63a6844dc" }
-gs_field_egui = { git = "https://github.com/Nisugi/gs_studio", rev = "a73922803fb110d5541ec5e83fe1b7d63a6844dc" }
+gs_field = { git = "https://github.com/Nisugi/gs_studio", rev = "cd9d990497a4a020ef74cf776e71e35d051af606" }
+gs_field_egui = { git = "https://github.com/Nisugi/gs_studio", rev = "cd9d990497a4a020ef74cf776e71e35d051af606" }
 
 # The first and only serialization in the workspace, added for M3 step 8.
 # `research/04-inherited-decisions.md:1878` (C21) argues the character store is

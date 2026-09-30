@@ -498,7 +498,11 @@ The glossary gains *doll*, *anchor*, *overlay* and *style*.
 - **Infinite is pinned at gs_studio `a739228`, not its newest commit.** gs_studio's `054a86c`
   (display lighting by default, wound ranks shifted, eyes marked, statuses over wounds) was
   on the author's machine and not on GitHub when step 7 was built. Hydra fetches gs_studio by
-  commit, so the pin moves to it once it is pushed.
+  commit, so the pin moves to it once it is pushed. **Moved the same day** to `cd9d990`, which
+  carries `054a86c` and the humanoid's lay figure and grid textures. Only the gs_studio source
+  moved: `cargo update -p gs_field` also lifted its graphics dependencies to versions that do
+  not build together (`wgpu-hal` against a newer `windows`), so the lock is edited by a
+  `cargo check`, not an update.
 - **The Doll plus is not a style of its own.** As VellumFE has it, a picture with overlays is
   the Doll plus: the page offers the Doll and Infinite, and a picture's art does the rest.
 - **The Doll's colours are the palette's, not a calibration's.** VellumFE's `wound_color` and
