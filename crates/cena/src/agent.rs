@@ -253,7 +253,12 @@ async fn keep_level(
     loop {
         match events.recv().await {
             Ok(event) => {
+                // The player's own `;agent level` saved before it answered,
+                // so the file already holds it: not written twice (the
+                // review of 2026-09-29). The session's own drop, or a file
+                // that does not read, is saved here.
                 if let cena_session::Event::Agent(Change::Level(level)) = event.event
+                    && load_level(&dir, &instance, &name) != Ok(level)
                     && let Err(why) = save_level(&dir, &instance, &name, level)
                 {
                     handle.say(Notice::line(
