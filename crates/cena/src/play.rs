@@ -33,8 +33,8 @@ use crate::commands::Commands;
 use crate::connector::LiveConnector;
 use crate::proven::Proven;
 use crate::{
-    batch, connector, frontend, interrupt, launcher, learn, loot, pages, roster, secrets, setup,
-    sorter, travel, triggers, watch,
+    batch, connector, frontend, interrupt, launcher, learn, loot, pages, roster, setup, sorter,
+    travel, triggers, watch,
 };
 
 /// The characters named with `--character`, in order. Empty means none was
@@ -123,6 +123,10 @@ struct Table {
     /// Word that the roster or a kept password changed with no request to
     /// answer -- a login proven `Ready` -- so the hubs are offered it again.
     roster: Arc<tokio::sync::Notify>,
+    /// The roster file's problem last said, so a file that does not read is
+    /// said once, not at every offer, and a hub offered nothing is not
+    /// silent about why (the review of 2026-09-29).
+    roster_problem: std::sync::Mutex<Option<String>>,
 }
 
 /// Run every named character, with no window, until Ctrl-C or until all
@@ -190,6 +194,7 @@ pub(crate) async fn serve(
         pin: dir.join(cena_platform::PIN_FILENAME),
         attention: crate::attention::start(&dir),
         roster: Arc::default(),
+        roster_problem: std::sync::Mutex::default(),
         dir,
         turn: Arc::default(),
         interrupt: interrupt.clone(),
@@ -585,37 +590,6 @@ impl Table {
         Some((character, login, closed))
     }
 
-    /// Tell the hubs which characters they can add: in the roster, with a saved
-    /// password, and not running. A name on two games is offered as
-    /// `GAME:Name`.
-    async fn offer(&self) {
-        if self.web.is_none() && self.gui.is_none() {
-            return;
-        }
-        let running: Vec<(String, String)> = self
-            .host
-            .lock()
-            .await
-            .sessions()
-            .filter(|(_, hosted)| hosted.is_running())
-            .map(|(_, hosted)| (hosted.who.game.clone(), hosted.who.character.clone()))
-            .collect();
-        let roster = roster::all(&self.dir).unwrap_or_default();
-        let available = roster::available(&roster, &running, secrets::saved);
-        if let Some(web) = &self.web {
-            web.sessions().offer(available.clone());
-        }
-        if let Some(gui) = &self.gui {
-            gui.offer(available);
-            gui.roster(
-                roster
-                    .iter()
-                    .map(|entry| entry.card(secrets::saved(&entry.account)))
-                    .collect(),
-            );
-        }
-    }
-
     /// The characters running now, for a relay (`relay.rs`): looked up when
     /// the relay is typed, through a weak hold, so a character's command
     /// line never keeps the table alive.
@@ -739,6 +713,8 @@ async fn after_ready(
     travel::after_login(&handle, observer, &commands, &map, &party).await;
     learn::sync(&handle, &stale, &who).await;
 }
+
+mod offer;
 
 #[cfg(test)]
 mod tests {
