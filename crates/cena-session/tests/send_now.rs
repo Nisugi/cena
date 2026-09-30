@@ -149,16 +149,11 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
         .send_now("sigil of escape", Origin::Manual, Gate::Roundtime)
         .await;
     // **At 100, or as many seconds past it as have really passed.** The gate
-    // reports `game_time_now`, which extrapolates from a real `Instant` (see
-    // this test's note): each second boundary crossed since the calibrating
-    // prompt makes the next second the honest answer. This allowed 100 or 101
-    // and failed under load (2026-09-29, a full workspace run beside six GUI
-    // runs), when more than a second passed. The bound is now the real time
-    // since before the calibration, plus the one boundary its truncation can
-    // hide. What must hold is that the sigil reached the wire having decided
-    // its gate on a KNOWN clock -- `Some`, not `None`, which is the `plan/12`
-    // §5.2 distinction this gate exists to respect, and the thing a looser
-    // `matches!` would drop.
+    // reports `game_time_now`, extrapolated from a real `Instant` (this
+    // test's note). "100 or 101" failed under load (2026-09-29) when more
+    // than a second passed; the bound is the real time since before the
+    // calibration, plus the boundary truncation hides. What must hold is a
+    // KNOWN clock -- `Some`, not `None` (`plan/12` §5.2).
     let Sent::Ok { at: Some(at), .. } = sent else {
         panic!("the sigil must reach the wire with its gate decided on a known clock: {sent:?}");
     };
