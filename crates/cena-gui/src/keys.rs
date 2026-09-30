@@ -54,9 +54,9 @@ pub(crate) const CTRL: u8 = 1;
 pub(crate) const SHIFT: u8 = 2;
 /// Alt, Option on macOS.
 pub(crate) const ALT: u8 = 4;
-/// Cmd, on macOS. Nowhere else: egui-winit sets `mac_cmd` only there
-/// (`crates/egui-winit/src/lib.rs:479` in the fork, `cfg!(target_os =
-/// "macos") && super_`), so a chord holding it is refused off macOS
+/// Cmd, on macOS. Nowhere else: egui-winit sets `mac_cmd` only there (the
+/// fork's egui-winit, `lib.rs` at ed8b264: `cfg!(target_os = "macos") &&
+/// super_`), so a chord holding it is refused off macOS
 /// ([`Chord::refused`]) rather than written and never fired. (This said
 /// *"the Windows key elsewhere"*: the review of 2026-09-29.)
 pub(crate) const CMD: u8 = 8;
