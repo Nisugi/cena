@@ -190,6 +190,10 @@ pub struct GameState {
     /// gave (`state/stun.rs`); `None` when none was told, and from when the
     /// `IconSTUNNED` indicator goes dark.
     pub stun_ends: Option<u32>,
+    /// Where the character aims, `right eye`, from *You're now aiming at
+    /// the right eye of your target*; `None` when it said it aims at
+    /// nothing, or has not said. The game keeps it across a reconnect.
+    pub aiming: Option<String>,
     /// `<spell>`: the spell prepared, verbatim, `None` from the game when
     /// nothing is (Lich's `checkprep`). `None` here is *not told*.
     pub prepared: Option<String>,

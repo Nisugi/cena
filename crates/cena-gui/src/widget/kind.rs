@@ -37,7 +37,7 @@ pub(crate) enum Widget {
     /// The stun left, by the rounds the game gave (`plan/49`, the author,
     /// 2026-09-30).
     Stun,
-    /// An aimed shot's aim left.
+    /// Where the character aims: the right eye, the left leg.
     Aim,
     /// The room as the game describes it, joined: its name and number, its
     /// description with what is here, who else is, and the ways out; its

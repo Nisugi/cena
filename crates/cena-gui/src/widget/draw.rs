@@ -167,11 +167,15 @@ pub(super) fn draw(
             AMBER,
         ),
         Widget::Stun => stun(ui, &named("Stun"), state),
-        Widget::Aim => clock(
+        // Where the character aims, as the game last said (the author,
+        // 2026-09-30); the aim timer it was drawn from has never been seen
+        // in the author's logs.
+        Widget::Aim => line(
             ui,
-            &named("Aim"),
-            state.and_then(GameState::aim_remaining),
-            AMBER,
+            match state.and_then(|state| state.aiming.as_deref()) {
+                Some(at) => RichText::new(named(&format!("Aim: {at}"))).color(AMBER),
+                None => RichText::new(named("Aim —")).weak(),
+            },
         ),
         Widget::CastTime => clock(
             ui,

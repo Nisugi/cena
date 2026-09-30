@@ -176,7 +176,9 @@ impl GameState {
             // them on the next prompt.
             loot: _,
             // Incidents likewise: what happened before the gap still happened.
+            // And where the character aims, which the game keeps.
             incidents: _,
+            aiming: _,
             // **Kept.** The player's triggers set them, and what those
             // concluded before the gap is the player's to clear, not the
             // game's to forget. One set for a time runs out by the server's
@@ -335,8 +337,7 @@ impl GameState {
         maneuvers.clear();
         (*cast_time_ends, *stun_ends) = (None, None);
         // The prepared spell goes with the cast: the burst restates `<spell>`.
-        *prepared = None;
-        *prepared_id = None;
+        (*prepared, *prepared_id) = (None, None);
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

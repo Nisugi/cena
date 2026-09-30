@@ -454,6 +454,21 @@ pub struct Incidents {
     held: VecDeque<Incident>,
 }
 
+impl super::GameState {
+    /// The chunk's `incidents`, kept for whoever reads them, and where the
+    /// character aims taken from them: the one fact among them that lasts
+    /// (the author, 2026-09-30: the Aim widget *"display what you're aiming
+    /// at"*).
+    pub(super) fn note_incidents(&mut self, incidents: Vec<Incident>) {
+        for incident in &incidents {
+            if let Incident::Aiming(at) = incident {
+                self.aiming.clone_from(at);
+            }
+        }
+        self.incidents.push(incidents);
+    }
+}
+
 impl Incidents {
     /// Queue a chunk's incidents; past the cap, the oldest go.
     pub fn push(&mut self, incidents: Vec<Incident>) {
