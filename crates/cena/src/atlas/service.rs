@@ -21,7 +21,8 @@ use cena_behavior::travel::{Map, RoomId};
 
 /// hydra-mapper's revision Hydra is built with: part of the cache's name,
 /// so an engine that lays out differently never reads another's areas.
-/// `the_engine_revision_is_the_one_pinned` holds it to `Cargo.lock`.
+/// `the_engine_revision_is_the_one_pinned` holds it to `Cargo.lock`: after
+/// `cargo update -p cena-gs-map` takes a newer main, this follows.
 const ENGINE: &str = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa";
 
 /// Why a room has no scene yet.
@@ -44,7 +45,10 @@ pub(crate) struct Atlas {
     /// The hidden places of the areas laid out.
     places: RwLock<Places>,
     queue: Mutex<Queue>,
+    /// A sheet laid out.
     ready: Condvar,
+    /// A sheet asked for: an idle worker takes it.
+    asked: Condvar,
 }
 
 /// The places left off the areas' sheets: each one's rooms by its name,
@@ -83,6 +87,7 @@ impl Atlas {
                 ..Queue::default()
             }),
             ready: Condvar::new(),
+            asked: Condvar::new(),
         });
         let cache = cache_dir(data, sha256);
         forget_other_maps(data, cache.as_deref());
@@ -150,6 +155,7 @@ impl Atlas {
             return;
         }
         queue.asked.push_back(name.to_owned());
+        self.asked.notify_one();
     }
 
     /// How many areas are laid out, of how many.
@@ -172,9 +178,11 @@ impl Atlas {
             .cloned()
     }
 
-    /// One worker: the next sheet, from the cache or laid out, until none
-    /// is left. An area's places are known before its sheet is, so a room
-    /// left off it always finds its place.
+    /// One worker: the next sheet, from the cache or laid out, and when none
+    /// is left, waiting for one to be asked for: a place is laid out only
+    /// when someone walks in, long after the areas are done. An area's
+    /// places are known before its sheet is, so a room left off it always
+    /// finds its place.
     fn work(
         &self,
         map: &Map,
@@ -183,15 +191,19 @@ impl Atlas {
         cache: Option<&Path>,
     ) {
         loop {
-            let next = {
+            let name = {
                 let mut queue = self.queue.lock().unwrap_or_else(PoisonError::into_inner);
-                let next = queue.asked.pop_front().or_else(|| queue.rest.pop_front());
-                if let Some(name) = &next {
-                    queue.taken.insert(name.clone());
+                loop {
+                    if let Some(name) = queue.asked.pop_front().or_else(|| queue.rest.pop_front()) {
+                        queue.taken.insert(name.clone());
+                        break name;
+                    }
+                    queue = self
+                        .asked
+                        .wait(queue)
+                        .unwrap_or_else(PoisonError::into_inner);
                 }
-                next
             };
-            let Some(name) = next else { return };
             let file = cache.map(|dir| dir.join(file_name(&name)));
             let scene = file.as_deref().and_then(read);
             let scene = if let Some(rooms) = areas.get(&name) {
@@ -300,16 +312,23 @@ fn write(file: &Path, scene: &cena_ui::MapScene) {
 mod tests {
     use super::*;
 
-    /// The revision the cache is named by is the one `Cargo.lock` pins, so
-    /// a new engine never reads the old engine's areas.
+    /// The revision the cache is named by is the commit `Cargo.lock` holds
+    /// hydra-mapper at, however the manifest names it (a branch since
+    /// `83c9571`), so a new engine never reads the old engine's areas.
     #[test]
     fn the_engine_revision_is_the_one_pinned() {
         let lock =
             std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.lock"))
                 .expect("the workspace's Cargo.lock");
+        let held: Vec<&str> = lock
+            .lines()
+            .filter(|l| l.contains("github.com/Nisugi/hydra-mapper"))
+            .filter_map(|l| l.trim_end_matches('"').rsplit('#').next())
+            .collect();
+        assert!(!held.is_empty(), "Cargo.lock holds no hydra-mapper");
         assert!(
-            lock.contains(&format!("hydra-mapper?rev={ENGINE}#")),
-            "atlas::service::ENGINE is not the hydra-mapper revision Cargo.lock pins"
+            held.iter().all(|&commit| commit == ENGINE),
+            "atlas::service::ENGINE is {ENGINE}, Cargo.lock holds hydra-mapper at {held:?}"
         );
     }
 
@@ -327,7 +346,7 @@ mod tests {
 
         let atlas = Atlas::start(&map, "0123456789abcdef", &dir);
         assert_eq!(atlas.scene_of(u32::MAX).err(), Some(Waiting::NoArea));
-        let scene = wait_for(&atlas, room);
+        let scene = wait_for(&atlas, room).expect("laid out");
         assert_eq!(scene.area, "icemule-trace-ranger-guild");
         let cached = cache_dir(&dir, "0123456789abcdef")
             .expect("made")
@@ -338,16 +357,26 @@ mod tests {
 
     /// A room its area's sheet leaves off is shown on its place's own
     /// sheet: Rawknuckle's tavern, entered off Cold River's thoroughfare,
-    /// where the author stood and saw no map (2026-09-29).
+    /// where the author stood and saw no map (2026-09-29). Asked for once
+    /// every area is laid out and the workers have nothing left, as the
+    /// author walked in, it is laid out still: they waited for the ask,
+    /// where they had gone and "206 of 206" stood for good.
     #[test]
     fn a_room_inside_is_on_its_place_s_own_sheet() {
-        let map = Arc::new(cena_behavior::travel::read_map(cena_gs_map::GS_MAP).expect("decodes"));
+        let whole = cena_behavior::travel::read_map(cena_gs_map::GS_MAP).expect("decodes");
+        let rooms = cena_map_layout::areas::baked(&whole)["the-hinterwilds"]
+            .iter()
+            .filter_map(|&id| whole.room(id).cloned())
+            .collect();
+        let map = Arc::new(Map::from_rooms(rooms).expect("a subset"));
         let dir = std::env::temp_dir().join(format!("hydra-atlas-in-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let tavern = 29877;
+        let (street, tavern) = (29869, 29877);
 
         let atlas = Atlas::start(&map, "fedcba9876543210", &dir);
-        let scene = wait_for(&atlas, tavern);
+        wait_for(&atlas, street).expect("the Hinterwilds laid out");
+        idle(&atlas);
+        let scene = wait_for(&atlas, tavern).expect("the tavern laid out once asked");
         assert!(
             scene.area.contains('@'),
             "the area's sheet, not the place's: {}",
@@ -377,7 +406,7 @@ mod tests {
         let (thoroughfare, current) = (29869, 30115);
 
         let atlas = Atlas::start(&map, "0f0f0f0f0f0f0f0f", &dir);
-        let scene = wait_for(&atlas, current);
+        let scene = wait_for(&atlas, current).expect("laid out");
         assert_eq!(scene.area, "the-hinterwilds");
         assert!(scene.room(thoroughfare).is_some(), "Cold River on the map");
         assert!(scene.room(current).is_none());
@@ -388,12 +417,14 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    fn wait_for(atlas: &Atlas, room: u32) -> Arc<cena_ui::MapScene> {
+    /// `room`'s sheet, asked for until it comes, or `None` after a minute.
+    fn wait_for(atlas: &Atlas, room: u32) -> Option<Arc<cena_ui::MapScene>> {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
         let mut queue = atlas.queue.lock().unwrap_or_else(PoisonError::into_inner);
-        loop {
+        while std::time::Instant::now() < deadline {
             drop(queue);
             if let Ok(scene) = atlas.scene_of(room) {
-                return scene;
+                return Some(scene);
             }
             queue = atlas.queue.lock().unwrap_or_else(PoisonError::into_inner);
             queue = atlas
@@ -401,6 +432,20 @@ mod tests {
                 .wait_timeout(queue, std::time::Duration::from_millis(200))
                 .unwrap_or_else(PoisonError::into_inner)
                 .0;
+        }
+        None
+    }
+
+    /// Until nothing is queued or being laid out.
+    fn idle(atlas: &Atlas) {
+        loop {
+            {
+                let queue = atlas.queue.lock().unwrap_or_else(PoisonError::into_inner);
+                if queue.asked.is_empty() && queue.rest.is_empty() && queue.taken.is_empty() {
+                    return;
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
         }
     }
 }
