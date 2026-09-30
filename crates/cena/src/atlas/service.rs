@@ -37,6 +37,8 @@ pub(crate) enum Waiting {
 pub(crate) struct Atlas {
     /// Every sheet laid out, an area's or a place's, by its name.
     scenes: RwLock<HashMap<String, Arc<cena_ui::MapScene>>>,
+    /// Each area as the engine laid it out, which a place is opened on.
+    engines: RwLock<HashMap<String, Arc<cena_map_layout::MapScene>>>,
     /// Each room's own area.
     area_of: HashMap<u32, String>,
     /// The areas' names, to count them apart from the places.
@@ -78,6 +80,7 @@ impl Atlas {
             .collect();
         let atlas = Arc::new(Self {
             scenes: RwLock::default(),
+            engines: RwLock::default(),
             area_of,
             areas: areas.keys().cloned().collect(),
             places: RwLock::default(),
@@ -204,25 +207,29 @@ impl Atlas {
                 }
             };
             let file = cache.map(|dir| dir.join(file_name(&name)));
-            let scene = file.as_deref().and_then(read);
             let scene = if let Some(rooms) = areas.get(&name) {
                 self.remember_places(&name, super::scene::places(map, rooms, placeable));
-                scene.or_else(|| super::scene::lay_out(map, &name, rooms, placeable))
+                // An area is kept as the engine laid it out, which a place
+                // is opened on, and drawn as the window's scene.
+                let engine = file.as_deref().and_then(read).or_else(|| {
+                    let engine = super::scene::lay_out(map, &name, rooms, placeable)?;
+                    if let Some(file) = &file {
+                        write(file, &engine);
+                    }
+                    Some(engine)
+                });
+                engine.map(|engine| {
+                    let scene = super::scene::convert(&name, &engine);
+                    self.engines
+                        .write()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .insert(name.clone(), Arc::new(engine));
+                    scene
+                })
             } else {
-                let rooms = self
-                    .places
-                    .read()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .rooms
-                    .get(&name)
-                    .cloned()
-                    .unwrap_or_default();
-                scene.or_else(|| super::scene::lay_out_place(map, &name, &rooms))
+                self.opened(map, &name, file.as_deref())
             };
             if let Some(scene) = scene {
-                if let Some(file) = file.as_deref().filter(|f| !f.exists()) {
-                    write(file, &scene);
-                }
                 self.scenes
                     .write()
                     .unwrap_or_else(PoisonError::into_inner)
@@ -235,6 +242,33 @@ impl Atlas {
                 .taken
                 .remove(&name);
         }
+    }
+
+    /// The place `name` (`area@room`) opened on its area's sheet, from the
+    /// cache or opened now.
+    fn opened(&self, map: &Map, name: &str, file: Option<&Path>) -> Option<cena_ui::MapScene> {
+        if let Some(scene) = file.and_then(read) {
+            return Some(scene);
+        }
+        let (area, _) = name.split_once('@')?;
+        let engine = self
+            .engines
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(area)
+            .cloned()?;
+        let rooms = self
+            .places
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .rooms
+            .get(name)
+            .cloned()?;
+        let scene = super::scene::open_place(map, name, &engine, &rooms)?;
+        if let Some(file) = file {
+            write(file, &scene);
+        }
+        Some(scene)
     }
 
     /// Keep `area`'s places, each named by the area and its least room:
@@ -297,11 +331,11 @@ fn file_name(area: &str) -> String {
     format!("{safe}.json")
 }
 
-fn read(file: &Path) -> Option<cena_ui::MapScene> {
+fn read<T: serde::de::DeserializeOwned>(file: &Path) -> Option<T> {
     serde_json::from_slice(&std::fs::read(file).ok()?).ok()
 }
 
-fn write(file: &Path, scene: &cena_ui::MapScene) {
+fn write<T: serde::Serialize>(file: &Path, scene: &T) {
     if let Ok(bytes) = serde_json::to_vec(scene) {
         let _ = std::fs::write(file, bytes);
     }
@@ -340,13 +374,19 @@ mod tests {
         let cached = cache_dir(&dir, "0123456789abcdef")
             .expect("made")
             .join(file_name("icemule-trace-ranger-guild"));
-        assert_eq!(read(&cached).as_ref(), Some(scene.as_ref()));
+        let engine: cena_map_layout::MapScene = read(&cached).expect("the engine's scene kept");
+        assert_eq!(
+            &super::super::scene::convert("icemule-trace-ranger-guild", &engine),
+            scene.as_ref()
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// A room its area's sheet leaves off is shown on its place's own
-    /// sheet: Rawknuckle's tavern, entered off Cold River's thoroughfare,
-    /// where the author stood and saw no map (2026-09-29). Asked for once
+    /// A room its area's sheet leaves off is shown with its place opened on
+    /// the area's sheet where its dot was, the street still there
+    /// (`plan/53` §8a): Rawknuckle's tavern, entered off Cold River's
+    /// thoroughfare, where the author stood and saw no map (2026-09-29),
+    /// then only the tavern (*"I don't want a 2 room minimap"*). Asked for once
     /// every area is laid out and the workers have nothing left, as the
     /// author walked in, it is laid out still: they waited for the ask,
     /// where they had gone and "206 of 206" stood for good.
@@ -371,15 +411,31 @@ mod tests {
             "the area's sheet, not the place's: {}",
             scene.area
         );
+        let inside = scene.room(tavern).expect("the tavern is drawn");
         assert!(
-            scene.room(tavern).is_some(),
-            "the tavern is on its own sheet"
+            inside.building.is_some(),
+            "the tavern is a building of the sheet"
+        );
+        let (thoroughfare, at) = (
+            scene.room(street).expect("the street is still drawn"),
+            inside.cell,
+        );
+        let steps = (at.0 - thoroughfare.cell.0)
+            .abs()
+            .max((at.1 - thoroughfare.cell.1).abs());
+        assert!(
+            steps <= 8,
+            "the tavern is beside its door, {steps} cells off"
+        );
+        assert!(
+            scene.doors.iter().all(|d| d.inside != tavern),
+            "the tavern's dot gives way to the tavern"
         );
         let area = &atlas.area_of[&tavern];
-        let street = atlas.laid(area).expect("the area laid out first");
+        let sheet = atlas.laid(area).expect("the area laid out first");
         assert!(
-            street.room(tavern).is_none(),
-            "the tavern is left off the street"
+            sheet.room(tavern).is_none(),
+            "the tavern is left off the area's own sheet"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -6,8 +6,12 @@
 //! for the widget. The camera follows you, moving only when you leave the
 //! middle of the view (Despana's dead zone); the wheel zooms about the
 //! pointer, a drag pans and stops the following, and a double-click comes
-//! back to you. In a building, only the building is drawn (`VellumFE`'s rule,
-//! §1d).
+//! back to you. In a place, the place is drawn opened on its area's sheet
+//! where its dot was, the rest dimmed (§8a, the author: *"I also want the
+//! outside rooms to continue to show in some capacity"*), and the camera
+//! zooms in: two zooms, outside and in, each back to its default at a door
+//! (*"I think it resetting to the default is a better design"*), and a
+//! glide between (`VellumFE`'s, §1d).
 //!
 //! The clicks (§6 item 6, and the author after the first run, 2026-09-29:
 //! *"click previewing the route on the minimap, and then a second click or
@@ -40,9 +44,16 @@ const MUTED: Color32 = Color32::from_rgb(0x8e, 0x9f, 0xad);
 /// A route (`preferences.mjs:18`, `routeColor`).
 const ROUTE: Color32 = Color32::from_rgb(0x57, 0xf3, 0xcb);
 
-/// Pixels a cell is at first, and the least and most it may be zoomed to.
-const ZOOM: f32 = 9.0;
+/// Pixels a cell outdoors at first, and in a place, whose rooms are drawn
+/// at half the streets' scale: zoomed in so they are no more crowded than
+/// the streets are; and the least and most either may be zoomed to.
+const ZOOM: f32 = 7.0;
+const ZOOM_INSIDE: f32 = 16.0;
 const ZOOM_RANGE: (f32, f32) = (2.0, 40.0);
+/// Seconds a glide takes (`VellumFE`'s `map_compass.rs:102-112`).
+const GLIDE: f64 = 0.25;
+/// How much of its colour what is outside the place you are in keeps.
+const FADED: f32 = 0.35;
 /// How far from the middle you may go, as a share of the view each way,
 /// before the camera moves (Despana's dead zone, 24 x 16 of 80 x 56).
 const DEAD_ZONE: f32 = 0.3;
@@ -58,6 +69,34 @@ struct Camera {
     follow: bool,
     /// The area it was last on: another area recentres.
     area: u64,
+    /// Whether you were in a place: a door crossed zooms to the other
+    /// side's default.
+    inside: bool,
+    /// A glide under way to `centre` and `zoom`: where it started, and
+    /// when.
+    glide: Option<(Vec2, f32, f64)>,
+}
+
+impl Camera {
+    /// Where the view is this frame: part way along a glide, or where it
+    /// is going.
+    fn drawn(&self, now: f64) -> (Vec2, f32) {
+        let Some((from, zoom, start)) = self.glide else {
+            return (self.centre, self.zoom);
+        };
+        #[allow(clippy::cast_possible_truncation)]
+        let t = (((now - start) / GLIDE).clamp(0.0, 1.0)) as f32;
+        let eased = t * t * 2.0f32.mul_add(-t, 3.0);
+        (
+            from + (self.centre - from) * eased,
+            zoom + (self.zoom - zoom) * eased,
+        )
+    }
+
+    /// Glide from where the view is now to where it is going.
+    fn glide_from(&mut self, drawn: (Vec2, f32), now: f64) {
+        self.glide = Some((drawn.0, drawn.1, now));
+    }
 }
 
 /// Draw `view` into all the space `ui` gives, and what a click on it asked
@@ -92,50 +131,41 @@ pub(super) fn minimap(
         waiting(&painter, rect, "You are not on this area's map.");
         return None;
     };
-    let area = egui::util::hash(&scene.area);
-    let mut camera = ui.data(|d| d.get_temp::<Camera>(id)).unwrap_or(Camera {
-        centre: here_cell,
-        zoom: ZOOM,
-        follow: true,
-        area,
-    });
-    if camera.area != area {
-        camera = Camera {
-            centre: here_cell,
-            area,
-            follow: true,
-            ..camera
-        };
+    let camera = aimed(ui, id, &response, rect, scene, here_cell, inside.is_some());
+    let now = ui.input(|i| i.time);
+    let (centre, zoom) = camera.drawn(now);
+    if camera.glide.is_some_and(|(.., start)| now - start < GLIDE) {
+        ui.ctx().request_repaint();
     }
-    steer(ui, &response, rect, &mut camera);
-    if camera.follow {
-        keep_in_view(&mut camera, here_cell, rect.size());
-    }
-    ui.data_mut(|d| d.insert_temp(id, camera));
 
-    let to_screen = |p: Vec2| rect.center() + (p - camera.centre) * camera.zoom;
-    // In a building, only the building; outdoors, everything.
-    let shown = |building: Option<usize>| inside.is_none() || building == inside;
-    for edge in scene.edges.iter().filter(|e| shown(e.building)) {
-        draw_edge(&painter, edge, &to_screen, camera.zoom);
+    let to_screen = |p: Vec2| rect.center() + (p - centre) * zoom;
+    // In a place, the rest of the sheet dimmed; outdoors, everything.
+    let fade = |building: Option<usize>| {
+        if inside.is_none() || building == inside {
+            1.0
+        } else {
+            FADED
+        }
+    };
+    for edge in &scene.edges {
+        draw_edge(&painter, edge, &to_screen, zoom, fade(edge.building));
     }
     draw_route(&painter, scene, route, &to_screen);
-    let square = (camera.zoom * 0.7).clamp(3.0, 10.0);
-    for room in scene.rooms.iter().filter(|r| shown(r.building)) {
+    let square = (zoom * 0.7).clamp(3.0, 10.0);
+    for room in &scene.rooms {
         let at = to_screen(cell(room.cell));
         if rect.expand(square).contains(at) {
+            let f = fade(room.building);
             painter.rect(
                 Rect::from_center_size(at, Vec2::splat(square)),
                 1.4,
-                ROOM_FILL,
-                Stroke::new(1.0, ROOM_STROKE),
+                ROOM_FILL.gamma_multiply(f),
+                Stroke::new(1.0, ROOM_STROKE.gamma_multiply(f)),
                 egui::StrokeKind::Inside,
             );
         }
     }
-    if inside.is_none() {
-        draw_doors(&painter, scene, &to_screen, camera.zoom);
-    }
+    draw_doors(&painter, scene, &to_screen, zoom, fade(None));
     if let Some(at) = target.and_then(|t| spot(scene, t)) {
         painter.circle_stroke(to_screen(at), square * 0.9 + 3.0, Stroke::new(2.0, ROUTE));
     }
@@ -147,12 +177,64 @@ pub(super) fn minimap(
     if !own {
         return None;
     }
-    let from_screen = |p: Pos2| camera.centre + (p - rect.center()) / camera.zoom;
-    let reach = (square * 0.9 + 3.0) / camera.zoom;
+    let from_screen = |p: Pos2| centre + (p - rect.center()) / zoom;
+    let reach = (square * 0.9 + 3.0) / zoom;
     let pointed = response
         .interact_pointer_pos()
-        .and_then(|at| hit(scene, from_screen(at), reach, &shown, inside.is_none()));
+        .and_then(|at| hit(scene, from_screen(at), reach, &|_| true, true));
     clicked(ui, &response, pointed, target)
+}
+
+/// The camera for this frame, kept for the next: a new area recentres at
+/// once; a door crossed, into a place or out, glides to that side's default
+/// zoom; following you glides along; the wheel and a drag steer it.
+fn aimed(
+    ui: &egui::Ui,
+    id: Id,
+    response: &egui::Response,
+    rect: Rect,
+    scene: &MapScene,
+    here: Vec2,
+    inside: bool,
+) -> Camera {
+    let now = ui.input(|i| i.time);
+    let default = if inside { ZOOM_INSIDE } else { ZOOM };
+    // A place is opened on its area's sheet: its sheet is named for the
+    // area and the place (`area@room`), and is the same area.
+    let area = egui::util::hash(scene.area.split('@').next().unwrap_or(&scene.area));
+    let fresh = Camera {
+        centre: here,
+        zoom: default,
+        follow: true,
+        area,
+        inside,
+        glide: None,
+    };
+    let mut camera = ui.data(|d| d.get_temp::<Camera>(id)).unwrap_or(fresh);
+    if camera.area != area {
+        camera = fresh;
+    } else if camera.inside != inside {
+        let was = camera.drawn(now);
+        camera = Camera {
+            glide: None,
+            ..fresh
+        };
+        camera.glide_from(was, now);
+    }
+    let before = (camera.centre, camera.zoom);
+    steer(ui, response, rect, &mut camera);
+    if (camera.centre, camera.zoom) != before {
+        // Steered by hand: no glide to fight it.
+        camera.glide = None;
+    } else if camera.follow {
+        let was = camera.drawn(now);
+        keep_in_view(&mut camera, here, rect.size());
+        if camera.centre != before.0 {
+            camera.glide_from(was, now);
+        }
+    }
+    ui.data_mut(|d| d.insert_temp(id, camera));
+    camera
 }
 
 /// What a click on the room `pointed` at asks, as the modifiers held say.
@@ -299,7 +381,9 @@ fn draw_edge(
     edge: &SceneEdge,
     to_screen: &dyn Fn(Vec2) -> Pos2,
     zoom: f32,
+    fade: f32,
 ) {
+    let (line, connector) = (LINE.gamma_multiply(fade), CONNECTOR.gamma_multiply(fade));
     let points: Vec<Pos2> = edge
         .path
         .iter()
@@ -307,12 +391,12 @@ fn draw_edge(
         .collect();
     match edge.kind {
         EdgeKind::Directional => {
-            painter.add(Shape::line(points, Stroke::new(1.35, LINE)));
+            painter.add(Shape::line(points, Stroke::new(1.35, line)));
         }
         EdgeKind::Connector => {
             painter.extend(Shape::dashed_line(
                 &points,
-                Stroke::new(1.0, LINE.gamma_multiply(0.7)),
+                Stroke::new(1.0, line.gamma_multiply(0.7)),
                 5.0,
                 4.0,
             ));
@@ -324,7 +408,7 @@ fn draw_edge(
             };
             let length = (a.distance(b) * 0.2).min(15.0).min(zoom * 2.0);
             let toward = (b - a).normalized() * length;
-            let stroke = Stroke::new(1.0, CONNECTOR.gamma_multiply(1.6));
+            let stroke = Stroke::new(1.0, connector.gamma_multiply(1.6));
             painter.extend(Shape::dashed_line(&[a, a + toward], stroke, 3.0, 2.0));
             painter.extend(Shape::dashed_line(&[b, b - toward], stroke, 3.0, 2.0));
         }
@@ -336,18 +420,20 @@ fn draw_doors(
     scene: &MapScene,
     to_screen: &dyn Fn(Vec2) -> Pos2,
     zoom: f32,
+    fade: f32,
 ) {
+    let colour = DOOR.gamma_multiply(fade);
     for door in &scene.doors {
         let at = to_screen(vec2(door.at.0, door.at.1));
         let r = if door.named { 3.5 } else { 2.2 } * (zoom / ZOOM).clamp(0.6, 1.6);
-        painter.circle_filled(at, r, DOOR);
+        painter.circle_filled(at, r, colour);
         if door.named {
             painter.text(
                 at + vec2(r + 3.0, 0.0),
                 egui::Align2::LEFT_CENTER,
                 &door.place,
                 FontId::proportional(11.0),
-                DOOR,
+                colour,
             );
         }
     }
@@ -465,12 +551,59 @@ mod tests {
         harness.snapshot("minimap");
     }
 
-    /// In the shop, only the shop.
+    /// In the shop, the shop, and the rest of the town dimmed round it,
+    /// zoomed in.
     #[test]
-    fn in_a_building_only_the_building() {
+    fn in_a_place_the_rest_is_dimmed() {
         let mut harness = drawn(here(5, None, &[]));
         harness.run();
         harness.snapshot("minimap_inside");
+    }
+
+    /// Into the shop, the camera glides to the inside zoom; back out, to
+    /// the outside one, whatever the wheel did in between.
+    #[test]
+    fn a_door_crossed_zooms_to_that_sides_default() {
+        let view = Arc::new(std::sync::Mutex::new(here(2, None, &[])));
+        let shown = Arc::clone(&view);
+        let mut harness = Harness::builder()
+            .with_size((260.0, 200.0))
+            .build_ui(move |ui| {
+                let view = shown.lock().expect("unpoisoned").clone();
+                minimap(ui, Some(&view), Id::new("minimap"), true);
+            });
+        let camera = |harness: &Harness<'_, ()>| {
+            harness
+                .ctx
+                .data(|d| d.get_temp::<Camera>(Id::new("minimap")))
+                .expect("kept")
+        };
+        harness.run();
+        assert!((camera(&harness).zoom - ZOOM).abs() < 1e-3);
+        *view.lock().expect("unpoisoned") = here(5, None, &[]);
+        harness.run();
+        let inside = camera(&harness);
+        assert!((inside.zoom - ZOOM_INSIDE).abs() < 1e-3);
+        assert!(inside.glide.is_some(), "it glides in");
+        *view.lock().expect("unpoisoned") = here(2, None, &[]);
+        harness.run();
+        assert!((camera(&harness).zoom - ZOOM).abs() < 1e-3);
+    }
+
+    /// A glide eases from where it was to where it goes over `GLIDE`.
+    #[test]
+    fn a_glide_eases_there() {
+        let camera = Camera {
+            centre: vec2(10.0, 0.0),
+            zoom: 20.0,
+            follow: true,
+            area: 0,
+            inside: true,
+            glide: Some((vec2(0.0, 0.0), 10.0, 1.0)),
+        };
+        assert_eq!(camera.drawn(1.0), (vec2(0.0, 0.0), 10.0));
+        assert_eq!(camera.drawn(1.0 + GLIDE / 2.0), (vec2(5.0, 0.0), 15.0));
+        assert_eq!(camera.drawn(2.0), (vec2(10.0, 0.0), 20.0));
     }
 
     /// The dock clicked: its route from you, along the town's own lines,
@@ -523,14 +656,14 @@ mod tests {
     /// right-clicked, said in the story with Shift, its number with Ctrl;
     /// a click on nothing forgets the target; another character's minimap
     /// does nothing. You are at room 2, the view's middle (130, 100); room
-    /// 3 is four cells east, nine pixels a cell.
+    /// 3 is four cells east, `ZOOM` pixels a cell.
     #[test]
     fn the_clicks_aim_walk_and_tell() {
         use egui::{
             Modifiers,
             PointerButton::{Primary, Secondary},
         };
-        let three = Pos2::new(166.0, 100.0);
+        let three = Pos2::new(4.0f32.mul_add(ZOOM, 130.0), 100.0);
         let nothing = Pos2::new(40.0, 170.0);
         let hydra = |word: &str, echo| {
             Some(Clicked::Hydra {
@@ -608,9 +741,11 @@ mod tests {
     fn the_camera_moves_only_past_the_dead_zone() {
         let mut camera = Camera {
             centre: vec2(0.0, 0.0),
-            zoom: ZOOM,
+            zoom: 9.0,
             follow: true,
             area: 0,
+            inside: false,
+            glide: None,
         };
         // A view 180 by 180 pixels at 9 a cell is 20 cells; the dead zone
         // 6 either way.

@@ -725,6 +725,18 @@ tried in the mapper for one small stretch if the join looks wrong.
    is no gap; checked by the gate and the author's screenshots (a bank, Rawknuckle's, a
    crowded Landing street).
 2. **Hydra**: the camera's two default zooms, reset at a door, and the glide.
+   **Steps 1 and 2 BUILT 2026-09-29.** The engine's `open::open_place` (hydra-mapper
+   `5358db2`) puts a place, laid out alone, at half the streets' scale beside its door's
+   street room, joined where the dot was: the dot's side first, then the others, out to
+   four street steps, at the first spot breaking no rule. `--open-places` measures it over
+   gs.map: 2,459 places fit, 154 break a rule (most of 11 rooms or more, or in Ta'Vaalor and
+   Icemule; they take the spot breaking fewest until the street grows round them, not yet
+   built), 820 have no dot on their area's sheet and keep their own. Hydra keeps each area
+   as the engine laid it out (in memory and in the cache) and opens a place on it when a
+   character walks in (`atlas/scene.rs`, `atlas/service.rs`). The minimap dims all but the
+   place, and has two zooms, 7 pixels a cell outside and 16 in, each back to its default at
+   a door, and a quarter-second glide at a door and as it follows you
+   (`cena-gui/src/widget/minimap.rs`); the defaults become settings at step 4.
 3. **Hydra**: neighbouring maps joined at the border, and how many out.
 4. **The settings page** (step 7's, brought forward): both zooms and the areas out.
 

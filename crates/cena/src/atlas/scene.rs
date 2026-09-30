@@ -7,90 +7,70 @@ use cena_map_layout::scene::{SceneEdgeKind, UnitKind};
 
 /// Lay out one area: its own rooms, plus the neighbours a stranded room
 /// needs to stay attached (`cena_map_layout::areas::layout_rooms`), as the
-/// mapper's window and gate lay it out. `None` when nothing in it is a
-/// place.
+/// mapper's window and gate lay it out; the engine's scene, which a place
+/// is opened on ([`open_place`]). `None` when nothing in it is a place.
 pub(crate) fn lay_out(
     map: &Map,
     area: &str,
     rooms: &[RoomId],
     placeable: &HashSet<RoomId>,
-) -> Option<cena_ui::MapScene> {
+) -> Option<cena_map_layout::MapScene> {
     sheet(
         area,
         &Map::from_rooms(cena_map_layout::areas::layout_rooms(rooms, map, placeable)).ok()?,
     )
 }
 
-/// The places `area`'s sheet leaves off: its hidden rooms
-/// (`cena_map_layout::hidden`), joined by walks either way round, each
-/// place's rooms. Each is laid out on a sheet of its own by [`lay_out_place`]:
-/// the engine's indoor sheet, and `plan/53` §7 step 6's *"indoors, the
-/// building alone"*. Rawknuckle's in the Hinterwilds is one.
+/// The places `area`'s sheet leaves off (`cena_map_layout::hidden`), each
+/// place's rooms: Rawknuckle's in the Hinterwilds is one.
 pub(crate) fn places(map: &Map, rooms: &[RoomId], placeable: &HashSet<RoomId>) -> Vec<Vec<RoomId>> {
     let Ok(subset) = Map::from_rooms(cena_map_layout::areas::layout_rooms(rooms, map, placeable))
     else {
         return Vec::new();
     };
     let hidden = cena_map_layout::hidden::hidden_rooms(&subset);
-    let mut next: HashMap<RoomId, Vec<RoomId>> = HashMap::new();
-    for room in subset.rooms().iter().filter(|r| hidden.contains(&r.id)) {
-        for exit in room
-            .exits
-            .iter()
-            .filter(|e| cena_map_layout::regions::is_passage(e) && hidden.contains(&e.to))
-        {
-            next.entry(room.id).or_default().push(exit.to);
-            next.entry(exit.to).or_default().push(room.id);
-        }
-    }
-    let mut ids: Vec<RoomId> = hidden.iter().copied().collect();
-    ids.sort_unstable();
-    let mut seen: HashSet<RoomId> = HashSet::new();
-    let mut places = Vec::new();
-    for start in ids {
-        if !seen.insert(start) {
-            continue;
-        }
-        let mut place = vec![start];
-        let mut i = 0;
-        while i < place.len() {
-            for &n in next.get(&place[i]).into_iter().flatten() {
-                if seen.insert(n) {
-                    place.push(n);
-                }
-            }
-            i += 1;
-        }
-        places.push(place);
-    }
-    places
+    cena_map_layout::hidden::place_rooms(&subset, &hidden)
 }
 
-/// Lay out one hidden place on its own sheet, named `key`. All indoors, so
-/// the engine hides none of it.
-pub(crate) fn lay_out_place(map: &Map, key: &str, rooms: &[RoomId]) -> Option<cena_ui::MapScene> {
+/// A place entered, named `key`: opened on its area's sheet `area` where
+/// its dot is, at half the streets' scale (`cena_map_layout::open`,
+/// `plan/53` §8a), or, with no dot of `area`'s leading in, on a sheet of
+/// its own.
+pub(crate) fn open_place(
+    map: &Map,
+    key: &str,
+    area: &cena_map_layout::MapScene,
+    rooms: &[RoomId],
+) -> Option<cena_ui::MapScene> {
     let rooms = rooms
         .iter()
         .filter_map(|&id| map.room(id).cloned())
         .collect();
-    sheet(key, &Map::from_rooms(rooms).ok()?)
+    let alone = sheet(key, &Map::from_rooms(rooms).ok()?)?;
+    Some(
+        match cena_map_layout::open::open_place(
+            area,
+            &alone,
+            cena_map_layout::interior_shelf::TOWN_SCALE,
+        ) {
+            Some(opened) => convert(key, &opened.scene),
+            None => convert(key, &alone),
+        },
+    )
 }
 
 /// Lay out `subset` as the sheet named `name`; `None` when it has no room.
-fn sheet(name: &str, subset: &Map) -> Option<cena_ui::MapScene> {
+fn sheet(name: &str, subset: &Map) -> Option<cena_map_layout::MapScene> {
     if subset.rooms().is_empty() {
         return None;
     }
     let layout = cena_map_layout::generate_layout(subset);
-    Some(convert(
-        name,
-        &cena_map_layout::build_scene(name, &layout, subset),
-    ))
+    Some(cena_map_layout::build_scene(name, &layout, subset))
 }
 
 /// The engine's scene as the window's: rooms, lines with their bends, the
 /// way-in dots, and which building each room and line is in.
-fn convert(area: &str, scene: &cena_map_layout::MapScene) -> cena_ui::MapScene {
+pub(crate) fn convert(area: &str, scene: &cena_map_layout::MapScene) -> cena_ui::MapScene {
     let sheet = &scene.sheet;
     // Units are the streets and each building; the window only needs to
     // know the buildings, numbered from 0.
@@ -175,6 +155,7 @@ mod tests {
         let placeable = cena_map_layout::regions::placeable_rooms(&map);
         let rooms = &areas["icemule-trace-ranger-guild"];
         let scene = lay_out(&map, "icemule-trace-ranger-guild", rooms, &placeable)
+            .map(|engine| convert("icemule-trace-ranger-guild", &engine))
             .expect("the guild is a place");
 
         assert_eq!(scene.area, "icemule-trace-ranger-guild");
