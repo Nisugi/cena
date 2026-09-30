@@ -71,7 +71,7 @@ The whole **receiving** side is built:
 - **The model** (`crates/cena-model/src/state/inventory_snapshot.rs`, 222 lines):
   - the tree, the room it was taken in, and cursors not yet asked;
   - the details asked for;
-  - kept across a reconnect (`state/reconnect.rs:385-396`).
+  - kept across a reconnect (`state/reconnect.rs:385-396`), ids and all, which §1b shows is wrong.
 - **Tests** that measured the author's September logs exactly
   (`snapshots=36 items=5364 views=13 sections=52`), with 21 of 21 mutants killed
   (`plan/15` §6.11).
@@ -95,6 +95,34 @@ On the GUI side:
   game opened (`cena-gui/src/widget/lists.rs:79-160`);
 - **item drag** exists: `_drag`, Alt by default (`cena-gui/src/carry.rs`). Nothing checks a
   move landed (`inventory/15-vellum-gaps.md:195`).
+
+### 1b. An item's id lasts one login
+
+This was MEASURED 2026-09-30 over the author's two logins of 2026-09-09
+(`2026-09-09_22-01-39.xml` and `2026-09-09_22-11-22.xml`). The second file holds a login. 82
+items appear once by name and place in both snapshots, and **all 82 changed id. None kept
+it.** Within one login the ids hold: the two snapshots of `2026-09-03_10-55-47.xml` agree on
+all 85.
+
+A jewel shows the same in more places (the gemstone survey, §3d):
+- `cushion-cut saffron jewel flecked with drakar inclusions` was 126216095, then 127036421
+  after a reconnect, then 129005138;
+- every `gem expel` makes a new id, even within one login (45605813, then 45715797).
+
+So the rule is:
+- **Within a login, the id is the key.** The tree, moves, and anything clicked all use it.
+- **Anything kept longer is keyed by name and place.** A jewel's properties, a detail read
+  earlier, and step 8's trees on disk are each re-attached to the new ids at the first
+  snapshot after a login. The author: *"we would likely need to track its movements by name"*.
+
+**A defect this exposes, on `main` today.** `state/reconnect.rs:385-396` keeps the tree across
+a reconnect, on the reasoning that *"the tree is as true after the reconnect as before"*. The
+items are, but every id in it is dead. Travel's routines send ids read from it: `kept.rs:50-54`,
+and `day_pass.rs:431` and `:591`'s `_drag #id`. After a reconnect and before a new snapshot,
+those name an item that no longer exists under that id.
+
+Step 1 fixes it. At a reconnect the tree keeps its items for display but gives up its ids, and
+§5 item 1's snapshot at login gives them back.
 
 ---
 
@@ -271,6 +299,71 @@ VellumFE's move checker (`item_mover.rs`) goes into the session:
   - with a choice of *in*, *on*, *behind* or *under* when it has more;
   - a locker named by its `in_selector`.
 
+### 3d. Gemstones (the author, 2026-09-30: *"an addition is gemstones!"*)
+
+The author's words: *"These are all the gems I have "consumed", you can consume up to 20,
+expel to change which are consumed, have to unlock slots to equip them, max of 5 slots.
+Ideally we would keep track of the gemstone and its properties by its full name +
+properties, now if it gets placed in a container you can't see what properties it has
+without looking at it, so we would likely need to track its movements by name."*
+
+**What the game says**, all from the author's September logs (`E:\Gemstone\dev\lich-5\logs\
+GSIV-Nisugi\2026\09\xml`):
+
+| Command or event | What it tells | Where seen |
+|---|---|---|
+| `gem list all` | each collected jewel: its number, short name, whether equipped (the link is `gem unequip N` when it is, `gem equip N` when not), `(greater binding)` or `(lesser binding)`, and each property with its mnemonic (in the `gem info` link) and `(Rank x of y)` | `2026-09-03_23-12-35.xml:25509-25580`, and the author's paste |
+| `gem slots` | `You have 4 Gemstone slots unlocked.`, then each slot, `Empty` or a jewel and its `(Gemstone #N)` | `2026-09-03_23-12-35.xml:27049-27083` |
+| `gem info <mnemonic>` | a property's definition: name, mnemonic, description, rarity, `* Tiered (5)` when tiered | `2026-09-03_23-12-35.xml:25637-25644` |
+| **LOOK at a loose jewel** | **the only place a loose jewel's properties show**: `Property: Blood Prism (Rank 1 of 5)`, `Rarity:`, `Mnemonic:`, `Description:`, and the binding (*"telltale filaments of a lesser binding"*) | `2026-09-04_08-25-24.xml:11946-11958` |
+| found | `** A glint of light catches your eye, and you notice an <a exist=…>octagonal saffron jewel swept with rhimar</a> at your feet! **`, already read by the loot ledger (`cena-model/src/state/ledger/hunt.rs:49`) | `2026-09-04_08-25-24.xml:7225` |
+| `gem collect` | the jewel in hand merges with you; its id is gone | `2026-09-04_08-25-24.xml:12031` |
+| `gem expel N` | jewel N appears in the hand, **with a new id** | `2026-09-03_23-12-35.xml:25825` |
+| an artificer's reshape | *"now has the following properties"*, each listed | `2026-09-03_23-54-07.xml:5072-5075` |
+
+The game's rules are recorded in `reference/wiki_clean/Gemstones.txt`, and the property
+vocabulary in `Gemstone property list.txt`: 240 lines, each property with its mnemonic, type
+and rarity (common `:7`, regional `:103`, rare `:132`, legendary `:203`).
+- Slots are unlocked one at a time, five at most (`Gemstones.txt:7-12`).
+- At most one legendary property may be equipped (`:21`).
+- **The collection's size:** the wiki says *"up to 25"* (`:127`); the author says 20. Hydra
+  reads what the game lists and hardcodes neither.
+
+**What the scripts do.** `gems.lic` and `gem_loadouts.lic` read `gem list all` and equip by
+number. `gemstone-tracker.lic` reads a found jewel's LOOK. **None follows a jewel once it
+leaves the hand, and none uses its id.** Two of the author's picks turn out not to be about
+jewels at all: `gem.lic` wraps Ruby's `gem` package manager, and `gemtracker.lic` records
+appraisals of loot gems.
+
+**Hydra's shape**, in a new `cena-model/src/gemstone/` (the game's namespace, `plan/05`
+Rule 3.4, since every command here is named for the game):
+- **The property table:** the wiki's list cut into data, as the herb table is
+  (`cena-model/src/herbs.rs`). Each property's name, mnemonic, rarity, type and whether it is
+  tiered. `gem info` fills any property the table lacks.
+- **The collection:** a classifier over `gem list all`, and one over `gem slots`. Each
+  collected jewel is keyed by **its number, checked against its short name and
+  properties**; it has no id to key it by.
+- **Loose jewels:** a classifier over LOOK. The properties are tied to the jewel's id while
+  the login lasts, and to its **full name, properties and place** beyond that, as §1b says.
+  - At each login's snapshot, every remembered jewel is found again by name and place.
+  - Two jewels of the same name in the same place are told apart by the moves seen since. If
+    the moves cannot tell them apart, they are marked as needing a look, never guessed.
+- **Following it:**
+  - `gem expel N` gives the jewel in hand collection number N's properties.
+  - `gem collect` moves the jewel in hand into the collection and re-reads the list.
+  - A reshape's list replaces the properties.
+  - Confirmed moves (§3c) carry the properties with the item.
+  - Step 8's trees on disk carry them to every character's search.
+
+**What the player sees:**
+- In the Inventory window, a jewel's row shows its properties when hovered, and its Item tab
+  shows them in full.
+- A **Gemstones** tab shows:
+  - the collection, with each jewel's binding and properties, and which are equipped;
+  - the slots, unlocked and filled;
+  - every loose jewel, and where it is.
+- `.inv gems` says the same in Hydra's window.
+
 ---
 
 ## 4. Steps
@@ -299,6 +392,9 @@ Each step is a commit on branch `inventory`, with its tests.
    - The page merge.
    - §3b's questions, with VellumFE's weight, place and find tests.
    - `inventory_snapshot.rs` split into a folder under the cap.
+   - §1b's defect fixed: a reconnect keeps the tree's items and gives up their ids, and a
+     consumer asking for an id before the next snapshot is answered *none*. Tested with the
+     two September 9 snapshots, one after the other.
 2. **The session.**
    - The actor sends, ticks and publishes.
    - `SessionHandle::refresh_inventory` and `view_item`.
@@ -333,6 +429,19 @@ Each step is a commit on branch `inventory`, with its tests.
    - `GameObj.contents` and `GameObj.inv` are filled from it, as Lich fills them.
    - Tested with a script that finds an item anywhere and reads its container's free weight,
      Lich's own example (`inventory.rb:86-91`).
+8. **Every character's tree, searched** (§5a item 7, answered yes).
+   - Each character's last tree is kept in its own database beside the loot ledger
+     (`plan/34`), keyed by name and place (§1b).
+   - `.inv find all <words>` searches every character's tree, running or not.
+   - The Inventory window gets a character picker.
+9. **Gemstones, the model** (§3d).
+   - The property table.
+   - The classifiers for `gem list all`, `gem slots`, `gem info`, a jewel's LOOK, collect,
+     expel and reshape, each tested from the September logs' lines.
+   - The collection and the loose jewels, and following them.
+   - The collection and slots taken after each login with the snapshot (§5b item G2).
+10. **Gemstones, what the player sees** (§3d): the row, the Item tab, the Gemstones tab, and
+    `.inv gems`.
 
 The web page's nested inventory (`plan/58` step 7) then only draws what step 1 already
 answers.
@@ -363,7 +472,10 @@ answers.
    window open says it in Hydra's window, sections and links intact.
 6. **The logs may be read: yes.** Done, in step 0.
 
-### 5a. Two questions invdb raises (§2d), for after step 5
+### 5a. Two questions invdb raises (§2d), for after step 5, both ANSWERED yes
+
+The author, 2026-09-30: *"7) yes 8) yes"*. Item 7 is step 8. Item 8 is a plan of its own,
+written after this one.
 
 7. **Keep each character's tree, and search them all?**
    - invdb's reason to exist is *"cross-character searching"*.
@@ -377,3 +489,21 @@ answers.
      `ticket balance`, `lumnis info` and `resource`.
    - Recommended: a plan of their own after this one. Each is a text classifier over one
      command's answer, a different kind of work from a tree the game hands over.
+
+### 5b. Gemstone questions (§3d)
+
+G1. **Look at a newly found jewel by itself?**
+   - A loose jewel's properties show only in its LOOK.
+   - Hydra could send one quiet `look` when a jewel first reaches a hand, and hide the
+     answer from the story as it hides the nerves' `health`.
+   - Recommended: yes. Otherwise a jewel picked up by the loot round is a name with no
+     properties until the player looks.
+G2. **Read `gem list all` and `gem slots` after each login, quietly, with the snapshot?**
+   Recommended: yes. They are two commands, and the collection and slots then need nobody to
+   ask.
+G3. **Loadouts**: named sets of collection numbers equipped in one step, as `gems.lic` and
+   `gem_loadouts.lic` do, including the lesser-binding confirmation.
+   Recommended: after step 10, as its own step.
+G4. **Where gemstones show**: a tab in the Inventory window and `.inv gems`, or a widget and
+   command of their own (`.gem`)? Recommended: the tab and `.inv gems`. A jewel is an item
+   the tree already holds.
