@@ -506,7 +506,8 @@ fn kinds(received: &[Widget]) -> Vec<Widget> {
     every
 }
 
-/// The kinds a tab beside widget `placed` could be: of its own group, the
+/// The kinds a tab beside widget `placed` could be: of its own tab group
+/// (`Widget::tab_group`), the
 /// story only for the window's own character, and none already beside it.
 pub(super) fn tab_kinds(
     layout: &Layout,
@@ -527,7 +528,7 @@ pub(super) fn tab_kinds(
     let following = layout.follows.contains_key(&placed);
     kinds(received)
         .into_iter()
-        .filter(|kind| kind.group() == widget.group() && !beside.contains(&kind))
+        .filter(|kind| kind.tab_group() == widget.tab_group() && !beside.contains(&kind))
         .filter(|kind| !(following && kind.is_story()))
         .collect()
 }

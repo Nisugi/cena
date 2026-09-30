@@ -315,6 +315,18 @@ impl Widget {
         }
     }
 
+    /// The group whose kinds may be a tab beside it: its own, but Hydra's
+    /// messages and the hunt panel are text that scrolls as a stream's does,
+    /// so they stack with the streams, and the streams with them (the
+    /// author, 2026-09-30: *"I would like to be able to add hydra and hunt
+    /// windows to a tabbed stream window"*).
+    pub(crate) fn tab_group(&self) -> Group {
+        match self {
+            Widget::Hydra | Widget::Hunt => Group::Streams,
+            _ => self.group(),
+        }
+    }
+
     /// How it draws its bar unless the player picks otherwise, when it is
     /// one bar: a vital says its label, numbers and percent; the pulse its
     /// words. `None` for a widget that is not a bar.

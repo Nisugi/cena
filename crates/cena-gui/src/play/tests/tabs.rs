@@ -543,3 +543,24 @@ fn back_from_the_first_tab_is_the_last() {
     let _ = harness.state_mut().play.act(&context, Action::PreviousTab);
     assert_eq!(harness.state().play.in_use(), Some(third));
 }
+
+/// Hydra's messages and the hunt panel may be a tab beside a stream, and a
+/// stream beside them (the author, 2026-09-30: *"I would like to be able to
+/// add hydra and hunt windows to a tabbed stream window"*); a bar may not.
+#[test]
+fn hydra_and_hunt_are_tabs_beside_a_stream() {
+    let mut harness = harness();
+    harness.run();
+    let Some(laid) = &mut harness.state_mut().play.layout else {
+        panic!("laid out");
+    };
+    let thoughts = laid.add_widget(Widget::Stream("thoughts".to_owned()), None);
+    harness.run();
+    let (window, _) = stack_of(&harness, thoughts);
+    let stream = Widget::Stream("thoughts".to_owned());
+    let beside = crate::play::menu::tab_kinds(layout(&harness), window, (thoughts, &stream), &[]);
+    assert!(beside.contains(&Widget::Hydra), "{beside:?}");
+    assert!(beside.contains(&Widget::Hunt), "{beside:?}");
+    assert!(!beside.contains(&Widget::Health), "{beside:?}");
+    assert_eq!(Widget::Hydra.tab_group(), stream.tab_group());
+}
