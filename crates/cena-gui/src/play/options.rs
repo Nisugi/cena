@@ -523,23 +523,33 @@ fn overlay_choice(overlays: &[PathBuf]) -> RowKind {
 /// `dolls`, or none for the body drawn in code.
 fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
     let picture = look.and_then(|look| look.picture.clone());
-    let infinite = look.is_some_and(|look| look.style == Style::Infinite);
-    let mut rows = Vec::new();
+    let style = look.map(|look| look.style).unwrap_or_default();
+    let mut styles = vec![
+        ("doll".to_owned(), "Doll".to_owned()),
+        ("text".to_owned(), "Text".to_owned()),
+    ];
     if cfg!(feature = "doll-infinite") {
-        rows.push(Row {
-            key: "style".to_owned(),
-            label: "Style".to_owned(),
-            help: "The Doll: dots on a picture or a body, or a picture's own art. Infinite:                    a puppet that moves as your character does."
-                .to_owned(),
-            kind: RowKind::Choice(vec![
-                ("doll".to_owned(), "Doll".to_owned()),
-                ("infinite".to_owned(), "Infinite".to_owned()),
-            ]),
-            value: Value::Text(if infinite { "infinite" } else { "doll" }.to_owned()),
-            here: infinite,
-            from: None,
-        });
+        styles.push(("infinite".to_owned(), "Infinite".to_owned()));
     }
+    let mut rows = vec![Row {
+        key: "style".to_owned(),
+        label: "Style".to_owned(),
+        help: "The Doll: dots on a picture or a body, or a picture's own art. Text: a line \
+               for each part hurt or scarred. Infinite: a puppet that moves as your \
+               character does."
+            .to_owned(),
+        kind: RowKind::Choice(styles),
+        value: Value::Text(
+            match style {
+                Style::Doll => "doll",
+                Style::Text => "text",
+                Style::Infinite => "infinite",
+            }
+            .to_owned(),
+        ),
+        here: style != Style::Doll,
+        from: None,
+    }];
     rows.push(Row {
         key: "picture".to_owned(),
         label: "Picture".to_owned(),
@@ -552,7 +562,7 @@ fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
         from: None,
     });
     #[cfg(feature = "doll-infinite")]
-    if infinite {
+    if style == Style::Infinite {
         let skin = look.and_then(|look| look.skin.clone());
         let mut skins = vec![
             (String::new(), "Lay figure".to_owned()),
@@ -603,6 +613,7 @@ fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), Stri
             look.style = match to {
                 None | Some("doll") => Style::Doll,
                 Some("infinite") => Style::Infinite,
+                Some("text") => Style::Text,
                 Some(other) => return Err(format!("Injuries has no style {other}.")),
             };
             Ok(())

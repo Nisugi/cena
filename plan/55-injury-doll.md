@@ -219,6 +219,10 @@ make it harder.
 
 ### 2a. One widget, three styles
 
+> **A fourth, 2026-09-29** (the author: *"injury doll needs a text version, added to the
+> dropdown"*): **Text**, a line for each part that shows anything, in the Doll's colour
+> for it, by the Doll's rule (`crates/cena-gui/src/widget/doll_text.rs`).
+
 The three dolls are **one widget kind, Injuries, with a style** chosen on its own settings
 page:
 

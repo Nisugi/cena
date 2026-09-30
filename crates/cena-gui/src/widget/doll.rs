@@ -32,7 +32,7 @@ pub(crate) enum Shown {
 
 impl Shown {
     /// Its level in the palette: 1-3 a wound, 4-6 a scar.
-    const fn level(self) -> usize {
+    pub(crate) const fn level(self) -> usize {
         match self {
             Self::Wound(rank) => rank as usize,
             Self::Scar(rank) => rank as usize + 3,
@@ -49,7 +49,7 @@ impl Shown {
 
 /// `VellumFE`'s palette: whole, three wounds brown to red, three scars light
 /// to dark grey.
-const PALETTE: [Color32; 7] = [
+pub(crate) const PALETTE: [Color32; 7] = [
     Color32::from_rgb(0x33, 0x33, 0x33),
     Color32::from_rgb(0xaa, 0x55, 0x00),
     Color32::from_rgb(0xff, 0x88, 0x00),
@@ -300,6 +300,8 @@ pub(crate) enum Style {
     /// `gs_studio`'s puppet (`infinite.rs`); the Doll where it cannot be drawn,
     /// or this build has it not.
     Infinite,
+    /// A line a part (`doll_text.rs`).
+    Text,
 }
 
 impl Style {

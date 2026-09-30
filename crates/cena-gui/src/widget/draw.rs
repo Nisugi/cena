@@ -61,11 +61,16 @@ pub(super) fn draw(
             {
                 return None;
             }
-            super::doll::doll(
-                ui,
-                state.map(|state| &state.character.injuries),
-                chosen.doll.as_ref(),
-            );
+            let injuries = state.map(|state| &state.character.injuries);
+            if chosen
+                .doll
+                .as_ref()
+                .is_some_and(|look| look.style == super::doll::Style::Text)
+            {
+                scrolled(ui, &mut |ui| super::doll_text::text(ui, injuries));
+            } else {
+                super::doll::doll(ui, injuries, chosen.doll.as_ref());
+            }
         }
         // Another character's minimap only shows: a click would walk this
         // window's character.

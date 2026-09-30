@@ -580,3 +580,29 @@ fn stance_is_a_bar_with_its_word() {
         "the word alone"
     );
 }
+
+/// The injury doll's Text style, chosen on its page (the author,
+/// 2026-09-29: *"injury doll needs a text version, added to the
+/// dropdown"*): a line a part, drawn at once.
+#[test]
+fn the_injury_doll_as_text() {
+    let mut harness = harness();
+    let doll = harness
+        .state_mut()
+        .play
+        .layout
+        .as_mut()
+        .map(|layout| layout.add_widget(Widget::Injuries, None))
+        .unwrap_or_default();
+    harness.state_mut().snapshot.state.character.injuries.insert(
+        "head".to_owned(),
+        cena_session::Injury { wound: 2, scar: 0 },
+    );
+    harness.run();
+    assert!(harness.query_by_label("Head: wound 2").is_none(), "the Doll");
+    let play = &mut harness.state_mut().play;
+    play.widget_change(&format!("widget:{doll}"), "style", Some("text"))
+        .expect("changed");
+    harness.run();
+    assert!(harness.query_by_label("Head: wound 2").is_some());
+}

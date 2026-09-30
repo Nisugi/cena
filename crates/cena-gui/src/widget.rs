@@ -16,6 +16,7 @@ mod character;
 mod described;
 mod dialog;
 pub(crate) mod doll;
+mod doll_text;
 mod draw;
 pub(crate) mod find;
 #[cfg(feature = "doll-infinite")]
