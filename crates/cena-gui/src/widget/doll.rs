@@ -524,8 +524,8 @@ const fn rank_text(rank: u8) -> &'static str {
     }
 }
 
-/// What a tooltip says of a part.
-const fn said(shows: Option<Shown>) -> &'static str {
+/// What a tooltip, and the Text style, say of a part.
+pub(crate) const fn said(shows: Option<Shown>) -> &'static str {
     match shows {
         None => "whole",
         Some(Shown::Wound(1)) => "minor wound",

@@ -1,6 +1,7 @@
 //! The injury doll's **Text** style (the author, 2026-09-29: *"injury doll
 //! needs a text version, added to the dropdown"*): each part that shows
-//! anything on a line of its own, in the Doll's colour for it, a wound over
+//! anything on a line of its own, in the Doll's colour and its tooltip's
+//! words for it (`minor wound`, `severe scar`), a wound over
 //! a scar and a foot as its leg, as the Doll shows them (`plan/55` §4); and
 //! a line saying so when none does.
 
@@ -8,7 +9,7 @@ use std::collections::BTreeMap;
 
 use cena_session::Injury;
 
-use super::doll::{PALETTE, PARTS, Shown, shown};
+use super::doll::{PALETTE, PARTS, said, shown};
 
 /// `injuries` as lines, part by part in the Doll's order.
 pub(super) fn text(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>>) {
@@ -22,13 +23,9 @@ pub(super) fn text(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>
             continue;
         };
         any = true;
-        let said = match shows {
-            Shown::Wound(rank) => format!("wound {rank}"),
-            Shown::Scar(rank) => format!("scar {rank}"),
-        };
         ui.colored_label(
             PALETTE[shows.level()],
-            format!("{}: {said}", capital(part.name)),
+            format!("{}: {}", capital(part.name), said(Some(shows))),
         );
     }
     if !any {
@@ -74,7 +71,11 @@ mod tests {
             harness
         };
         let harness = drawn(hurt);
-        for said in ["Left arm: wound 2", "Right leg: wound 1", "Chest: scar 3"] {
+        for said in [
+            "Left arm: wound",
+            "Right leg: minor wound",
+            "Chest: severe scar",
+        ] {
             assert!(harness.query_by_label(said).is_some(), "{said}");
         }
         assert!(harness.query_by_label_contains("Head").is_none(), "whole");

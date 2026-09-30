@@ -594,15 +594,21 @@ fn the_injury_doll_as_text() {
         .as_mut()
         .map(|layout| layout.add_widget(Widget::Injuries, None))
         .unwrap_or_default();
-    harness.state_mut().snapshot.state.character.injuries.insert(
-        "head".to_owned(),
-        cena_session::Injury { wound: 2, scar: 0 },
-    );
+    harness
+        .state_mut()
+        .snapshot
+        .state
+        .character
+        .injuries
+        .insert(
+            "head".to_owned(),
+            cena_session::Injury { wound: 2, scar: 0 },
+        );
     harness.run();
-    assert!(harness.query_by_label("Head: wound 2").is_none(), "the Doll");
+    assert!(harness.query_by_label("Head: wound").is_none(), "the Doll");
     let play = &mut harness.state_mut().play;
     play.widget_change(&format!("widget:{doll}"), "style", Some("text"))
         .expect("changed");
     harness.run();
-    assert!(harness.query_by_label("Head: wound 2").is_some());
+    assert!(harness.query_by_label("Head: wound").is_some());
 }
