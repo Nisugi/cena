@@ -148,6 +148,25 @@ pub async fn hunt_in(
     reports: &Reports,
 ) -> HuntEnd {
     let (snapshot, events) = joined;
+    let mut machine = machine;
+    match super::setup::area(machine.profile(), map) {
+        Ok(Some(area)) => {
+            handle.say(Notice::line(
+                NoticeKind::Info,
+                format!(
+                    "Hunt: the ground is {} rooms round room {}, the boundaries kept out; outside it, the hunt walks there first.",
+                    area.len(),
+                    machine.profile().rooms.hunting.unwrap_or_default()
+                ),
+            ));
+            machine.keep_to(area);
+        }
+        Ok(None) => {}
+        Err(why) => {
+            handle.say(Notice::line(NoticeKind::Error, format!("Hunt: {why}")));
+            return HuntEnd::Finished(Ending::NoHuntingRoom);
+        }
+    }
     let hunting_map = match super::setup::hunting_map(machine.profile(), map) {
         Ok(map) => map,
         Err(why) => {

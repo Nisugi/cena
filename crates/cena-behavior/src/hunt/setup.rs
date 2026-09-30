@@ -90,6 +90,65 @@ pub fn validate_map(profile: &Profile, map: &Map) -> Result<(), String> {
     Ok(())
 }
 
+/// bigshot's cap on an area grown from the hunting room (`BSAreaRooms#build`,
+/// `bigshot.lic:877`): past it the boundaries are taken to be wrong rather
+/// than the ground that large.
+pub const AREA_CAP: usize = 200;
+
+/// The hunting ground a bigshot profile means, when it names no
+/// `rooms.allowed`: every room reached from `rooms.hunting` over plain
+/// command exits without entering a `rooms.boundaries` room, as bigshot
+/// grows it (`BSAreaRooms#build`, `bigshot.lic:812-880`). `None` when the
+/// profile names its rooms itself, or no hunting room.
+///
+/// Without this a bigshot import wandered from wherever the character stood
+/// and never walked to the hunting room: the walk there is taken only when
+/// the character is outside `rooms.allowed`, and the importer left it
+/// unset (the author's first live hunt, 2026-09-30, begun in Mist Harbor on
+/// a Hinterwilds profile).
+///
+/// # Errors
+///
+/// The hunting room is not on the map, or the area passes [`AREA_CAP`]
+/// rooms, which bigshot reports as a boundary break and stops on.
+pub fn area(profile: &Profile, map: &Map) -> Result<Option<Vec<u32>>, String> {
+    if profile.rooms.allowed.is_some() {
+        return Ok(None);
+    }
+    let Some(start) = profile.rooms.hunting else {
+        return Ok(None);
+    };
+    if map.room(RoomId(start)).is_none() {
+        return Err(format!("rooms.hunting {start} is not on the map"));
+    }
+    let boundaries: std::collections::BTreeSet<u32> =
+        profile.rooms.boundaries.iter().copied().collect();
+    let mut seen = std::collections::BTreeSet::from([start]);
+    let mut frontier = vec![start];
+    while let Some(id) = frontier.pop() {
+        let Some(room) = map.room(RoomId(id)) else {
+            continue;
+        };
+        for exit in &room.exits {
+            let to = exit.to.0;
+            if !matches!(exit.crossing, cena_map::Crossing::Command(_))
+                || boundaries.contains(&to)
+                || !seen.insert(to)
+            {
+                continue;
+            }
+            if seen.len() >= AREA_CAP {
+                return Err(format!(
+                    "the ground round room {start} reaches {AREA_CAP} rooms before the boundaries \
+                     close it: rooms.boundaries do not enclose it (bigshot's boundary break)"
+                ));
+            }
+            frontier.push(to);
+        }
+    }
+    Ok(Some(seen.into_iter().collect()))
+}
+
 /// A wandering-only graph. Rest/start travel still uses the full map.
 /// Scripted crossings are omitted until their intermediate movement can be
 /// proven inside membership; plain command exits retain their native costs.

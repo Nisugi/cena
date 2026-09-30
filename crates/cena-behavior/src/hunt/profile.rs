@@ -209,9 +209,13 @@ pub struct Rooms {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hunting: Option<u32>,
     /// Excluded rooms (`hunting_boundaries`); these are NOT allowed membership.
+    /// With `allowed` absent, the ground is grown from `hunting` up to them
+    /// as bigshot grows it, when the hunt starts (`setup::area`).
     pub boundaries: Vec<u32>,
-    /// Explicit hunting membership. Absent preserves legacy wandering;
-    /// an explicitly empty list is invalid, never unrestricted.
+    /// Explicit hunting membership. Absent, the hunt keeps to the ground
+    /// grown from `hunting` and `boundaries`, or wanders anywhere when there
+    /// is no hunting room; an explicitly empty list is invalid, never
+    /// unrestricted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed: Option<Vec<u32>>,
     /// Rooms walked through, in order, on the way back to hunt

@@ -320,6 +320,12 @@ impl Hunt {
         &self.profile
     }
 
+    /// The rooms the hunt keeps to, worked out from the hunting room and
+    /// the boundaries when the profile did not say ([`super::setup::area`]).
+    pub fn keep_to(&mut self, allowed: Vec<u32>) {
+        self.profile.rooms.allowed = Some(allowed);
+    }
+
     /// Where the hunt is in its cycle.
     #[must_use]
     pub fn phase(&self) -> Phase {
@@ -375,13 +381,19 @@ impl Hunt {
         std::mem::take(&mut self.notes)
     }
 
-    /// A walk the driver could not make. A wander goal is given up; a rest
-    /// or return goal ends the hunt.
+    /// A walk the driver could not make. A wander goal is given up and
+    /// tried last of all next time; a rest or return goal ends the hunt.
+    ///
+    /// Last, not first: this put the room at the front of `visited`, which
+    /// is the least recently visited end that `next_room` falls back to, so
+    /// with nothing fresh the hunt asked for the same unreachable room at
+    /// every tick (the author's first live hunt, 2026-09-30: `could not
+    /// walk to room 34399`, five times running).
     pub fn walk_failed(&mut self, to: RoomId) -> Option<Ending> {
         match self.phase {
             Phase::Hunting => {
                 self.visited.retain(|room| *room != to);
-                self.visited.insert(0, to);
+                self.visited.push(to);
                 None
             }
             _ => Some(Ending::Unreachable(to)),

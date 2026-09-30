@@ -479,6 +479,14 @@ fn wander_waits_then_walks_to_a_fresh_room_inside_the_boundaries() {
         hunt.tick(&state, here(12, &exits), Some(1_024)),
         Said::Walk(RoomId(10))
     );
+    // A room the driver could not walk to is tried last next time, not
+    // first: with nothing fresh the hunt asked for it at every tick.
+    assert_eq!(hunt.walk_failed(RoomId(10)), None);
+    assert_eq!(
+        hunt.tick(&state, here(12, &exits), Some(1_030)),
+        Said::Walk(RoomId(11)),
+        "10 could not be reached: the other way"
+    );
 }
 
 #[test]

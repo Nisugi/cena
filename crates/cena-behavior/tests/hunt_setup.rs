@@ -357,3 +357,67 @@ fn native_desk_refuses_stale_or_unverified_pinned_map_before_starting() {
         assert_eq!(transcript.written_count(), 0);
     }
 }
+
+/// A bigshot profile names a hunting room and boundary rooms, not its
+/// ground: the ground is what bigshot grows from the one, kept out of the
+/// others, and a hunt outside it walks to the hunting room first. Without
+/// this, the author's first live hunt wandered Mist Harbor on a
+/// Hinterwilds profile (2026-09-30).
+#[test]
+fn a_bigshot_profiles_ground_is_grown_from_its_hunting_room_and_walked_to() {
+    let map = map().unwrap();
+    let (mut p, dir) = (
+        Profile::default(),
+        dir("a_bigshot_profiles_ground_is_grown").unwrap(),
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+    p.rooms.hunting = Some(1);
+    p.rooms.boundaries = vec![3];
+    assert_eq!(setup::area(&p, &map), Ok(Some(vec![1, 2])), "3 is kept out");
+    p.rooms.boundaries.clear();
+    assert_eq!(setup::area(&p, &map), Ok(Some(vec![1, 2, 3])));
+    p.rooms.allowed = Some(vec![1]);
+    assert_eq!(
+        setup::area(&p, &map),
+        Ok(None),
+        "a profile that names its rooms"
+    );
+    p.rooms.allowed = None;
+    p.rooms.hunting = Some(9);
+    assert!(setup::area(&p, &map).is_err_and(|why| why.contains("not on the map")));
+
+    // Kept to, a hunt outside the ground walks to the hunting room; inside,
+    // it hunts.
+    p.rooms.hunting = Some(1);
+    p.rooms.boundaries = vec![3];
+    let kept = |p: &Profile| {
+        let mut hunt = Hunt::new(p.clone(), 1);
+        hunt.keep_to(setup::area(p, &map).unwrap().unwrap());
+        hunt
+    };
+    let mut s = healthy();
+    s.character.experience.mind_percent = Some(0);
+    assert_eq!(kept(&p).tick(&s, here(3), Some(1)), Said::Walk(RoomId(1)));
+    assert_ne!(kept(&p).tick(&s, here(2), Some(1)), Said::Walk(RoomId(1)));
+}
+
+/// Past bigshot's cap the boundaries are taken to be wrong, and said so.
+#[test]
+fn a_ground_the_boundaries_do_not_close_is_a_boundary_break() {
+    let rooms: Vec<serde_json::Value> = (1..=(u32::try_from(setup::AREA_CAP).unwrap_or(200) + 10))
+        .map(|id| {
+            serde_json::json!({"id": id, "exits": [{"to": id + 1, "kind": "cardinal", "cmd": "north", "cost": 1}]})
+        })
+        .collect();
+    let map =
+        Map::from_rooms(serde_json::from_value(serde_json::Value::Array(rooms)).unwrap()).unwrap();
+    let mut p = Profile::default();
+    p.rooms.hunting = Some(1);
+    let why = setup::area(&p, &map).expect_err("a line of rooms with no end");
+    assert!(why.contains("boundary break"), "{why}");
+    p.rooms.boundaries = vec![50];
+    assert_eq!(
+        setup::area(&p, &map).map(|area| area.map(|a| a.len())),
+        Ok(Some(49))
+    );
+}
