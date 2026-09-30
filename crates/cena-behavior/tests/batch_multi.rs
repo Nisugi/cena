@@ -494,3 +494,176 @@ async fn a_line_refused_too_long_is_given_up() {
     assert_eq!(game.transcript.lines(), ["look"]);
     assert!(game.said().iter().any(|s| s.contains("was refused")));
 }
+
+/// A line the player types meanwhile, answered as scripted: how a test
+/// gives the driver a line from the game after a wait has begun.
+async fn manual(game: &Game, line: &str, reply: &[u8]) {
+    game.transcript.answer(line, reply);
+    game.handle
+        .send_manual_at(game.handle.generation(), line, Duration::from_secs(5))
+        .await;
+}
+
+/// `pause N` holds the next line for that long and no longer.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_pause_holds_the_next_line_for_its_time() {
+    let game = logged_in().await.unwrap();
+    let (_, run) = game
+        .run(
+            job(
+                1,
+                vec![
+                    send("get gem"),
+                    Line::Sleep(Duration::from_secs(2)),
+                    send("sell gem"),
+                ],
+            ),
+            nobody(),
+        )
+        .await
+        .unwrap();
+    assert!(until_written(&game.transcript, 1).await);
+    pass(Duration::from_secs(1)).await;
+    assert_eq!(game.transcript.lines(), ["get gem"], "a second in: held");
+    assert!(
+        until_written(&game.transcript, 2).await,
+        "two seconds in: sent"
+    );
+    assert_eq!(run.await.unwrap(), Ok(()));
+    assert_eq!(game.transcript.lines(), ["get gem", "sell gem"]);
+}
+
+/// `waitfor` and `waitre` take a line the game sends from then on, not one
+/// it sent in answer to the line before.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn waitfor_and_waitre_take_a_line_heard_after_they_began() {
+    let game = logged_in().await.unwrap();
+    game.transcript.answer(
+        "look",
+        b"A giant rat arrives.\n<prompt time=\"1\">&gt;</prompt>\n",
+    );
+    let (_, run) = game
+        .run(
+            job(
+                1,
+                vec![
+                    send("look"),
+                    Line::WaitFor("Rat Arrives".to_owned()),
+                    send("attack rat"),
+                    Line::WaitRe("^A (giant|dire) rat (falls|dies)".to_owned()),
+                    send("search rat"),
+                ],
+            ),
+            nobody(),
+        )
+        .await
+        .unwrap();
+    assert!(until_written(&game.transcript, 1).await);
+    pass(Duration::from_secs(3)).await;
+    assert_eq!(
+        game.transcript.lines(),
+        ["look"],
+        "the arrival in look's own answer came before the wait"
+    );
+    manual(
+        &game,
+        "glance",
+        b"A giant rat arrives.\n<prompt time=\"2\">&gt;</prompt>\n",
+    )
+    .await;
+    assert!(until_written(&game.transcript, 3).await);
+    assert_eq!(game.transcript.lines(), ["look", "glance", "attack rat"]);
+    manual(
+        &game,
+        "glance",
+        b"A giant rat lunges at you.\n<prompt time=\"3\">&gt;</prompt>\n",
+    )
+    .await;
+    pass(Duration::from_secs(3)).await;
+    assert_eq!(
+        game.transcript.lines().len(),
+        4,
+        "a lunge is not what the pattern asks for"
+    );
+    manual(
+        &game,
+        "glance",
+        b"A giant rat falls to the ground and dies.\n<prompt time=\"4\">&gt;</prompt>\n",
+    )
+    .await;
+    assert!(until_written(&game.transcript, 6).await, "the death is");
+    assert_eq!(run.await.unwrap(), Ok(()));
+    assert_eq!(
+        game.transcript.lines(),
+        [
+            "look",
+            "glance",
+            "attack rat",
+            "glance",
+            "glance",
+            "search rat"
+        ]
+    );
+}
+
+/// `waitmana N` holds until the pool reads at least that.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn waitmana_holds_until_the_pool_is_there() {
+    let game = logged_in().await.unwrap();
+    game.transcript.answer(
+        "look",
+        b"<dialogData id='minivitals'><progressBar id='mana' value='10' text='mana 10/100'/></dialogData>\n<prompt time=\"1\">&gt;</prompt>\n",
+    );
+    let (_, run) = game
+        .run(
+            job(
+                1,
+                vec![
+                    send("look"),
+                    Line::WaitVital(batch::Pool::Mana, 30),
+                    send("incant 401"),
+                ],
+            ),
+            nobody(),
+        )
+        .await
+        .unwrap();
+    assert!(until_written(&game.transcript, 1).await);
+    pass(Duration::from_secs(5)).await;
+    assert_eq!(game.transcript.lines(), ["look"], "10 of 30: held");
+    manual(
+        &game,
+        "glance",
+        b"<dialogData id='minivitals'><progressBar id='mana' value='30' text='mana 30/100'/></dialogData>\n<prompt time=\"2\">&gt;</prompt>\n",
+    )
+    .await;
+    assert!(until_written(&game.transcript, 3).await, "30 of 30: sent");
+    assert_eq!(run.await.unwrap(), Ok(()));
+    assert_eq!(game.transcript.lines(), ["look", "glance", "incant 401"]);
+}
+
+/// A line the game answers with `...wait N` every time is resent
+/// [`batch::RESENDS`] times and then let go, the batch going on.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_line_the_game_keeps_refusing_is_resent_so_many_times_then_let_go() {
+    let game = logged_in().await.unwrap();
+    for _ in 0..batch::RESENDS + 3 {
+        game.transcript.answer(
+            "sell gem",
+            b"...wait 2 seconds.\n<prompt time=\"1\">&gt;</prompt>\n",
+        );
+    }
+    let (_, run) = game
+        .run(job(1, vec![send("sell gem"), send("look")]), nobody())
+        .await
+        .unwrap();
+    assert_eq!(run.await.unwrap(), Ok(()));
+    let lines = game.transcript.lines();
+    let sells = lines.iter().filter(|l| *l == "sell gem").count();
+    assert_eq!(
+        u32::try_from(sells).ok(),
+        Some(batch::RESENDS + 1),
+        "{lines:?}"
+    );
+    assert_eq!(lines.last().map(String::as_str), Some("look"));
+}
