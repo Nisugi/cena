@@ -112,7 +112,15 @@ impl Lichs {
                 return None;
             }
             let rest: Vec<&str> = words.collect();
-            lichs.answer(&told, &answering, &rest);
+            // The folder as typed, its spaces as they are: `words` has
+            // collapsed them, and `C:\Lich  5` is not `C:\Lich 5` (the
+            // review of 2026-09-29).
+            let after_two = line
+                .trim_start()
+                .split_once(char::is_whitespace)
+                .and_then(|(_, rest)| rest.trim_start().split_once(char::is_whitespace))
+                .map_or("", |(_, rest)| rest.trim());
+            lichs.answer(&told, &answering, &rest, after_two);
             Some(Claimed::Done)
         }));
         match switch(seat) {
@@ -147,7 +155,7 @@ impl Lichs {
     }
 
     /// Answer `;lich` with `words` after it.
-    fn answer(&self, handle: &SessionHandle, seat: &Seat, words: &[&str]) {
+    fn answer(&self, handle: &SessionHandle, seat: &Seat, words: &[&str], after_two: &str) {
         let lower: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
         let said = match lower.first().map(String::as_str) {
             None => Ok(status(handle, seat)),
@@ -167,7 +175,7 @@ impl Lichs {
                     "Lich stays off for this character.".to_owned()
                 }
             }),
-            Some("folder") if words.len() > 1 => keep_folder(&seat.dir, &words[1..].join(" ")),
+            Some("folder") if words.len() > 1 => keep_folder(&seat.dir, after_two),
             Some(_) => Err("say lich on, lich off, lich folder <folder>, or lich help".to_owned()),
         };
         match said {
