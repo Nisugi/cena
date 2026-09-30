@@ -19,11 +19,10 @@ use std::sync::{Arc, Condvar, Mutex, PoisonError, RwLock};
 
 use cena_behavior::travel::{Map, RoomId};
 
-/// hydra-mapper's revision Hydra is built with: part of the cache's name,
-/// so an engine that lays out differently never reads another's areas.
-/// `the_engine_revision_is_the_one_pinned` holds it to `Cargo.lock`: after
-/// `cargo update -p cena-gs-map` takes a newer main, this follows.
-const ENGINE: &str = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa";
+/// The hydra-mapper commit Hydra is built with, read from `Cargo.lock` by
+/// the build (`build.rs`): part of the cache's name, so a newer engine
+/// never reads an older one's areas.
+const ENGINE: &str = env!("HYDRA_MAPPER_COMMIT");
 
 /// Why a room has no scene yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -261,7 +260,7 @@ fn cache_dir(data: &Path, sha256: &str) -> Option<PathBuf> {
     let dir = data.join("atlas").join(format!(
         "{}-{}",
         &sha256[..sha256.len().min(16)],
-        &ENGINE[..12]
+        ENGINE.get(..12).unwrap_or(ENGINE)
     ));
     std::fs::create_dir_all(&dir)
         .map_err(|error| eprintln!("[map] no layout cache at {}: {error}", dir.display()))
@@ -312,23 +311,13 @@ fn write(file: &Path, scene: &cena_ui::MapScene) {
 mod tests {
     use super::*;
 
-    /// The revision the cache is named by is the commit `Cargo.lock` holds
-    /// hydra-mapper at, however the manifest names it (a branch since
-    /// `83c9571`), so a new engine never reads the old engine's areas.
+    /// The build found the mapper in `Cargo.lock`: a commit, not the
+    /// fallback, so the cache is named by the engine it was laid out by.
     #[test]
-    fn the_engine_revision_is_the_one_pinned() {
-        let lock =
-            std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../Cargo.lock"))
-                .expect("the workspace's Cargo.lock");
-        let held: Vec<&str> = lock
-            .lines()
-            .filter(|l| l.contains("github.com/Nisugi/hydra-mapper"))
-            .filter_map(|l| l.trim_end_matches('"').rsplit('#').next())
-            .collect();
-        assert!(!held.is_empty(), "Cargo.lock holds no hydra-mapper");
+    fn the_engine_is_named_by_its_commit() {
         assert!(
-            held.iter().all(|&commit| commit == ENGINE),
-            "atlas::service::ENGINE is {ENGINE}, Cargo.lock holds hydra-mapper at {held:?}"
+            ENGINE.len() == 40 && ENGINE.chars().all(|c| c.is_ascii_hexdigit()),
+            "HYDRA_MAPPER_COMMIT is {ENGINE}"
         );
     }
 

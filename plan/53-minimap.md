@@ -615,6 +615,10 @@ added, walking the Landing and Hinterwilds.
 
 ### 7d. As built
 
+- **Hydra follows hydra-mapper's main** (the author, 2026-09-29: *"POINT IT AT MAIN. ALL THE
+  FUCKING REPOS ARE MINE"*). No commit is named in Hydra: `Cargo.toml` says `branch = "main"`,
+  `Cargo.lock` holds whichever main `cargo update -p cena-gs-map` last took, and the layout
+  cache is named by that commit, which `crates/cena/build.rs` reads out of the lock.
 - **The map.** `map_context::load` decodes the embedded map unless `CENA_MAP` names
   another; the embedded one is the file Despana's atlas was built from (same SHA-256,
   `d5e8ac60`), so the web minimap still matches.
@@ -707,7 +711,7 @@ tried in the mapper for one small stretch if the join looks wrong.
 
 0. **Mapper**: maps, curated and baked, the suggestions, and the Hinterwilds the first,
    through the gate; Hydra lays out by map, each area a sub-area. **BUILT 2026-09-29**
-   (hydra-mapper `f266756`, `f471f2a`, `398bf5c`, merged as `7f1fa33`, which Hydra pins).
+   (hydra-mapper `f266756`, `f471f2a`, `398bf5c`, merged as `7f1fa33`).
    Baked as `meta:hydramap:`: `map:` is the mapper's own flags and gs.map already carries
    Simutronics' `mapname:` on 228 rooms. The author had already folded Cold River's rooms
    into the Hinterwilds area in the store, never exported, so gs.map still split them; they
