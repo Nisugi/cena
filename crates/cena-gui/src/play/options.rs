@@ -19,7 +19,6 @@ use cena_ui::settings::{Page, Row, RowKind, Value};
 
 use super::Play;
 use crate::bar::{Fills, Look, Place};
-use crate::layout::Holds;
 use crate::story::Hours;
 use crate::widget::doll::{DollLook, Style};
 #[cfg(feature = "doll-infinite")]
@@ -146,18 +145,8 @@ impl Play {
             .map_or_else(String::new, |dir| dir.display().to_string());
         let mut pages = Vec::new();
         for holder in &layout.holders {
-            let (window, placed): (Option<&str>, Vec<_>) = match &holder.holds {
-                Holds::One(one) => (None, vec![one]),
-                Holds::Custom(custom) => (
-                    Some(custom.title.as_str()),
-                    custom
-                        .cells
-                        .iter()
-                        .flat_map(|cell| cell.tabs.iter())
-                        .collect(),
-                ),
-            };
-            for one in placed {
+            let window = holder.holds.title();
+            for one in holder.holds.placed() {
                 let rows = match (&one.widget, one.widget.bar_look()) {
                     (_, Some(default)) => {
                         bar_rows(layout.looks.get(&one.id), &default, &pictures.overlays)
@@ -210,16 +199,8 @@ impl Play {
             .as_mut()
             .ok_or_else(|| "The window has no layout yet.".to_owned())?;
         let widget = layout
-            .holders
-            .iter()
-            .flat_map(|holder| match &holder.holds {
-                Holds::One(one) => vec![one],
-                Holds::Custom(custom) => custom
-                    .cells
-                    .iter()
-                    .flat_map(|cell| cell.tabs.iter())
-                    .collect(),
-            })
+            .placed()
+            .into_iter()
             .find(|one| one.id == placed)
             .map(|one| one.widget.clone())
             .ok_or_else(|| "That widget is no longer in the window.".to_owned())?;

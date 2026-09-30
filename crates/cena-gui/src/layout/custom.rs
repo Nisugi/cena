@@ -348,14 +348,26 @@ impl Layout {
     pub(crate) fn placed(&self) -> Vec<&Placed> {
         self.holders
             .iter()
-            .flat_map(|holder| match &holder.holds {
-                Holds::One(placed) => vec![placed],
-                Holds::Custom(custom) => custom
-                    .cells
-                    .iter()
-                    .flat_map(|cell| cell.tabs.iter())
-                    .collect(),
-            })
+            .flat_map(|holder| holder.holds.placed())
             .collect()
+    }
+}
+
+impl Holds {
+    /// Every widget this holds: the one, or each cell's tabs in turn. The
+    /// walk six places wrote for themselves (the review of 2026-09-29).
+    pub(crate) fn placed(&self) -> Box<dyn Iterator<Item = &Placed> + '_> {
+        match self {
+            Self::One(placed) => Box::new(std::iter::once(placed)),
+            Self::Custom(custom) => Box::new(custom.cells.iter().flat_map(|cell| cell.tabs.iter())),
+        }
+    }
+
+    /// A custom window's title; a standalone window has its widget's.
+    pub(crate) fn title(&self) -> Option<&str> {
+        match self {
+            Self::One(_) => None,
+            Self::Custom(custom) => Some(custom.title.as_str()),
+        }
     }
 }

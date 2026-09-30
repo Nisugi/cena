@@ -335,16 +335,9 @@ fn adding_whose(adding: Option<&Adding>) -> Option<String> {
 /// Every kind shown somewhere in `layout`.
 fn kinds_shown(layout: &Layout) -> HashSet<Widget> {
     layout
-        .holders
-        .iter()
-        .flat_map(|holder| match &holder.holds {
-            Holds::One(placed) => vec![placed.widget.clone()],
-            Holds::Custom(custom) => custom
-                .cells
-                .iter()
-                .flat_map(|cell| cell.tabs.iter().map(|tab| tab.widget.clone()))
-                .collect(),
-        })
+        .placed()
+        .into_iter()
+        .map(|placed| placed.widget.clone())
         .collect()
 }
 
@@ -541,13 +534,10 @@ pub(super) fn tab_kinds(
 
 /// The kind of widget `placed` in window `holder`.
 fn widget_in(layout: &Layout, holder: u32, placed: u32) -> Option<&Widget> {
-    match &layout.holder(holder)?.holds {
-        Holds::One(one) => (one.id == placed).then_some(&one.widget),
-        Holds::Custom(custom) => custom
-            .cells
-            .iter()
-            .flat_map(|cell| cell.tabs.iter())
-            .find(|tab| tab.id == placed)
-            .map(|tab| &tab.widget),
-    }
+    layout
+        .holder(holder)?
+        .holds
+        .placed()
+        .find(|one| one.id == placed)
+        .map(|one| &one.widget)
 }

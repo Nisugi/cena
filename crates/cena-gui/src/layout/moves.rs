@@ -134,14 +134,7 @@ impl Layout {
             return;
         };
         let gone = self.holders.remove(at);
-        let ids: Vec<u32> = match &gone.holds {
-            Holds::One(placed) => vec![placed.id],
-            Holds::Custom(custom) => custom
-                .cells
-                .iter()
-                .flat_map(|cell| cell.tabs.iter().map(|tab| tab.id))
-                .collect(),
-        };
+        let ids: Vec<u32> = gone.holds.placed().map(|placed| placed.id).collect();
         for id in ids {
             self.follows.remove(&id);
             self.looks.remove(&id);
