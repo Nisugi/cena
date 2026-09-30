@@ -1,7 +1,7 @@
 //! Spellcaster (`plan/37` Stage 6): the typed spell, cast as set up.
 
 use cena_behavior::spellcaster::{CasterProfile, edit, lines, typed};
-use cena_session::GameState;
+use cena_session::{Frame, GameState, Link, LinkKind, Run, Runs};
 
 #[test]
 fn a_number_an_alias_a_target_and_a_count() {
@@ -125,5 +125,132 @@ fn an_alias_and_its_verb_are_found_and_cleared_in_any_case() {
     assert!(
         edit(&mut profile, &["alias", "clear", "boom"]).is_err(),
         "nothing to clear is said so"
+    );
+}
+
+/// Mana, as the wire states it.
+fn mana(state: &mut GameState, current: i32) {
+    state.apply(&Frame::ProgressBar(cena_session::ProgressBar {
+        id: "mana".to_owned(),
+        dialog: Some("minivitals".to_owned()),
+        percent: 50,
+        text: format!("mana {current}/100"),
+        amount: Some(cena_session::Amount { current, max: 100 }),
+        attrs: Vec::new(),
+        time_remaining_secs: None,
+    }));
+}
+
+/// The room's creatures, as the game lists them.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors; only its bold depth matters"
+)]
+fn creatures_here(state: &mut GameState, nouns: &[&str]) {
+    let runs = nouns
+        .iter()
+        .enumerate()
+        .map(|(n, noun)| {
+            let mut run = Run {
+                text: (*noun).to_owned(),
+                style: Default::default(),
+                link: Some(Link {
+                    kind: LinkKind::Exist {
+                        id: (100 + n).to_string(),
+                        noun: (*noun).to_owned(),
+                    },
+                    text: (*noun).to_owned(),
+                    coord: None,
+                }),
+                inner_link: None,
+            };
+            run.style.bold_depth = 1;
+            run
+        })
+        .collect();
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs },
+    });
+}
+
+/// spellcaster's `conserve` (`:330-350`): no cast short of mana, and no
+/// attack at a target that is not in the room.
+#[test]
+fn conserve_refuses_a_cast_short_of_mana_or_at_nothing_here() {
+    let mut state = GameState::default();
+    let mut profile = CasterProfile::default();
+    mana(&mut state, 0);
+    assert!(
+        lines(&profile, &state, &["901"]).is_ok(),
+        "off: the game says no, not Hydra"
+    );
+    assert!(edit(&mut profile, &["set", "conserve", "on"]).is_ok());
+    assert_eq!(
+        lines(&profile, &state, &["901"]),
+        Err("not enough mana for Minor Shock".to_owned())
+    );
+    mana(&mut state, 100);
+    creatures_here(&mut state, &["kobold", "giant rat"]);
+    assert_eq!(
+        lines(&profile, &state, &["901", "warg"]),
+        Err("nothing here matches warg".to_owned())
+    );
+    assert_eq!(
+        lines(&profile, &state, &["901", "Rat"]),
+        Ok(vec!["prepare 901".to_owned(), "cast Rat".to_owned()]),
+        "a target here, in any case"
+    );
+    assert_eq!(
+        lines(&profile, &state, &["401", "warg"]),
+        Ok(vec!["prepare 401".to_owned(), "cast warg".to_owned()]),
+        "a defense may be cast at someone not listed as a creature"
+    );
+}
+
+/// `channel` channels what the table marks channelled, and `stance` takes
+/// the offensive stance for what it marks as wanting one; neither touches a
+/// spell the table does not mark, and a verb set by hand stands.
+#[test]
+fn channel_and_stance_follow_the_spell_table() {
+    let state = GameState::default();
+    let mut profile = CasterProfile::default();
+    assert!(edit(&mut profile, &["set", "channel", "on"]).is_ok());
+    assert!(edit(&mut profile, &["set", "stance", "on"]).is_ok());
+    assert_eq!(
+        lines(&profile, &state, &["901"]),
+        Ok(vec![
+            "stance offensive".to_owned(),
+            "incant 901 channel".to_owned(),
+            "stance guarded".to_owned()
+        ]),
+        "Minor Shock: channelled, from offensive"
+    );
+    assert_eq!(
+        lines(&profile, &state, &["401"]),
+        Ok(vec!["incant 401".to_owned()]),
+        "Elemental Defense I: neither"
+    );
+    assert!(edit(&mut profile, &["verb", "901", "evoke"]).is_ok());
+    assert!(edit(&mut profile, &["stance", "901", "forward"]).is_ok());
+    assert_eq!(
+        lines(&profile, &state, &["901"]),
+        Ok(vec![
+            "stance forward".to_owned(),
+            "incant 901 evoke".to_owned(),
+            "stance guarded".to_owned()
+        ]),
+        "what is set for the spell wins"
+    );
+}
+
+/// A spell the game's list leaves out is refused by name.
+#[test]
+fn a_spell_the_character_does_not_know_is_refused() {
+    let mut state = GameState::default();
+    state.known_spells.begin();
+    assert_eq!(
+        lines(&CasterProfile::default(), &state, &["401"]),
+        Err("you do not know Elemental Defense I".to_owned())
     );
 }
