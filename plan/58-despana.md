@@ -292,7 +292,7 @@ Each step is a commit on branch `despana`, with tests, and each leaves the page 
    - Classic follows §5 item 5.
    - The atlas explorer stays as it is.
 7. **The nested inventory.**
-   - *Show Nested* asks the game for `<inventoryManager>` the way travel's routines already do.
+   - *Show Nested* asks the game for `<inventoryManager>` through `plan/59`'s service. Nothing in Hydra sends that request today; travel's routines only read what arrives.
    - The tree is projected from `inventory_snapshot`.
    - VellumFE's refresh states and its 35-second limit carry over.
 8. **The finish.**
