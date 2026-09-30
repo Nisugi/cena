@@ -361,3 +361,48 @@ fn a_catalog_widget_takes_its_key() {
         .data(|data| data.get_temp::<super::Scroll>(egui::Id::new("r").with(super::ASKED)));
     assert_eq!(left, None, "taken");
 }
+
+/// A line selected stays the line selected as new lines drop old ones, and
+/// Ctrl+C copies it (the author, 2026-09-29: *"Texting coming in changes
+/// which lines are selected"*, *"cannot copy/paste"*).
+#[test]
+fn a_selection_holds_its_line_as_old_ones_go() {
+    let mut harness = story_of(MAX_STORY);
+    let chosen = format!("line {}", MAX_STORY - 4);
+    let rect = harness.get_by_label(&chosen).rect();
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+    let (from, to) = (rect.left_center(), rect.right_center());
+    harness.hover_at(from);
+    harness.step();
+    harness.event(button(from, true));
+    harness.step();
+    for step in 1..=4u8 {
+        harness.hover_at(from + (to - from) * (f32::from(step) / 4.0));
+        harness.step();
+    }
+    harness.event(button(to, false));
+    harness.step();
+    for n in MAX_STORY..MAX_STORY + 2 {
+        harness.state_mut().hear(&line(&format!("line {n}")), None);
+    }
+    harness.run();
+    assert_eq!(harness.state().dropped, 2, "two went");
+    harness.event(egui::Event::Copy);
+    harness.step();
+    let copied: Vec<String> = harness
+        .output()
+        .platform_output
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            egui::OutputCommand::CopyText(text) => Some(text.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(copied, [chosen]);
+}

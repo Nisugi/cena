@@ -175,10 +175,10 @@ pub(super) fn story(
         if let Some(finder) = &mut finder {
             finder.start();
         }
-        for (at, shown) in &story.lines {
+        for (index, (at, shown)) in story.lines.iter().enumerate() {
             tops.mark(ui);
             let text = finder.as_ref().and_then(|_| said(shown, open, options));
-            let mut draw = |ui: &mut egui::Ui| match shown {
+            let line = |ui: &mut egui::Ui| match shown {
                 Shown::Game(runs) => {
                     prompts.line(runs);
                     clicked = clicked.take().or(options.label(ui, *at, runs));
@@ -202,6 +202,18 @@ pub(super) fn story(
                 Shown::Gap => {
                     ui.colored_label(WRONG, "Some lines were missed here.");
                 }
+            };
+            // Each line by its own number, never its place: a selection is
+            // kept by the ids of the lines it runs between, and a place's
+            // line changes as old ones go (the author, 2026-09-29: *"Texting
+            // coming in changes which lines are selected"*).
+            let number = story.dropped + u64::try_from(index).unwrap_or(u64::MAX);
+            // Explicit, under the pane's own id: a child by salt still takes
+            // its parent's count of children before it, which is the line's
+            // place again, and `Ui::id` is the same for both panes.
+            let draw = |ui: &mut egui::Ui| {
+                let own = egui::UiBuilder::new().id(ui.unique_id().with(number));
+                ui.scope_builder(own, line);
             };
             match (&mut finder, text) {
                 (Some(finder), Some(text)) => finder.line(ui, (&text, tops.player()), draw),
