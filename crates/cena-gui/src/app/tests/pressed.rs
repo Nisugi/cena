@@ -172,6 +172,22 @@ fn a_macro_waits_between_its_commands() {
         typed(&seat),
         ["stance off", "prep 118", "cast", "stance def"]
     );
+
+    // A command due on a character that has gone is dropped, not kept for
+    // a seat that may be given out again; the wait it was in is over.
+    let now = Instant::now();
+    app.send_macro(&seat, &keys::Macro::Send("s1\rhide".to_owned()), now);
+    assert_eq!(app.send_due(&[], now + Duration::from_secs(2)), None);
+    assert_eq!(
+        typed(&seat),
+        ["stance off", "prep 118", "cast", "stance def"],
+        "gone: its hide is dropped"
+    );
+    assert_eq!(
+        app.send_due(&seats, now + Duration::from_secs(3)),
+        None,
+        "and not kept"
+    );
 }
 
 /// A key that fills the input puts its text there, not sent, the cursor
