@@ -108,3 +108,70 @@ fn inbound_bytes_are_never_padded() {
          the sink inventing framing the wire did not have."
     );
 }
+
+/// **A stamp goes at the start of a line, never inside one.** With
+/// `CENA_LOG_TIMESTAMPS` on, a stamp was written before every inbound
+/// chunk, so the split above became `<pushStream id='ro12:00:00.000: om'/>`
+/// (the review of 2026-09-29): the newline injection of the test above, by
+/// another road. A chunk that continues a line takes none; a command
+/// written between lines ends its own line, so the next inbound is stamped.
+#[test]
+fn a_stamp_never_lands_inside_a_line() {
+    let (sink, path) = sink("stamped").expect("the sink must open");
+    let mut sink = sink.stamped();
+    sink.wire(true, b"<pushStream id='ro").expect("write");
+    sink.wire(
+        true,
+        b"om'/>Some text
+",
+    )
+    .expect("write");
+    sink.wire(
+        false, b"look
+",
+    )
+    .expect("write");
+    sink.wire(true, b"You see").expect("write");
+    sink.wire(
+        true,
+        b" nothing.
+And more.
+",
+    )
+    .expect("write");
+    sink.flush().expect("flush");
+    drop(sink);
+
+    let written = std::fs::read(&path).expect("the bytes file must exist");
+    let text = String::from_utf8_lossy(&written);
+    let stamp = |line: &str| -> Option<String> {
+        let (time, rest) = line.split_once(": ")?;
+        (time.len() == 12 && time.as_bytes()[2] == b':').then(|| rest.to_owned())
+    };
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines.len(), 4, "{text:?}");
+    assert_eq!(
+        stamp(lines[0]).as_deref(),
+        Some("<pushStream id='room'/>Some text"),
+        "one stamp, at the start, the tag whole: {:?}",
+        lines[0]
+    );
+    assert_eq!(
+        stamp(lines[1]).as_deref(),
+        Some("<!-- CLIENT -->look<!-- ENDCLIENT -->"),
+        "{:?}",
+        lines[1]
+    );
+    assert_eq!(
+        stamp(lines[2]).as_deref(),
+        Some("You see nothing."),
+        "{:?}",
+        lines[2]
+    );
+    assert_eq!(
+        stamp(lines[3]).as_deref(),
+        Some("And more."),
+        "{:?}",
+        lines[3]
+    );
+}

@@ -53,6 +53,13 @@ pub struct SessionSink {
     /// rather than per line: an env var that changed mid-session would produce
     /// a file that is half one format.
     stamp_bytes: bool,
+    /// Whether the next byte written to the bytes file begins a line: the
+    /// last written was a newline, or nothing has been. A stamp goes only
+    /// there. It was written before every inbound chunk, so a read boundary
+    /// inside a tag put `HH:MM:SS.mmm: ` between `id=` and `'room'`: the
+    /// corruption the newline append above `inbound_chunk` was taken out
+    /// for, by another road (the review of 2026-09-29).
+    at_line_start: bool,
 }
 
 /// Flush on drop, so a sink that is simply dropped still leaves a complete
@@ -192,6 +199,7 @@ impl SessionSink {
             line_open: false,
             awaiting_line_end: Vec::new(),
             stamp_bytes: bytes_timestamps_enabled(),
+            at_line_start: true,
             stem: dir.join(safe_stem),
             part: 0,
             rotate_after,
@@ -249,7 +257,7 @@ impl SessionSink {
                 self.awaiting_line_end.push(record);
             } else {
                 self.drain_pending()?;
-                self.bytes.write_all(&record)?;
+                self.write_bytes(&record)?;
             }
         }
         // **NOTHING is appended to inbound bytes**, and that fidelity is this
@@ -271,6 +279,15 @@ impl SessionSink {
             self.roll()?;
         }
         Ok(())
+    }
+
+    /// The same sink with the bytes file stamped, whatever the environment
+    /// says: for a test of the stamped file, which cannot set the variable
+    /// without every other test's sink seeing it.
+    #[must_use]
+    pub fn stamped(mut self) -> Self {
+        self.stamp_bytes = true;
+        self
     }
 
     /// Write inbound bytes, releasing any command that was waiting for the
@@ -307,10 +324,27 @@ impl SessionSink {
             return Ok(false);
         };
         if self.stamp_bytes {
-            write!(self.bytes, "{}: ", line_time())?;
+            // Each line the chunk begins, stamped where it begins; a line
+            // the chunk continues, not.
+            for piece in redacted.split_inclusive(|byte| *byte == b'\n') {
+                if self.at_line_start {
+                    write!(self.bytes, "{}: ", line_time())?;
+                }
+                self.write_bytes(piece)?;
+            }
+        } else {
+            self.write_bytes(&redacted)?;
         }
-        self.bytes.write_all(&redacted)?;
         Ok(true)
+    }
+
+    /// `bytes` to the bytes file, noting whether they end a line.
+    fn write_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
+        self.bytes.write_all(bytes)?;
+        if let Some(last) = bytes.last() {
+            self.at_line_start = *last == b'\n';
+        }
+        Ok(())
     }
 
     /// One outbound command, redacted and framed, ready to write.
@@ -453,10 +487,10 @@ impl SessionSink {
         if !self.pending.is_empty() {
             let tail: Vec<u8> = std::mem::take(&mut self.pending);
             let redacted = self.redactions.apply_bytes(&tail);
-            self.bytes.write_all(&redacted)?;
+            self.write_bytes(&redacted)?;
         }
         for record in std::mem::take(&mut self.awaiting_line_end) {
-            self.bytes.write_all(&record)?;
+            self.write_bytes(&record)?;
         }
         Ok(())
     }
