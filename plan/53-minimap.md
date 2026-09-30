@@ -712,3 +712,9 @@ tried in the mapper for one small stretch if the join looks wrong.
 2. **Hydra**: the camera's two default zooms, reset at a door, and the glide.
 3. **Hydra**: neighbouring maps joined at the border, and how many out.
 4. **The settings page** (step 7's, brought forward): both zooms and the areas out.
+
+> **CHANGED 2026-09-29 (the author):** hydra-mapper *"updates a lot"*, so Hydra follows its
+> `main` (`branch = "main"` in the root `Cargo.toml`) instead of a `rev`. `Cargo.lock` still
+> holds one commit for both crates, so the engine and the map cannot drift, and a build is
+> the same until `cargo update -p cena-gs-map` takes the latest. The switch landed on
+> `7f1fa33`, the commit already pinned.

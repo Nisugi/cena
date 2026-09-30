@@ -40,11 +40,12 @@ cena-web = { path = "crates/cena-web" }
 cena-agent = { path = "crates/cena-agent" }
 cena-host = { path = "crates/cena-host" }
 cena-gui = { path = "crates/cena-gui" }
-# The map layout engine and the map it lays out, from hydra-mapper at one
-# commit, so the two cannot drift (plan/53 §6 item 2, §7): the minimap lays
-# out every area at launch from the map Hydra embeds.
-cena-map-layout = { git = "https://github.com/Nisugi/hydra-mapper", rev = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa" }
-cena-gs-map = { git = "https://github.com/Nisugi/hydra-mapper", rev = "7f1fa33a0ed58cfd8c54331aa854d5c670eb25fa" }
+# The map layout engine and the map it lays out, from hydra-mapper's main
+# (plan/53 §6 item 2, §7): the minimap lays out every area at launch from the
+# map Hydra embeds. One git source, so Cargo.lock holds both at one commit and
+# the two cannot drift; `cargo update -p cena-gs-map` takes the latest main.
+cena-map-layout = { git = "https://github.com/Nisugi/hydra-mapper", branch = "main" }
+cena-gs-map = { git = "https://github.com/Nisugi/hydra-mapper", branch = "main" }
 # The GUI's toolkit (plan/47): the author's egui fork, egui 0.35.0 with its
 # numpad capture (plan/47 §2) and, one commit on from what VellumFE builds
 # with (2e2ead3), its key capture for keys egui has no name for (plan/47

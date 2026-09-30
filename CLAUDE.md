@@ -220,7 +220,7 @@ lockfile; run cargo inside it only for the spike.
 | `cena-agent` | M7: an outside program reads a character over MCP on loopback (`plan/35`; `CONTRACT.md`), and a script runner reaches its own (`plan/46`; `SCRIPTS.md`) | map, session (platform dev-only) |
 | `cena-gui` | the GUI (egui and eframe, the author's fork): the window and its hub so far (`plan/47`) | session, ui |
 | `cena-host` | the table of sessions one Hydra runs: add, remove, one per account, stop all (`plan/29`) | session (platform dev-only) |
-| `cena` | the binary | agent, behavior, gui, host, platform, session, ui, web; and from hydra-mapper, pinned, the layout engine `cena-map-layout` and the embedded map `cena-gs-map` (`plan/53` §7) |
+| `cena` | the binary | agent, behavior, gui, host, platform, session, ui, web; and from hydra-mapper, following its `main` (the commit held in `Cargo.lock`), the layout engine `cena-map-layout` and the embedded map `cena-gs-map` (`plan/53` §7) |
 | `cena-arch-tests` | the rules the compiler cannot express | — |
 
 (Measured from each crate's `Cargo.toml`, 2026-09-24:
