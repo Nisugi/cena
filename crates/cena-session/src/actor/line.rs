@@ -153,15 +153,45 @@ impl<S: ByteSource> SessionActor<S> {
         }
     }
 
+    /// A player's typed command with a creature's tag as its last word,
+    /// `kill 7QK`, made the game's own target for it, `kill #<id>`, while
+    /// tags are shown (`cena_model::targetid`). The answer, when it was a tag
+    /// two creatures here share: said, and nothing to send.
+    pub(super) fn retarget(
+        &self,
+        envelope: &mut super::Envelope,
+    ) -> Option<crate::command::Outcome> {
+        let length = self.events.tags_creatures()?;
+        if envelope.origin != crate::command::Origin::Manual {
+            return None;
+        }
+        let here = self.state.room.creatures.iter();
+        match cena_model::targetid::resolve(
+            &envelope.line,
+            here.filter_map(|item| item.id.parse().ok()),
+            length,
+        )? {
+            Ok(line) => {
+                envelope.line = line;
+                None
+            }
+            Err(why) => {
+                let said = crate::notice::Notice::line(crate::notice::NoticeKind::Warn, why);
+                let _ = self.events.send(Event::Notice(said.answering()));
+                Some(crate::command::Outcome::Handled)
+            }
+        }
+    }
+
     /// Publish `lines` to every viewer, add them to what is held, or neither.
     fn show(&self, lines: Vec<Arc<Line>>, show: &mut Show<'_>) {
         // Each creature's tag after its name, when shown: after the triggers
         // read the line, so a trigger on `kobold swings` still fires
         // (`cena_model::targetid`).
-        let lines = if self.events.tags_creatures() {
+        let lines = if let Some(length) = self.events.tags_creatures() {
             lines
                 .into_iter()
-                .map(|line| cena_model::targetid::tagged(&line).map_or(line, Arc::new))
+                .map(|line| cena_model::targetid::tagged(&line, length).map_or(line, Arc::new))
                 .collect()
         } else {
             lines

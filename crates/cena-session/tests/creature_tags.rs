@@ -37,7 +37,7 @@ fn shown(events: &mut tokio::sync::broadcast::Receiver<Event>) -> Vec<String> {
 /// `on`: the lines shown after a look, and what the game got for `kill` of
 /// the kobold's tag.
 async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
-    let key = tag(KOBOLD).to_ascii_lowercase();
+    let key = tag(KOBOLD, 3).to_ascii_lowercase();
     let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     transcript.answer("look", &look());
     // The game always answers a swing: a bare prompt answers nothing.
@@ -46,7 +46,7 @@ async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
     transcript.answer(&format!("kill {key}"), later);
     let session = Session::new(source);
     let handle = session.handle();
-    handle.tag_creatures(on);
+    handle.tag_creatures(on.then_some(3));
     let (_, mut events) = session.subscribe();
     tokio::spawn(session.into_actor().run());
     let looked = handle
@@ -62,7 +62,7 @@ async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_creature_is_tagged_and_its_tag_names_it_back() {
-    let tagged = format!("A kobold ({}) growls at you.", tag(KOBOLD));
+    let tagged = format!("A kobold ({}) growls at you.", tag(KOBOLD, 3));
     let (lines, sent) = with_tags(true).await;
     assert!(lines.contains(&tagged), "{lines:?}");
     assert_eq!(sent.last(), Some(&format!("kill #{KOBOLD}")), "{sent:?}");
@@ -74,7 +74,7 @@ async fn a_creature_is_tagged_and_its_tag_names_it_back() {
     );
     assert_eq!(
         sent.last(),
-        Some(&format!("kill {}", tag(KOBOLD).to_ascii_lowercase())),
+        Some(&format!("kill {}", tag(KOBOLD, 3).to_ascii_lowercase())),
         "off, the line as typed"
     );
 }

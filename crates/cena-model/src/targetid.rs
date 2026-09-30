@@ -26,8 +26,16 @@ use crate::line::Line;
 /// `targetid`'s alphabet: digits and letters, no `0`, `1`, `I` or `O`.
 const ALPHABET: &[u8; 32] = b"23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
-/// How many characters a tag is.
-const LENGTH: usize = 3;
+/// How many characters a tag is unless the player chooses (`targetid`'s
+/// own).
+pub const DEFAULT_LENGTH: usize = 3;
+
+/// The longest a tag may be: six characters are thirty bits, a whole
+/// creature id, so a longer one says nothing more. The shortest is one; a
+/// short tag is quicker to read and more often shared by two creatures in
+/// a room (the author, 2026-09-30: *"3 can be default but a setting to
+/// change it 1 - 4 probably works, maybe 1-6 just cause?"*).
+pub const LONGEST: usize = 6;
 
 /// The verbs a tag may follow: `targetid`'s own, less their `t`.
 const VERBS: [&str; 11] = [
@@ -39,11 +47,12 @@ const VERBS: [&str; 11] = [
 /// `IGNORE_PATTERN`.
 const PRONOUNS: [&str; 7] = ["he", "she", "his", "her", "him", "it", "its"];
 
-/// The tag of the creature `id`.
+/// The tag of the creature `id`, `length` characters long (1 to
+/// [`LONGEST`]).
 #[must_use]
-pub fn tag(id: i64) -> String {
+pub fn tag(id: i64, length: usize) -> String {
     let mut bits = id;
-    (0..LENGTH)
+    (0..length.clamp(1, LONGEST))
         .map(|_| {
             let char = ALPHABET[usize::try_from(bits & 31).unwrap_or(0)];
             bits >>= 5;
@@ -52,10 +61,11 @@ pub fn tag(id: i64) -> String {
         .collect()
 }
 
-/// `line` with each creature's tag after its name, and a trigger's looks
-/// moved along with the words they were on; `None` when it names none.
+/// `line` with each creature's tag, `length` long, after its name, and a
+/// trigger's looks moved along with the words they were on; `None` when it
+/// names none.
 #[must_use]
-pub fn tagged(line: &Line) -> Option<Line> {
+pub fn tagged(line: &Line, length: usize) -> Option<Line> {
     let runs = &line.runs.runs;
     let mut out = Vec::with_capacity(runs.len() + 1);
     let mut paint = line.paint.clone();
@@ -74,7 +84,7 @@ pub fn tagged(line: &Line) -> Option<Line> {
         {
             continue;
         }
-        let text = format!(" ({})", tag(id));
+        let text = format!(" ({})", tag(id, length));
         for span in &mut paint {
             if span.span.start >= at {
                 span.span.start += text.len();
@@ -117,30 +127,43 @@ fn creature(run: &Run) -> Option<i64> {
     id.parse().ok()
 }
 
-/// `line`, a command the player typed, with a creature's tag as its last
-/// word after one of the tag verbs, as the game's own target, `#<id>`:
-/// `kill 7QK` as `kill #123456`. `creatures` are those in the room. `None`
-/// when it has no tag to take.
+/// `line`, a command the player typed, with a creature's tag, `length`
+/// long, as its last word after one of the tag verbs, as the game's own
+/// target, `#<id>`: `kill 7QK` as `kill #123456`. `creatures` are those in
+/// the room. `None` when it has no tag to take; `Some(Err)` saying why
+/// when the tag is more than one creature's, and nothing is to be sent: a
+/// short tag can be.
 #[must_use]
-pub fn resolve(line: &str, creatures: impl IntoIterator<Item = i64>) -> Option<String> {
+pub fn resolve(
+    line: &str,
+    creatures: impl IntoIterator<Item = i64>,
+    length: usize,
+) -> Option<Result<String, String>> {
     let trimmed = line.trim();
     let verb = trimmed.split_whitespace().next()?;
     if !VERBS.iter().any(|known| verb.eq_ignore_ascii_case(known)) {
         return None;
     }
     let (before, last) = trimmed.rsplit_once(char::is_whitespace)?;
-    if last.len() != LENGTH {
+    if last.len() != length.clamp(1, LONGEST) {
         return None;
     }
-    let id = creatures
+    let mut matching = creatures
         .into_iter()
-        .find(|id| tag(*id).eq_ignore_ascii_case(last))?;
-    Some(format!("{} #{id}", before.trim_end()))
+        .filter(|id| tag(*id, length).eq_ignore_ascii_case(last));
+    let id = matching.next()?;
+    if matching.next().is_some() {
+        return Some(Err(format!(
+            "The tag {} is more than one creature's here; nothing was sent.",
+            last.to_ascii_uppercase()
+        )));
+    }
+    Some(Ok(format!("{} #{id}", before.trim_end())))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve, tag, tagged};
+    use super::{DEFAULT_LENGTH, resolve, tag, tagged};
     use crate::line::Line;
     use cena_protocol::frame::{Link, LinkKind, Style};
     use cena_protocol::runs::{Run, Runs};
@@ -150,9 +173,9 @@ mod tests {
     #[test]
     fn a_tag_is_the_id_in_targetids_alphabet() {
         // 0b00011_00010_00001: 1, 2, 3 -> '3', '4', '5'.
-        assert_eq!(tag(0b00011_00010_00001), "345");
-        assert_eq!(tag(0), "222");
-        assert_eq!(tag(31), "Z22");
+        assert_eq!(tag(0b00011_00010_00001, 3), "345");
+        assert_eq!(tag(0, 3), "222");
+        assert_eq!(tag(31, 3), "Z22");
     }
 
     fn run(text: &str, bold: bool, id: Option<&str>) -> Run {
@@ -192,47 +215,57 @@ mod tests {
                 ],
             },
         );
-        let tagged = tagged(&line).expect("a creature");
+        let tagged = tagged(&line, DEFAULT_LENGTH).expect("a creature");
         assert_eq!(
             tagged.text(),
-            format!("A hill troll ({}) swings at him with a club!", tag(33))
+            format!("A hill troll ({}) swings at him with a club!", tag(33, 3))
         );
-        assert!(
-            super::tagged(&Line::new(
-                "",
-                Runs {
-                    runs: vec![run("Hello.", false, None)]
-                }
-            ))
-            .is_none()
+        let plain = Line::new(
+            "",
+            Runs {
+                runs: vec![run("Hello.", false, None)],
+            },
         );
+        assert!(super::tagged(&plain, DEFAULT_LENGTH).is_none());
     }
 
     /// A tag after a tag verb is the creature's id; any other word, verb or
-    /// length is left alone.
+    /// length is left alone; a tag two creatures share sends nothing.
     #[test]
     fn a_tag_names_its_creature_back() {
         let troll = 123_456;
-        let key = tag(troll).to_ascii_lowercase();
+        let key = tag(troll, 3).to_ascii_lowercase();
         assert_eq!(
-            resolve(&format!("kill {key}"), [7, troll]),
-            Some(format!("kill #{troll}"))
+            resolve(&format!("kill {key}"), [7, troll], 3),
+            Some(Ok(format!("kill #{troll}")))
         );
         assert_eq!(
-            resolve(&format!("cman sweep {key}"), [troll]),
-            Some(format!("cman sweep #{troll}"))
+            resolve(&format!("cman sweep {key}"), [troll], 3),
+            Some(Ok(format!("cman sweep #{troll}")))
         );
         assert_eq!(
-            resolve(&format!("look {key}"), [troll]),
+            resolve(&format!("look {key}"), [troll], 3),
             None,
             "not a tag verb"
         );
-        assert_eq!(resolve("kill troll", [troll]), None);
+        assert_eq!(resolve("kill troll", [troll], 3), None);
         assert_eq!(
-            resolve(&format!("kill {key}"), [7]),
+            resolve(&format!("kill {key}"), [7], 3),
             None,
             "not in the room"
         );
-        assert_eq!(resolve("kill", [troll]), None);
+        assert_eq!(resolve("kill", [troll], 3), None);
+        // One character: 32 tags, and two creatures 32 apart share one.
+        let one = tag(troll, 1);
+        assert!(matches!(
+            resolve(&format!("kill {one}"), [troll, troll + 32], 1),
+            Some(Err(_))
+        ));
+        assert_eq!(
+            resolve(&format!("kill {one}"), [troll], 1),
+            Some(Ok(format!("kill #{troll}")))
+        );
+        assert_eq!(tag(troll, 6).len(), 6);
+        assert_eq!(tag(troll, 9).len(), 6, "never longer than an id");
     }
 }

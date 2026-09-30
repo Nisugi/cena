@@ -5,7 +5,7 @@ use crate::{Event, GameState, Generation, GenerationCell, SessionId, Snapshot, S
 use cena_model::trigger::{Act, Attention, Cooldowns, Edges, Matcher, Pace};
 use std::sync::{
     Arc, Mutex, PoisonError,
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
 };
 use std::time::Duration;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
@@ -170,10 +170,10 @@ pub(crate) struct EventPublisher {
     /// given, and because every connection's actor shares this publisher, so
     /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
     sorting: Arc<AtomicBool>,
-    /// `.targetid`: whether each creature's tag is shown after its name
-    /// (`cena_model::targetid`), and a typed command's tag taken for its
-    /// creature. Here for `sorting`'s reasons; off until asked.
-    tagging: Arc<AtomicBool>,
+    /// `.targetid`: how long each creature's tag shown after its name is
+    /// (`cena_model::targetid`), a typed command's tag taken for its
+    /// creature; 0 for none. Here for `sorting`'s reasons; off until asked.
+    tagging: Arc<AtomicUsize>,
     /// Whether each finished line is also published as the game sent it
     /// ([`Event::Heard`]), for a script runner. Here for `sorting`'s reasons.
     hearing: Arc<AtomicBool>,
@@ -233,7 +233,7 @@ impl EventPublisher {
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
             sorting: Arc::new(AtomicBool::new(false)),
-            tagging: Arc::new(AtomicBool::new(false)),
+            tagging: Arc::new(AtomicUsize::new(0)),
             hearing: Arc::new(AtomicBool::new(false)),
             hooks: Arc::default(),
             triggers: Arc::default(),
@@ -331,14 +331,14 @@ impl EventPublisher {
         self.sorting.load(Ordering::Relaxed)
     }
 
-    /// Show each creature's tag after its name, or stop.
-    pub(crate) fn tag_creatures(&self, on: bool) {
-        self.tagging.store(on, Ordering::Relaxed);
+    /// Show each creature's tag, `length` long, after its name, or stop.
+    pub(crate) fn tag_creatures(&self, length: Option<usize>) {
+        self.tagging.store(length.unwrap_or(0), Ordering::Relaxed);
     }
 
-    /// Whether each creature's tag is shown after its name.
-    pub(crate) fn tags_creatures(&self) -> bool {
-        self.tagging.load(Ordering::Relaxed)
+    /// How long each creature's tag shown after its name is, when shown.
+    pub(crate) fn tags_creatures(&self) -> Option<usize> {
+        Some(self.tagging.load(Ordering::Relaxed)).filter(|length| *length > 0)
     }
 
     /// Answer each line published from now on with `triggers`.

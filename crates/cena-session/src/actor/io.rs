@@ -109,17 +109,10 @@ impl<S: ByteSource> SessionActor<S> {
                 if envelope.reply.is_closed() {
                     return None;
                 }
-                // A creature's tag the player typed, `kill 7QK`, as the
-                // game's own target for it (`cena_model::targetid`).
-                if envelope.origin == crate::command::Origin::Manual && self.events.tags_creatures()
-                {
-                    let here = self.state.room.creatures.iter();
-                    if let Some(line) = cena_model::targetid::resolve(
-                        &envelope.line,
-                        here.filter_map(|item| item.id.parse().ok()),
-                    ) {
-                        envelope.line = line;
-                    }
+                // A creature's tag the player typed, `kill 7QK` (`line.rs`).
+                if let Some(answered) = self.retarget(&mut envelope) {
+                    let _ = envelope.reply.send(answered);
+                    return None;
                 }
                 // A browser may still be displaying a prior connection. Check
                 // before the typed-quit path, which bypasses the queue's fence.

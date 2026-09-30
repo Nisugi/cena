@@ -524,7 +524,7 @@ fn hunt(ui: &mut egui::Ui, hunt: Option<&cena_ui::HuntView>) {
 fn room_list(
     widget: &Widget,
     snapshot: Option<&Snapshot>,
-    tags: bool,
+    tags: Option<usize>,
 ) -> Option<Vec<Vec<StyledRun>>> {
     let snapshot = snapshot?;
     let room = &snapshot.state.room;
@@ -554,7 +554,7 @@ fn room_list(
     match widget {
         Widget::Creatures => things(&targets, (CREATURE, tags)),
         Widget::Npcs => things(&npcs, (CREATURE, tags)),
-        Widget::Objects => things(&room.objects, (OBJECT, false)),
+        Widget::Objects => things(&room.objects, (OBJECT, None)),
         _ => room.saw_players().then(|| {
             room.players
                 .iter()

@@ -77,7 +77,7 @@ pub(super) fn room(
     ui: &mut egui::Ui,
     snapshot: Option<&Snapshot>,
     parts: RoomParts,
-    (own, tags): (bool, bool),
+    (own, tags): (bool, Option<usize>),
 ) -> Option<super::Clicked> {
     let Some(snapshot) = snapshot else {
         ui.weak("Room unknown");
@@ -129,13 +129,7 @@ pub(super) fn room(
     }
     if parts.apart && seen.is_some() {
         if parts.objects {
-            listed(
-                &mut said,
-                ui,
-                "You also see",
-                &room.objects,
-                (OBJECT, false),
-            );
+            listed(&mut said, ui, "You also see", &room.objects, (OBJECT, None));
         }
         if parts.creatures {
             listed(
@@ -202,15 +196,18 @@ pub(super) fn player_runs(snapshot: &Snapshot, player: &RoomItem) -> Vec<StyledR
 /// A creature or an object in the room, in `color`, a link to it, its
 /// tag after it when `tag` (`.targetid`), and what it is doing when the
 /// game says (`dead`, `lying down`).
-pub(super) fn item_runs(item: &RoomItem, (color, tag): (Color32, bool)) -> Vec<StyledRun> {
+pub(super) fn item_runs(item: &RoomItem, (color, tag): (Color32, Option<usize>)) -> Vec<StyledRun> {
     let mut runs = vec![StyledRun {
         text: item.text.clone(),
         color: Some(colour(color)),
         link: Some(object(item)),
         ..StyledRun::default()
     }];
-    if let Some(id) = item.id.parse().ok().filter(|_| tag) {
-        runs.push(plain(&format!(" ({})", cena_session::targetid::tag(id))));
+    if let (Some(id), Some(length)) = (item.id.parse().ok(), tag) {
+        runs.push(plain(&format!(
+            " ({})",
+            cena_session::targetid::tag(id, length)
+        )));
     }
     if let Some(status) = &item.status {
         runs.push(plain(&format!(" ({status})")));
@@ -266,9 +263,12 @@ fn bare(title: &str) -> &str {
 
 /// `runs` with each creature's tag after its name, when `tags`
 /// (`.targetid`).
-fn tagged(runs: &cena_session::Runs, tags: bool) -> std::borrow::Cow<'_, cena_session::Runs> {
+fn tagged(
+    runs: &cena_session::Runs,
+    tags: Option<usize>,
+) -> std::borrow::Cow<'_, cena_session::Runs> {
     let line = cena_session::Line::new("", runs.clone());
-    match cena_session::targetid::tagged(&line).filter(|_| tags) {
+    match tags.and_then(|length| cena_session::targetid::tagged(&line, length)) {
         Some(line) => std::borrow::Cow::Owned(line.runs),
         None => std::borrow::Cow::Borrowed(runs),
     }
@@ -312,7 +312,7 @@ fn listed(
     ui: &mut egui::Ui,
     label: &str,
     items: &[RoomItem],
-    look: (Color32, bool),
+    look: (Color32, Option<usize>),
 ) {
     if items.is_empty() {
         return;
@@ -399,7 +399,7 @@ mod tests {
         let mut harness = Harness::builder()
             .with_size((420.0, 260.0))
             .build_ui(move |ui| {
-                let _ = room(ui, Some(&snapshot), parts, (true, false));
+                let _ = room(ui, Some(&snapshot), parts, (true, None));
             });
         harness.run();
         harness
@@ -498,12 +498,12 @@ mod tests {
         let mut harness = Harness::builder()
             .with_size((420.0, 260.0))
             .build_ui(move |ui| {
-                let _ = room(ui, Some(&snapshot), parts, (true, true));
+                let _ = room(ui, Some(&snapshot), parts, (true, Some(3)));
             });
         harness.run();
         let tagged = format!(
             "Creatures: a tree hawk-eagle ({})",
-            cena_session::targetid::tag(17)
+            cena_session::targetid::tag(17, 3)
         );
         assert!(harness.query_by_label(&tagged).is_some(), "{tagged}");
         assert!(
@@ -529,7 +529,7 @@ mod tests {
             };
             let mut harness = Harness::builder().with_size((420.0, 260.0)).build_ui_state(
                 move |ui, clicked: &mut Option<crate::widget::Clicked>| {
-                    if let Some(now) = room(ui, Some(&snapshot), parts, (own, false)) {
+                    if let Some(now) = room(ui, Some(&snapshot), parts, (own, None)) {
                         *clicked = Some(now);
                     }
                 },
@@ -573,7 +573,7 @@ mod tests {
             .with_size((420.0, 220.0))
             .wgpu()
             .build_ui(move |ui| {
-                let _ = room(ui, Some(&snapshot), parts, (true, false));
+                let _ = room(ui, Some(&snapshot), parts, (true, None));
             });
         harness.run();
         harness.snapshot(name);
