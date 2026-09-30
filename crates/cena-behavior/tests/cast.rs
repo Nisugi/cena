@@ -38,10 +38,12 @@ fn incant_alone_prepare_and_cast_at_a_target_release_another_first() {
     assert_eq!(at.lines(&state), ["prepare 401", "cast bob"]);
     state.apply(&Frame::Spell {
         text: "Minor Sanctuary".to_owned(),
+        link: None,
     });
     assert_eq!(alone.lines(&state), ["release", "incant 401 3"]);
     state.apply(&Frame::Spell {
         text: "None".to_owned(),
+        link: None,
     });
     assert_eq!(alone.lines(&state), ["incant 401 3"]);
 }

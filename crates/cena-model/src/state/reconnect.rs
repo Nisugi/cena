@@ -152,6 +152,7 @@ impl GameState {
             maneuvers,
             cast_time_ends,
             prepared,
+            prepared_id,
             prompt,
             left_hand,
             right_hand,
@@ -334,6 +335,7 @@ impl GameState {
         *cast_time_ends = None;
         // The prepared spell goes with the cast: the burst restates `<spell>`.
         *prepared = None;
+        *prepared_id = None;
 
         // The hands. Nothing empties them because a socket dropped, and the
         // burst sends real contents -- `<left exist=...>plain gift`,

@@ -32,11 +32,18 @@ pub enum Frame {
         /// stripped.
         text: String,
     },
-    /// `<spell>` -- the currently prepared spell.
+    /// `<spell>` -- the currently prepared spell. A spell prepared comes
+    /// as an object, `<spell exist='spell'>Tangleweed</spell>`, and none as
+    /// `<spell>None</spell>`: MEASURED in the author's Lich logs,
+    /// `E:\Gemstone\dev\lich-5\logs`, 2026-09-29, every one of the first
+    /// kind carrying `exist='spell'` (1,948 of Tangleweed alone) and 2,300 of
+    /// the second none.
     Spell {
         /// The body as display text: nested markup removed, entity-decoded,
         /// control characters stripped.
         text: String,
+        /// As a hand's: from `exist=`, so the spell hand is a link, `#spell`.
+        link: Option<Link>,
     },
     /// `<left exist= noun=>` -- left hand contents.
     LeftHand {

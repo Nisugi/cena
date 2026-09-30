@@ -50,6 +50,7 @@ fn original_and_told() -> (GameState, GameState, String) {
             "<component id='room players'>Also here: <a exist=\"-73\" noun=\"Ashryn\">Ashryn</a>.</component>
 ",
             "<dialogData id='injuries'><image id='leftArm' name='Scar2'/><image id='leftArm' name='Injury1'/><image id='head' name='Injury2'/><image id='nsys' name='Nsys2'/></dialogData>\n",
+            "<spell exist='spell'>Tangleweed</spell>\n",
             "<prompt time=\"1790000000\">&gt;</prompt>\n",
         ),
         &mut original,
@@ -122,8 +123,12 @@ fn the_indicators_spell_hands_and_injuries() {
     for id in INDICATORS {
         assert_eq!(told.status.get(id), original.status.get(id), "{id}");
     }
-    assert!(original.prepared.is_some());
+    assert_eq!(original.prepared.as_deref(), Some("Tangleweed"));
     assert_eq!(told.prepared, original.prepared);
+    // The spell hand an object, `#spell`, as the game sends it (the
+    // author, 2026-09-29: *"spell hand is a link as well"*).
+    assert_eq!(original.prepared_id.as_deref(), Some("spell"));
+    assert_eq!(told.prepared_id, original.prepared_id, "{login}");
     assert_eq!(
         (&told.left_hand, &told.right_hand),
         (&original.left_hand, &original.right_hand),
@@ -134,6 +139,18 @@ fn the_indicators_spell_hands_and_injuries() {
     // The nerves as the window gives them: a rank, its kind unsaid.
     assert_eq!(original.character.nerves.rank, 2);
     assert_eq!(told.character.nerves.rank, 2);
+}
+
+/// No spell prepared, the game's `<spell>None</spell>` carries no id, and
+/// the one kept from the spell before goes.
+#[test]
+fn no_spell_prepared_is_no_object() {
+    let mut state = GameState::default();
+    read("<spell exist='spell'>Breeze</spell>\n", &mut state);
+    assert_eq!(state.prepared_id.as_deref(), Some("spell"));
+    read("<spell>None</spell>\n", &mut state);
+    assert_eq!(state.prepared.as_deref(), Some("None"));
+    assert_eq!(state.prepared_id, None);
 }
 
 #[test]

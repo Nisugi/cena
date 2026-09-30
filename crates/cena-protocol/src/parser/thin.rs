@@ -48,6 +48,7 @@ pub(super) fn thin_frame(name: &str, tag: &str, dialog: Option<&str>) -> Frame {
     match name {
         "spell" => Frame::Spell {
             text: inner_display_text(tag),
+            link: text::link_from_tag(tag),
         },
         "left" => Frame::LeftHand {
             item: inner_display_text(tag),

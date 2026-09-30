@@ -188,6 +188,10 @@ pub struct GameState {
     /// `<spell>`: the spell prepared, verbatim, `None` from the game when
     /// nothing is (Lich's `checkprep`). `None` here is *not told*.
     pub prepared: Option<String>,
+    /// `<spell exist=>`: the prepared spell as an object, `spell`, which a
+    /// command targets as `#spell`; `None` when the game sent no id, as it
+    /// does with no spell prepared.
+    pub prepared_id: Option<String>,
     /// Who is grouped with you, by `exist` id.
     pub group: Group,
     /// The stow and ready lists: which container holds what, and which
@@ -434,7 +438,10 @@ impl GameState {
             Frame::ProgressBar(bar) => self.apply_progress_bar(bar),
             // A cast's hard roundtime, which is not the action roundtime.
             Frame::CastTime { value } => self.cast_time_ends = Some(*value),
-            Frame::Spell { text } => self.prepared = Some(text.trim().to_owned()),
+            Frame::Spell { text, link } => {
+                self.prepared = Some(text.trim().to_owned());
+                self.prepared_id = hands::object_id(link.as_ref());
+            }
             // The `combat` dialog's target dropdown. MEASURED the noisiest
             // widget on the wire and read by nothing until 2026-09-21; see
             // `targeting.rs` for why a display widget is a model fact.

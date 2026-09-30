@@ -183,7 +183,13 @@ impl GameState {
             login.push_str(&empty("indicator", &[("id", id), ("visible", visible)]));
         }
         if let Some(spell) = &self.prepared {
-            login.push_str(&element("spell", &[], &escape(spell)));
+            let attrs: Vec<(&str, &str)> = self
+                .prepared_id
+                .as_deref()
+                .map(|id| ("exist", id))
+                .into_iter()
+                .collect();
+            login.push_str(&element("spell", &attrs, &escape(spell)));
         }
         for (tag, hand) in [("left", &self.left_hand), ("right", &self.right_hand)] {
             match hand {

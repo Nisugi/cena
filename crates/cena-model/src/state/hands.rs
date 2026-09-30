@@ -59,6 +59,16 @@ pub enum Hand {
     },
 }
 
+/// The object a hand's link names, by its `exist=`: the spell hand's
+/// `spell`, which a command targets as `#spell`.
+#[must_use]
+pub fn object_id(link: Option<&Link>) -> Option<String> {
+    match link.map(|link| &link.kind) {
+        Some(LinkKind::Exist { id, .. }) => Some(id.clone()),
+        _ => None,
+    }
+}
+
 impl Hand {
     /// Read one `<left>` / `<right>` frame.
     #[must_use]
