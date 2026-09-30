@@ -415,7 +415,7 @@
 //! | [`doll`](crate::doll) | `;doll`: the injury doll's import |
 //! | [`attention`](crate::attention) | a trigger's sound and notification, played once per occurrence across characters |
 //! | [`launcher`](crate::launcher), [`proven`](crate::proven) | the Not launched tab's asks of the binary, and what a login proven `Ready` leaves behind |
-//! | [`general`](crate::general), [`theme_page`](crate::theme_page), [`hunt_pages`](crate::hunt_pages), [`travel_page`](crate::travel_page) | the settings menu's pages over the character's own file (its own theme among them), the hunt profiles and travel's settings |
+//! | [`general`](crate::general), [`theme_page`](crate::theme_page), [`theme_command`](crate::theme_command), [`hunt_pages`](crate::hunt_pages), [`travel_page`](crate::travel_page) | the settings menu's pages over the character's own file (its own theme among them), the hunt profiles and travel's settings |
 //! | [`map_context`](crate::map_context), [`atlas`](crate::atlas) | the one map per process, and its areas laid out for the minimap |
 //! | [`hunt_setup`](crate::hunt_setup) | Despana's hunt setup handler over a session observer |
 //!

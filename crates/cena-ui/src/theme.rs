@@ -14,11 +14,13 @@ mod file;
 mod harmony;
 mod oklch;
 mod shape;
+mod wrayth;
 
 pub use file::{Chosen, Outfit, RecipeFile, Theme, Themes, chosen_for_hydra};
 pub use harmony::{Group, Recipe, Role, Scheme, generate, hue_variants, seed_swatches};
 pub use oklch::{contrast, delta_e, hue_distance};
 pub use shape::{Density, Shape, ShapeFile};
+pub use wrayth::pins_from_wrayth;
 
 /// A colour: red, green, blue, as a bar's look and the settings pages
 /// already write one.

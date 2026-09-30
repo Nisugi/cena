@@ -320,6 +320,18 @@ On a branch `themes` once the author approves.
 8. **Wrayth's colours.** `<presets>` and `<palette>` of a Wrayth settings file, which the
    trigger importer names and leaves (`plan/45` line 530), read into a theme's pins.
 
+   **BUILT 2026-09-30**, with the `;theme` command (§6 item 4, Claude's call taken): `theme
+   list` (every theme, and the one Hydra wears), `theme mine <name> | off` and `theme accent
+   <#rrggbb> | off` (the character's own, through the *Theme* page's writer), and `theme
+   import <file> [as <name>]` (`crates/cena/src/theme_command.rs`). The trigger importer
+   reads the `<presets>` through the `<palette>` (`wrayth::presets`, `skin` left out, what
+   cannot be read noted); `cena_ui::theme::pins_from_wrayth` pins the tokens that mean the
+   same (`roomName`, `bold` and `monsterbold`, `speech`, `whisper`, `thought`, `link`), and
+   notes a preset Hydra has no token for; the theme is written to the `themes` folder over
+   Despana, named for the file unless said, never over a file already there or a built-in's
+   name. Hydra's own theme is the *Window* page's alone, that file's one writer, so
+   `;theme` does not set it.
+
 Steps 0 to 3 are the theme; 4 to 8 can come in any order after.
 
 ## 6. Open

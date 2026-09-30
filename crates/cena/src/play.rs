@@ -309,6 +309,12 @@ impl Table {
         let kept = crate::general::Kept::of(&self.dir, &login);
         sorter::open(&hosted.handle, &commands, kept.clone());
         crate::targetid::open(&hosted.handle, &commands, kept);
+        crate::theme_command::open(
+            &hosted.handle,
+            &commands,
+            self.dir.clone(),
+            Some(login.clone()),
+        );
         // Following before the first read, so no change falls between.
         let following = self.changes.follow();
         triggers::open(&hosted.handle, &self.dir, &character);

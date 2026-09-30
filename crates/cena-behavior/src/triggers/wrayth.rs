@@ -200,6 +200,57 @@ impl Import {
     }
 }
 
+/// The `<presets>` of Wrayth's settings file `xml`, each `<p id color>`'s
+/// colour as `#rrggbb`, its `@N` palette entry resolved; and a note for
+/// each colour that cannot be read. `skin`, and a preset with no colour,
+/// are left out (`plan/57` step 8: the GUI's theme reads them as pins).
+#[must_use]
+pub fn presets(xml: &str) -> (BTreeMap<String, String>, Vec<String>) {
+    let xml = &uncommented(xml);
+    let palette: BTreeMap<String, String> = section(xml, "palette")
+        .map(|(_, entries)| entries)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|mut entry| Some((entry.remove("id")?, entry.remove("color")?)))
+        .collect();
+    let mut out = BTreeMap::new();
+    let mut notes = Vec::new();
+    for entry in section(xml, "presets")
+        .map(|(_, entries)| entries)
+        .unwrap_or_default()
+    {
+        let Some(id) = entry.get("id").filter(|id| !id.is_empty()) else {
+            continue;
+        };
+        let Some(written) = entry.get("color").map(|c| c.trim()) else {
+            continue;
+        };
+        if written.is_empty() || written.eq_ignore_ascii_case("skin") {
+            continue;
+        }
+        let colour = if let Some(index) = written.strip_prefix('@') {
+            let Some(colour) = palette.get(index) else {
+                notes.push(format!(
+                    "the preset `{id}`'s colour {written} is not in the file's palette, and is left out"
+                ));
+                continue;
+            };
+            colour.as_str()
+        } else {
+            written
+        };
+        let hex = colour.strip_prefix('#').unwrap_or_default();
+        if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            notes.push(format!(
+                "the preset `{id}`'s colour `{colour}` is not #rrggbb, and is left out"
+            ));
+            continue;
+        }
+        out.insert(id.clone(), colour.to_ascii_lowercase());
+    }
+    (out, notes)
+}
+
 /// `words` as a name no trigger in `taken` has: the words, then `(2)`, `(3)`.
 fn unique(words: &str, taken: &[(String, Table)]) -> String {
     let used = |name: &str| taken.iter().any(|(other, _)| other == name);
