@@ -453,6 +453,28 @@ fn a_url_with_no_query_is_refused() {
     assert!(parse_launch("https://www.play.net/play/home.asp", prime()).is_err());
 }
 
+/// A `%` followed by a character of three bytes is not an escape,
+/// and is not a panic either: the two bytes after it were sliced as text,
+/// on a boundary that need not be one (the review of 2026-09-29).
+#[test]
+fn a_percent_before_a_multibyte_character_is_left_as_it_is() {
+    let launch = parse_launch(
+        &prime_launch("host=storm.gs4.game.play.net&port=10024&key=a%\u{20ac}bc"),
+        prime(),
+    );
+    assert_eq!(
+        launch.map(|launch| launch.key).ok().as_deref(),
+        Some("a%\u{20ac}bc")
+    );
+    assert!(
+        parse_launch(
+            &prime_launch("host=storm.gs4.game.play.net&port=10024&key=%\u{20ac}"),
+            prime(),
+        )
+        .is_ok()
+    );
+}
+
 #[test]
 fn a_percent_encoded_host_still_has_to_match() {
     // Decoding happens BEFORE the comparison, so an encoded spelling of the

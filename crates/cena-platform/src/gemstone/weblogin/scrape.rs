@@ -279,7 +279,11 @@ fn percent_decode(value: &str) -> String {
                 index += 1;
             }
             b'%' if index + 2 < bytes.len() => {
-                if let Ok(byte) = u8::from_str_radix(&value[index + 1..index + 3], 16) {
+                // The two bytes after `%`, as bytes: sliced as a `str`, a
+                // multibyte character there panicked on its boundary (the
+                // review of 2026-09-29); it is not hex either way.
+                let hex = std::str::from_utf8(&bytes[index + 1..index + 3]);
+                if let Some(byte) = hex.ok().and_then(|hex| u8::from_str_radix(hex, 16).ok()) {
                     out.push(byte);
                     index += 3;
                 } else {
