@@ -183,6 +183,18 @@ fn session_id(id: &str) -> Option<SessionId> {
 ///
 /// A named session must be a canonical decimal id; anything else fails
 /// authentication rather than being read as "none named".
+/// Whether `offered` is the pairing token, compared fixed-width so a wrong
+/// token takes as long as any other: the one compare for the WebSocket and
+/// `/hunt/setup`, which had its own `!=` (the review of 2026-09-29).
+pub(crate) fn same_token(offered: &str, expected: &str) -> bool {
+    offered.len() == expected.len()
+        && offered
+            .bytes()
+            .zip(expected.bytes())
+            .fold(0_u8, |difference, (a, b)| difference | (a ^ b))
+            == 0
+}
+
 fn authenticate(text: &str, expected: &str) -> Option<Asked> {
     let Ok(ClientMessage::Authenticate {
         version,
@@ -192,15 +204,7 @@ fn authenticate(text: &str, expected: &str) -> Option<Asked> {
     else {
         return None;
     };
-    // Fixed-width comparison avoids revealing matching token prefixes.
-    let matched = version == WIRE_VERSION
-        && token.len() == expected.len()
-        && token
-            .bytes()
-            .zip(expected.bytes())
-            .fold(0_u8, |difference, (a, b)| difference | (a ^ b))
-            == 0;
-    if !matched {
+    if version != WIRE_VERSION || !same_token(&token, expected) {
         return None;
     }
     match session {
@@ -344,7 +348,7 @@ fn receipt(
     }
 }
 
-/// The receipt for what `send_manual_at` answered.
+/// The receipt for what `send_typed_at` answered.
 ///
 /// **Every claimed `;` line used to come back as "Bytes sent and subsequent
 /// server output observed"**, and neither half was true. The session answered

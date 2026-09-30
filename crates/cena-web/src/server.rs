@@ -233,8 +233,16 @@ impl Sessions {
         }
         let _ = self.shared.changed.send(());
         // The pump's ending is this session's own: an owner gone ends this
-        // pump, and its last view stays for any viewer still looking.
-        tokio::spawn(pump(observer, viewed));
+        // pump, and its last view stays for any viewer still looking. One
+        // that ends on an error says so where the binary's progress goes,
+        // rather than leaving a page frozen at its last view with no word
+        // (the review of 2026-09-29).
+        tokio::spawn(async move {
+            let name = viewed.name.clone();
+            if let Err(why) = pump(observer, viewed).await {
+                eprintln!("[{name}] Despana stopped following this character: {why}");
+            }
+        });
     }
 
     /// Answer the hub page's add and remove requests with `control`

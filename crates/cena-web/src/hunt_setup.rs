@@ -49,7 +49,9 @@ pub(crate) async fn configure(
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer "));
     let origin = headers.get("origin").and_then(|h| h.to_str().ok());
-    if token != Some(shared.token.as_str()) || origin != Some(shared.origin.as_str()) {
+    if !token.is_some_and(|token| crate::socket::same_token(token, &shared.token))
+        || origin != Some(shared.origin.as_str())
+    {
         return (
             StatusCode::FORBIDDEN,
             "Pairing and same-origin authorization required",
