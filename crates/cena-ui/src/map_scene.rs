@@ -25,9 +25,21 @@ pub enum MinimapView {
         /// The way there as travel would walk it, the room it is in first
         /// and the target last; empty with no target, or no way.
         route: Vec<u32>,
+        /// The maps next door, each placed beside this one where a walk
+        /// joins them (`plan/53` §8b).
+        next_door: Vec<NextDoor>,
     },
     /// Nothing to draw yet, and why, to say where the map would be.
     Waiting(String),
+}
+
+/// A map next door: its sheet, and where its cells sit on this one's.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NextDoor {
+    /// The map, laid out.
+    pub scene: Arc<MapScene>,
+    /// Added to each of its cells and points to draw it beside this one.
+    pub offset: (f32, f32),
 }
 
 /// One laid-out area.

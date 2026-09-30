@@ -40,7 +40,14 @@ pub(crate) struct Atlas {
     /// Each area as the engine laid it out, which a place is opened on.
     engines: RwLock<HashMap<String, Arc<cena_map_layout::MapScene>>>,
     /// Each room's own area.
-    area_of: HashMap<u32, String>,
+    pub(super) area_of: HashMap<u32, String>,
+    /// Each area's rooms.
+    pub(super) rooms: std::collections::BTreeMap<String, Vec<RoomId>>,
+    /// Which way each walk goes, for the maps next door; worked out the
+    /// first time they are.
+    pub(super) dirs: std::sync::OnceLock<cena_map_layout::DirectionMap>,
+    /// Each area's walks into the areas next door (`next_door.rs`).
+    pub(super) joins: RwLock<HashMap<String, Vec<(String, super::next_door::Join)>>>,
     /// The areas' names, to count them apart from the places.
     areas: HashSet<String>,
     /// The hidden places of the areas laid out.
@@ -83,6 +90,9 @@ impl Atlas {
             engines: RwLock::default(),
             area_of,
             areas: areas.keys().cloned().collect(),
+            rooms: areas.clone(),
+            dirs: std::sync::OnceLock::new(),
+            joins: RwLock::default(),
             places: RwLock::default(),
             queue: Mutex::new(Queue {
                 rest: areas.keys().cloned().collect(),
@@ -91,6 +101,16 @@ impl Atlas {
             ready: Condvar::new(),
             asked: Condvar::new(),
         });
+        // Which way each walk goes, for the maps next door, worked out off
+        // the window's thread before a character asks.
+        let (ahead, whole) = (Arc::clone(&atlas), Arc::clone(map));
+        let _ = std::thread::Builder::new()
+            .name("atlas-dirs".to_owned())
+            .spawn(move || {
+                ahead
+                    .dirs
+                    .get_or_init(|| cena_map_layout::DirectionMap::build(&whole));
+            });
         let cache = cache_dir(data, sha256);
         forget_other_maps(data, cache.as_deref());
         let placeable = Arc::new(cena_map_layout::regions::placeable_rooms(map));
@@ -149,7 +169,7 @@ impl Atlas {
 
     /// Put the sheet `name` first in the queue, unless it is there already
     /// or being laid out.
-    fn ask(&self, name: &str) {
+    pub(super) fn ask(&self, name: &str) {
         let mut queue = self.queue.lock().unwrap_or_else(PoisonError::into_inner);
         if let Some(at) = queue.rest.iter().position(|a| a == name) {
             queue.rest.remove(at);
@@ -172,7 +192,7 @@ impl Atlas {
         (done, self.areas.len())
     }
 
-    fn laid(&self, area: &str) -> Option<Arc<cena_ui::MapScene>> {
+    pub(super) fn laid(&self, area: &str) -> Option<Arc<cena_ui::MapScene>> {
         self.scenes
             .read()
             .unwrap_or_else(PoisonError::into_inner)

@@ -449,3 +449,7 @@ crates/cena-ui/src/triggers.rs 300
 # is the minimap's areas: a facade over atlas/scene.rs (one area laid out), service.rs
 # (every area at launch, kept) and follow.rs (each character's place): 12 lines, so 100.
 crates/cena/src/atlas.rs 100
+# NEW SPLIT PARENT, 2026-09-29, capped at birth (plan/53 §8). crates/cena-gui/src/widget/minimap.rs
+# is the minimap, its tests moved to widget/minimap/tests.rs when the maps next door took it
+# toward 800: 529 lines, so 600.
+crates/cena-gui/src/widget/minimap.rs 600

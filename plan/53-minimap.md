@@ -737,7 +737,12 @@ tried in the mapper for one small stretch if the join looks wrong.
    place, and has two zooms, 7 pixels a cell outside and 16 in, each back to its default at
    a door, and a quarter-second glide at a door and as it follows you
    (`cena-gui/src/widget/minimap.rs`); the defaults become settings at step 4.
-3. **Hydra**: neighbouring maps joined at the border, and how many out.
+3. **Hydra**: neighbouring maps joined at the border, and how many out. **BUILT 2026-09-29**
+   (`crates/cena/src/atlas/next_door.rs`): each map next door placed by its first compass
+   walk, its room one street step from the other's in the walk's direction, pushed on along
+   it off any room already drawn (up to 12 steps); drawn dimmed, clicked like the map you are
+   on, the route crossing onto it. Crossing into it, the view moves by where it was drawn, so
+   nothing jumps. One map out until the settings page (step 4).
 4. **The settings page** (step 7's, brought forward): both zooms and the areas out.
 
 > **CHANGED 2026-09-29 (the author):** hydra-mapper *"updates a lot"*, so Hydra follows its

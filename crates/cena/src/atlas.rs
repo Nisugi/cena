@@ -2,9 +2,11 @@
 //! areas laid out by hydra-mapper's engine and turned into the plain
 //! [`cena_ui::MapScene`] the window draws ([`scene`]), every area laid out at
 //! launch and kept ([`service`]), each character followed across them
-//! ([`follow`]), and a room of the map said in the story ([`room`]).
+//! ([`follow`]), the maps next door ([`next_door`]), and a room of the map
+//! said in the story ([`room`]).
 
 mod follow;
+mod next_door;
 mod room;
 mod scene;
 mod service;

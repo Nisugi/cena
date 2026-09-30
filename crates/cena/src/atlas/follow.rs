@@ -14,6 +14,10 @@ use cena_ui::MinimapView;
 
 use super::{Atlas, Waiting};
 
+/// How many maps out from the one a character is on are drawn beside it
+/// (`plan/53` §8b's setting, 1 until its page).
+const AREAS_OUT: usize = 1;
+
 /// A character's minimap source: a follower of its own over the one map
 /// and atlas every character shares, routing to the room clicked as
 /// travel would walk it for this character (`walker`).
@@ -28,6 +32,7 @@ pub(crate) fn minimap(map: Arc<Map>, atlas: Arc<Atlas>, walker: WalkerOf) -> cen
             None => MinimapView::Waiting("Where you are is not known yet.".to_owned()),
             Some(room) => match atlas.scene_of(room.0) {
                 Ok(scene) => MinimapView::Here {
+                    next_door: atlas.next_door(&map, &scene.area, AREAS_OUT),
                     scene,
                     room: room.0,
                     target,

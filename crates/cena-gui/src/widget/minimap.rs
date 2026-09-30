@@ -21,7 +21,7 @@
 //! does, and Ctrl+click its number (`room`). A way-in dot stands for the
 //! place behind it.
 
-use cena_ui::{EdgeKind, MapScene, MinimapView, SceneEdge};
+use cena_ui::{EdgeKind, MapScene, MinimapView, NextDoor, SceneEdge};
 
 use super::Clicked;
 use egui::{Color32, FontId, Id, Pos2, Rect, Sense, Shape, Stroke, Vec2, vec2};
@@ -111,13 +111,20 @@ pub(super) fn minimap(
     let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 4.0, BACKGROUND);
-    let (scene, you, target, route) = match view {
+    let (scene, you, target, route, next_door) = match view {
         Some(MinimapView::Here {
             scene,
             room,
             target,
             route,
-        }) => (scene.as_ref(), *room, *target, route.as_slice()),
+            next_door,
+        }) => (
+            scene.as_ref(),
+            *room,
+            *target,
+            route.as_slice(),
+            next_door.as_slice(),
+        ),
         Some(MinimapView::Waiting(why)) => {
             waiting(&painter, rect, why);
             return None;
@@ -131,7 +138,15 @@ pub(super) fn minimap(
         waiting(&painter, rect, "You are not on this area's map.");
         return None;
     };
-    let camera = aimed(ui, id, &response, rect, scene, here_cell, inside.is_some());
+    let camera = aimed(
+        ui,
+        id,
+        &response,
+        rect,
+        (scene, next_door),
+        here_cell,
+        inside.is_some(),
+    );
     let now = ui.input(|i| i.time);
     let (centre, zoom) = camera.drawn(now);
     if camera.glide.is_some_and(|(.., start)| now - start < GLIDE) {
@@ -139,6 +154,19 @@ pub(super) fn minimap(
     }
 
     let to_screen = |p: Vec2| rect.center() + (p - centre) * zoom;
+    // The maps next door first, dimmed, under this one.
+    let mut layers: Vec<(&MapScene, Vec2)> = vec![(scene, Vec2::ZERO)];
+    layers.extend(
+        next_door
+            .iter()
+            .map(|n| (n.scene.as_ref(), vec2(n.offset.0, n.offset.1))),
+    );
+    let square = (zoom * 0.7).clamp(3.0, 10.0);
+    for &(next, offset) in &layers[1..] {
+        let moved = |p: Vec2| to_screen(p + offset);
+        draw_lines(&painter, next, &moved, zoom, &|_| FADED);
+        draw_rooms(&painter, rect, next, &moved, zoom, &|_| FADED);
+    }
     // In a place, the rest of the sheet dimmed; outdoors, everything.
     let fade = |building: Option<usize>| {
         if inside.is_none() || building == inside {
@@ -147,26 +175,10 @@ pub(super) fn minimap(
             FADED
         }
     };
-    for edge in &scene.edges {
-        draw_edge(&painter, edge, &to_screen, zoom, fade(edge.building));
-    }
-    draw_route(&painter, scene, route, &to_screen);
-    let square = (zoom * 0.7).clamp(3.0, 10.0);
-    for room in &scene.rooms {
-        let at = to_screen(cell(room.cell));
-        if rect.expand(square).contains(at) {
-            let f = fade(room.building);
-            painter.rect(
-                Rect::from_center_size(at, Vec2::splat(square)),
-                1.4,
-                ROOM_FILL.gamma_multiply(f),
-                Stroke::new(1.0, ROOM_STROKE.gamma_multiply(f)),
-                egui::StrokeKind::Inside,
-            );
-        }
-    }
-    draw_doors(&painter, scene, &to_screen, zoom, fade(None));
-    if let Some(at) = target.and_then(|t| spot(scene, t)) {
+    draw_lines(&painter, scene, &to_screen, zoom, &fade);
+    draw_route(&painter, &layers, route, &to_screen);
+    draw_rooms(&painter, rect, scene, &to_screen, zoom, &fade);
+    if let Some(at) = target.and_then(|t| spot(&layers, t)) {
         painter.circle_stroke(to_screen(at), square * 0.9 + 3.0, Stroke::new(2.0, ROUTE));
     }
     painter.circle_stroke(
@@ -181,8 +193,47 @@ pub(super) fn minimap(
     let reach = (square * 0.9 + 3.0) / zoom;
     let pointed = response
         .interact_pointer_pos()
-        .and_then(|at| hit(scene, from_screen(at), reach, &|_| true, true));
+        .and_then(|at| hit(&layers, from_screen(at), reach));
     clicked(ui, &response, pointed, target)
+}
+
+/// One sheet's lines, each as dim as `fade` says for the building it is in.
+fn draw_lines(
+    painter: &egui::Painter,
+    scene: &MapScene,
+    to_screen: &dyn Fn(Vec2) -> Pos2,
+    zoom: f32,
+    fade: &dyn Fn(Option<usize>) -> f32,
+) {
+    for edge in &scene.edges {
+        draw_edge(painter, edge, to_screen, zoom, fade(edge.building));
+    }
+}
+
+/// One sheet's rooms and way-in dots, over its lines and any route.
+fn draw_rooms(
+    painter: &egui::Painter,
+    rect: Rect,
+    scene: &MapScene,
+    to_screen: &dyn Fn(Vec2) -> Pos2,
+    zoom: f32,
+    fade: &dyn Fn(Option<usize>) -> f32,
+) {
+    let square = (zoom * 0.7).clamp(3.0, 10.0);
+    for room in &scene.rooms {
+        let at = to_screen(cell(room.cell));
+        if rect.expand(square).contains(at) {
+            let f = fade(room.building);
+            painter.rect(
+                Rect::from_center_size(at, Vec2::splat(square)),
+                1.4,
+                ROOM_FILL.gamma_multiply(f),
+                Stroke::new(1.0, ROOM_STROKE.gamma_multiply(f)),
+                egui::StrokeKind::Inside,
+            );
+        }
+    }
+    draw_doors(painter, scene, to_screen, zoom, fade(None));
 }
 
 /// The camera for this frame, kept for the next: a new area recentres at
@@ -193,7 +244,7 @@ fn aimed(
     id: Id,
     response: &egui::Response,
     rect: Rect,
-    scene: &MapScene,
+    (scene, next_door): (&MapScene, &[NextDoor]),
     here: Vec2,
     inside: bool,
 ) -> Camera {
@@ -201,7 +252,9 @@ fn aimed(
     let default = if inside { ZOOM_INSIDE } else { ZOOM };
     // A place is opened on its area's sheet: its sheet is named for the
     // area and the place (`area@room`), and is the same area.
-    let area = egui::util::hash(scene.area.split('@').next().unwrap_or(&scene.area));
+    let area_of =
+        |scene: &MapScene| egui::util::hash(scene.area.split('@').next().unwrap_or(&scene.area));
+    let area = area_of(scene);
     let fresh = Camera {
         centre: here,
         zoom: default,
@@ -211,9 +264,25 @@ fn aimed(
         glide: None,
     };
     let mut camera = ui.data(|d| d.get_temp::<Camera>(id)).unwrap_or(fresh);
+    // Into a map that was drawn next door: the view moves by where that
+    // map was drawn, so nothing jumps.
+    let crossed = next_door
+        .iter()
+        .find(|n| area_of(&n.scene) == camera.area)
+        .map(|n| vec2(n.offset.0, n.offset.1));
     if camera.area != area {
-        camera = fresh;
-    } else if camera.inside != inside {
+        match crossed {
+            Some(shift) => {
+                camera.area = area;
+                camera.centre += shift;
+                camera.glide = camera
+                    .glide
+                    .map(|(from, zoom, start)| (from + shift, zoom, start));
+            }
+            None => camera = fresh,
+        }
+    }
+    if camera.inside != inside {
         let was = camera.drawn(now);
         camera = Camera {
             glide: None,
@@ -261,60 +330,62 @@ fn clicked(
     }
 }
 
-/// The room drawn nearest `at` within `reach` cells, or the room behind the
-/// way-in dot there: only what is shown, and dots only outdoors.
-fn hit(
-    scene: &MapScene,
-    at: Vec2,
-    reach: f32,
-    shown: &dyn Fn(Option<usize>) -> bool,
-    outdoors: bool,
-) -> Option<u32> {
-    let rooms = scene
-        .rooms
+/// The room drawn nearest `at` within `reach` cells on any of `layers`
+/// (each sheet and where it is drawn), or the room behind the way-in dot
+/// there.
+fn hit(layers: &[(&MapScene, Vec2)], at: Vec2, reach: f32) -> Option<u32> {
+    layers
         .iter()
-        .filter(|r| shown(r.building))
-        .map(|r| (r.id, cell(r.cell)));
-    let doors = scene
-        .doors
-        .iter()
-        .filter(|_| outdoors)
-        .map(|d| (d.inside, vec2(d.at.0, d.at.1)));
-    rooms
-        .chain(doors)
+        .flat_map(|&(scene, offset)| {
+            let rooms = scene
+                .rooms
+                .iter()
+                .map(move |r| (r.id, cell(r.cell) + offset));
+            let doors = scene
+                .doors
+                .iter()
+                .map(move |d| (d.inside, vec2(d.at.0, d.at.1) + offset));
+            rooms.chain(doors)
+        })
         .map(|(id, p)| (id, (p - at).length()))
         .filter(|&(_, d)| d <= reach)
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(id, _)| id)
 }
 
-/// Where `room` is drawn: its cell, or its first way-in dot.
-fn spot(scene: &MapScene, room: u32) -> Option<Vec2> {
-    whereabouts(scene, room).map(|(at, _)| at)
+/// Where `room` is drawn on the first of `layers` to draw it: its cell, or
+/// its first way-in dot.
+fn spot(layers: &[(&MapScene, Vec2)], room: u32) -> Option<Vec2> {
+    layers
+        .iter()
+        .find_map(|&(scene, offset)| whereabouts(scene, room).map(|(at, _)| at + offset))
 }
 
 /// The route over the rooms of it this sheet draws, each step along its
 /// own line where the sheet has one (`atlas-view.mjs:247-252`).
 fn draw_route(
     painter: &egui::Painter,
-    scene: &MapScene,
+    layers: &[(&MapScene, Vec2)],
     route: &[u32],
     to_screen: &dyn Fn(Vec2) -> Pos2,
 ) {
     for step in route.windows(2) {
         let (a, b) = (step[0], step[1]);
-        let along = scene.edges.iter().find_map(|e| {
-            if (e.a, e.b) == (a, b) {
-                Some(e.path.clone())
-            } else if (e.a, e.b) == (b, a) {
-                Some(e.path.iter().rev().copied().collect())
-            } else {
-                None
-            }
+        let along = layers.iter().find_map(|&(scene, offset)| {
+            scene.edges.iter().find_map(|e| {
+                let path = e.path.iter().map(|&(x, y)| vec2(x, y) + offset);
+                if (e.a, e.b) == (a, b) {
+                    Some(path.collect::<Vec<_>>())
+                } else if (e.a, e.b) == (b, a) {
+                    Some(path.rev().collect())
+                } else {
+                    None
+                }
+            })
         });
         let points: Vec<Pos2> = match along {
-            Some(path) => path.iter().map(|&(x, y)| to_screen(vec2(x, y))).collect(),
-            None => match (spot(scene, a), spot(scene, b)) {
+            Some(path) => path.into_iter().map(to_screen).collect(),
+            None => match (spot(layers, a), spot(layers, b)) {
                 (Some(from), Some(to)) => vec![to_screen(from), to_screen(to)],
                 _ => continue,
             },
@@ -455,308 +526,4 @@ fn cell((x, y): (i32, i32)) -> Vec2 {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use cena_ui::{SceneDoor, SceneRoom};
-    use egui_kittest::Harness;
-
-    use super::*;
-
-    /// A town of four street rooms, a shop off the middle one, a dock by
-    /// a line with no direction, a far link drawn as marks, and a named
-    /// place's way in.
-    ///
-    /// ```text
-    /// 1 --- 2 --- 3        (you at 2)
-    ///       |\
-    ///       4  5 shop      6 dock, by `go dock` from 3; 7 far, marks from 1
-    /// ```
-    fn town() -> MapScene {
-        let room = |id: u32, cell: (i32, i32), building: Option<usize>| SceneRoom {
-            id,
-            cell,
-            title: format!("[Room {id}]"),
-            building,
-        };
-        let line = |a: u32, b: u32, kind: EdgeKind, path: &[(f32, f32)], building| SceneEdge {
-            a,
-            b,
-            kind,
-            path: path.to_vec(),
-            label: None,
-            building,
-        };
-        MapScene {
-            area: "test-town".to_owned(),
-            rooms: vec![
-                room(1, (0, 0), None),
-                room(2, (4, 0), None),
-                room(3, (8, 0), None),
-                room(4, (4, 4), None),
-                room(5, (5, 1), Some(0)),
-                room(6, (8, 4), None),
-                room(7, (30, 0), None),
-            ],
-            edges: vec![
-                line(1, 2, EdgeKind::Directional, &[(0.0, 0.0), (4.0, 0.0)], None),
-                line(2, 3, EdgeKind::Directional, &[(4.0, 0.0), (8.0, 0.0)], None),
-                line(2, 4, EdgeKind::Directional, &[(4.0, 0.0), (4.0, 4.0)], None),
-                line(2, 5, EdgeKind::Connector, &[(4.0, 0.0), (5.0, 1.0)], None),
-                line(
-                    3,
-                    6,
-                    EdgeKind::Connector,
-                    &[(8.0, 0.0), (9.0, 2.0), (8.0, 4.0)],
-                    None,
-                ),
-                line(1, 7, EdgeKind::Stub, &[(0.0, 0.0), (30.0, 0.0)], None),
-            ],
-            doors: vec![SceneDoor {
-                street: 4,
-                inside: 40,
-                at: (4.0, 4.45),
-                place: "Angargreft".to_owned(),
-                named: true,
-            }],
-            buildings: vec!["Shop".to_owned()],
-            min: (0, 0),
-            max: (30, 4),
-        }
-    }
-
-    fn drawn(view: MinimapView) -> Harness<'static, ()> {
-        Harness::builder()
-            .with_size((260.0, 200.0))
-            .build_ui(move |ui| {
-                minimap(ui, Some(&view), Id::new("minimap"), true);
-            })
-    }
-
-    /// You in the town at `room`, routed to `target` along `route`.
-    fn here(room: u32, target: Option<u32>, route: &[u32]) -> MinimapView {
-        MinimapView::Here {
-            scene: Arc::new(town()),
-            room,
-            target,
-            route: route.to_vec(),
-        }
-    }
-
-    /// The town, you at its middle room.
-    #[test]
-    fn the_minimap_draws_the_area_and_you() {
-        let mut harness = drawn(here(2, None, &[]));
-        harness.run();
-        harness.snapshot("minimap");
-    }
-
-    /// In the shop, the shop, and the rest of the town dimmed round it,
-    /// zoomed in.
-    #[test]
-    fn in_a_place_the_rest_is_dimmed() {
-        let mut harness = drawn(here(5, None, &[]));
-        harness.run();
-        harness.snapshot("minimap_inside");
-    }
-
-    /// Into the shop, the camera glides to the inside zoom; back out, to
-    /// the outside one, whatever the wheel did in between.
-    #[test]
-    fn a_door_crossed_zooms_to_that_sides_default() {
-        let view = Arc::new(std::sync::Mutex::new(here(2, None, &[])));
-        let shown = Arc::clone(&view);
-        let mut harness = Harness::builder()
-            .with_size((260.0, 200.0))
-            .build_ui(move |ui| {
-                let view = shown.lock().expect("unpoisoned").clone();
-                minimap(ui, Some(&view), Id::new("minimap"), true);
-            });
-        let camera = |harness: &Harness<'_, ()>| {
-            harness
-                .ctx
-                .data(|d| d.get_temp::<Camera>(Id::new("minimap")))
-                .expect("kept")
-        };
-        harness.run();
-        assert!((camera(&harness).zoom - ZOOM).abs() < 1e-3);
-        *view.lock().expect("unpoisoned") = here(5, None, &[]);
-        harness.run();
-        let inside = camera(&harness);
-        assert!((inside.zoom - ZOOM_INSIDE).abs() < 1e-3);
-        assert!(inside.glide.is_some(), "it glides in");
-        *view.lock().expect("unpoisoned") = here(2, None, &[]);
-        harness.run();
-        assert!((camera(&harness).zoom - ZOOM).abs() < 1e-3);
-    }
-
-    /// A glide eases from where it was to where it goes over `GLIDE`.
-    #[test]
-    fn a_glide_eases_there() {
-        let camera = Camera {
-            centre: vec2(10.0, 0.0),
-            zoom: 20.0,
-            follow: true,
-            area: 0,
-            inside: true,
-            glide: Some((vec2(0.0, 0.0), 10.0, 1.0)),
-        };
-        assert_eq!(camera.drawn(1.0), (vec2(0.0, 0.0), 10.0));
-        assert_eq!(camera.drawn(1.0 + GLIDE / 2.0), (vec2(5.0, 0.0), 15.0));
-        assert_eq!(camera.drawn(2.0), (vec2(10.0, 0.0), 20.0));
-    }
-
-    /// The dock clicked: its route from you, along the town's own lines,
-    /// and the dock ringed.
-    #[test]
-    fn a_target_is_ringed_and_its_route_drawn() {
-        let mut harness = drawn(here(2, Some(6), &[2, 3, 6]));
-        harness.run();
-        harness.snapshot("minimap_route");
-    }
-
-    /// What one click at `at` with `modifiers`, by `button`, asks of the
-    /// minimap showing `view`; `own` false for another character's.
-    fn click(
-        view: MinimapView,
-        own: bool,
-        at: Pos2,
-        button: egui::PointerButton,
-        modifiers: egui::Modifiers,
-    ) -> Option<Clicked> {
-        let asked = Arc::new(std::sync::Mutex::new(None));
-        let out = Arc::clone(&asked);
-        let mut harness = Harness::builder()
-            .with_size((260.0, 200.0))
-            .build_ui(move |ui| {
-                if let Some(clicked) = minimap(ui, Some(&view), Id::new("minimap"), own) {
-                    *out.lock().expect("unpoisoned") = Some(clicked);
-                }
-            });
-        harness.run();
-        for pressed in [true, false] {
-            harness
-                .input_mut()
-                .events
-                .push(egui::Event::PointerMoved(at));
-            harness.input_mut().events.push(egui::Event::PointerButton {
-                pos: at,
-                button,
-                pressed,
-                modifiers,
-            });
-            harness.input_mut().modifiers = modifiers;
-            harness.run();
-        }
-        asked.lock().expect("unpoisoned").clone()
-    }
-
-    /// The clicks the author asked for (`plan/53` §6 item 6, and after the
-    /// first run): a room aimed at, walked to when clicked again or
-    /// right-clicked, said in the story with Shift, its number with Ctrl;
-    /// a click on nothing forgets the target; another character's minimap
-    /// does nothing. You are at room 2, the view's middle (130, 100); room
-    /// 3 is four cells east, `ZOOM` pixels a cell.
-    #[test]
-    fn the_clicks_aim_walk_and_tell() {
-        use egui::{
-            Modifiers,
-            PointerButton::{Primary, Secondary},
-        };
-        let three = Pos2::new(4.0f32.mul_add(ZOOM, 130.0), 100.0);
-        let nothing = Pos2::new(40.0, 170.0);
-        let hydra = |word: &str, echo| {
-            Some(Clicked::Hydra {
-                word: word.to_owned(),
-                echo,
-            })
-        };
-        let none = Modifiers::NONE;
-        assert_eq!(
-            click(here(2, None, &[]), true, three, Primary, none),
-            Some(Clicked::Aim(Some(3)))
-        );
-        assert_eq!(
-            click(here(2, Some(3), &[2, 3]), true, three, Primary, none),
-            hydra("go2 3", true)
-        );
-        assert_eq!(
-            click(here(2, None, &[]), true, three, Secondary, none),
-            hydra("go2 3", true)
-        );
-        assert_eq!(
-            click(here(2, None, &[]), true, three, Primary, Modifiers::SHIFT),
-            hydra("room 3", false)
-        );
-        assert_eq!(
-            click(here(2, None, &[]), true, three, Primary, Modifiers::COMMAND),
-            hydra("room 3 number", false)
-        );
-        assert_eq!(
-            click(here(2, Some(3), &[2, 3]), true, nothing, Primary, none),
-            Some(Clicked::Aim(None))
-        );
-        assert_eq!(click(here(2, None, &[]), false, three, Primary, none), None);
-    }
-
-    /// A click finds the room drawn nearest it within reach, or the place
-    /// behind a way-in dot; nothing out of reach.
-    #[test]
-    fn a_click_finds_the_room_or_the_dot() {
-        let town = town();
-        let all = |_: Option<usize>| true;
-        assert_eq!(hit(&town, vec2(8.2, 0.1), 0.5, &all, true), Some(3));
-        assert_eq!(hit(&town, vec2(4.0, 4.4), 0.2, &all, true), Some(40));
-        assert_eq!(
-            hit(&town, vec2(4.0, 4.4), 0.2, &all, false),
-            None,
-            "no dots indoors"
-        );
-        assert_eq!(hit(&town, vec2(20.0, 2.0), 0.5, &all, true), None);
-    }
-
-    /// A drawn room is where you are, with its building; a room drawn only
-    /// as a dot is at the dot; a room drawn neither way is nowhere.
-    #[test]
-    fn you_are_at_your_room_or_its_dot() {
-        let town = town();
-        assert_eq!(whereabouts(&town, 5), Some((vec2(5.0, 1.0), Some(0))));
-        assert_eq!(whereabouts(&town, 40), Some((vec2(4.0, 4.45), None)));
-        assert_eq!(whereabouts(&town, 99), None);
-    }
-
-    /// Nothing to draw says why, where the map would be.
-    #[test]
-    fn waiting_says_why() {
-        let mut harness = drawn(MinimapView::Waiting(
-            "Laying out the map: 3 of 207 areas.".to_owned(),
-        ));
-        harness.run();
-        harness.snapshot("minimap_waiting");
-    }
-
-    /// The camera stays put while you are in the middle of the view, and
-    /// moves only as far as brings you back to its edge.
-    #[test]
-    fn the_camera_moves_only_past_the_dead_zone() {
-        let mut camera = Camera {
-            centre: vec2(0.0, 0.0),
-            zoom: 9.0,
-            follow: true,
-            area: 0,
-            inside: false,
-            glide: None,
-        };
-        // A view 180 by 180 pixels at 9 a cell is 20 cells; the dead zone
-        // 6 either way.
-        let size = vec2(180.0, 180.0);
-        keep_in_view(&mut camera, vec2(5.0, -5.0), size);
-        assert_eq!(camera.centre, vec2(0.0, 0.0), "moved inside the dead zone");
-        keep_in_view(&mut camera, vec2(10.0, 0.0), size);
-        assert_eq!(
-            camera.centre,
-            vec2(4.0, 0.0),
-            "moved past what brings you back"
-        );
-    }
-}
+mod tests;
