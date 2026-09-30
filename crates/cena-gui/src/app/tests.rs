@@ -643,7 +643,7 @@ fn the_drag_key_chosen_is_the_windows() {
         .with_size((1200.0, 900.0))
         .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
     harness.run();
-    assert_eq!(crate::carry::key(&harness.ctx), egui::Modifiers::CTRL);
+    assert_eq!(crate::carry::key(&harness.ctx), egui::Modifiers::ALT);
     harness
         .state_mut()
         .own

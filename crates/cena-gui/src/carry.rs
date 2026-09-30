@@ -35,12 +35,12 @@ fn key_id() -> Id {
     Id::new("hydra-drag-key")
 }
 
-/// The key held to carry an object: Hydra's own setting, Ctrl unless the
+/// The key held to carry an object: Hydra's own setting, Alt unless the
 /// player chose (`own.rs`).
 pub(crate) fn key(context: &egui::Context) -> Modifiers {
     context
         .data(|data| data.get_temp::<Modifiers>(key_id()))
-        .unwrap_or(Modifiers::CTRL)
+        .unwrap_or(Modifiers::ALT)
 }
 
 /// Keep `key` as the drag key, for every window this frame.

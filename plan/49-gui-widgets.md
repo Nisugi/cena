@@ -817,6 +817,8 @@ Each BUILT the same day, each with its tests:
      distance carries the object; a short press is still a click. While carried, the
      pointer says *Dragging: a grey rat*. The key is Hydra's own setting, *Drag an item
      with*, Ctrl, Alt or Shift (`own.rs`), as `VellumFE`'s `drag_modifier_key` is.
+     Alt by default since 2026-09-29 (the author: *"maybe the default drag key should be
+     alt instead of ctrl"*), since holding Ctrl dropped a text selection before Ctrl+C.
    - Let go on another object's link: `_drag #<item> #<it>`, as Lich's `stash.rb`
      sends; on its own link, nothing. On a hand widget: `_drag #<item> left` or `right`.
      On a container in the Containers widget: `_drag #<item> #<container>`, by the

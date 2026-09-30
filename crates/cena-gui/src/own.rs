@@ -8,8 +8,9 @@
 //!   kept when a drag of a card's side lets go, or typed on the page.
 //! - **Closing a play window when its session closes** (§6 item 11): off,
 //!   so the window stays open with the character's last state.
-//! - **The key held to drag an object** from a link (`carry.rs`): Ctrl, or
-//!   Alt or Shift, as `VellumFE`'s `drag_modifier_key` is.
+//! - **The key held to drag an object** from a link (`carry.rs`): Alt, or
+//!   Ctrl or Shift, as `VellumFE`'s `drag_modifier_key` is. Alt by default
+//!   since 2026-09-29 (the author), so Ctrl is left to copying.
 
 use std::path::{Path, PathBuf};
 
@@ -80,13 +81,13 @@ impl Own {
         })
     }
 
-    /// The key held to drag an object from a link: Ctrl unless chosen.
+    /// The key held to drag an object from a link: Alt unless chosen.
     pub(crate) fn drag_with(&self) -> Modifiers {
-        let chosen = self.file.drag_with.as_deref().unwrap_or("ctrl");
+        let chosen = self.file.drag_with.as_deref().unwrap_or("alt");
         DRAG_KEYS
             .iter()
             .find(|(written, ..)| *written == chosen)
-            .map_or(Modifiers::CTRL, |(.., key)| *key)
+            .map_or(Modifiers::ALT, |(.., key)| *key)
     }
 
     /// Whether a play window closes when its session does.
@@ -162,7 +163,7 @@ impl Own {
                         .map(|(written, called, _)| ((*written).to_owned(), (*called).to_owned()))
                         .collect(),
                 ),
-                value: Value::Text(self.file.drag_with.clone().unwrap_or_else(|| "ctrl".to_owned())),
+                value: Value::Text(self.file.drag_with.clone().unwrap_or_else(|| "alt".to_owned())),
                 here: self.file.drag_with.is_some(),
                 from: None,
             },
@@ -219,7 +220,7 @@ impl Own {
             }
             ("drag_with", None) => {
                 file.drag_with = None;
-                "an item is dragged with Ctrl, its default".to_owned()
+                "an item is dragged with Alt, its default".to_owned()
             }
             ("card_width", None) => {
                 file.card_width = None;
@@ -266,7 +267,7 @@ mod tests {
         let mut own = Own::load(&data);
         assert_eq!(own.card_width(), CardWidth::FOUR_BARS);
         assert!(!own.close_with_session(), "off by default");
-        assert_eq!(own.drag_with(), Modifiers::CTRL, "Ctrl by default");
+        assert_eq!(own.drag_with(), Modifiers::ALT, "Alt by default");
         assert!(own.page().rows.iter().all(|row| !row.here));
 
         assert_eq!(

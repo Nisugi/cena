@@ -89,12 +89,12 @@ fn quietly(line: &str) -> Vec<Asked> {
 fn let_go_on_the_storys_floor_it_is_dropped() {
     let (mut harness, rat) = with_a_rat();
     let floor = rat + egui::vec2(0.0, 200.0);
-    carry_to(&mut harness, Modifiers::CTRL, rat, floor);
+    carry_to(&mut harness, Modifiers::ALT, rat, floor);
     assert!(
         harness.query_by_label("Dragging: a grey rat").is_some(),
         "the pointer says what is carried"
     );
-    harness.event(button(floor, false, Modifiers::CTRL));
+    harness.event(button(floor, false, Modifiers::ALT));
     harness.step();
     harness.run();
     assert_eq!(harness.state().asked, quietly("_drag #456 drop"));
@@ -105,7 +105,7 @@ fn let_go_on_the_storys_floor_it_is_dropped() {
 fn let_go_on_a_hand_it_goes_into_it() {
     let (mut harness, rat) = with_a_rat();
     let hand = harness.get_by_label("Right: empty").rect().center();
-    carry(&mut harness, Modifiers::CTRL, rat, hand);
+    carry(&mut harness, Modifiers::ALT, rat, hand);
     assert_eq!(harness.state().asked, quietly("_drag #456 right"));
 }
 
@@ -127,7 +127,7 @@ fn let_go_on_a_linked_lines_words_it_is_dropped() {
         .rect();
     let rat = egui::pos2(line.right() - 20.0, line.center().y);
     let words = egui::pos2(line.left() + 20.0, line.center().y);
-    carry(&mut harness, Modifiers::CTRL, rat, words);
+    carry(&mut harness, Modifiers::ALT, rat, words);
     assert_eq!(harness.state().asked, quietly("_drag #456 drop"));
 }
 
@@ -144,13 +144,13 @@ fn let_go_on_another_object_it_goes_into_it() {
     harness.run();
     carry(
         &mut harness,
-        Modifiers::CTRL,
+        Modifiers::ALT,
         rat,
         rat + egui::vec2(12.0, 0.0),
     );
     assert!(harness.state().asked.is_empty(), "onto itself");
     let into = harness.get_by_label("a patched sack").rect().center();
-    carry(&mut harness, Modifiers::CTRL, rat, into);
+    carry(&mut harness, Modifiers::ALT, rat, into);
     assert_eq!(harness.state().asked, quietly("_drag #456 #789"));
 }
 
@@ -171,7 +171,7 @@ fn let_go_on_a_container_it_goes_into_it() {
         });
     beside_the_story(&mut harness, Widget::Containers, None);
     let cloak = harness.get_by_label_contains("My Cloak").rect().center();
-    carry(&mut harness, Modifiers::CTRL, rat, cloak);
+    carry(&mut harness, Modifiers::ALT, rat, cloak);
     assert_eq!(harness.state().asked, quietly("_drag #456 #64863904"));
 }
 
@@ -183,7 +183,7 @@ fn only_the_drag_key_carries_and_only_a_place_takes() {
     let hand = |harness: &Harness<'_, Scene>| harness.get_by_label("Right: empty").rect().center();
     let (mut harness, rat) = with_a_rat();
     let bar = harness.get_by_label_contains("HP ").rect().center();
-    carry(&mut harness, Modifiers::CTRL, rat, bar);
+    carry(&mut harness, Modifiers::ALT, rat, bar);
     assert!(harness.state().asked.is_empty(), "a bar takes nothing");
 
     let (mut harness, rat) = with_a_rat();
@@ -193,14 +193,14 @@ fn only_the_drag_key_carries_and_only_a_place_takes() {
 
     let (mut harness, rat) = with_a_rat();
     let right = hand(&harness);
-    crate::carry::set_key(&harness.ctx, Modifiers::ALT);
-    carry(&mut harness, Modifiers::CTRL, rat, right);
+    crate::carry::set_key(&harness.ctx, Modifiers::CTRL);
+    carry(&mut harness, Modifiers::ALT, rat, right);
     assert!(harness.state().asked.is_empty(), "not the key chosen");
 
     let (mut harness, rat) = with_a_rat();
     let right = hand(&harness);
-    crate::carry::set_key(&harness.ctx, Modifiers::ALT);
-    carry(&mut harness, Modifiers::ALT, rat, right);
+    crate::carry::set_key(&harness.ctx, Modifiers::CTRL);
+    carry(&mut harness, Modifiers::CTRL, rat, right);
     assert_eq!(harness.state().asked, quietly("_drag #456 right"));
 }
 
@@ -216,7 +216,7 @@ fn another_characters_hand_takes_nothing() {
     }];
     let theirs = beside_the_story(&mut harness, Widget::RightHand, Some("Baelor"));
     let hand = harness.get_by_label("Baelor Right: empty").rect().center();
-    carry(&mut harness, Modifiers::CTRL, rat, hand);
+    carry(&mut harness, Modifiers::ALT, rat, hand);
     assert!(harness.state().asked.is_empty(), "{theirs}");
 }
 
@@ -242,7 +242,7 @@ fn from_a_hand_it_goes_to_the_other_or_the_floor() {
             .rect()
             .center();
         let at = to(&harness, left);
-        carry(&mut harness, Modifiers::CTRL, left, at);
+        carry(&mut harness, Modifiers::ALT, left, at);
         harness.state().asked.clone()
     };
     let right = |harness: &Harness<'_, Scene>, _: Pos2| {
@@ -324,7 +324,7 @@ fn from_a_container_it_goes_elsewhere() {
         }
         let start = harness.get_by_label(what).rect().center();
         let at = harness.get_by_label(to).rect().center();
-        carry(&mut harness, Modifiers::CTRL, start, at);
+        carry(&mut harness, Modifiers::ALT, start, at);
         harness.state().asked.clone()
     };
     let ring = "a gold ring";
@@ -362,6 +362,6 @@ fn another_characters_hand_is_no_source() {
         .rect()
         .center();
     let right = harness.get_by_label("Right: empty").rect().center();
-    carry(&mut harness, Modifiers::CTRL, mace, right);
+    carry(&mut harness, Modifiers::ALT, mace, right);
     assert!(harness.state().asked.is_empty());
 }
