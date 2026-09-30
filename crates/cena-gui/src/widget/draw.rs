@@ -166,6 +166,7 @@ pub(super) fn draw(
             state.and_then(GameState::roundtime_remaining),
             AMBER,
         ),
+        Widget::Stun => stun(ui, &named("Stun"), state),
         Widget::Aim => clock(
             ui,
             &named("Aim"),
@@ -417,6 +418,20 @@ fn clock(ui: &mut egui::Ui, label: &str, seconds: Option<u32>, color: Color32) {
             RichText::new(format!("{label} {seconds}s")).color(color),
         ),
         None => line(ui, RichText::new(format!("{label} —")).weak()),
+    }
+}
+
+/// The stun left, as a clock: its seconds while the rounds the game gave
+/// run, and `stunned` while the indicator stays lit past them or the game
+/// gave none (`cena_model`'s `state/stun.rs`).
+fn stun(ui: &mut egui::Ui, label: &str, state: Option<&GameState>) {
+    let left = state.and_then(GameState::stun_remaining).unwrap_or(0);
+    if left > 0 {
+        line(ui, RichText::new(format!("{label} {left}s")).color(WRONG));
+    } else if state.is_some_and(|state| state.status.get("stunned")) {
+        line(ui, RichText::new(format!("{label}: stunned")).color(WRONG));
+    } else {
+        line(ui, RichText::new(format!("{label} —")).weak());
     }
 }
 

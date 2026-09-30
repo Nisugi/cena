@@ -92,6 +92,7 @@ impl PartialEq for GameState {
             flags,
             maneuvers,
             cast_time_ends,
+            stun_ends,
             prepared,
             prepared_id,
         } = self;
@@ -129,6 +130,7 @@ impl PartialEq for GameState {
             && flags == &other.flags
             && maneuvers == &other.maneuvers
             && cast_time_ends == &other.cast_time_ends
+            && stun_ends == &other.stun_ends
             && prepared == &other.prepared
             && prepared_id == &other.prepared_id
             // `arrivals` is NOT compared: it counts how many rooms this

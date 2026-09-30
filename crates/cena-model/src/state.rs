@@ -90,6 +90,7 @@ pub mod societies;
 mod spell_time;
 pub mod stream_windows;
 pub mod streams;
+mod stun;
 pub mod targeting;
 mod unknown;
 pub mod vitals;
@@ -185,6 +186,10 @@ pub struct GameState {
     /// expire independently, so one field could not answer either. `Option`,
     /// never `0`, for the reason `roundtime_ends` gives.
     pub cast_time_ends: Option<u32>,
+    /// The epoch second the character's stun ends, by the rounds the game
+    /// gave (`state/stun.rs`); `None` when none was told, and from when the
+    /// `IconSTUNNED` indicator goes dark.
+    pub stun_ends: Option<u32>,
     /// `<spell>`: the spell prepared, verbatim, `None` from the game when
     /// nothing is (Lich's `checkprep`). `None` here is *not told*.
     pub prepared: Option<String>,
@@ -386,15 +391,7 @@ impl GameState {
                 self.apply_prompt(time, text);
                 return true;
             }
-            Frame::StatusIndicator { id, active } => {
-                self.status.set(id, *active);
-                // `GROUP_EMPTIED` (`group.rb:603-605`): the indicator going
-                // dark is the game saying you are in no group. See
-                // `Group::emptied`.
-                if id == "IconJOINED" && !*active {
-                    self.group.emptied();
-                }
-            }
+            Frame::StatusIndicator { id, active } => self.apply_indicator(id, *active),
             Frame::ClearDialogData { id } => {
                 // MEASURED: `<dialogData id='Buffs' clear='t'></dialogData>`
                 // arrives EMPTY, immediately followed by the populated

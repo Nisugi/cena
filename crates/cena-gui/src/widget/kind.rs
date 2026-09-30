@@ -34,6 +34,9 @@ pub(crate) enum Widget {
     Roundtime,
     /// The cast time left.
     CastTime,
+    /// The stun left, by the rounds the game gave (`plan/49`, the author,
+    /// 2026-09-30).
+    Stun,
     /// An aimed shot's aim left.
     Aim,
     /// The room as the game describes it, joined: its name and number, its
@@ -169,7 +172,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 41] = [
+    const PLAIN: [Widget; 42] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -179,6 +182,7 @@ impl Widget {
         Widget::LeftHand,
         Widget::Roundtime,
         Widget::CastTime,
+        Widget::Stun,
         Widget::Aim,
         Widget::Room,
         Widget::RoomTitle,
@@ -225,6 +229,7 @@ impl Widget {
             Widget::RightHand => "Right hand",
             Widget::LeftHand => "Left hand",
             Widget::Roundtime => "Roundtime",
+            Widget::Stun => "Stun",
             Widget::CastTime => "Cast time",
             Widget::Aim => "Aim",
             Widget::Room => "Room",
@@ -277,6 +282,7 @@ impl Widget {
             | Widget::RightHand
             | Widget::LeftHand
             | Widget::Roundtime
+            | Widget::Stun
             | Widget::CastTime
             | Widget::Aim
             | Widget::Creatures
@@ -416,7 +422,7 @@ impl Widget {
             Widget::Compass => (160.0, 120.0),
             Widget::Injuries => (180.0, 240.0),
             Widget::Combat | Widget::Dialog(_) => (260.0, 140.0),
-            Widget::Roundtime | Widget::CastTime | Widget::Aim => (110.0, LINE),
+            Widget::Roundtime | Widget::CastTime | Widget::Stun | Widget::Aim => (110.0, LINE),
             Widget::Health
             | Widget::Mana
             | Widget::Stamina

@@ -348,6 +348,8 @@ impl super::GameState {
     fn read_chunk_line(&mut self, line: &ChunkLine, text: &str, at: Option<u32>) {
         // The bounty task and the guild's answers (`bounty_status.rs`).
         self.bounty.read_line(text);
+        // The character's own stun, in rounds (`stun.rs`).
+        self.read_stun(text, at);
         // The six statuses that arrive only as prose, never as an
         // `<indicator>` (`afflictions.rs`).
         if let Some((affliction, active)) = super::afflictions::classify(text) {

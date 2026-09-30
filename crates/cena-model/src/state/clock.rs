@@ -241,7 +241,7 @@ impl GameState {
     /// The **one** place the wall clock is read. Every extrapolating method
     /// goes through here, so a caller driving the model from a timeline has a
     /// single thing to replace -- Rule 2.2a, one home per fact.
-    fn elapsed_since_prompt(&self) -> u32 {
+    pub(super) fn elapsed_since_prompt(&self) -> u32 {
         self.game_time_received.map_or(0, |at| {
             u32::try_from(at.elapsed().as_secs()).unwrap_or(u32::MAX)
         })

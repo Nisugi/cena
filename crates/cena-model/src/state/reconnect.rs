@@ -151,6 +151,7 @@ impl GameState {
             targeting,
             maneuvers,
             cast_time_ends,
+            stun_ends,
             prepared,
             prepared_id,
             prompt,
@@ -332,7 +333,7 @@ impl GameState {
         // A cooldown with no known duration cannot be reasoned about across a
         // gap of unknown length (`maneuvers.rs`).
         maneuvers.clear();
-        *cast_time_ends = None;
+        (*cast_time_ends, *stun_ends) = (None, None);
         // The prepared spell goes with the cast: the burst restates `<spell>`.
         *prepared = None;
         *prepared_id = None;
