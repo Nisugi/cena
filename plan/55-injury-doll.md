@@ -2,7 +2,7 @@
 
 **Status: steps 0-7 BUILT 2026-09-29** on branch `injury-doll` (§3a lists each commit);
 merged to `main` the same day. Of step 8, other players' dolls and the game's sky are not
-for now (the author); the variants are asked again. None has run live.
+for now (the author); variants, when they come, are chosen by the same guard words. None has run live.
 
 **Status before that: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
 written to those answers, and §4a's, answered after them.
@@ -470,6 +470,9 @@ clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`
    now."* The variants were asked about again, explained: VellumFE's workbench lets one doll
    carry other pictures for conditions (a prone picture, a dead one), and the proposal was to
    choose among them by a guard word rather than a condition language of the doll's own.
+   The author: *"yes same guard words"*. So a variant's `when` is a guard expression in
+   `plan/33`'s vocabulary, the hunt's and the triggers' (`cena-model/src/guard.rs`); the step
+   is kept for later, not scheduled.
 
 The architecture page and glossary change in the same commit as each step that adds a name.
 The glossary gains *doll*, *anchor*, *overlay* and *style*.
