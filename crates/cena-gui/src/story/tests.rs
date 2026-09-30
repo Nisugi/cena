@@ -442,3 +442,21 @@ fn an_answer_is_in_the_story_and_the_rest_in_hydras_pane() {
     assert_eq!(story.lines.len(), 1, "only the answer");
     assert_eq!(story.said.len(), 1, "only Hydra's own");
 }
+
+/// A blank line before anything to read since the prompt is left out, as
+/// `VellumFE` leaves it; one inside what the game says stays (the author,
+/// 2026-09-30: *"I'm also getting blank lines in the story window"*).
+#[test]
+fn a_blank_line_after_the_prompt_is_left_out() {
+    let mut story = Story::default();
+    story.hear(&observed(0, said("", " ")), None);
+    assert!(story.lines.is_empty(), "nothing yet to read");
+    story.hear(&observed(0, said("", "You feel more refreshed.")), None);
+    story.hear(&observed(0, said("", " ")), None);
+    story.hear(&observed(0, said("", "You feel better.")), None);
+    assert_eq!(
+        texts(&story),
+        ["You feel more refreshed.", " ", "You feel better."],
+        "a blank line inside what the game says stays"
+    );
+}

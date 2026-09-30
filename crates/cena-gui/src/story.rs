@@ -119,6 +119,15 @@ impl Story {
                 }
                 for shown in lines {
                     let mut runs = shown.runs;
+                    // A blank line before anything to read since the prompt
+                    // is left out: what a line moved to its own window, or
+                    // a dialog's update, leaves behind (the author,
+                    // 2026-09-30: *"I'm also getting blank lines in the story
+                    // window"*). `VellumFE`'s rule (`flush_line.rs:284`);
+                    // a blank line inside what the game says stays.
+                    if main && !self.since_prompt && !visible(&runs) {
+                        continue;
+                    }
                     // Only a line with something to read earns the prompt
                     // after it (`prompt.rs`).
                     self.since_prompt |= visible(&runs);
