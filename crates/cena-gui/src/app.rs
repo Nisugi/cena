@@ -79,8 +79,9 @@ pub struct App {
     /// Commands a key's macro sends once a wait in it is over
     /// (`keyed.rs`).
     later: Vec<keyed::Later>,
-    /// The overlays folder as last listed, and when (`settings.rs`).
-    overlays: Option<(Instant, Vec<std::path::PathBuf>)>,
+    /// The overlays and dolls folders as last listed, and when
+    /// (`settings.rs`).
+    overlays: Option<(Instant, crate::play::Pictures)>,
     /// `NumLock`, as the last numpad press showed it.
     numlock: Option<bool>,
     /// The settings menu, the one every way in opens (`plan/50` §7).
@@ -529,6 +530,8 @@ pub fn run(sessions: Sessions) -> eframe::Result {
         TITLE,
         options,
         Box::new(move |creation| {
+            #[cfg(feature = "doll-infinite")]
+            crate::widget::infinite::open(creation, &data);
             sessions.opened(&creation.egui_ctx);
             Ok(Box::new(App::keeping(sessions, &data)))
         }),

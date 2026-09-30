@@ -122,6 +122,9 @@ impl<S: ByteSource> SessionActor<S> {
 
     /// Publish each line `line` sorts into, as `show` says.
     fn publish_sorted(&mut self, line: Arc<Line>, mut show: Show<'_>) {
+        if self.hides(&line.runs.plain()) {
+            return;
+        }
         let triggers = self.events.triggers();
         if super::lich_text::is_main(&line.stream)
             && self.events.sorts_containers()

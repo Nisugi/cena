@@ -584,7 +584,9 @@ fn a_play_window_opens_the_menu_where_it_is_set() {
         key: "fills".to_owned(),
         to: Some("up".to_owned()),
     });
-    let pages = harness.state().plays[&0].play.widget_pages(&[]);
+    let pages = harness.state().plays[&0]
+        .play
+        .widget_pages(&crate::play::Pictures::default());
     let fills = pages
         .iter()
         .find(|found| found.id == page)

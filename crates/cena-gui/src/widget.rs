@@ -15,8 +15,11 @@
 mod character;
 mod described;
 mod dialog;
+pub(crate) mod doll;
 mod draw;
 pub(crate) mod find;
+#[cfg(feature = "doll-infinite")]
+pub(crate) mod infinite;
 mod kind;
 mod lines;
 mod lists;
@@ -129,6 +132,8 @@ pub(crate) struct Chosen {
     pub(crate) room: Option<RoomParts>,
     /// How the story or a stream draws its lines.
     pub(crate) lines: Option<Lines>,
+    /// The injury doll's picture.
+    pub(crate) doll: Option<doll::DollLook>,
 }
 
 /// One line of text, or a bar: what a one-line widget asks for.

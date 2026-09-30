@@ -37,13 +37,20 @@ use std::collections::BTreeMap;
 
 use super::Injury;
 
-/// Keep injury folding and observation coverage together. An unrecognized
-/// image preserves legacy injury behavior but cannot prove this part healthy.
 /// Which injuries the game's injury window shows: its three radio buttons,
 /// `injrRad`, `scarRad` and `bothRad`, the one set with `value='1'`
-/// (`lib/common/xmlparser.rb:884-891`, INFERRED from Lich: no capture here
-/// has them). Lich's `Wounds` and `Scars` set it to both before they read
-/// (`_injury 2`, `lib/games.rb:1311`), since a wound covers a scar otherwise.
+/// (`lib/common/xmlparser.rb:884-891`). VERIFIED in the author's captures
+/// (`E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi`, 2026-09): Both 140 times,
+/// Scars 29, Injuries never; the radios come in the window's `openDialog`,
+/// before any image. Lich's `Wounds` and `Scars` set it to both before they
+/// read (`_injury 2`, `lib/games.rb:1311`), since a wound covers a scar
+/// otherwise.
+///
+/// **What a mode hides, the model keeps.** In those captures a hand wounded
+/// and scarred shows `Injury1` under Both and `Scar1` under Scars, and a part
+/// only wounded shows whole under Scars. Read as if every image said
+/// everything, switching to Scars erased the wounds, and back to Both the
+/// scars under them: the author's *"wounds/scars flash"* (`plan/55` §1a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InjuryMode {
     /// `injrRad`: wounds.
@@ -90,12 +97,23 @@ pub(crate) fn read_radios(
     }
 }
 
+/// Fold one injury image into `character`, as its injury window's mode
+/// allows ([`InjuryMode`]), and note the part as observed. An unrecognized
+/// image clears the part, as it always has, but cannot prove it healthy.
 pub(super) fn apply_image(character: &mut super::Character, part: &str, name: &str) {
     if let Some(index) = ALL_PARTS.iter().position(|id| *id == part) {
         if name == part
             || matches!(
                 name,
-                "Injury1" | "Injury2" | "Injury3" | "Scar1" | "Scar2" | "Scar3"
+                "Injury1"
+                    | "Injury2"
+                    | "Injury3"
+                    | "Scar1"
+                    | "Scar2"
+                    | "Scar3"
+                    | "Nsys1"
+                    | "Nsys2"
+                    | "Nsys3"
             )
         {
             character.observed_body_parts |= 1 << index;
@@ -104,7 +122,15 @@ pub(super) fn apply_image(character: &mut super::Character, part: &str, name: &s
         }
     }
     let rank = |prefix: &str| -> Option<u8> { name.strip_prefix(prefix)?.parse().ok() };
+    if part == "nsys" {
+        let nerve = if name == part { Some(0) } else { rank("Nsys") };
+        if let Some(nerve) = nerve {
+            character.apply_nerve_rank(nerve);
+            return;
+        }
+    }
     let known = character.injuries.get(part).copied().unwrap_or_default();
+    let scars_only = character.injury_mode == Some(InjuryMode::Scars);
     let injury = if let Some(wound) = rank("Injury") {
         // A wound covers a scar; it is not evidence the old scar healed.
         Injury {
@@ -112,10 +138,26 @@ pub(super) fn apply_image(character: &mut super::Character, part: &str, name: &s
             scar: known.scar,
         }
     } else if let Some(scar) = rank("Scar") {
-        // A scar image means no wound remains over it.
-        Injury { wound: 0, scar }
+        // Shown both ways, a scar image means no wound remains over it;
+        // showing scars only, it says nothing about the wound.
+        Injury {
+            wound: if scars_only { known.wound } else { 0 },
+            scar,
+        }
     } else {
-        Injury::default()
+        // Whole, in what the window shows: under Scars no scar, under
+        // Wounds no wound, the other track kept; shown both ways, whole.
+        match character.injury_mode {
+            Some(InjuryMode::Scars) => Injury {
+                wound: known.wound,
+                scar: 0,
+            },
+            Some(InjuryMode::Wounds) => Injury {
+                wound: 0,
+                scar: known.scar,
+            },
+            Some(InjuryMode::Both) | None => Injury::default(),
+        }
     };
     if injury.is_hurt() {
         character.injuries.insert(part.to_owned(), injury);

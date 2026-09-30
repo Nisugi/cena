@@ -108,6 +108,7 @@ mod hooked;
 mod io;
 mod lich_text;
 mod line;
+mod nerves;
 mod owed;
 mod readiness;
 mod saves;
@@ -231,6 +232,9 @@ pub struct SessionActor<S: ByteSource> {
     owed: owed::OwedPrompts,
     /// The open window is a quiet command's (`Event::Quiet`, `io.rs`).
     quiet_window: Option<lich_text::QuietWindow>,
+    /// Hydra's own `health`, while unanswered: its nerve lines are hidden
+    /// (`nerves.rs`).
+    nerve_health: Option<tokio::sync::oneshot::Receiver<crate::command::Outcome>>,
     /// What a viewer is shown, held for a script runner's display hooks.
     held: hooked::Held,
     /// What the player's Lich shows, shown in place of the game's text
@@ -387,6 +391,7 @@ impl<S: ByteSource> SessionActor<S> {
             queue: CommandQueue::new(),
             owed: owed::OwedPrompts::default(),
             quiet_window: None,
+            nerve_health: None,
             held: hooked::Held::default(),
             lich_text: None,
             readiness: readiness::Readiness::default(),

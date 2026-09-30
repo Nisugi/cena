@@ -177,6 +177,17 @@ pub fn save_json<T: serde::Serialize>(dir: &Path, path: &Path, value: &T) -> io:
 /// The directory cannot be created, or the file cannot be written or
 /// renamed.
 pub fn save_text(dir: &Path, path: &Path, text: &str) -> io::Result<()> {
+    save_bytes(dir, path, text.as_bytes())
+}
+
+/// [`save_text`]'s write, of any bytes: a picture a doll's calibration was
+/// written into (`plan/55` §2b), which must never be left half written.
+///
+/// # Errors
+///
+/// The directory cannot be created, or the file cannot be written or
+/// renamed.
+pub fn save_bytes(dir: &Path, path: &Path, bytes: &[u8]) -> io::Result<()> {
     fs::create_dir_all(dir)?;
     let extension = path
         .extension()
@@ -196,7 +207,7 @@ pub fn save_text(dir: &Path, path: &Path, text: &str) -> io::Result<()> {
     // valid name over an empty file -- the torn write this function exists
     // to prevent, by another route. Same review-only status as the rest.
     let mut file = fs::File::create(&temp)?;
-    io::Write::write_all(&mut file, text.as_bytes())?;
+    io::Write::write_all(&mut file, bytes)?;
     file.sync_all()?;
     drop(file);
     fs::rename(&temp, path).inspect_err(|_| {

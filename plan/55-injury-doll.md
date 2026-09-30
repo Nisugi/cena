@@ -1,6 +1,10 @@
 # 55 — The injury doll
 
-**Status: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
+**Status: steps 0-7 BUILT 2026-09-29** on branch `injury-doll` (§3a lists each commit);
+merged to `main` the same day. Of step 8, other players' dolls and the game's sky are not
+for now (the author); the variants are asked again. None has run live.
+
+**Status before that: ANSWERED 2026-09-29** (§4). The author answered the same day, and §2 and §3 are
 written to those answers, and §4a's, answered after them.
 
 **Status before that: PROPOSED 2026-09-29.** `plan/49` Stage G named the injury doll as work that
@@ -389,26 +393,36 @@ Each step is committed and tested on its own, on branch `injury-doll`. An image 
 play window's scene clears its roundtime first: the scene counts roundtime down by the wall
 clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`7ec5601`).
 
-0. **The model keeps what the game's radio hides, and reads a nerve rank.** Before changing
-   anything, confirm the radio's effect against a capture: one of the author's own, or one
-   they make by switching the radio with a scar showing.
+0. **The model keeps what the game's radio hides, and works out a nerve rank.**
+
+   **The radio's effect is VERIFIED** in the author's captures
+   (`E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi`, 2026-09):
+   - The radio was on Both 140 times and Scars 29 times. It was never on Wounds.
+   - It comes in the window's `openDialog`, before any image.
+   - A hand wounded and scarred shows `Injury1` under Both and `Scar1` under Scars.
+   - A part with only a wound shows whole under Scars.
 
    Then:
-   - With Wounds set, a whole image clears only the wound. With Scars set, it clears only the
-     scar. With Both, or no radio seen, it clears both, as it does today.
-   - `Nsys1`-`3` is kept as a nerve rank of unknown kind, and shown as a wound until the game
-     says otherwise.
-   - When an `Nsys` rank above 0 differs from the one held, Hydra sends `health` once, as
-     Lich does (§4a). It goes through the session's sync, never over the player's typing, and
-     never while dead. The six nerve lines in the reply settle the kind and are not shown;
-     the rest of the reply shows, as Lich's does. A player's own `health` settles it the same
-     way.
+   - **The radio.** With Wounds set, a whole image clears only the wound. With Scars set, it
+     clears only the scar, and `ScarN` keeps the wound. With Both, or no radio seen, it
+     clears both, as it did.
+   - **A nerve rank is worked out, not asked** (§4a). Ranks are read at the prompt that ends
+     their chunk, when its lines say whether a herb was eaten:
+     - a rise with no herb is a wound;
+     - with a herb, the next step down, the scar showing once the wound is gone;
+     - anything else is confusion: the rank shows as a wound until settled.
+   - **Confusion asks, once.** Only then does the session send `health`, through the
+     session's sync, never over the player's typing and never while dead. The six nerve lines
+     in the reply settle it and are not shown; the rest of the reply shows, as Lich's does. A
+     player's own `health` settles it the same way.
 
-   Tests, beyond those above: a repeated rank sends nothing; a changed rank sends one
-   `health`; rank 0 sends nothing and clears the nerve entry; the six lines hidden, the rest
-   shown.
-
-   Tests: each radio over a scarred part and a wounded one; `Nsys2`; each of the six lines.
+   **BUILT in the model** (`crates/cena-model/src/state/character/nerves.rs`,
+   `crates/cena-model/tests/injury_modes.rs`): the radio, the nerves worked out, and the six
+   lines read. Two mutants of the radio fix were caught. **The session's half BUILT too**
+   (`crates/cena-session/src/actor/nerves.rs`, `crates/cena-session/tests/nerve_health.rs`):
+   `health` sent once as a new `Origin::Hydra` when the model is confused, its nerve line
+   hidden and the rest shown, a player's own `health` shown whole. Two mutants caught (the
+   hiding off, the asking off). **Step 0 is BUILT.**
 
    The model change is `cena-model`'s, and so is its own test file. `GameState::login`'s note
    that nsys *"is not kept"* (`crates/cena-model/src/state/login.rs:207-219`) is corrected in
@@ -452,10 +466,43 @@ clock, and an image that caught it at 29 s or 30 s was the Find bar's "flake" (`
    - the game's sky and facing for Infinite;
    - Despana's doll.
 
+   **The author, 2026-09-29:** *"No other players dolls for now, no game sky for infinite for
+   now."* The variants were asked about again, explained: VellumFE's workbench lets one doll
+   carry other pictures for conditions (a prone picture, a dead one), and the proposal was to
+   choose among them by a guard word rather than a condition language of the doll's own.
+
 The architecture page and glossary change in the same commit as each step that adds a name.
 The glossary gains *doll*, *anchor*, *overlay* and *style*.
 
 ---
+
+### 3a. As built
+
+| Step | Commit | Where |
+|---|---|---|
+| 0, the model | `0015ad1` | `crates/cena-model/src/state/character/nerves.rs`, `body.rs`; `crates/cena-model/tests/injury_modes.rs` |
+| 0, the session | `2f16c1e` | `crates/cena-session/src/actor/nerves.rs`, `Origin::Hydra`; `crates/cena-session/tests/nerve_health.rs` |
+| 1, the picture cache | `b324d11` | `crates/cena-gui/src/pictures.rs` |
+| 2, the Doll over a body | `11e5e0f` | `crates/cena-gui/src/widget/doll.rs` |
+| 3, pictures and anchors | `a2fa0e2` | `crates/cena-gui/src/calibration.rs`; the widget's page in `play/options.rs` |
+| 4, the calibrator | `4f1f670` | `crates/cena-gui/src/play/calibrator.rs`; `calibration::write`, `cena_session::store::save_bytes` |
+| 5, the Doll plus | `b43b333` | `crates/cena-gui/src/doll_art.rs` |
+| 6, `;doll import` | `4d7bb7e` | `crates/cena-gui/src/doll_import.rs`, `crates/cena/src/doll.rs` |
+| 7, Infinite | `241ab49` | `crates/cena-gui/src/widget/infinite.rs`; `gs_field`, `gs_field_egui` behind `doll-infinite` |
+
+**Where the build departs from the text above, and why:**
+
+- **Infinite is pinned at gs_studio `a739228`, not its newest commit.** gs_studio's `054a86c`
+  (display lighting by default, wound ranks shifted, eyes marked, statuses over wounds) was
+  on the author's machine and not on GitHub when step 7 was built. Hydra fetches gs_studio by
+  commit, so the pin moves to it once it is pushed.
+- **The Doll plus is not a style of its own.** As VellumFE has it, a picture with overlays is
+  the Doll plus: the page offers the Doll and Infinite, and a picture's art does the rest.
+- **The Doll's colours are the palette's, not a calibration's.** VellumFE's `wound_color` and
+  `scar_color` are kept in the picture untouched (`calibration::write` carries them), and a dot
+  takes its level's colour. Dot size and opacity are the calibration's.
+- **Left and right are VellumFE's**, the right arm on the viewer's right, so a calibration
+  made in either client places the same parts.
 
 ## 4. The author's answers, 2026-09-29
 
@@ -488,28 +535,42 @@ Nothing gs_studio depends on requires a licence of Hydra either: among all its d
 can be taken as Apache. Whether to take the stray lines out of gs_studio's manifests is
 gs_studio's to decide.
 
-### 4a. A nerve rank's kind: ANSWERED, Lich's way, refined
+### 4a. A nerve rank's kind: ANSWERED, worked out, asked only when confused
 
 `Nsys2` does not say whether it is a wound or a scar. Lich sends `health` to find out each
 time a nerve rank above 0 arrives, and reads one of six lines
 (`reference/lich-5/lib/common/xmlparser.rb:816-872`). The author: *"lich sending health is a
 fairly new development, they use to just live with the issue"*.
 
-The author's first answer was that Hydra sends nothing: *"health is never sent or any other
-command"*. Once the `Nsys` case was explained, it became Lich's way with one refinement:
+**How the answer moved.** It moved three times, recorded so the last stands on the first two:
 
-> *"when an Nsys comes in that is different from the one we have in the buffer and is > 0"*
-> ... *"Yes, hydra will do what lich does with my refinement"*
+1. **Never send anything.** *"health is never sent or any other command"*.
+2. **Lich's way, refined.** Send `health` *"when an Nsys comes in that is different from the
+   one we have in the buffer and is > 0"*.
+3. **Work it out.** Then the rule that makes asking the exception:
+
+   > *"hydra has something that lich doesn't. It knows EVERYTHING ... when we are damaged in
+   > combat, our nerves are fried by lightning or we overcast and fry our nerves, we get sent
+   > the NsysN update and it's always a wound, not a scar. How do scars occur? Healing from an
+   > herb. When you eat an herb and heal a wound it leaves behind a scar of the same rank."*
+   >
+   > *"So Hydra shouldn't need a health to confirm unless it's confused ... the game probably
+   > sends the feed as Nsys2 -> Nsys1 -> Nsys2 -> Nsys1 -> Nsys0"*
 
 So:
 
-- **When it is sent.** Hydra sends `health` only when an `Nsys` rank above 0 differs from the
-  one it holds. A repeat sends nothing.
-- **How it is sent.** Through the session's sync, so it never lands over the player's typing,
-  and never while dead, as Lich waits.
-- **What shows.** The six nerve lines in the reply are read and not shown, as Lich returns
-  `nil` for them. The rest of the reply shows, as Lich's does.
-- **Nothing else is sent.** This is the one command; the doll sends none.
+- **Worked out.** Damage makes a wound; a herb heals a wound a rank and leaves a scar as deep
+  as it was, and then heals the scar a rank at a time. `nerves.rs`'s table walks the author's
+  sequence.
+- **Confused.** The first rank after logging in, which may be an old scar; a fall with no
+  herb, which an empath or a spell may make; a herb step that is not the next one. Only these
+  send `health`, once, through the sync, never over the player's typing and never while dead.
+- **What shows.** The six nerve lines in that reply are read and not shown, as Lich returns
+  `nil` for them; the rest shows. A player's own `health` settles confusion the same way.
 - **The injury radio** still belongs to a heal, to check the data is current before healing
-  (*"the only time injury mode needs to be sent is for a heal or something"*). It is never
-  the doll's.
+  (*"the only time injury mode needs to be sent is for a heal or something"*). It is never the
+  doll's.
+
+**INFERRED, to verify.** The sequence is the author's *"probably"*: no capture on hand has a
+nerve rank above 0. Where the game differs, the fallback is the one above: confusion, and one
+`health`.

@@ -187,6 +187,7 @@ impl Play {
             looks: &layout.looks,
             rooms: &layout.rooms,
             lines: &layout.lines,
+            dolls: &layout.dolls,
             session,
             read: &mut self.read,
             sent: None,

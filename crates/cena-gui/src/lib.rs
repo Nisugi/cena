@@ -14,7 +14,10 @@
 
 mod app;
 pub mod bar;
+mod calibration;
 mod carry;
+mod doll_art;
+mod doll_import;
 mod feed;
 #[cfg(test)]
 mod fixture;
@@ -25,6 +28,7 @@ mod layout;
 mod logs;
 mod menu;
 mod own;
+mod pictures;
 mod placement;
 mod play;
 mod sessions;
@@ -35,6 +39,7 @@ mod triggers;
 mod widget;
 
 pub use app::{App, TITLE, run};
+pub use doll_import::{DollsImported, import_dolls};
 pub use hub::{CardWidth, Hub, HubAction, HubView, SHUT_DOWN_QUESTION, Tab};
 pub use keys::file::Whose;
 pub use keys::page::{KeyChange, KeyRow, KeysView, Place};

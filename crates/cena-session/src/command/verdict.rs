@@ -113,6 +113,13 @@ pub enum Origin {
     /// "Lich sent this". It never counts as the player being there. What
     /// the player typed and Lich passed on is [`Self::Manual`].
     Lich,
+    /// Hydra asked the game itself, to settle what the model could not work
+    /// out: `health`, when the nerves' rank is confused (`plan/55` §4a,
+    /// `cena_model`'s `character/nerves.rs`). Nothing else sends as Hydra.
+    ///
+    /// It queues as [`Self::Trigger`] does: after the login, never preempting
+    /// a behavior, and never counting as the player being there.
+    Hydra,
 }
 
 impl Origin {
@@ -121,7 +128,7 @@ impl Origin {
     pub const fn token(self) -> Option<crate::queue::AuthorityToken> {
         match self {
             // Neither the player nor a script is a claimant (§4.1).
-            Self::Manual | Self::Script | Self::Trigger | Self::Lich => None,
+            Self::Manual | Self::Script | Self::Trigger | Self::Lich | Self::Hydra => None,
             Self::Behavior(token) => Some(token),
             Self::Agent(holding) => holding,
         }
@@ -138,6 +145,7 @@ impl Origin {
             Self::Trigger => "trigger",
             Self::Agent(_) => "agent",
             Self::Lich => "lich",
+            Self::Hydra => "hydra",
         }
     }
 
@@ -151,7 +159,7 @@ impl Origin {
     /// [`State::behaviors_may_run`]: crate::State::behaviors_may_run
     #[must_use]
     pub const fn waits_for_ready(self) -> bool {
-        matches!(self, Self::Behavior(_) | Self::Trigger)
+        matches!(self, Self::Behavior(_) | Self::Trigger | Self::Hydra)
     }
 }
 

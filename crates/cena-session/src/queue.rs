@@ -181,6 +181,7 @@ impl CommandQueue {
             | Origin::Script
             | Origin::Trigger
             | Origin::Lich
+            | Origin::Hydra
             | Origin::Agent(None) => {
                 self.manual.push_back(envelope);
             }
