@@ -517,3 +517,65 @@ fn a_custom_window_grown_down_keeps_its_cells_widths() {
     let grown = kept(&harness, "Vitals").expect("laid out").height();
     assert!(grown > 150.0, "it grew: {grown}");
 }
+
+/// Vitals in open space, its bars narrowed, its right edge dragged 100
+/// points further, with Arrange `on` or off: its cells before and after.
+fn widened(on: bool) -> (Vec<egui::Rect>, Vec<egui::Rect>) {
+    let mut harness = harness();
+    harness.run();
+    harness.state_mut().play.arranging = on;
+    let vitals = layout(&harness)
+        .titled("Vitals")
+        .map(|holder| holder.id)
+        .expect("vitals");
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        let at = egui::Rect::from_min_size(egui::pos2(100.0, 150.0), egui::vec2(334.0, 130.0));
+        layout.set(vitals, at);
+        let holder = layout.holders.iter_mut().find(|holder| holder.id == vitals);
+        if let Some(Holds::Custom(custom)) = holder.map(|holder| &mut holder.holds) {
+            for (cell, wide) in custom.cells.iter_mut().zip([60.0, 80.0, 100.0, 120.0]) {
+                let at = cell.rect();
+                cell.set(egui::Rect::from_min_size(
+                    at.min,
+                    egui::vec2(wide, at.height()),
+                ));
+            }
+        }
+    }
+    harness.run();
+    harness.step();
+    harness.step();
+    let before = cells_of(&harness, "Vitals");
+    let was = kept(&harness, "Vitals").expect("laid out").width();
+    let window = harness.get_by_label("Vitals").rect();
+    let edge = egui::pos2(window.max.x - 2.0, window.center().y);
+    drag(&mut harness, edge, edge + egui::vec2(100.0, 0.0));
+    harness.run();
+    let grown = kept(&harness, "Vitals").expect("laid out").width();
+    assert!(grown > was + 50.0, "it grew: {was} -> {grown}");
+    (before, cells_of(&harness, "Vitals"))
+}
+
+/// With Arrange on, a window resized leaves its widgets their size, room
+/// made for arranging them; with it off, they grow with it (the author,
+/// 2026-09-30).
+#[test]
+fn arranging_a_window_resized_leaves_its_widgets_their_size() {
+    let (before, after) = widened(true);
+    assert!(
+        after.len() == before.len()
+            && after
+                .iter()
+                .zip(&before)
+                .all(|(now, was)| (now.width() - was.width()).abs() < 0.5),
+        "arranging, their size: {before:?} -> {after:?}"
+    );
+    let (before, after) = widened(false);
+    assert!(
+        after
+            .iter()
+            .zip(&before)
+            .all(|(now, was)| now.width() > was.width() + 10.0),
+        "not arranging, they grow: {before:?} -> {after:?}"
+    );
+}

@@ -40,6 +40,9 @@ pub(super) struct Drawing<'a> {
     pub(super) sent: Option<crate::widget::Clicked>,
     /// The window in use, by placed id, which is marked (`plan/52` step 4).
     pub(super) in_use: Option<u32>,
+    /// Arrange is on: a window resized leaves its widgets their size (the
+    /// author, 2026-09-30).
+    pub(super) arranging: bool,
     /// The widget pressed in this frame, by placed id: the window in use
     /// from now.
     pub(super) pressed: Option<u32>,
@@ -245,7 +248,13 @@ pub(super) fn holder(
             // Not to the pass egui lays a window out in at its narrowest as
             // a resize begins, then discards: kept to it, a narrow cell came
             // back from the scaling at its smallest, not its width.
-            if !ui.is_sizing_pass() {
+            // Resized with Arrange on, a window leaves its widgets their
+            // size, room made or taken for arranging them; with it off they
+            // scale with the window (the author, 2026-09-30).
+            if ui.is_sizing_pass() {
+            } else if drawing.arranging {
+                custom.keep(inside.size());
+            } else {
                 custom.fit(inside.size());
             }
             if custom.cells.is_empty() {

@@ -194,6 +194,7 @@ impl Play {
             read: &mut self.read,
             sent: None,
             in_use,
+            arranging,
             pressed: None,
             unread: Vec::new(),
             rects: Vec::new(),

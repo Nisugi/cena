@@ -219,6 +219,12 @@ impl Custom {
         Vec2::new(self.inside[0], self.inside[1])
     }
 
+    /// An inside now `inside`, its cells left their size: a window resized
+    /// while arranging.
+    pub(crate) fn keep(&mut self, inside: Vec2) {
+        self.inside = [inside.x, inside.y];
+    }
+
     /// Keep the cells to an inside now `inside` across, as the module says:
     /// scaled across, the bottom row kept to the bottom. Whether anything
     /// moved.
