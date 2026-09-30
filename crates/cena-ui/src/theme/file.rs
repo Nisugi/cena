@@ -13,23 +13,28 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use super::shape::{Shape, ShapeFile};
+use super::typeface::{Type, TypeFile};
 use super::{Palette, Recipe, Rgb, Scheme, Token, generate, hex, parse_hex};
 
 /// What a theme resolves to when it is worn: its palette and its shape.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Outfit {
     /// Every token's colour.
     pub palette: Palette,
     /// The corners, edges, density, scrollbar and shadows.
     pub shape: Shape,
+    /// The fonts and their sizes.
+    pub kind: Type,
 }
 
 impl Default for Outfit {
-    /// Hydra before it had themes: the bare palette, the default shape.
+    /// Hydra before it had themes: the bare palette, the default shape,
+    /// egui's own type.
     fn default() -> Self {
         Self {
             palette: Palette::bare(),
             shape: Shape::default(),
+            kind: Type::default(),
         }
     }
 }
@@ -67,6 +72,8 @@ pub struct Theme {
     pub pins: BTreeMap<Token, Rgb>,
     /// The parts of the shape it sets.
     pub shape: ShapeFile,
+    /// The parts of the type it sets.
+    pub kind: TypeFile,
 }
 
 /// The recipe as a file writes it: a dial left out is the base's.
@@ -110,6 +117,8 @@ struct File {
     pins: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "ShapeFile::is_empty")]
     shape: ShapeFile,
+    #[serde(default, rename = "type", skip_serializing_if = "TypeFile::is_empty")]
+    kind: TypeFile,
 }
 
 impl RecipeFile {
@@ -179,6 +188,7 @@ impl Theme {
             },
             pins,
             shape: ShapeFile::default(),
+            kind: TypeFile::default(),
         }
     }
 
@@ -196,6 +206,7 @@ impl Theme {
             },
             pins: BTreeMap::new(),
             shape: ShapeFile::default(),
+            kind: TypeFile::default(),
         }
     }
 
@@ -221,6 +232,7 @@ impl Theme {
             recipe: file.recipe,
             pins,
             shape: file.shape,
+            kind: file.kind,
         })
     }
 
@@ -237,6 +249,7 @@ impl Theme {
                 .map(|(token, rgb)| (token.name().to_owned(), hex(*rgb)))
                 .collect(),
             shape: self.shape.clone(),
+            kind: self.kind.clone(),
         };
         toml::to_string(&file).unwrap_or_default()
     }
@@ -326,13 +339,13 @@ impl Themes {
     }
 
     /// The recipe and pins of the theme named `name`, its base's under it,
-    /// and its shape the same way.
+    /// and its shape and type the same way.
     ///
     /// # Errors
     ///
     /// No theme of that name, a base that is missing or circular, or a
     /// value that does not read.
-    pub fn resolve(&self, name: &str) -> Result<(Recipe, Shape), String> {
+    pub fn resolve(&self, name: &str) -> Result<(Recipe, Shape, Type), String> {
         let mut chain: Vec<&Theme> = Vec::new();
         let mut next = Some(name);
         while let Some(name) = next {
@@ -347,6 +360,7 @@ impl Themes {
         }
         let mut recipe = Recipe::default();
         let mut shape = Shape::default();
+        let mut kind = Type::default();
         for theme in chain.iter().rev() {
             recipe = theme
                 .recipe
@@ -354,8 +368,9 @@ impl Themes {
                 .map_err(|why| format!("{}: {why}", theme.name))?;
             recipe.pins.extend(theme.pins.iter().map(|(t, c)| (*t, *c)));
             shape = theme.shape.over(shape);
+            kind = theme.kind.over(kind);
         }
-        Ok((recipe, shape))
+        Ok((recipe, shape, kind))
     }
 
     /// What the theme named `name` is worn as.
@@ -364,10 +379,11 @@ impl Themes {
     ///
     /// As [`Themes::resolve`].
     pub fn outfit(&self, name: &str) -> Result<Outfit, String> {
-        let (recipe, shape) = self.resolve(name)?;
+        let (recipe, shape, kind) = self.resolve(name)?;
         Ok(Outfit {
             palette: generate(&recipe),
             shape,
+            kind,
         })
     }
 
@@ -378,7 +394,7 @@ impl Themes {
     ///
     /// As [`Themes::resolve`], or an accent that is not a colour.
     pub fn outfit_for(&self, hydras: &str, chosen: &Chosen) -> Result<Outfit, String> {
-        let (mut recipe, shape) = self.resolve(chosen.theme.as_deref().unwrap_or(hydras))?;
+        let (mut recipe, shape, kind) = self.resolve(chosen.theme.as_deref().unwrap_or(hydras))?;
         if let Some(accent) = &chosen.accent {
             let rgb =
                 parse_hex(accent).ok_or_else(|| format!("accent `{accent}` is not a colour"))?;
@@ -387,6 +403,7 @@ impl Themes {
         Ok(Outfit {
             palette: generate(&recipe),
             shape,
+            kind,
         })
     }
 }
@@ -417,16 +434,18 @@ mod tests {
     #[test]
     fn a_file_says_only_what_it_changes_over_its_base() {
         let theme = Theme::parse(
-            "base = \"Despana\"\n[recipe]\nseed = \"#c9733a\"\n[pins]\nhealth = \"#112233\"\n[shape]\ncorner = 0\n",
+            "base = \"Despana\"\n[recipe]\nseed = \"#c9733a\"\n[pins]\nhealth = \"#112233\"\n[shape]\ncorner = 0\n[type]\nstory_font = \"Iosevka\"\n",
             "ember",
         )
         .unwrap();
         assert_eq!(theme.name, "ember");
         let mut themes = Themes::built_in();
         themes.add(theme.clone());
-        let (recipe, shape) = themes.resolve("Ember").unwrap();
+        let (recipe, shape, kind) = themes.resolve("Ember").unwrap();
         assert_eq!(shape.corner, 0);
         assert!(shape.shadows, "the base's");
+        assert_eq!(kind.story_font.as_deref(), Some("Iosevka"));
+        assert!((kind.ui_size - 13.0).abs() < f32::EPSILON, "the default");
         assert_eq!(recipe.seed, [0xc9, 0x73, 0x3a]);
         assert_eq!(recipe.background, [0x0d, 0x11, 0x15], "the base's");
         assert_eq!(recipe.scheme, Scheme::Compound, "the base's");
@@ -462,6 +481,7 @@ mod tests {
             recipe: RecipeFile::default(),
             pins: BTreeMap::new(),
             shape: ShapeFile::default(),
+            kind: TypeFile::default(),
         });
         themes.add(Theme {
             name: "b".to_owned(),
@@ -469,6 +489,7 @@ mod tests {
             recipe: RecipeFile::default(),
             pins: BTreeMap::new(),
             shape: ShapeFile::default(),
+            kind: TypeFile::default(),
         });
         assert!(themes.resolve("a").unwrap_err().contains("circle"));
     }

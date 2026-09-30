@@ -80,7 +80,7 @@ impl Looks {
                 };
             }
         }
-        looked.outfit
+        looked.outfit.clone()
     }
 }
 

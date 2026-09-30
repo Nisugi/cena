@@ -112,6 +112,9 @@ pub struct App {
     theme_problem: Option<String>,
     /// Each character's own theme and accent, as its file says (`looks.rs`).
     looks: looks::Looks,
+    /// What the fonts folder said when it was loaded into egui, each file
+    /// refused (`fonts.rs`); `None` until it is.
+    fonts: Option<Vec<String>>,
 }
 
 /// One character's play window.
@@ -152,6 +155,7 @@ impl App {
             worn: None,
             theme_problem: None,
             looks: looks::Looks::default(),
+            fonts: None,
             menu_waits: false,
             caught_for_page: None,
             clear_sends: false,
@@ -188,6 +192,12 @@ impl App {
     /// light mode and the setting follows it (`plan/57` step 2). A theme
     /// that cannot be worn is said on the hub, and Despana is worn.
     fn wear_theme(&mut self, context: &egui::Context) {
+        if self.fonts.is_none() {
+            let data = self.keys_file.as_deref().and_then(std::path::Path::parent);
+            self.fonts = Some(data.map_or_else(Vec::new, |data| {
+                crate::fonts::load(context, &data.join("fonts")).1
+            }));
+        }
         let light =
             self.own.follow_computer() && context.system_theme() == Some(egui::Theme::Light);
         let wanted = if light {

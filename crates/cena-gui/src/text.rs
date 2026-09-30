@@ -15,7 +15,7 @@ use crate::theme::rgb;
 /// the strong colour for a bold run, else the text colour; monospace runs
 /// in the monospace font.
 pub(crate) fn job(runs: &[StyledRun], style: &egui::Style, palette: &Palette) -> LayoutJob {
-    let body = TextStyle::Body.resolve(style);
+    let body = crate::theme::story_font(style);
     let mono = TextStyle::Monospace.resolve(style);
     let mut job = LayoutJob::default();
     for run in runs {

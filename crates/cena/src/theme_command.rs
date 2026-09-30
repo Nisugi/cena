@@ -198,6 +198,7 @@ fn import(dir: &Path, file: &Path, name: Option<&str>) -> Result<String, String>
         recipe: cena_ui::theme::RecipeFile::default(),
         pins,
         shape: cena_ui::theme::ShapeFile::default(),
+        kind: cena_ui::theme::TypeFile::default(),
     };
     let count = theme.pins.len();
     std::fs::create_dir_all(&folder)

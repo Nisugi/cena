@@ -299,6 +299,19 @@ On a branch `themes` once the author approves.
    `theme::corner`. Hydra's own edges stay at their widths. Four images changed for the
    corners, 2 and 4 where they were, 3 now.
 5. **Type.** The UI's font and the story's, and their sizes. Where fonts come from is §6's.
+
+   **BUILT 2026-09-30** (§6 item 3, Claude's recommendation taken: a `fonts` folder first).
+   `[type]` in the file (`crates/cena-ui/src/theme/typeface.rs`): `ui_font` and `story_font`
+   by a file's stem, `ui_size` and `story_size` (6 to 48), each optional over the base's, an
+   empty font name egui's own. Every `.ttf` and `.otf` in the data folder's `fonts` is loaded
+   into egui once, when the app first wears a theme, each a family named by its stem
+   (`crates/cena-gui/src/fonts.rs`; a file that is not a font by its first bytes is refused,
+   since egui stops on one it cannot parse). The style's text styles come from the type
+   (`theme::style`): Small, Body, Button and Heading in the UI's font, scaled from its size;
+   Monospace at the story's size; and a `story` text style, the story's font at its size,
+   which the story's runs take (`theme::story_font`, egui's body where no theme set it). A
+   font named that is not loaded is egui's own. Fonts are one set for the whole GUI, so a
+   character's own theme brings its sizes to its window and not its fonts.
 6. **The editor.** A *Theme* page in the settings menu: Generate first (seed, scheme, the
    dials, a preview of the whole palette and a sample of story text, live), then each token
    with its pin, then Type and Shape. *Save as* makes a file; a built-in is never written over.

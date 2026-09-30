@@ -11,7 +11,7 @@
 //! themes ([`Palette::bare`]), over egui's own dark mode.
 
 use cena_ui::theme::{Outfit, Palette, Rgb, Shape, Token};
-use egui::{Color32, CornerRadius, Stroke, Visuals};
+use egui::{Color32, CornerRadius, FontFamily, FontId, Stroke, TextStyle, Visuals};
 
 pub(crate) use cena_ui::theme::Token as T;
 
@@ -36,6 +36,20 @@ pub(crate) fn palette(ctx: &egui::Context) -> Palette {
     outfit(ctx).palette
 }
 
+/// The story's text style: the theme's story font at its story size.
+pub(crate) fn story_style() -> TextStyle {
+    TextStyle::Name("story".into())
+}
+
+/// The story's font, as `style` has it; egui's body where no theme set it.
+pub(crate) fn story_font(style: &egui::Style) -> FontId {
+    style
+        .text_styles
+        .get(&story_style())
+        .cloned()
+        .unwrap_or_else(|| TextStyle::Body.resolve(style))
+}
+
 /// The shape in force for what `ctx` is drawing.
 pub(crate) fn shape(ctx: &egui::Context) -> Shape {
     outfit(ctx).shape
@@ -56,8 +70,8 @@ pub(crate) fn color(ctx: &egui::Context, token: Token) -> Color32 {
 /// is set from it, the visuals from its surfaces and text, the spacing and
 /// corners from its shape.
 pub(crate) fn wear(ctx: &egui::Context, outfit: &Outfit) {
-    ctx.data_mut(|data| data.insert_temp(key(), *outfit));
-    let style = style(outfit);
+    ctx.data_mut(|data| data.insert_temp(key(), outfit.clone()));
+    let style = style(outfit, &crate::fonts::loaded(ctx));
     // egui keeps a style for dark and one for light and picks by its own
     // theme; ours decides which, so the computer's mode changing does not
     // swap the visuals out from under the palette.
@@ -71,12 +85,38 @@ pub(crate) fn wear(ctx: &egui::Context, outfit: &Outfit) {
 }
 
 /// egui's style from `outfit`: egui's own, its visuals from the palette
-/// ([`visuals`]) and its spacing and corners from the shape.
-pub(crate) fn style(outfit: &Outfit) -> egui::Style {
+/// ([`visuals`]), its spacing and corners from the shape, and its text
+/// styles from the type: the UI's font at its size, and the story's
+/// ([`story_style`]); a font named that is not among `families`, the
+/// fonts loaded, is egui's own.
+pub(crate) fn style(outfit: &Outfit, families: &std::collections::BTreeSet<String>) -> egui::Style {
     let mut style = egui::Style {
         visuals: visuals(&outfit.palette),
         ..egui::Style::default()
     };
+    let kind = &outfit.kind;
+    let family = |named: Option<&String>, or: FontFamily| match named {
+        Some(name) if families.contains(name) => FontFamily::Name(name.as_str().into()),
+        _ => or,
+    };
+    let ui = family(kind.ui_font.as_ref(), FontFamily::Proportional);
+    let story = family(
+        kind.story_font.as_ref().or(kind.ui_font.as_ref()),
+        FontFamily::Proportional,
+    );
+    let scale = kind.ui_size / 13.0;
+    style.text_styles = [
+        (TextStyle::Small, FontId::new(9.0 * scale, ui.clone())),
+        (TextStyle::Body, FontId::new(kind.ui_size, ui.clone())),
+        (TextStyle::Button, FontId::new(kind.ui_size, ui.clone())),
+        (TextStyle::Heading, FontId::new(18.0 * scale, ui)),
+        (
+            TextStyle::Monospace,
+            FontId::new(kind.story_size, FontFamily::Monospace),
+        ),
+        (story_style(), FontId::new(kind.story_size, story)),
+    ]
+    .into();
     let shape = &outfit.shape;
     let factor = shape.density.factor();
     let spacing = &mut style.spacing;
@@ -115,8 +155,8 @@ pub(crate) fn wearing(ctx: &egui::Context, outfit: Option<&Outfit>) -> Option<Wo
     let viewport = ctx.viewport_id();
     let theme = ctx.theme();
     let before = ctx.global_style();
-    ctx.data_mut(|data| data.insert_temp(key().with(viewport), *outfit));
-    ctx.set_style_of(theme, style(outfit));
+    ctx.data_mut(|data| data.insert_temp(key().with(viewport), outfit.clone()));
+    ctx.set_style_of(theme, style(outfit, &crate::fonts::loaded(ctx)));
     Some(Worn {
         ctx: ctx.clone(),
         viewport,
@@ -247,7 +287,7 @@ mod tests {
         outfit.shape.density = cena_ui::theme::Density::Roomy;
         outfit.shape.scrollbar = 12.0;
         outfit.shape.shadows = false;
-        let style = style(&outfit);
+        let style = style(&outfit, &std::collections::BTreeSet::new());
         assert_eq!(
             style.visuals.widgets.inactive.corner_radius,
             CornerRadius::ZERO
@@ -288,6 +328,41 @@ mod tests {
             "Hydra's again"
         );
         assert!(ctx.global_style().visuals.dark_mode);
+    }
+
+    #[test]
+    fn the_type_sets_the_text_styles_and_names_only_a_font_loaded() {
+        let mut outfit = Outfit::default();
+        outfit.kind.ui_size = 26.0;
+        outfit.kind.story_size = 20.0;
+        outfit.kind.ui_font = Some("Iosevka".to_owned());
+        outfit.kind.story_font = Some("Hack".to_owned());
+        let none = std::collections::BTreeSet::new();
+        let style = super::style(&outfit, &none);
+        let body = TextStyle::Body.resolve(&style);
+        assert!((body.size - 26.0).abs() < f32::EPSILON);
+        assert_eq!(
+            body.family,
+            FontFamily::Proportional,
+            "Iosevka is not loaded"
+        );
+        assert!(
+            (TextStyle::Heading.resolve(&style).size - 36.0).abs() < f32::EPSILON,
+            "scaled"
+        );
+        let story = story_font(&style);
+        assert!((story.size - 20.0).abs() < f32::EPSILON);
+        assert_eq!(story.family, FontFamily::Proportional);
+        let loaded = ["Hack".to_owned()].into_iter().collect();
+        let with = super::style(&outfit, &loaded);
+        assert_eq!(story_font(&with).family, FontFamily::Name("Hack".into()));
+        assert_eq!(
+            TextStyle::Body.resolve(&with).family,
+            FontFamily::Proportional
+        );
+        // Without a theme, the story is egui's body.
+        let plain = egui::Style::default();
+        assert_eq!(story_font(&plain), TextStyle::Body.resolve(&plain));
     }
 
     #[test]
