@@ -363,6 +363,13 @@ impl SessionHandle {
         let _ = self.events.send(crate::Event::Notice(notice));
     }
 
+    /// Turn the injury doll every viewer shows to `deg` (`;doll face`):
+    /// published as [`Event::DollFacing`](crate::Event::DollFacing), the
+    /// way a notice is; with nobody listening there is nobody to turn it.
+    pub fn turn_doll(&self, deg: f32) {
+        let _ = self.events.send(crate::Event::DollFacing(deg));
+    }
+
     /// Every event the session publishes from now on, for what inside the
     /// session watches it (an agent's takeover, `crate::agent`).
     pub(crate) fn events(&self) -> tokio::sync::broadcast::Receiver<crate::Event> {

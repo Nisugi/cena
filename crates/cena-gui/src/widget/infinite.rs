@@ -19,11 +19,17 @@
 use std::sync::Arc;
 
 use cena_session::GameState;
-use gs_field::doll_sky::doll_sky;
+use gs_field::doll_sky::{DollSky, display, doll_sky, hex_linear};
 use gs_field::doll_state::DollState;
 use gs_field::lighting::Sky;
 use gs_field_egui::creature_puppet::PuppetCache;
 use gs_field_egui::{doll_view, field_gpu};
+
+use super::Clicked;
+use super::doll::{Backdrop, DollLook};
+
+/// The strip under the doll that its facing slider takes, points.
+const SLIDER_HEIGHT: f32 = 20.0;
 
 /// The puppet every character is drawn as, for now.
 const FORM: &str = "humanoid";
@@ -60,6 +66,28 @@ fn form(chosen: Option<&str>) -> String {
     }
 }
 
+/// The light and background the doll stands in, as `look` asks: a steady
+/// day, `gs_studio`'s display, or the display's lights over black or one
+/// colour. The doll view draws a flat colour dimmed (its sky at 0.55, its
+/// ground at 0.7) with a vignette toward the corners, so the colour is
+/// raised by as much first: the middle of the window shows the colour as
+/// picked.
+fn sky(look: Option<&DollLook>) -> DollSky {
+    let look = look.cloned().unwrap_or_default();
+    let solid = |rgb: [f32; 3]| DollSky {
+        sky_top: rgb.map(|c| c / 0.55),
+        sky_horizon: rgb.map(|c| c / 0.55),
+        ground: rgb.map(|c| c / 0.7),
+        ..display()
+    };
+    match look.backdrop {
+        Backdrop::Day => doll_sky(None, &Sky::default(), true),
+        Backdrop::Display => display(),
+        Backdrop::Black => solid([0.0; 3]),
+        Backdrop::Colour => solid(hex_linear(look.colour.as_deref().unwrap_or("#000000"))),
+    }
+}
+
 /// What the character is, as `gs_studio` reads it.
 fn doll_state(state: &GameState) -> DollState {
     let injuries = &state.character.injuries;
@@ -90,17 +118,22 @@ fn doll_state(state: &GameState) -> DollState {
 }
 
 /// Draw the puppet for `state` in what is left of `ui`, as the doll `id`
-/// in the skin `chosen`; `false` when it could not be, and nothing was.
+/// looking as `look` says, with the facing slider under it; `false` when
+/// it could not be, and nothing was. The slider moved = a `Clicked::Set`
+/// of the widget's `facing`.
 pub(super) fn infinite(
     ui: &mut egui::Ui,
     state: Option<&GameState>,
     id: egui::Id,
-    chosen: Option<&str>,
-) -> bool {
+    look: Option<&DollLook>,
+) -> (bool, Option<Clicked>) {
+    let chosen = look.and_then(|look| look.skin.as_deref());
     let Some(state) = state else {
-        return false;
+        return (false, None);
     };
-    let rect = ui.available_rect_before_wrap();
+    let whole = ui.available_rect_before_wrap();
+    let (rect, strip) = whole.split_top_bottom_at_y(whole.max.y - SLIDER_HEIGHT);
+    let facing = look.and_then(|look| look.facing).unwrap_or(0);
     let context = ui.ctx().clone();
     let form: Arc<str> = context.data_mut(|data| {
         data.get_temp_mut_or_insert_with(
@@ -110,7 +143,7 @@ pub(super) fn infinite(
         .clone()
     });
     let doll = doll_state(state);
-    let sky = doll_sky(None, &Sky::default(), true);
+    let sky = sky(look);
     let shared = PuppetCache::shared(&context);
     let mut cache = shared
         .lock()
@@ -118,21 +151,41 @@ pub(super) fn infinite(
     // The widget's own name, for its breathing and its turns, and its own
     // view of the pass.
     let name = format!("doll:{}", id.value());
-    let drawn = doll_view::paint_state(
+    let key = doll_view::key_for(&doll).with_facing(f32::from(facing));
+    let drawn = doll_view::paint_in_view(
         ui,
         rect,
         &mut cache,
         &form,
-        &doll,
+        key,
         &sky,
         Some(&name),
         field_gpu::available(&context),
         id.value(),
     );
-    if drawn {
-        ui.allocate_rect(rect, egui::Sense::hover());
+    drop(cache);
+    if !drawn {
+        return (false, None);
     }
-    drawn
+    ui.allocate_rect(rect, egui::Sense::hover());
+    // The slider: the middle faces the viewer, right turns its front to
+    // the right. Dragging sets the widget's own setting, so it is kept.
+    let mut deg = facing;
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(strip));
+    child.spacing_mut().slider_width = strip.width() - 8.0;
+    let slid = child.add(
+        egui::Slider::new(&mut deg, -180..=180)
+            .show_value(false)
+            .step_by(5.0),
+    );
+    let slid = slid.on_hover_text(format!(
+        "Turned {deg}\u{b0}: drag to turn the doll, 0 faces you"
+    ));
+    let set = (slid.changed() && deg != facing).then(|| Clicked::Set {
+        key: "facing".to_owned(),
+        to: deg.to_string(),
+    });
+    (true, set)
 }
 
 /// `gs_studio`'s GPU pass, set up once as the window opens: without it the
@@ -147,7 +200,31 @@ pub(crate) fn open(creation: &eframe::CreationContext<'_>, data: &std::path::Pat
 
 #[cfg(test)]
 mod tests {
-    use super::{doll_state, form, skins};
+    use super::{doll_state, form, skins, sky};
+    use crate::widget::doll::{Backdrop, DollLook};
+
+    /// The doll stands in the day, the display, or the display's light
+    /// over black or the colour picked.
+    #[test]
+    fn the_doll_stands_before_the_chosen_backdrop() {
+        let with = |backdrop, colour: Option<&str>| DollLook {
+            backdrop,
+            colour: colour.map(str::to_owned),
+            ..DollLook::default()
+        };
+        assert!(!sky(None).indoor, "a day outdoors");
+        assert!(sky(Some(&with(Backdrop::Display, None))).indoor);
+        let black = sky(Some(&with(Backdrop::Black, None)));
+        let dark = |c: [f32; 3]| c.iter().all(|c| c.abs() < f32::EPSILON);
+        assert!(dark(black.sky_top) && dark(black.ground), "{black:?}");
+        assert!(!black.lights.is_empty(), "lit all the same");
+        let red = sky(Some(&with(Backdrop::Colour, Some("#ff0000"))));
+        assert!(red.sky_top[0] > 1.0 && red.sky_top[1] == 0.0, "{red:?}");
+        assert!(
+            dark(sky(Some(&with(Backdrop::Colour, None))).sky_top),
+            "black with no colour"
+        );
+    }
     use cena_session::{Frame, GameState};
 
     /// The doll wears what the player chose of `gs_studio`'s skins, the

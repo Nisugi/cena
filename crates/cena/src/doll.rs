@@ -1,4 +1,10 @@
-//! `;doll`: the injury doll's one command (`plan/55` step 6).
+//! `;doll`: the injury doll's commands (`plan/55` step 6).
+//!
+//! `;doll face <degrees>` turns the Infinite doll in every window of the
+//! character: 0 faces the viewer, 90 turns its front to the right, -90 to
+//! the left, 180 away. The session publishes it
+//! ([`SessionHandle::turn_doll`]) and each play window turns its Injuries
+//! widgets; the slider under the doll does the same by hand.
 //!
 //! `;doll import <folder>` brings a player's `VellumFE` dolls into Hydra's
 //! `dolls` folder, each picture's calibration written into its copy
@@ -19,13 +25,17 @@ use crate::commands::Commands;
 /// What `;doll help` says.
 const HELP: &str = "doll import <folder>   your VellumFE dolls into Hydra's dolls folder, each \
                     picture's calibration written into it. <folder> is VellumFE's own folder or \
-                    its dolls folder. Pick a picture on the Injuries widget's page.";
+                    its dolls folder. Pick a picture on the Injuries widget's page. \
+                    doll face <degrees>   turn the Infinite doll: 0 faces you, 90 turns its \
+                    front to the right, -90 to the left, 180 away.";
 
 /// What a line of `;doll` asks.
 #[derive(Debug, PartialEq, Eq)]
 enum Asked {
     Help,
     Import(PathBuf),
+    /// Turn the doll to this facing, whole degrees, -180..180.
+    Face(i16),
 }
 
 /// `line`, without its symbol, as `;doll`: `None` when it is not one, an
@@ -46,6 +56,20 @@ fn parse(line: &str) -> Option<Result<Asked, String>> {
         "import" => Ok(Asked::Import(PathBuf::from(
             folder.trim().trim_matches('"'),
         ))),
+        "face" => match folder.trim().trim_end_matches('\u{b0}').parse::<f32>() {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "wrapped to -180..180 first"
+            )]
+            Ok(deg) if deg.is_finite() => Ok(Asked::Face(
+                ((deg + 180.0).rem_euclid(360.0) - 180.0).round() as i16,
+            )),
+            _ => Err(
+                "Doll: say how far to turn it, as `doll face <degrees>`: 0 faces you, 90 \
+                      turns its front to the right, -90 to the left, 180 away."
+                    .to_owned(),
+            ),
+        },
         other => Err(format!("Doll: there is no `doll {other}`. {HELP}")),
     })
 }
@@ -67,6 +91,14 @@ pub(crate) fn open(handle: &SessionHandle, commands: &Commands) {
                 return Some(Claimed::Done);
             }
             Asked::Import(folder) => folder,
+            Asked::Face(deg) => {
+                told.turn_doll(f32::from(deg));
+                told.say(
+                    Notice::line(NoticeKind::Info, format!("Doll: turned to {deg}\u{b0}."))
+                        .answering(),
+                );
+                return Some(Claimed::Done);
+            }
         };
         let told = told.clone();
         tokio::spawn(async move {
@@ -119,6 +151,11 @@ mod tests {
             Some(Ok(Asked::Import(PathBuf::from("C:/Users/me/.vellum-fe"))))
         );
         assert!(matches!(parse("doll import"), Some(Err(_))));
+        assert_eq!(parse("doll face 90"), Some(Ok(Asked::Face(90))));
+        assert_eq!(parse("doll face -45\u{b0}"), Some(Ok(Asked::Face(-45))));
+        assert_eq!(parse("doll face 270"), Some(Ok(Asked::Face(-90))));
+        assert!(matches!(parse("doll face"), Some(Err(_))));
+        assert!(matches!(parse("doll face left"), Some(Err(_))));
         assert!(matches!(parse("Doll fly"), Some(Err(_))));
     }
 }

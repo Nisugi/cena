@@ -194,6 +194,7 @@ impl Play {
             session,
             read: &mut self.read,
             sent: None,
+            set: None,
             in_use,
             arranging,
             pressed: None,
@@ -252,6 +253,7 @@ impl Play {
         }
         self.unread_tabs = std::mem::take(&mut drawing.unread);
         self.shown_rects = std::mem::take(&mut drawing.rects);
+        let set = drawing.set.take();
         match drawing.sent {
             Some(Clicked::Send(line)) => self.out = Some(super::Asked::Send(line)),
             Some(Clicked::Quietly(line)) => self.out = Some(super::Asked::Quietly(line)),
@@ -260,7 +262,15 @@ impl Play {
             Some(Clicked::Hydra { word, echo }) => {
                 self.out = Some(super::Asked::Hydra { word, echo });
             }
-            None => {}
+            // Set by its widget, never by a holder: `drawn` keeps it apart.
+            Some(Clicked::Set { .. }) | None => {}
+        }
+        if let Some((placed, key, to)) = set {
+            self.out = Some(super::Asked::Widget {
+                page: super::options::page_id(placed),
+                key,
+                to,
+            });
         }
         ((drawn, insides), released)
     }

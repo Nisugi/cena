@@ -287,6 +287,44 @@ pub(crate) struct DollLook {
     /// form, or `-` for the form's own; with none, the lay figure.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) skin: Option<String>,
+    /// What stands behind the Infinite puppet.
+    #[serde(default, skip_serializing_if = "Backdrop::is_day")]
+    pub(crate) backdrop: Backdrop,
+    /// The colour behind it when `backdrop` is a solid colour, `#rrggbb`;
+    /// black with none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) colour: Option<String>,
+    /// How far the Infinite puppet is turned, degrees: 0 faces the viewer,
+    /// 90 its front to screen-right, -90 to the left, 180 away. The slider
+    /// under it and `;doll face` set it; none = facing the viewer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) facing: Option<i16>,
+}
+
+/// What stands behind the Infinite puppet.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum Backdrop {
+    /// A steady day: blue sky over grey ground, the sun high to the front.
+    #[default]
+    Day,
+    /// `gs_studio`'s display: a plain dark backdrop under a white key
+    /// light, the same at any hour.
+    Display,
+    /// Black.
+    Black,
+    /// One colour of the player's choosing.
+    Colour,
+}
+
+impl Backdrop {
+    #[expect(
+        clippy::trivially_copy_pass_by_ref,
+        reason = "serde's skip_serializing_if hands a reference"
+    )]
+    fn is_day(&self) -> bool {
+        *self == Self::Day
+    }
 }
 
 /// An Injuries widget's style (`plan/55` §2a).
@@ -646,6 +684,9 @@ diameter = 0.1
             picture: Some(path.to_string_lossy().into_owned()),
             style: super::Style::Doll,
             skin: None,
+            backdrop: super::Backdrop::Day,
+            colour: None,
+            facing: None,
         };
         let hurt = injuries(&[("head", 2, 0), ("chest", 0, 3), ("leftFoot", 1, 0)]);
         let mut harness = egui_kittest::Harness::builder()
@@ -682,6 +723,9 @@ diameter = 0.1
             picture: Some(base.to_string_lossy().into_owned()),
             style: super::Style::Doll,
             skin: None,
+            backdrop: super::Backdrop::Day,
+            colour: None,
+            facing: None,
         };
         let hurt = injuries(&[("chest", 2, 1), ("head", 1, 0)]);
         let mut harness = egui_kittest::Harness::builder()

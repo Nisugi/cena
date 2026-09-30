@@ -393,7 +393,10 @@ impl App {
                 }
                 // Held for the draw; the feed does not wait on it
                 // (`story/inbox.rs`).
-                let story = seat.story();
+                let mut story = seat.story();
+                if let Some(deg) = story.doll_facing.take() {
+                    window.play.turn_dolls(deg);
+                }
                 let view = PlayView {
                     name: &seat.name,
                     lifecycle: &lifecycle,

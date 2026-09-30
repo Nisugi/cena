@@ -20,7 +20,7 @@ use cena_ui::settings::{Page, Row, RowKind, Value};
 use super::Play;
 use crate::bar::{Fills, Look, Place};
 use crate::story::Hours;
-use crate::widget::doll::{DollLook, Style};
+use crate::widget::doll::{Backdrop, DollLook, Style};
 #[cfg(feature = "doll-infinite")]
 use crate::widget::infinite::BARE;
 use crate::widget::{Lines, Listing, RoomParts, Stamps, Widget};
@@ -194,6 +194,25 @@ impl Play {
     /// # Errors
     ///
     /// Why nothing was: no such widget, or not a value it takes.
+    /// Turn every Injuries widget in the window to `deg` (`;doll face`).
+    pub(crate) fn turn_dolls(&mut self, deg: f32) {
+        let dolls: Vec<u32> = self
+            .layout
+            .as_ref()
+            .map(|layout| {
+                layout
+                    .placed()
+                    .into_iter()
+                    .filter(|one| one.widget == Widget::Injuries)
+                    .map(|one| one.id)
+                    .collect()
+            })
+            .unwrap_or_default();
+        for placed in dolls {
+            let _ = self.widget_change(&page_id(placed), "facing", Some(&format!("{deg:.0}")));
+        }
+    }
+
     pub(crate) fn widget_change(
         &mut self,
         page: &str,
@@ -612,8 +631,58 @@ fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
             here: skin.is_some(),
             from: None,
         });
+        let backdrop = look.map_or(Backdrop::Day, |look| look.backdrop);
+        rows.push(Row {
+            key: "backdrop".to_owned(),
+            label: "Backdrop".to_owned(),
+            help: "What the puppet stands in front of: a day sky, gs_studio's dark display, \
+                   black, or a colour of your own."
+                .to_owned(),
+            kind: RowKind::Choice(
+                BACKDROPS
+                    .iter()
+                    .map(|(_, value, called)| ((*value).to_owned(), (*called).to_owned()))
+                    .collect(),
+            ),
+            value: Value::Text(backdrop_value(backdrop)),
+            here: backdrop != Backdrop::Day,
+            from: None,
+        });
+        if backdrop == Backdrop::Colour {
+            let colour = look.and_then(|look| look.colour.clone());
+            rows.push(Row {
+                key: "colour".to_owned(),
+                label: "Colour".to_owned(),
+                help: "The colour behind the puppet.".to_owned(),
+                kind: RowKind::Color,
+                value: Value::Text(colour.clone().unwrap_or_else(|| "#000000".to_owned())),
+                here: colour.is_some(),
+                from: None,
+            });
+        }
     }
     rows
+}
+
+/// The Injuries widget's backdrops: each, how it is written, its name.
+const BACKDROPS: [(Backdrop, &str, &str); 4] = [
+    (Backdrop::Day, "day", "Day sky"),
+    (Backdrop::Display, "display", "Display"),
+    (Backdrop::Black, "black", "Black"),
+    (Backdrop::Colour, "colour", "Solid colour"),
+];
+
+/// How `backdrop` is written on the page.
+#[cfg_attr(
+    not(feature = "doll-infinite"),
+    expect(dead_code, reason = "the doll's page")
+)]
+fn backdrop_value(backdrop: Backdrop) -> String {
+    BACKDROPS
+        .iter()
+        .find(|(each, ..)| *each == backdrop)
+        .map_or("", |(_, value, _)| value)
+        .to_owned()
 }
 
 /// Set the Injuries widget's `key` to `to`, or back to its own.
@@ -635,6 +704,47 @@ fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), Stri
                 return Err(format!("Injuries has no skin {skin}."));
             }
             look.skin = skin.map(str::to_owned);
+            Ok(())
+        }
+        "facing" => {
+            look.facing = match to.map(str::trim).filter(|to| !to.is_empty()) {
+                None => None,
+                Some(to) => {
+                    let deg: f32 = to
+                        .trim_end_matches('\u{b0}')
+                        .parse()
+                        .ok()
+                        .filter(|deg: &f32| deg.is_finite())
+                        .ok_or_else(|| format!("`{to}` is not a facing in degrees."))?;
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        reason = "wrapped to -180..180 first"
+                    )]
+                    Some(((deg + 180.0).rem_euclid(360.0) - 180.0).round() as i16)
+                }
+            };
+            Ok(())
+        }
+        "backdrop" => {
+            look.backdrop = match to {
+                None => Backdrop::Day,
+                Some(to) => BACKDROPS
+                    .iter()
+                    .find(|(_, value, _)| *value == to)
+                    .map(|(each, ..)| *each)
+                    .ok_or_else(|| format!("Injuries has no backdrop {to}."))?,
+            };
+            Ok(())
+        }
+        "colour" => {
+            look.colour = match to.filter(|colour| !colour.is_empty()) {
+                None => None,
+                Some(to) => Some(
+                    crate::menu::rgb(to)
+                        .map(crate::menu::hex)
+                        .ok_or_else(|| format!("`{to}` is not a colour."))?,
+                ),
+            };
             Ok(())
         }
         "style" => {

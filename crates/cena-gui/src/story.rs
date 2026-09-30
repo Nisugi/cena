@@ -66,6 +66,9 @@ pub(crate) struct Story {
     pub(crate) said: VecDeque<Notice>,
     /// A trigger's banners, with when each arrived.
     pub(crate) alerts: VecDeque<(Instant, String)>,
+    /// A facing `;doll face` asked for and no window has taken yet
+    /// (`cena_session::Event::DollFacing`), degrees.
+    pub(crate) doll_facing: Option<f32>,
     /// Lines of the game's heard, ever: a tab not showing counts how many
     /// came since it last did (`plan/49` §2).
     pub(crate) heard: u64,
@@ -139,6 +142,7 @@ impl Story {
                 }
             }
             Event::Notice(notice) => self.tell(notice.clone()),
+            Event::DollFacing(deg) => self.doll_facing = Some(*deg),
             Event::Attention(call) => {
                 if let Some(alert) = &call.alert {
                     self.alert(alert);

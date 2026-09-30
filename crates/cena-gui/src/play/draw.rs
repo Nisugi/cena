@@ -38,6 +38,9 @@ pub(super) struct Drawing<'a> {
     pub(super) read: &'a mut HashMap<u32, u64>,
     /// A line a widget asked to send this frame, as if typed.
     pub(super) sent: Option<crate::widget::Clicked>,
+    /// A setting a widget changed on its own page this frame: the placed
+    /// id, the key, the value (`Clicked::Set`).
+    pub(super) set: Option<(u32, String, String)>,
     /// The window in use, by placed id, which is marked (`plan/52` step 4).
     pub(super) in_use: Option<u32>,
     /// Arrange is on: a window resized leaves its widgets their size (the
@@ -331,8 +334,12 @@ fn drawn(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
             drawing.read.insert(placed.id, count);
         }
         let chosen = drawing.chosen(placed.id);
-        if let Some(line) = placed.widget.draw_with(ui, &drawing.seen, id, &chosen) {
-            drawing.sent = Some(line);
+        match placed.widget.draw_with(ui, &drawing.seen, id, &chosen) {
+            Some(crate::widget::Clicked::Set { key, to }) => {
+                drawing.set = Some((placed.id, key, to));
+            }
+            Some(line) => drawing.sent = Some(line),
+            None => {}
         }
         return;
     };

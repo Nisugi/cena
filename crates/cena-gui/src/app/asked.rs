@@ -33,6 +33,11 @@ impl App {
             }
             Asked::Lich(on) => self.hydras(seat, lich_word(on)),
             Asked::Aim(target) => seat.aim(target),
+            Asked::Widget { page, key, to } => {
+                if let Some(window) = self.plays.get_mut(&seat.id.0) {
+                    let _ = window.play.widget_change(&page, &key, Some(&to));
+                }
+            }
             Asked::Hydra { word, echo: true } => self.hydras(seat, &word),
             Asked::Hydra { word, echo: false } => {
                 self.sessions

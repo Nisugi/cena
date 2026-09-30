@@ -1,6 +1,6 @@
 # 59 — The inventory manager
 
-PROPOSED 2026-09-30. The author, reading `plan/58`: *"this makes me realize we need to get a
+APPROVED 2026-09-30, every question answered (§5). The author, reading `plan/58`: *"this makes me realize we need to get a
 few things in first. So I think inventory manager should be our first add, let's make a solid
 plan for that."*
 
@@ -219,13 +219,20 @@ VellumFE's move checker (`item_mover.rs`) goes into the session:
 
 Each step is a commit on branch `inventory`, with its tests.
 
-0. **Measure, with your leave** (§5 item 6). From the September logs that already hold 36
-   snapshots:
-   - Does a prompt follow `_inventory manager` and `_inventory viewitem`? This decides how
-     the session's queue waits on them.
-   - Does the snapshot's `flags` carry `closed` for every closed container? This decides
-     whether probing is needed.
-   - How long does an answer take?
+0. **Measured 2026-09-30**, on the author's leave (§5 item 6). Done. The author's own
+   September logs (`E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi\2026\09\xml`) hold 4 snapshots
+   in three files, and 24 detail answers:
+
+   | Question | Answer |
+   |---|---|
+   | Is a closed or locked container marked in the snapshot? | **Yes.** 8 `closed` and 4 `locked` flags over 4 snapshots; `closed` and `locked` are the only flags there are |
+   | Does an item's detail agree with the snapshot on closed? | **Yes, 24 of 24.** A closed container's answer carries `closed='1'` (2), an open one's nothing (22) |
+   | Does a prompt follow the snapshot? | **Yes, all 4.** The next element after `</inventoryManager>` is `<prompt>` |
+   | Paging | **None seen**: no `<continuation>` in 97 to 110 items. Paging stays built and tested from VellumFE's fixtures, since a bigger inventory may still page |
+
+   So there is **no probing** (§5 item 3), and the session can wait on a snapshot as on any
+   command that ends at its prompt. How long an answer takes is not in a Lich log, which does
+   not write the command sent; the live test measures it (§5 item 3).
 1. **The model.**
    - `Loading`, the state machine with VellumFE's service tests (`inventory_service.rs:446-796`) and the defect's own test.
    - The page merge.
@@ -263,30 +270,26 @@ answers.
 
 ---
 
-## 5. Questions for the author
+## 5. The author's answers, 2026-09-30
 
-1. **When is the snapshot taken?**
-   - (a) By hand only, as VellumFE does. That was your decision there (`containers.rs:3-5`).
-   - (b) **Once, quietly, after each login and reconnect, and by hand after that.**
-   - (c) Also again after each hunt's rest or selling round.
-
-   Recommended: (b), with §3c's confirmed moves keeping the tree right between refreshes.
-   The travel routines and `resolve.rs` then always have a tree to read.
-2. **Command names.**
-   - VellumFE's four as they are: `.invsync`, `.find`, `.viewitem`, `.drag`.
-   - Or one family: `.inv`, `.inv find`, `.inv view`, `.inv move`.
-
-   Recommended: VellumFE's, for the muscle memory. `.find` does not collide with the Find bar,
-   which is a key (`plan/52` step 6), not a command.
-3. **Probing for closed containers.** VellumFE asks the detail of up to 40 containers after
-   each snapshot, one per prompt. Recommended: none, if step 0 shows `flags` already carries
-   `closed`. An item's detail, and Open or Close from the menu, keep a flag right when it
-   changes.
-4. **Drag in the tree** (Saga has it, VellumFE does not). Recommended: yes. `carry.rs` is
-   already there, and §3c makes it checked.
-5. **Where an item's detail shows.**
-   - VellumFE sends it to an `inspect` stream and the Item tab.
-   - Recommended: the Item tab. `.viewitem` without an Inventory window open says it in
-     Hydra's window instead, sections and links intact.
-6. **May I read the log archive for step 0?** The measurement reads the author's September
-   logs, the same 36 snapshots `plan/15` §6.11 counted. The rule is to ask first.
+1. **When: once, quietly, after each login and reconnect, and by hand after that**
+   (*"agree"*). Confirmed moves (§3c) keep the tree right in between. The travel routines and
+   `resolve.rs` then always have a tree to read.
+2. **One `.inv` family** (*"one .inv family probably"*). Proposed, and confirmed in step 3:
+   - `.inv`: how old the tree is, how many items, whether it is complete;
+   - `.inv sync`: take it again;
+   - `.inv find <words>`: search it;
+   - `.inv view <id>`: an item's detail;
+   - `.inv move <id> left|right|drop|wear|feet` and `.inv move <id> in|on|behind|under <id>`:
+     a checked move.
+3. **No probing** (*"I'm fairly sure they come marked open or closed, so asking each
+   container individually seems bad, but we can verify in the logs, and we can log in and do
+   some tests"*). The logs bear it out (step 0).
+   - The live test the author offers checks two things: how long an answer takes, and that
+     Open and Close from the window's menu leave the flag right.
+   - After either, one detail request for that container settles its flag. Nothing is asked
+     unasked.
+4. **Drag in the tree: yes.**
+5. **An item's detail in the window's Item tab: agreed.** `.inv view` without an Inventory
+   window open says it in Hydra's window, sections and links intact.
+6. **The logs may be read: yes.** Done, in step 0.

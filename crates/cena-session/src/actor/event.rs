@@ -165,6 +165,10 @@ pub enum Event {
     /// stopped, what is still stored (`crate::notice`). **Not from the
     /// game**, which is why it is its own event and not a frame.
     Notice(crate::notice::Notice),
+    /// The player asked for the injury doll turned to this facing, degrees:
+    /// 0 facing the viewer, 90 its front to screen-right (`;doll face`).
+    /// **Not from the game**; a viewer with a doll turns it.
+    DollFacing(f32),
     /// The agent's side of the session changed: the player set its level or
     /// answered a request, or an operation it started moved on
     /// (`crate::agent`). Published so an agent learns it in order with

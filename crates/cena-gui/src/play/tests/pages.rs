@@ -526,6 +526,38 @@ fn skin_kept(harness: &mut Harness<'_, Scene>, page: &str, doll: u32) {
         kept.and_then(|look| look.skin).as_deref(),
         Some("sheruvian_monk")
     );
+
+    // Its backdrop, and the colour of a solid one; nonsense refused.
+    let play = &mut harness.state_mut().play;
+    assert!(play.widget_change(page, "backdrop", Some("paper")).is_err());
+    assert!(play.widget_change(page, "colour", Some("red")).is_err());
+    play.widget_change(page, "backdrop", Some("colour"))
+        .expect("changed");
+    play.widget_change(page, "colour", Some("#336699"))
+        .expect("changed");
+    let kept = layout(harness).dolls.get(&doll).cloned().expect("kept");
+    assert_eq!(kept.backdrop, crate::widget::doll::Backdrop::Colour);
+    assert_eq!(kept.colour.as_deref(), Some("#336699"));
+    assert!(keys(harness, page).contains(&"colour".to_owned()));
+    let play = &mut harness.state_mut().play;
+    play.widget_change(page, "backdrop", Some("black"))
+        .expect("changed");
+    assert!(
+        !keys(harness, page).contains(&"colour".to_owned()),
+        "a colour row only for a solid colour"
+    );
+
+    // Its facing, as the slider and `;doll face` set it, wrapped.
+    let play = &mut harness.state_mut().play;
+    assert!(play.widget_change(page, "facing", Some("left")).is_err());
+    play.widget_change(page, "facing", Some("270"))
+        .expect("changed");
+    let kept = layout(harness).dolls.get(&doll).cloned().expect("kept");
+    assert_eq!(kept.facing, Some(-90));
+    let play = &mut harness.state_mut().play;
+    play.turn_dolls(45.0);
+    let kept = layout(harness).dolls.get(&doll).cloned().expect("kept");
+    assert_eq!(kept.facing, Some(45), "every doll in the window turned");
 }
 
 /// Stance is a bar as a vital is (the author, 2026-09-29: *"It's basically

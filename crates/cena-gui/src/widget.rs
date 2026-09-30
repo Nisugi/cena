@@ -129,6 +129,19 @@ pub(crate) enum Clicked {
     /// A room clicked on the minimap to go to, its route shown; `None`
     /// to forget it.
     Aim(Option<u32>),
+    /// A setting of the widget's own page changed from the widget itself:
+    /// the doll's facing from the slider under it. The window applies it
+    /// as the settings page would (`play/options.rs`).
+    #[cfg_attr(
+        not(feature = "doll-infinite"),
+        expect(dead_code, reason = "the doll's slider")
+    )]
+    Set {
+        /// The page's key.
+        key: String,
+        /// Its new value, as the page writes it.
+        to: String,
+    },
     /// One of Hydra's own commands, its symbol put in front: `go2 228`
     /// echoed as if typed, or `room 228` said with no echo.
     Hydra {

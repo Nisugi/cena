@@ -76,6 +76,16 @@ pub(crate) enum Asked {
     Settings(Option<String>),
     /// Open the settings menu at Hydra's *Keys* page (step 8).
     Keys,
+    /// A widget changed a setting of its own page from inside itself (the
+    /// doll's facing slider): applied as the page would apply it.
+    Widget {
+        /// The page.
+        page: String,
+        /// The key.
+        key: String,
+        /// The value, as the page writes it.
+        to: String,
+    },
     /// Open the character's log window (`plan/25` step 8).
     Log,
     /// Open the trigger editor (`plan/54`).
