@@ -68,7 +68,12 @@ fn in_sight(harness: &Harness<'_, Story>, text: &str, (top, bottom): (f32, f32))
 /// The wheel turned `by` points over the widget: back, to older lines,
 /// when positive.
 fn wheel(harness: &mut Harness<'_, Story>, by: f32) {
-    harness.hover_at(egui::pos2(200.0, 100.0));
+    wheel_at(harness, egui::pos2(200.0, 100.0), by);
+}
+
+/// The wheel turned `by` points with the pointer `at`.
+fn wheel_at(harness: &mut Harness<'_, Story>, at: egui::Pos2, by: f32) {
+    harness.hover_at(at);
     harness.event(egui::Event::MouseWheel {
         unit: egui::MouseWheelUnit::Point,
         delta: egui::vec2(0.0, by),
@@ -132,6 +137,28 @@ fn the_top_holds_its_lines_as_old_ones_go() {
         opened.offset,
         now.offset
     );
+}
+
+/// The wheel over the bottom pane scrolls the top as over the top: where
+/// the pointer is does not matter (the author, 2026-09-29).
+#[test]
+fn the_wheel_below_the_separator_scrolls_the_top() {
+    let mut harness = story_of(200);
+    wheel(&mut harness, 600.0);
+    let opened = split(&harness);
+    assert!(opened.open);
+    let bar = harness.get_by_label("⬇ Newest").rect();
+    wheel_at(&mut harness, egui::pos2(200.0, bar.max.y + 30.0), 300.0);
+    let now = split(&harness);
+    assert!(now.open, "still split");
+    assert!(
+        now.offset < opened.offset - 200.0,
+        "the top went back: {} -> {}",
+        opened.offset,
+        now.offset
+    );
+    wheel_at(&mut harness, egui::pos2(200.0, bar.max.y + 30.0), -50_000.0);
+    assert!(!split(&harness).open, "and down to the newest, one pane");
 }
 
 /// The separator dragged down gives the top more; its button goes back to

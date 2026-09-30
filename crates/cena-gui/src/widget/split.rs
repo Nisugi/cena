@@ -8,7 +8,8 @@
 //! One pane, stuck to the newest line, until the player scrolls it back:
 //! then two, the top where the player left it and the bottom following the
 //! newest. The top closes the split too when scrolled back down to the
-//! newest, as a split in Mudlet does.
+//! newest, as a split in Mudlet does. The wheel scrolls the top wherever
+//! over the widget it is turned, the bottom taking none.
 //!
 //! **The top holds its place when old lines go.** A story keeps its newest
 //! thousand lines, so once full, each new line drops the oldest and the rest
@@ -189,6 +190,21 @@ fn both(
     };
     if let Some(to) = moved {
         split.offset = to.clamp(0.0, split.end.max(0.0));
+        split.place = true;
+    }
+    // The wheel over the separator or the bottom, which takes none, scrolls
+    // the top as over the top itself (the author, 2026-09-29: *"the location
+    // of the mouse should not matter"*).
+    let below = Rect::from_min_max(bar_rect.min, whole.max);
+    let wheel = ui.input(|input| {
+        input
+            .pointer
+            .hover_pos()
+            .filter(|at| below.contains(*at) && ui.clip_rect().contains(*at))
+            .map_or(0.0, |_| input.smooth_scroll_delta.y)
+    });
+    if wheel != 0.0 {
+        split.offset = (split.offset - wheel).clamp(0.0, split.end.max(0.0));
         split.place = true;
     }
 
