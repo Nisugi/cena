@@ -450,3 +450,70 @@ fn a_locked_window_stays_where_it_is() {
     harness.run();
     assert!(!layout(&harness).locked, "unlocked");
 }
+
+/// The cells of the custom window titled `title`, from its inside's top
+/// left.
+fn cells_of(harness: &Harness<'_, Scene>, title: &str) -> Vec<egui::Rect> {
+    match layout(harness).titled(title).map(|holder| &holder.holds) {
+        Some(Holds::Custom(custom)) => custom.cells.iter().map(crate::layout::Cell::rect).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// A custom window's bottom edge dragged down leaves its cells as wide as
+/// they were: egui lays a window out once at its narrowest as a resize
+/// begins, and that pass is not the window's size (the author, 2026-09-29:
+/// *"all te progress bars reset back to their original width"*). Vitals is
+/// put in open space first, so its bottom edge is its own to drag.
+#[test]
+fn a_custom_window_grown_down_keeps_its_cells_widths() {
+    let mut harness = harness();
+    harness.run();
+    let vitals = layout(&harness)
+        .titled("Vitals")
+        .map(|holder| holder.id)
+        .expect("vitals");
+    if let Some(layout) = harness.state_mut().play.layout.as_mut() {
+        let at = egui::Rect::from_min_size(egui::pos2(100.0, 150.0), egui::vec2(334.0, 130.0));
+        layout.set(vitals, at);
+        // The bars made narrower than the window, each its own width.
+        let holder = layout.holders.iter_mut().find(|holder| holder.id == vitals);
+        if let Some(Holds::Custom(custom)) = holder.map(|holder| &mut holder.holds) {
+            for (cell, wide) in custom.cells.iter_mut().zip([30.0, 50.0, 70.0, 90.0]) {
+                let at = cell.rect();
+                cell.set(egui::Rect::from_min_size(
+                    at.min,
+                    egui::vec2(wide, at.height()),
+                ));
+            }
+        }
+    }
+    // egui takes a new size a frame after it is given.
+    harness.run();
+    harness.step();
+    harness.step();
+    let before = cells_of(&harness, "Vitals");
+    let window = harness.get_by_label("Vitals").rect();
+    let edge = egui::pos2(window.center().x, window.max.y - 2.0);
+    drag(&mut harness, edge, edge + egui::vec2(0.0, 40.0));
+    harness.run();
+    let after = cells_of(&harness, "Vitals");
+    assert!(
+        before.iter().any(|cell| cell.width() < 150.0),
+        "cells side by side: {before:?}"
+    );
+    let across = |cells: &[egui::Rect]| -> Vec<egui::Rangef> {
+        cells.iter().map(egui::Rect::x_range).collect()
+    };
+    let (was, now) = (across(&before), across(&after));
+    assert!(
+        was.len() == now.len()
+            && was
+                .iter()
+                .zip(&now)
+                .all(|(a, b)| (a.min - b.min).abs() < 0.5 && (a.max - b.max).abs() < 0.5),
+        "{was:?} -> {now:?}"
+    );
+    let grown = kept(&harness, "Vitals").expect("laid out").height();
+    assert!(grown > 150.0, "it grew: {grown}");
+}

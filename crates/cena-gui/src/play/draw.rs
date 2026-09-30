@@ -236,7 +236,12 @@ pub(super) fn holder(
     match holds {
         Holds::One(placed) => shown(ui, placed, drawing),
         Holds::Custom(custom) => {
-            custom.fit(inside.size());
+            // Not to the pass egui lays a window out in at its narrowest as
+            // a resize begins, then discards: kept to it, a narrow cell came
+            // back from the scaling at its smallest, not its width.
+            if !ui.is_sizing_pass() {
+                custom.fit(inside.size());
+            }
             if custom.cells.is_empty() {
                 ui.new_child(UiBuilder::new().max_rect(inside.shrink(4.0)))
                     .weak("Empty. With Arrange on, in the Layout menu, drop widgets here.");
