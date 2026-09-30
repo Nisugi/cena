@@ -406,6 +406,21 @@
 //! | [`watch`](crate::watch) | the terminal's view: Hydra's own lines, tagged by character, and no game text |
 //! | [`interrupt`](crate::interrupt) | Ctrl-C as an orderly quit from every phase; a second one exits at once |
 //! | [`ask`](crate::ask) | asking the person at the keyboard for what a login needs |
+//! | [`hunt`](crate::hunt) | `;hunt`: a hunt on a profile, its settings, a group led, stopped; the profile chain read for the menu |
+//! | [`perform`](crate::perform) | what an agent may run at the `behaviors` level, the author's allowlist, and how each is started |
+//! | [`batch`](crate::batch) | `;multi` and `;foreach`: a command many times, or once for each thing |
+//! | [`loot`](crate::loot), [`combat`](crate::combat) | the ledger's and the combat recorder's reports |
+//! | [`sorter`](crate::sorter) | `;sorter`: a container's contents one line per category, kept per character |
+//! | [`doll`](crate::doll) | `;doll`: the injury doll's import |
+//! | [`attention`](crate::attention) | a trigger's sound and notification, played once per occurrence across characters |
+//! | [`launcher`](crate::launcher), [`proven`](crate::proven) | the Not launched tab's asks of the binary, and what a login proven `Ready` leaves behind |
+//! | [`general`](crate::general), [`hunt_pages`](crate::hunt_pages), [`travel_page`](crate::travel_page) | the settings menu's pages over the character's own file, the hunt profiles and travel's settings |
+//! | [`map_context`](crate::map_context), [`atlas`](crate::atlas) | the one map per process, and its areas laid out for the minimap |
+//! | [`hunt_setup`](crate::hunt_setup) | Despana's hunt setup handler over a session observer |
+//!
+//! (The table had left these out; a reader of *Outside programs* above most
+//! needs [`perform`](crate::perform) and [`hunt`](crate::hunt). The review
+//! of 2026-09-29.)
 //!
 //! # What holds it in shape
 //!

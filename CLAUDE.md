@@ -198,7 +198,9 @@ The environment variables that remain are paths and secrets, not run options: `C
 `plan/53` §7; `crates/cena/src/travel.rs:47`), `CENA_DATA_DIR` (character
 stores, `crates/cena-session/src/character_store.rs:64`; unset, `data` in Hydra's own folder in
 the player's application data, `%APPDATA%\Hydra` on Windows, since `plan/50` §7 step 7), `CENA_LOG_DIR`, `CENA_LOG_LINES`
-and `CENA_LOG_TIMESTAMPS` (the log sink, `crates/cena-platform/src/sink/config.rs`), and
+and `CENA_LOG_TIMESTAMPS` (the log sink, `crates/cena-platform/src/sink/config.rs`),
+`CENA_HUNTING_CORRECTIONS_DIR` (Despana's hunting-corrections editor, `--web` only,
+`crates/cena/src/frontend.rs`), and
 `CENA_PASSWORD_<ACCOUNT>`, the password ladder's rung between the OS keyring and the prompt
 (`crates/cena/src/secrets.rs:46`).
 

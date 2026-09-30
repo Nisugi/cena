@@ -47,7 +47,7 @@ impl Frontend {
                     sessions,
                     pairing,
                     map_projection: crate::map_context::projection(map),
-                    hunt_map: if std::env::args().any(|arg| arg == "--hunt-setup") {
+                    hunt_map: if std::env::args().skip(1).any(|arg| arg == "--hunt-setup") {
                         map.as_ref().ok().cloned()
                     } else {
                         None
