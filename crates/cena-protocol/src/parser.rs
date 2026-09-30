@@ -370,6 +370,15 @@ impl Parser {
                 continue;
             }
 
+            // The first `>` ends the tag, quoted or not. A `>` inside a quoted
+            // attribute value would cut the tag short here; the game writes
+            // one as `&gt;`. MEASURED 2026-09-29 over 1,371 of the archive's
+            // 10,849 `.xml` files, chosen at random: 0 tags with a raw `>`
+            // inside a quoted value: the regex
+            // `<[A-Za-z][^<>]*?(?:"[^"<]*>[^"<]*"|'[^'<]*>[^'<]*')[^<]*?>`
+            // over each file's bytes, four minutes of Python. Left as it is
+            // on that evidence; the trigger to change it is one such tag on
+            // the wire.
             let Some(close) = tail.find('>') else {
                 // Rule 2.2, and Vellum's silent-desync bug fixed: a tag that
                 // never closed is typed and logged, not smuggled into prose.

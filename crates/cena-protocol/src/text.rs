@@ -116,56 +116,89 @@ pub fn attribute(tag: &str, name: &str) -> Option<String> {
     // with no name, so "not found" is exactly true, and a parser whose stated
     // contract is that it never panics (`plan/06` 1.5, "Non-negotiable") must
     // not gain a panic at a leaf. Found by review (PR-11).
+    //
+    // (The walker below no longer searches for the name at all, so an empty
+    // name cannot hang it; the check stays, as the contract it states.)
     if name.is_empty() {
         return None;
     }
-    let bytes = tag.as_bytes();
-    let mut from = 0;
-    while let Some(rel) = tag[from..].find(name) {
-        let at = from + rel;
-        from = at + name.len();
-        // Must be preceded by whitespace or `<`, or `id=` matches inside
-        // `exist_id=` and `top=` matches inside `stop=`.
-        let preceded_ok = at
-            .checked_sub(1)
-            .is_none_or(|p| bytes[p].is_ascii_whitespace() || bytes[p] == b'<');
-        if !preceded_ok {
-            continue;
-        }
-        let rest = tag[from..].trim_start();
-        let Some(rest) = rest.strip_prefix('=') else {
-            continue;
-        };
-        let rest = rest.trim_start();
-        let quote = rest.chars().next()?;
-        if quote != '\'' && quote != '"' {
-            // KNOWN LIMIT, documented rather than closed. An unquoted value
-            // (`<pushStream id=room name>`) is indistinguishable here from the
-            // attribute being absent, so the caller's `unwrap_or_default()`
-            // yields `StreamPush { id: "" }` -- a typed, confident frame that
-            // is wrong, and worse than an `UnknownTag`, because an empty id
-            // reads as a legitimate push to the main window.
-            //
-            // Closing it properly means `attribute` returning a three-way
-            // answer (absent / malformed / value) and all 46 of its call sites
-            // deciding what to do with the middle case. That is a large change
-            // for a shape the corpus survey measured at **0 occurrences in
-            // 5,079,826 tags**, and `plan/05` §-1 says build the simplest
-            // thing that works.
-            //
-            // UPGRADE TRIGGER: the Tier 2 replay reporting any unquoted
-            // attribute value, or a single real `StreamPush { id: "" }` that
-            // is not a bare `<pushStream/>`. Until then this crate claims
-            // only that it handles the wire it has seen.
-            continue;
-        }
-        let body = &rest[quote.len_utf8()..];
-        let end = body.find(quote)?;
+    // KNOWN LIMIT, documented rather than closed. An unquoted value
+    // (`<pushStream id=room name>`) is indistinguishable here from the
+    // attribute being absent, so the caller's `unwrap_or_default()`
+    // yields `StreamPush { id: "" }` -- a typed, confident frame that
+    // is wrong, and worse than an `UnknownTag`, because an empty id
+    // reads as a legitimate push to the main window.
+    //
+    // Closing it properly means `attribute` returning a three-way
+    // answer (absent / malformed / value) and all 46 of its call sites
+    // deciding what to do with the middle case. That is a large change
+    // for a shape the corpus survey measured at **0 occurrences in
+    // 5,079,826 tags**, and `plan/05` §-1 says build the simplest
+    // thing that works.
+    //
+    // UPGRADE TRIGGER: the Tier 2 replay reporting any unquoted
+    // attribute value, or a single real `StreamPush { id: "" }` that
+    // is not a bare `<pushStream/>`. Until then this crate claims
+    // only that it handles the wire it has seen.
+    pairs(tag)
+        .find(|(key, _)| *key == name)
         // Decoded AND control-stripped: an id or title decoded to a raw ESC
         // reaches a frontend's window title. See `decode_attribute_value`.
-        return Some(decode_attribute_value(&body[..end]));
-    }
-    None
+        .map(|(_, value)| decode_attribute_value(value))
+}
+
+/// Each `key='value'` pair of a raw tag, in wire order, undecoded.
+///
+/// The one walk both [`attribute`] and [`attributes`] read by. `attribute`
+/// had its own: a search for `name=` anywhere in the tag, preceded by a
+/// space, which found one inside another attribute's quoted value
+/// (`<a text="say id=5" id='7'>` answered `5` for `id`) where `attributes`
+/// walked past it (the review of 2026-09-29). A key is the last token
+/// before its `=`, so a valueless attribute is dropped rather than merged
+/// into the next key; an unquoted value is skipped to the next space.
+fn pairs(tag: &str) -> impl Iterator<Item = (&str, &str)> {
+    let body = tag
+        .trim_start_matches('<')
+        .trim_end_matches('>')
+        .trim_end_matches('/');
+    // Skip `<name` / `</name`.
+    let mut rest = body.find(char::is_whitespace).map_or("", |at| &body[at..]);
+    std::iter::from_fn(move || {
+        loop {
+            let trimmed = rest.trim_start();
+            let eq = trimmed.find('=')?;
+            let key = trimmed[..eq].trim();
+            let key = key.rsplit(char::is_whitespace).next().unwrap_or(key);
+            let after_eq = trimmed[eq + 1..].trim_start();
+            let quote = after_eq.chars().next().filter(|q| *q == '\'' || *q == '"');
+            let Some((quote, end)) =
+                quote.and_then(|q| after_eq[q.len_utf8()..].find(q).map(|end| (q, end)))
+            else {
+                // A malformed pair: SKIP IT and keep going, rather than
+                // returning what has been collected so far. Returning early
+                // silently dropped every attribute after the bad one --
+                // `<crtrStatus exist='1' stunned='1' bad=unquoted bleeding='1'
+                // dead='1'/>` yielded only `exist` and `stunned`, losing
+                // `bleeding` and `dead` with no trace. For a Heal or Hunt
+                // behavior reading creature status that is a wrong decision,
+                // not a cosmetic one.
+                //
+                // The corpus survey measured 0 unquoted attribute values in
+                // 5,079,826 tags, so this is about what happens when the wire
+                // changes, not about traffic seen today -- which is exactly
+                // what Rule 2.2 (`plan/05:276-283`) is for. An unterminated
+                // quote has no next pair to find, so the walk ends.
+                let space = trimmed[eq..].find(char::is_whitespace)?;
+                rest = &trimmed[eq + space..];
+                continue;
+            };
+            let value = &after_eq[quote.len_utf8()..][..end];
+            rest = &after_eq[quote.len_utf8() + end + quote.len_utf8()..];
+            if !key.is_empty() {
+                return Some((key, value));
+            }
+        }
+    })
 }
 
 /// Value of `name=` parsed as a number, if it is one.
@@ -181,61 +214,9 @@ pub fn attribute_u32(tag: &str, name: &str) -> Option<u32> {
 /// owns the flag-name mapping. This crate does not know what `stunned` means.
 #[must_use]
 pub fn attributes(tag: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    // Skip `<name` / `</name`, then walk `key='value'` pairs.
-    let body = tag
-        .trim_start_matches('<')
-        .trim_end_matches('>')
-        .trim_end_matches('/');
-    let Some(after_name) = body.find(char::is_whitespace) else {
-        return out;
-    };
-    let mut rest = &body[after_name..];
-    loop {
-        let rest_trimmed = rest.trim_start();
-        if rest_trimmed.is_empty() {
-            return out;
-        }
-        let Some(eq) = rest_trimmed.find('=') else {
-            return out;
-        };
-        let key = rest_trimmed[..eq].trim();
-        let after_eq = rest_trimmed[eq + 1..].trim_start();
-        let quote = after_eq.chars().next();
-        let value_end = quote
-            .filter(|q| *q == '\'' || *q == '"')
-            .and_then(|q| after_eq[q.len_utf8()..].find(q).map(|end| (q, end)));
-        let Some((quote, end)) = value_end else {
-            // A malformed pair: SKIP IT and keep going, rather than returning
-            // what has been collected so far. Returning early silently dropped
-            // every attribute after the bad one --
-            // `<crtrStatus exist='1' stunned='1' bad=unquoted bleeding='1'
-            // dead='1'/>` yielded only `exist` and `stunned`, losing
-            // `bleeding` and `dead` with no trace. For a Heal or Hunt behavior
-            // reading creature status that is a wrong decision, not a cosmetic
-            // one.
-            //
-            // The corpus survey measured 0 unquoted attribute values in
-            // 5,079,826 tags, so this is about what happens when the wire
-            // changes, not about traffic seen today -- which is exactly what
-            // Rule 2.2 (`plan/05:276-283`) is for.
-            let Some(space) = rest_trimmed[eq..].find(char::is_whitespace) else {
-                return out;
-            };
-            rest = &rest_trimmed[eq + space..];
-            continue;
-        };
-        // The key is the LAST token before `=`: a valueless attribute such as
-        // `bonfire` in `weather='rain' bonfire inside='1'` would otherwise
-        // merge into the next key and fabricate `("bonfire inside", "1")`,
-        // a name no consumer can ever match, while losing `inside` entirely.
-        let key = key.rsplit(char::is_whitespace).next().unwrap_or(key);
-        let value_body = &after_eq[quote.len_utf8()..];
-        if !key.is_empty() {
-            out.push((key.to_owned(), decode_attribute_value(&value_body[..end])));
-        }
-        rest = &value_body[end + quote.len_utf8()..];
-    }
+    pairs(tag)
+        .map(|(key, value)| (key.to_owned(), decode_attribute_value(value)))
+        .collect()
 }
 
 /// Build a [`Link`] from an `<a>` or `<d>` tag.
@@ -291,6 +272,37 @@ mod tests {
         );
         assert_eq!(attribute("<x stop='1'/>", "top"), None);
         assert_eq!(attribute("<x/>", "missing"), None);
+        assert_eq!(attribute("<x a='1'/>", ""), None);
+    }
+
+    /// The two readers walk the same pairs: a name inside another
+    /// attribute's value is that value's text, not an attribute.
+    #[test]
+    fn a_name_inside_a_quoted_value_is_not_an_attribute() {
+        let tag = "<a noun='x' text=\"say id=5 to him\" id='7' cmd='look id=9'>";
+        assert_eq!(attribute(tag, "id").as_deref(), Some("7"));
+        assert_eq!(attribute(tag, "to"), None);
+        assert_eq!(
+            attributes(tag),
+            vec![
+                ("noun".to_owned(), "x".to_owned()),
+                ("text".to_owned(), "say id=5 to him".to_owned()),
+                ("id".to_owned(), "7".to_owned()),
+                ("cmd".to_owned(), "look id=9".to_owned()),
+            ]
+        );
+        // And the same answer whatever comes first, malformed pairs included.
+        for tag in [
+            "<x a=1 b='2' c=\"3\"/>",
+            "<roommeta weather='rain' bonfire inside='1'/>",
+            "<x a='unterminated/>",
+            "<x a = '1'  b= \"2\" />",
+        ] {
+            for (key, value) in attributes(tag) {
+                assert_eq!(attribute(tag, &key), Some(value), "{tag}: {key}");
+            }
+        }
+        assert_eq!(attribute("<x a = '1'/>", "a").as_deref(), Some("1"));
     }
 
     #[test]
