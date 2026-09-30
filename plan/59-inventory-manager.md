@@ -156,6 +156,56 @@ per prompt, only to learn whether each is closed (`inventory_service.rs:315-364`
 - links in the detail flattened;
 - the tab and focus kept once for all windows (`containers.rs:308-310`).
 
+### 2d. Lich's own `Inventory`, and invdb (the author: *"check in the lich script invdb and invdb-beta"*)
+
+**invdb and invdb-beta do not use the feed.** They are Xanlin's cross-character inventory
+database (`reference/lich_repo_mirror/lib/invdb.lic`, 5,009 lines; `invdb-beta.lic`, 6,841
+lines, `version: 20251104`). A grep of both for `inventoryManager`, `_inventory ` and
+`viewitem` finds nothing.
+
+What they do instead:
+- **Carried items:** they scrape `inventory full`, opening and re-closing each container first
+  (`invdb-beta.lic:4600-4906`). Nesting is read from the indentation, and the displayed count
+  is checked with three retries (`:4879-4905`).
+- **Lockers and property:** they walk `look in` with the game's sorted view. When the game
+  runs out of container windows they close each window with `_swclose` and walk to another
+  room and back (`:716-1107`, `:905-918`).
+- **Premium lockers and the family vault:** from `locker manifest` (`:5094-5282`).
+- **Banks, tickets, lumnis, resource and bounty:** from their commands.
+- **Storage:** one SQLite file across every character (`:2445-3093`). Each item is keyed by
+  its **name**, not its id; there are **no weights, capacities or history** (`:4811-4815`).
+
+The feed replaces the whole of the carried-items scan, and does better:
+- ids rather than names, so two identical gems are two items and a renamed item stays one;
+- weights, capacities, and closed and locked, with no opening, no windows, and no room-hopping.
+
+What the feed does **not** reach is the rest of invdb's list: lockers, the family vault,
+banks, tickets, lumnis, resource and property. That, and invdb's search across every
+character, is §5 items 7 and 8.
+
+invdb's `item_detail` table has columns for `look`, `inspect`, `analyze` and `recall`
+(`:2817-2832`), the four sections of the feed's item detail, and never fills them.
+
+**Lich now reads the feed itself.** `lib/common/inventory.rb` has 1,754 lines, last changed
+2026-09-16 (`git log -1`). It drives `_inventory manager` with up to 4 pages at once
+(`:79`, `:907`). That makes `plan/15-wrayth-protocol.md:182`'s *"Lich never issues `_inventory manager`"* out
+of date. It settles four points VellumFE does not:
+
+| Point | Lich's rule |
+|---|---|
+| A **locked** container | sends no contents *by design*, so it is **opaque**: unknown, never empty. Contents and used weight are left unknown (`:240-247`, `:288-293`) |
+| **Weight** | a container weighs its own weight plus `in_encum` **whenever the game sends it** (true for a magical container), else the sum of its contents; cycle-safe, 64 deep (`:305-345`, `:433-450`). VellumFE's rule, contents skipped when `in_encum` is 0, is this rule's one case |
+| **`99990`** | *"no weight limit"*: a count-limited container, capacity unknown (`:96-99`) |
+| **No feed** | two timeouts without an answer and the feed is taken as absent, asked again after 30 seconds doubling to 5 minutes, so a client without the banner is not stalled (`:101-117`, `:1005`) |
+
+Lich has also fixed the defect in §2a: once a refresh ends, its late answers are refused
+(`:890-900`).
+
+Lich also copies the tree into its `GameObj` registries: worn items into `GameObj.inv`,
+each container's contents into `GameObj.contents` (`:33-60`). Hydra's Ruby bridge runs
+Lich's own classes over Hydra's copy (`plan/46` step 2), so a script's `Inventory.refresh`
+and `GameObj.contents` can be answered from Hydra's tree. That is step 7.
+
 ---
 
 ## 3. Hydra's shape
@@ -170,6 +220,11 @@ per prompt, only to learn whether each is closed (`inventory_service.rs:315-364`
   - applied as today when nothing is loading, because the player typed it;
   - dropped while a load runs.
 - **A late page is always dropped**; it never replaces the tree.
+- **An empty answer never replaces a tree that has items**, as Lich refuses one
+  (`lib/common/inventory.rb:820-823`).
+- **A missing feed** is Lich's rule (§2d). After two timeouts the load says the feed is
+  absent, and tries again after 30 seconds doubling to 5 minutes. The window then says why it
+  is empty rather than waiting.
 
 This fixes the page problem in §1a where it lives. `apply_snapshot` never sees a single page.
 
@@ -188,8 +243,11 @@ for them; `plan/15` §6.11). Nothing needs hiding.
 
 ### 3b. The questions a tree answers, in the model
 
-Beside the snapshot, each ported with VellumFE's tests:
-- **Weight:** Saga's rule, with `99990` read as no limit.
+Beside the snapshot, each ported with VellumFE's tests and Lich's rules (§2d):
+- **Weight:** Lich's rule: own weight, plus `in_encum` when sent, else the contents; a
+  0-pound item counted as 0.1, as Saga and VellumFE count it. Used and free space per
+  container, with `99990` read as no weight limit.
+- **Locked:** opaque. Its contents are unknown, not empty, and its count reads *locked*.
 - **Contents:** the count of everything inside, however deep.
 - **Where an item is:** `in your backpack > blue velvet pouch (closed)`.
 - **Finding:** by any words of the name or long description.
@@ -203,7 +261,7 @@ the tree there more often.
 ### 3c. Moves, checked against the hands
 
 VellumFE's move checker (`item_mover.rs`) goes into the session:
-- The **one** way the manager, `.drag`, and the GUI's existing drag (`carry.rs`) move an item.
+- The **one** way the manager, `.inv move`, and the GUI's existing drag (`carry.rs`) move an item.
   Today's drag sends and forgets.
 - Each outcome is told in Hydra's window: confirmed, sent or failed.
 - A confirmed move **patches the tree**: the item's parent and relation change, so the window
@@ -219,16 +277,19 @@ VellumFE's move checker (`item_mover.rs`) goes into the session:
 
 Each step is a commit on branch `inventory`, with its tests.
 
-0. **Measured 2026-09-30**, on the author's leave (§5 item 6). Done. The author's own
-   September logs (`E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi\2026\09\xml`) hold 4 snapshots
-   in three files, and 24 detail answers:
+0. **Measured 2026-09-30**, on the author's leave (§5 item 6). Done. Two sets of logs:
+   - the author's September logs (`E:\Gemstone\dev\lich-5\logs\GSIV-Nisugi\2026\09\xml`):
+     4 snapshots in three files, and 24 detail answers;
+   - the log archive's four files that hold a snapshot, found by grepping every `.xml`
+     written since 2026-08-01 (1,375 files): 5 snapshots, 14 detail answers. Three are the
+     author's, on GS and GST; one is another character's on GST.
 
    | Question | Answer |
    |---|---|
-   | Is a closed or locked container marked in the snapshot? | **Yes.** 8 `closed` and 4 `locked` flags over 4 snapshots; `closed` and `locked` are the only flags there are |
-   | Does an item's detail agree with the snapshot on closed? | **Yes, 24 of 24.** A closed container's answer carries `closed='1'` (2), an open one's nothing (22) |
-   | Does a prompt follow the snapshot? | **Yes, all 4.** The next element after `</inventoryManager>` is `<prompt>` |
-   | Paging | **None seen**: no `<continuation>` in 97 to 110 items. Paging stays built and tested from VellumFE's fixtures, since a bigger inventory may still page |
+   | Is a closed or locked container marked in the snapshot? | **Yes.** 12 `closed` and 4 `locked` flags over 9 snapshots; `closed` and `locked` are the only flags there are |
+   | Does an item's detail agree with the snapshot on closed? | **Yes, all 37 answers for a container.** A closed one carries `closed='1'` (3), an open one nothing (34). The 38th answer was for an item that is not a container |
+   | Does a prompt follow the snapshot? | **Yes, all 9.** The next element after `</inventoryManager>` is `<prompt>` |
+   | Paging | **None seen**: no `<continuation>` in 19 to 111 items. Paging stays built and tested from VellumFE's fixtures, since a bigger inventory may still page |
 
    So there is **no probing** (§5 item 3), and the session can wait on a snapshot as on any
    command that ends at its prompt. How long an answer takes is not in a Lich log, which does
@@ -248,7 +309,7 @@ Each step is a commit on branch `inventory`, with its tests.
    - The help lines, the glossary rows (*inventory snapshot*, *item detail*, *checked move*),
      and the architecture page.
 4. **Checked moves** (§3c).
-   - The session's move checker, `.drag`, and the GUI's drag moved onto it.
+   - The session's move checker, `.inv move`, and the GUI's drag moved onto it.
    - A confirmed move patching the tree.
 5. **The window.**
    - A new **Inventory** widget: the Containers widget stays, drawing the passive feed. It
@@ -264,6 +325,14 @@ Each step is a commit on branch `inventory`, with its tests.
    - `plan/27a-model-api-spine.md:72-73` and `plan/27e-model-api-inventory.md:27-37`
      corrected (both still call the snapshot *"the worn-items list"*).
    - `inventory/15-vellum-gaps.md`'s two rows (`:194-195`) updated.
+   - `plan/15-wrayth-protocol.md:182`'s *"Lich never issues `_inventory manager`"* corrected:
+     Lich's `Inventory` does since 2026-09 (§2d).
+7. **Lich's `Inventory` answered from Hydra's tree** (§2d).
+   - In the Ruby bridge, `Inventory.refresh` asks the session's refresh and returns Hydra's
+     tree in Lich's shape.
+   - `GameObj.contents` and `GameObj.inv` are filled from it, as Lich fills them.
+   - Tested with a script that finds an item anywhere and reads its container's free weight,
+     Lich's own example (`inventory.rb:86-91`).
 
 The web page's nested inventory (`plan/58` step 7) then only draws what step 1 already
 answers.
@@ -293,3 +362,18 @@ answers.
 5. **An item's detail in the window's Item tab: agreed.** `.inv view` without an Inventory
    window open says it in Hydra's window, sections and links intact.
 6. **The logs may be read: yes.** Done, in step 0.
+
+### 5a. Two questions invdb raises (§2d), for after step 5
+
+7. **Keep each character's tree, and search them all?**
+   - invdb's reason to exist is *"cross-character searching"*.
+   - Hydra could keep each character's last tree on disk, in the character's own database
+     beside the loot ledger (`plan/34`), so `.inv find all <words>` searches every character,
+     running or not.
+   - Recommended: yes, as a step 8 once the window works. The tree carries ids and weights,
+     which invdb's name-keyed rows never had.
+8. **Lockers, the family vault, banks, tickets, lumnis, resource, property?**
+   - The feed does not reach these. invdb reads them from `locker manifest`, `bank account`,
+     `ticket balance`, `lumnis info` and `resource`.
+   - Recommended: a plan of their own after this one. Each is a text classifier over one
+     command's answer, a different kind of work from a tree the game hands over.
