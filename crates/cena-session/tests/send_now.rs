@@ -80,6 +80,9 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
     let driver = tokio::spawn(actor.run());
 
     // Calibrate the clock: one full round trip, so a prompt has been seen.
+    // `started` bounds how far the gate's second may have moved since: see
+    // the assertion on it below.
+    let started = std::time::Instant::now();
     let first = handle
         .send_and_await(
             CommandId(1),
@@ -145,19 +148,26 @@ async fn an_instant_action_goes_out_while_a_window_is_open() {
     let sent = handle
         .send_now("sigil of escape", Origin::Manual, Gate::Roundtime)
         .await;
-    // **At 100 or 101, not exactly 100.** The gate reports `game_time_now`,
-    // which extrapolates from a real `Instant` (see this test's note): crossing
-    // a second boundary makes 101 the honest answer. What must hold is that the
-    // sigil reached the wire having decided its gate on a KNOWN clock --
-    // `Some`, not `None`, which is the `plan/12` §5.2 distinction this gate
-    // exists to respect, and the thing a looser `matches!` would drop.
+    // **At 100, or as many seconds past it as have really passed.** The gate
+    // reports `game_time_now`, which extrapolates from a real `Instant` (see
+    // this test's note): each second boundary crossed since the calibrating
+    // prompt makes the next second the honest answer. This allowed 100 or 101
+    // and failed under load (2026-09-29, a full workspace run beside six GUI
+    // runs), when more than a second passed. The bound is now the real time
+    // since before the calibration, plus the one boundary its truncation can
+    // hide. What must hold is that the sigil reached the wire having decided
+    // its gate on a KNOWN clock -- `Some`, not `None`, which is the `plan/12`
+    // §5.2 distinction this gate exists to respect, and the thing a looser
+    // `matches!` would drop.
     let Sent::Ok { at: Some(at), .. } = sent else {
         panic!("the sigil must reach the wire with its gate decided on a known clock: {sent:?}");
     };
+    let latest = 100 + started.elapsed().as_secs() + 1;
     assert!(
-        (100..=101).contains(&at),
+        (100..=latest).contains(&u64::from(at)),
         "the gate was decided at server second {at}, which is neither the \
-         calibrating prompt's second nor the one after it"
+         calibrating prompt's second nor within the {} s since it",
+        latest - 100
     );
 
     let lines = transcript.lines();
@@ -588,6 +598,7 @@ async fn several_instant_actions_batch_ahead_of_their_trigger() {
     let actor = session.into_actor();
     let driver = tokio::spawn(actor.run());
 
+    let started = std::time::Instant::now();
     let first = handle
         .send_and_await(
             CommandId(1),
@@ -600,18 +611,20 @@ async fn several_instant_actions_batch_ahead_of_their_trigger() {
     assert!(matches!(first, Outcome::Confirmed(_)), "{first:?}");
 
     for sigil in ["sigil of power", "sigil of defense", "sigil of focus"] {
-        // 100 or 101, for the reason the first test's note gives: the gate's
-        // second comes from a real `Instant`, so a second boundary crossed
-        // mid-run is a legitimate 101 rather than a defect.
+        // 100, or as many seconds on as have really passed, for the reason
+        // the first test's note gives: the gate's second comes from a real
+        // `Instant`, so each second boundary crossed mid-run is legitimate.
         let sent = handle
             .send_now(sigil, Origin::Manual, Gate::Roundtime)
             .await;
         let Sent::Ok { at: Some(at), .. } = sent else {
             panic!("{sigil} must go out with its gate decided on a known clock: {sent:?}");
         };
+        let latest = 100 + started.elapsed().as_secs() + 1;
         assert!(
-            (100..=101).contains(&at),
-            "{sigil} decided its gate at server second {at}"
+            (100..=latest).contains(&u64::from(at)),
+            "{sigil} decided its gate at server second {at}, {} s after the prompt",
+            latest - 100
         );
     }
     let trigger = handle
