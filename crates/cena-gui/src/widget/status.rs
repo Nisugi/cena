@@ -314,6 +314,18 @@ pub(super) fn pulse(
     look: Option<&crate::bar::Look>,
 ) {
     let now = state.and_then(GameState::game_time_now);
+    if look.is_some_and(|look| look.clock) {
+        let pulse = state.and_then(|state| state.world.pulse.as_ref());
+        let said = match pulse
+            .zip(now)
+            .and_then(|(pulse, now)| pulse_clock(pulse, now))
+        {
+            Some(left) => format!("{name} {left}s"),
+            None => format!("{name} ?"),
+        };
+        super::draw::line(ui, egui::RichText::new(said).color(PULSE));
+        return;
+    }
     let (label, percent) = pulse_said(
         state.and_then(|state| state.world.pulse.as_ref()),
         now,
@@ -352,6 +364,15 @@ pub(super) fn pulse_said(
             )
         }
     }
+}
+
+/// The pulse as a clock at server second `now`: seconds to its earliest,
+/// then below zero, how late it is, until it comes and the clock starts
+/// again (the author, 2026-09-30: *"it would say 20 and be counting down
+/// then after 20 seconds it would be 0, -1, -2, -3, until the pulse"*).
+pub(super) fn pulse_clock(pulse: &Pulse, now: u32) -> Option<i64> {
+    let at = pulse.at?;
+    Some(i64::from(pulse.min) - i64::from(now.saturating_sub(at)))
 }
 
 /// The world events under way, each with where and how long it has left.

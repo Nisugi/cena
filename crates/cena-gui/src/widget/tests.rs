@@ -757,3 +757,25 @@ fn field_experience_and_blood_points_are_bars() {
     assert!(harness.query_by_label("Field 648/1403 46%").is_some());
     assert!(harness.query_by_label("Blood Points 50/100 50%").is_some());
 }
+
+/// The pulse as a clock: seconds to its earliest, then below zero until it
+/// comes (the author, 2026-09-30: *"20 and be counting down then after 20
+/// seconds it would be 0, -1, -2, -3, until the pulse"*).
+#[test]
+fn the_pulse_clock_counts_below_zero() {
+    let pulse = cena_session::world::Pulse {
+        at: Some(1_000),
+        min: 46,
+        max: 75,
+        mana: true,
+    };
+    let clock = |now| super::status::pulse_clock(&pulse, now);
+    assert_eq!(clock(1_026), Some(20));
+    assert_eq!(clock(1_046), Some(0));
+    assert_eq!(clock(1_049), Some(-3));
+    let unclocked = cena_session::world::Pulse {
+        at: None,
+        ..pulse.clone()
+    };
+    assert_eq!(super::status::pulse_clock(&unclocked, 1_049), None);
+}

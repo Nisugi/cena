@@ -754,6 +754,7 @@ fn a_bars_look_is_kept_with_the_layout() {
         background: Some("C:/overlays/glass.png".to_owned()),
         fill_image: None,
         ring: 40,
+        clock: false,
     };
     layout.looks.insert(7, look.clone());
     let lines = crate::widget::Lines {

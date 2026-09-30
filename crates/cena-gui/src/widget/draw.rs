@@ -262,7 +262,7 @@ pub(super) fn draw(
 /// One line of a one-line widget: never wrapped onto a second, which its
 /// cell has no room for, but cut short with an ellipsis, the whole of it
 /// shown when the pointer rests on it.
-fn line(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
+pub(super) fn line(ui: &mut egui::Ui, text: impl Into<egui::WidgetText>) {
     ui.add(egui::Label::new(text).truncate());
 }
 

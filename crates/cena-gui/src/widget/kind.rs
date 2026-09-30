@@ -402,6 +402,7 @@ impl Widget {
             background: None,
             fill_image: None,
             ring: Look::RING,
+            clock: false,
         })
     }
 

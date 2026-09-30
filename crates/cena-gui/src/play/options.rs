@@ -149,7 +149,13 @@ impl Play {
             for one in holder.holds.placed() {
                 let rows = match (&one.widget, one.widget.bar_look()) {
                     (_, Some(default)) => {
-                        bar_rows(layout.looks.get(&one.id), &default, &pictures.overlays)
+                        let pulse = one.widget == Widget::Pulse;
+                        bar_rows(
+                            layout.looks.get(&one.id),
+                            &default,
+                            &pictures.overlays,
+                            pulse,
+                        )
                     }
                     (Widget::Injuries, None) => {
                         doll_rows(layout.dolls.get(&one.id), &pictures.dolls)
@@ -341,6 +347,7 @@ fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(
         ("numbers", to) => look.says.numbers = to.map_or(Ok(default.says.numbers), on)?,
         ("percent", to) => look.says.percent = to.map_or(Ok(default.says.percent), on)?,
         ("words", to) => look.says.words = to.map_or(Ok(default.says.words), on)?,
+        ("clock", to) => look.clock = to.map_or(Ok(default.clock), on)?,
         ("color", Some(to)) => {
             look.color = crate::menu::rgb(to).ok_or_else(|| format!("`{to}` is not a colour."))?;
         }
@@ -644,7 +651,7 @@ fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), Stri
 }
 
 /// A bar widget's rows: how it draws, as `look` says, or its kind's own.
-fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf]) -> Vec<Row> {
+fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf], clock: bool) -> Vec<Row> {
     let now = look.unwrap_or(default);
     let row = |key: &str, label: &str, help: &str, kind: RowKind, value: Value, here: bool| Row {
         key: key.to_owned(),
@@ -735,8 +742,23 @@ fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf]) -> Vec<Ro
         ),
     ]
     .into_iter()
+    .chain(clock.then(|| clock_row(now, default)))
     .chain(image_rows(now, overlays))
     .collect()
+}
+
+/// The pulse's Clock row: just a clock, in place of its bar.
+fn clock_row(now: &Look, default: &Look) -> Row {
+    Row {
+        key: "clock".to_owned(),
+        label: "Clock".to_owned(),
+        help: "Just a clock: seconds to the earliest pulse, then below zero until it comes."
+            .to_owned(),
+        kind: RowKind::Toggle,
+        value: Value::On(now.clock),
+        here: now.clock != default.clock,
+        from: None,
+    }
 }
 
 /// A bar widget's images, as `now` has them: the fill's, the one under it

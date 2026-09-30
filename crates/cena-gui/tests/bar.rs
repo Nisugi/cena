@@ -279,6 +279,7 @@ fn round_gallery(ui: &mut egui::Ui, art: &mut Option<[egui::TextureHandle; 3]>) 
         background: None,
         fill_image: None,
         ring: 50,
+        clock: false,
     };
     let round = |label, percent, fills| {
         Bar::new(label, Some(amount(percent)))

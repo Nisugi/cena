@@ -137,6 +137,11 @@ pub struct Look {
     /// A ring's thickness, in percent of its radius.
     #[serde(default = "Look::default_ring")]
     pub ring: u8,
+    /// A clock in place of the bar, for a bar that counts down to
+    /// something: the pulse's seconds to its earliest, then below zero
+    /// until it comes (the author, 2026-09-30).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub clock: bool,
 }
 
 impl Look {
