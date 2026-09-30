@@ -121,8 +121,11 @@ items are, but every id in it is dead. Travel's routines send ids read from it: 
 and `day_pass.rs:431` and `:591`'s `_drag #id`. After a reconnect and before a new snapshot,
 those name an item that no longer exists under that id.
 
-Step 1 fixes it. At a reconnect the tree keeps its items for display but gives up its ids, and
-§5 item 1's snapshot at login gives them back.
+**FIXED on `main` 2026-09-30.** At a reconnect the tree is forgotten, unknown rather than
+empty, and §5 item 1's snapshot at login takes it again (`state/reconnect.rs`,
+`InventorySnapshot::lapse`). `worn` and `reserve` hold ids too and stay: the login burst
+re-sends both before its first prompt, new ids and all (`2026-09-09_22-11-22.xml`, lines
+14 and 147).
 
 ---
 
@@ -401,9 +404,9 @@ Each step is a commit on branch `inventory`, with its tests.
    - The page merge.
    - §3b's questions, with VellumFE's weight, place and find tests.
    - `inventory_snapshot.rs` split into a folder under the cap.
-   - §1b's defect fixed: a reconnect keeps the tree's items and gives up their ids, and a
-     consumer asking for an id before the next snapshot is answered *none*. Tested with the
-     two September 9 snapshots, one after the other.
+   - ~~§1b's defect~~ **FIXED on `main`**, ahead of the branch, since it is a fix. A reconnect
+     forgets the tree, and the next login's snapshot names the same items by new ids
+     (`tests/inventory_snapshot.rs`).
 2. **The session.**
    - The actor sends, ticks and publishes.
    - `SessionHandle::refresh_inventory` and `view_item`.

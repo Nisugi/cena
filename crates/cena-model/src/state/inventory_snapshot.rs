@@ -93,6 +93,16 @@ impl InventorySnapshot {
         self.details.insert(exist.to_owned(), results.to_vec());
     }
 
+    /// Forget the tree at a reconnect: every id in it died with the login.
+    ///
+    /// MEASURED over the author's two logins of 2026-09-09: 82 of 82 items
+    /// came back under new ids (`plan/59` §1b). The items are the same; the
+    /// ids that name them are not, so keeping the tree would hand a consumer
+    /// an id the game no longer knows. Unknown until the next snapshot.
+    pub(super) fn lapse(&mut self) {
+        *self = Self::default();
+    }
+
     /// One item by exist id.
     #[must_use]
     pub fn get(&self, id: &str) -> Option<&InventoryItem> {

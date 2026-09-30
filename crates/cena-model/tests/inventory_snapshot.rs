@@ -222,16 +222,40 @@ mod details {
 }
 
 #[test]
-fn the_snapshot_survives_a_reconnect() {
-    // A logged-off character gains and loses nothing, and the snapshot is
-    // NOT in the login burst -- clearing it would leave `is_known()` false
-    // with no way back until the user asked again by hand.
-    //
-    // Contrast `inventory`, the passive container model, which IS cleared:
-    // it mirrors windows the server reopens on login.
+fn a_reconnect_forgets_the_tree_whose_ids_died_with_the_login() {
+    // Every id changes at a login: MEASURED over the author's two logins of
+    // 2026-09-09, 82 of 82 items (`plan/59` §1b). The items are the same
+    // and every id naming them is dead, so a tree kept across the reconnect
+    // hands a consumer an id the game no longer knows -- travel's `_drag #id`.
     let mut state = state_after(&[SNAPSHOT]);
     assert_eq!(state.inventory_snapshot.len(), 4, "guard: known first");
     state.invalidate_for_reconnect();
-    assert_eq!(state.inventory_snapshot.len(), 4);
-    assert!(state.inventory_snapshot.is_known());
+    let inv = &state.inventory_snapshot;
+    assert!(inv.get("706").is_none(), "the dead id names nothing");
+    assert!(inv.is_empty());
+    assert!(
+        !inv.is_known(),
+        "unknown until the next snapshot, not empty"
+    );
+}
+
+#[test]
+fn the_next_login_s_snapshot_names_the_same_items_by_new_ids() {
+    // The same cloak and crown as `SNAPSHOT`, as the next login numbers them.
+    let after = concat!(
+        r"<inventoryManager id='im9445b1acc' room='7503206'>",
+        r#"<i id='9706' loc='worn,player' name="a nacreous,plumille,cloak" weight='4' in_max='2000'/>"#,
+        r#"<i id='9758' loc='in,9706' name="a sapphire-set,platinum,crown" weight='2'/>"#,
+        r"</inventoryManager>",
+    );
+    let mut state = state_after(&[SNAPSHOT]);
+    state.invalidate_for_reconnect();
+    let mut parser = Parser::new();
+    for frame in parser.parse_line(after) {
+        state.apply(&frame);
+    }
+    let inv = &state.inventory_snapshot;
+    assert!(inv.get("706").is_none());
+    let inside: Vec<&str> = inv.contents_of("9706").map(|i| i.id.as_str()).collect();
+    assert_eq!(inside, ["9758"]);
 }

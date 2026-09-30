@@ -64,8 +64,8 @@
 //! | `streams`, `pending`, `chunk` | **cleared** | half a sentence nobody will finish; the next connection's bytes are not a continuation |
 //! | `stream_windows` | **cleared** | MEASURED: 15 of 16 declarations arrive before the first prompt, so the burst re-teaches them; and a stale `ifClosed` drops text rather than showing it stale |
 //! | `inventory` | **cleared** | see its own comment: container CONTENTS are not re-sent, and Lich drops them for the same reason |
-//! | `worn`, `reserve` | kept | a logged-off character neither dons nor stows; a list half-arrived is dropped (`worn.rs`) |
-//! | `inventory_snapshot` | kept | a logged-off character gains and loses nothing; it is not in the login burst, and it is point-in-time by contract either way |
+//! | `worn`, `reserve` | kept | a logged-off character neither dons nor stows, and the burst re-sends both, new ids and all; a list half-arrived is dropped (`worn.rs`) |
+//! | `inventory_snapshot` | **cleared** | its items are unchanged, but every id in it died with the login (`plan/59` §1b, 82 of 82) and it is not in the burst |
 //! | `learned_commands` | kept | what a menu coordinate MEANS is a fact about the game, and the push is not repeated on reconnect |
 //! | `dialogs` | kept | a logged-off character's panels say what they said; the burst re-sends those it opens, and an aim ends by the server's clock |
 //!
@@ -382,18 +382,16 @@ impl GameState {
         // change, which is worse than a stale entry and also less true.
         let _ = objectives;
 
-        // The whole-inventory snapshot. A logged-off character neither gains
-        // nor loses items, so the tree is as true after the reconnect as
-        // before -- and it is NOT in the login burst, so clearing it would
-        // leave `is_known()` false until the user asked again by hand. The
-        // freshness contract already says this is point-in-time rather than
-        // live (`inventory_snapshot.rs`), which is what makes keeping it
-        // honest: a consumer that needs current data re-requests, reconnect
-        // or no reconnect.
+        // The whole-inventory snapshot: forgotten. A logged-off character
+        // neither gains nor loses items, but every id naming them changes at
+        // a login -- MEASURED, 82 of 82 over the author's two logins of
+        // 2026-09-09 (`plan/59` §1b) -- and the tree is keyed by id and read
+        // for ids (travel's `_drag #id`). Unknown until the next snapshot,
+        // which `plan/59` takes after each login.
         //
-        // Contrast `inventory`, the passive container model, which IS
-        // cleared: it mirrors windows the server reopens on login.
-        let _ = inventory_snapshot;
+        // `worn` and `reserve` hold ids too, and are kept: the login burst
+        // re-sends both before its first prompt, new ids and all.
+        inventory_snapshot.lapse();
 
         // What is worn and what the wandolier holds: kept, for the snapshot's
         // reason, a logged-off character neither dons nor stows. A list still
