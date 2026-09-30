@@ -304,6 +304,19 @@ On a branch `themes` once the author approves.
    with its pin, then Type and Shape. *Save as* makes a file; a built-in is never written over.
 7. **The web.** The theme sent to the page as a new wire message (`crates/cena-ui/WIRE.md`,
    a version's step), the page's CSS variables set from it. The page's design is not touched.
+
+   **BUILT 2026-09-30.** `theme` (`ServerMessage::Theme`: the name, every token by name as
+   `#rrggbb`), sent to every page first, after it authenticates, the hub's and a
+   character's alike; additive within version 1, so no version step. The server reads the
+   theme as the page opens (`WebServer::with_data`, the binary giving it the data folder):
+   the `theme` key of `window.toml` (`cena_ui::theme::chosen_for_hydra`, a second reader of
+   the GUI's file, which stays its one writer) and the themes folder, so a theme changed
+   later reaches a page opened after; a server given no data folder sends none. The page
+   keeps the message (`session.js`) and sets eighteen CSS variables from it (`app.js`,
+   `renderTheme`), the stylesheet's own values where a token is missing; the text presets
+   and the room's names moved from literals to variables (`style.css`). Tested by a page
+   through the binary's web helpers (`crates/cena/tests/web_theme.rs`) and in the browser's
+   own tests.
 8. **Wrayth's colours.** `<presets>` and `<palette>` of a Wrayth settings file, which the
    trigger importer names and leaves (`plan/45` line 530), read into a theme's pins.
 

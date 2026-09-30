@@ -205,6 +205,18 @@ pub enum ServerMessage {
         /// What the banner says, plain text.
         text: String,
     },
+    /// `kind: "theme"`: the theme Hydra wears (`plan/57` step 7), sent once
+    /// to every page after it authenticates, the hub's and a character's
+    /// alike. The page sets its colours from it. Not a snapshot's: a theme
+    /// changed later reaches a page opened after.
+    Theme {
+        /// Always `WIRE_VERSION`.
+        version: u16,
+        /// The theme's name.
+        name: String,
+        /// Every token of the palette by its name, as `#rrggbb`.
+        colors: std::collections::BTreeMap<String, String>,
+    },
 }
 
 #[cfg(test)]
@@ -222,6 +234,21 @@ mod tests {
         );
         assert_eq!(json["session"], "18446744073709551615");
         assert_eq!(json["view"]["vitals"]["mana"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn a_theme_round_trips_by_token_name() {
+        let palette = crate::theme::Palette::bare();
+        let message = ServerMessage::Theme {
+            version: WIRE_VERSION,
+            name: "Despana".to_owned(),
+            colors: palette.by_name(),
+        };
+        let text = serde_json::to_string(&message).expect("encodes");
+        assert!(text.contains("\"kind\":\"theme\""));
+        assert!(text.contains("\"health\":\"#cd4d4d\""));
+        let back: ServerMessage = serde_json::from_str(&text).expect("decodes");
+        assert_eq!(back, message);
     }
 
     #[test]

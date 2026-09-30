@@ -40,6 +40,13 @@ pub(crate) async fn serve(
         close(&mut socket, 1008, "Authentication required").await;
         return;
     };
+    // The theme Hydra wears, first, so the page is in its colours before
+    // anything is drawn on it (`plan/57` step 7).
+    if let Some(theme) = theme_message(&shared)
+        && !write(&mut socket, &theme).await
+    {
+        return;
+    }
     // Which session this viewer is for: the one it named, or the only one;
     // naming none with several running is the hub page.
     match shared.choose(asked) {
@@ -49,6 +56,23 @@ pub(crate) async fn serve(
             close(&mut socket, 1008, "No such session; open the page for one").await;
         }
     }
+}
+
+/// The theme Hydra wears, encoded, read from the data folder now so a page
+/// opened after a change sees it; `None` with no data folder, or a theme
+/// that cannot be worn.
+fn theme_message(shared: &Shared) -> Option<Arc<str>> {
+    let data = shared.data.as_deref()?;
+    let name = cena_ui::theme::chosen_for_hydra(data);
+    let outfit = cena_ui::theme::Themes::load(&data.join("themes"))
+        .outfit(&name)
+        .ok()?;
+    encode(&ServerMessage::Theme {
+        version: WIRE_VERSION,
+        name,
+        colors: outfit.palette.by_name(),
+    })
+    .ok()
 }
 
 /// One character's page, for as long as its socket is open.

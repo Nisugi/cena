@@ -89,6 +89,8 @@ async fn assert_story(socket: &mut Browser, mut lines: Vec<StoryLine>) -> TestRe
             match receive(socket).await? {
                 ServerMessage::Update { lines: new, .. } => lines.extend(new),
                 ServerMessage::Snapshot { story, .. } => lines = story,
+                // The theme every page is sent first is not the room.
+                ServerMessage::Theme { .. } => {}
                 ServerMessage::Receipt { .. }
                 | ServerMessage::Sessions { .. }
                 | ServerMessage::HubNote { .. }

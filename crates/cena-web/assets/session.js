@@ -152,7 +152,7 @@ export class HydraSession {
     // character's page; null otherwise.
     // `available`: characters the hub may add; `hubNote`: what became of the
     // last hub request.
-    this.state = { connection: "idle", view: null, story: [], session: null,
+    this.state = { theme: null, connection: "idle", view: null, story: [], session: null,
       generation: null, cursor: null, historyGap: false, commandStatus: "Connecting…", hub: null,
       available: [], hubNote: "", merged: [], alerts: [] };
   }
@@ -286,6 +286,19 @@ export class HydraSession {
         if (at >= 0) merged[at] = line; else merged.push(line);
       }
       this.state.merged = merged.slice(-MAX_MERGED_LINES);
+      this.emit();
+      return;
+    }
+    // The theme Hydra wears: every token by name, which the page's colours
+    // are set from (`plan/57` step 7). A token the page does not know is
+    // ignored there.
+    if (message && message.kind === "theme") {
+      if (message.version !== 1 || typeof message.name !== "string" || !message.colors
+        || typeof message.colors !== "object" || Array.isArray(message.colors)
+        || !Object.values(message.colors).every((value) => typeof value === "string" && /^#[0-9a-f]{6}$/.test(value))) {
+        throw new Error("Invalid theme");
+      }
+      this.state.theme = { name: message.name, colors: { ...message.colors } };
       this.emit();
       return;
     }

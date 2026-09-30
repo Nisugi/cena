@@ -738,3 +738,13 @@ test("a banner is drawn as text, never as markup", () => {
   for (const timer of timers.filter((timer) => timer.delay === ALERT_MS)) timer.fn();
   assert.equal(box.hidden, true);
 });
+
+test("a theme message is kept by token name and a bad one refused", () => {
+  const { session, socket } = setup();
+  assert.equal(session.state.theme, null);
+  socket.message({ kind: "theme", version: 1, name: "Despana", colors: { canvas: "#0d1115", health: "#cd4d4d" } });
+  assert.deepEqual(session.state.theme, { name: "Despana", colors: { canvas: "#0d1115", health: "#cd4d4d" } });
+  assert.throws(() => session.receive({ kind: "theme", version: 1, name: "x", colors: { canvas: "red" } }), /Invalid theme/);
+  assert.throws(() => session.receive({ kind: "theme", version: 1, name: 3, colors: {} }), /Invalid theme/);
+  assert.throws(() => session.receive({ kind: "theme", version: 2, name: "x", colors: {} }), /Invalid theme/);
+});

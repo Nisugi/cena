@@ -242,6 +242,19 @@ impl Theme {
     }
 }
 
+/// The theme Hydra wears, as its own settings choose it: the `theme` key
+/// of `window.toml` in `data`, the data folder, else the default. The file
+/// is the GUI's to write (`cena-gui`'s `own.rs`); the web reads the one
+/// key here, so a page opened later wears what the window does.
+#[must_use]
+pub fn chosen_for_hydra(data: &Path) -> String {
+    std::fs::read_to_string(data.join("window.toml"))
+        .ok()
+        .and_then(|text| text.parse::<toml::Table>().ok())
+        .and_then(|table| table.get("theme")?.as_str().map(str::to_owned))
+        .unwrap_or_else(|| Theme::DEFAULT.to_owned())
+}
+
 /// The themes Hydra has: the built-ins, and each file in the `themes`
 /// folder.
 #[derive(Clone, Debug, Default)]
@@ -458,6 +471,23 @@ mod tests {
             shape: ShapeFile::default(),
         });
         assert!(themes.resolve("a").unwrap_err().contains("circle"));
+    }
+
+    #[test]
+    fn hydras_choice_is_read_from_its_own_file() {
+        let dir = std::env::temp_dir().join(format!("cena-chosen-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(chosen_for_hydra(&dir), Theme::DEFAULT, "no file");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("window.toml"),
+            "card_width = 500.0\ntheme = \"Light\"\n",
+        )
+        .unwrap();
+        assert_eq!(chosen_for_hydra(&dir), "Light");
+        std::fs::write(dir.join("window.toml"), "theme = 3\n").unwrap();
+        assert_eq!(chosen_for_hydra(&dir), Theme::DEFAULT, "not a name");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

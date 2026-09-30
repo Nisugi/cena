@@ -15,7 +15,7 @@ mod harmony;
 mod oklch;
 mod shape;
 
-pub use file::{Chosen, Outfit, RecipeFile, Theme, Themes};
+pub use file::{Chosen, Outfit, RecipeFile, Theme, Themes, chosen_for_hydra};
 pub use harmony::{Group, Recipe, Role, Scheme, generate, hue_variants, seed_swatches};
 pub use oklch::{contrast, delta_e, hue_distance};
 pub use shape::{Density, Shape, ShapeFile};
@@ -633,6 +633,16 @@ impl Palette {
     /// Set `token`'s colour.
     pub fn set(&mut self, token: Token, color: Rgb) {
         self.colors[Self::slot(token)] = color;
+    }
+
+    /// Every token's colour by its name, as `#rrggbb`: what crosses the
+    /// wire to a page.
+    #[must_use]
+    pub fn by_name(&self) -> std::collections::BTreeMap<String, String> {
+        Token::ALL
+            .into_iter()
+            .map(|token| (token.name().to_owned(), hex(self.get(token))))
+            .collect()
     }
 
     /// `token`'s index: its place in [`Token::ALL`].

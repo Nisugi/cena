@@ -26,7 +26,9 @@ impl Frontend {
             return None;
         }
         let opened = async {
-            let server = cena_web::WebServer::open().await?;
+            let server = cena_web::WebServer::open()
+                .await?
+                .with_data(cena_session::character_store::data_dir())?;
             match std::env::var_os("CENA_HUNTING_CORRECTIONS_DIR") {
                 Some(directory) => server.with_hunting_corrections(directory.into()),
                 None => Ok(server),

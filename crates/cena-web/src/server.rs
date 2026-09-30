@@ -52,6 +52,9 @@ pub(crate) struct Shared {
     pub(crate) merged: Arc<crate::merged::MergedFeed>,
     pub(crate) clients: Arc<Semaphore>,
     pub(crate) stop: CancellationToken,
+    /// The data folder, where Hydra's theme and the themes are kept
+    /// (`plan/57` step 7); `None`, and no page is sent a theme.
+    pub(crate) data: Option<std::path::PathBuf>,
 }
 
 impl Shared {
@@ -344,6 +347,7 @@ impl WebServer {
             single: std::sync::atomic::AtomicBool::new(false),
             clients: Arc::new(Semaphore::new(MAX_CLIENTS)),
             stop: CancellationToken::new(),
+            data: None,
         });
         Ok(Self { listener, shared })
     }
@@ -380,6 +384,19 @@ impl WebServer {
         Arc::get_mut(&mut self.shared)
             .ok_or_else(|| io::Error::other("Server already shared"))?
             .hunting_corrections = Some(directory);
+        Ok(self)
+    }
+
+    /// Serve every page the theme Hydra wears, read from `data`, the data
+    /// folder, when the page opens (`plan/57` step 7).
+    ///
+    /// # Errors
+    ///
+    /// The server was already shared.
+    pub fn with_data(mut self, data: std::path::PathBuf) -> io::Result<Self> {
+        Arc::get_mut(&mut self.shared)
+            .ok_or_else(|| io::Error::other("Server already shared"))?
+            .data = Some(data);
         Ok(self)
     }
 
