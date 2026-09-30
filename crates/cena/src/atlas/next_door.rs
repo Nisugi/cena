@@ -207,16 +207,45 @@ mod tests {
         }
     }
 
-    /// Kraken Manor and its Wine Cellar, the smallest two maps a compass
-    /// walk joins in the map Hydra ships: from the manor, the cellar is
-    /// drawn beside it, no room of it on or beside one of the manor's.
+    /// The two smallest maps a compass walk joins in the map Hydra ships
+    /// (found, not named: a map changes as areas are put on one, as Kraken
+    /// Manor and its Wine Cellar went onto Solhaven's): from the one, the
+    /// other is drawn beside it, no room of it on or beside one of the
+    /// first's.
     #[test]
-    fn the_cellar_is_drawn_beside_the_manor() {
+    fn the_smallest_pair_is_drawn_side_by_side() {
         let whole = cena_behavior::travel::read_map(cena_gs_map::GS_MAP).expect("decodes");
-        let areas = cena_map_layout::areas::baked(&whole);
-        let rooms = ["Kraken Manor", "Wine Cellar"]
+        let sheets = cena_map_layout::areas::baked(&whole);
+        let sheet_of: std::collections::HashMap<RoomId, &String> = sheets
             .iter()
-            .flat_map(|area| &areas[*area])
+            .flat_map(|(name, rooms)| rooms.iter().map(move |&id| (id, name)))
+            .collect();
+        let dirs = cena_map_layout::DirectionMap::build(&whole);
+        let mut smallest: Option<(usize, String, String)> = None;
+        for (name, rooms) in &sheets {
+            for &id in rooms {
+                for exit in whole.room(id).into_iter().flat_map(|room| &room.exits) {
+                    let Some(other) = sheet_of.get(&exit.to).filter(|o| **o != name) else {
+                        continue;
+                    };
+                    if !dirs.get(id, exit.to).is_some_and(|d| d.is_compass()) {
+                        continue;
+                    }
+                    let pair = (
+                        rooms.len() + sheets[*other].len(),
+                        name.clone(),
+                        (*other).clone(),
+                    );
+                    if smallest.as_ref().is_none_or(|least| pair < *least) {
+                        smallest = Some(pair);
+                    }
+                }
+            }
+        }
+        let (_, here, there) = smallest.expect("two maps a walk joins");
+        let rooms = [&here, &there]
+            .iter()
+            .flat_map(|sheet| &sheets[*sheet])
             .filter_map(|&id| whole.room(id).cloned())
             .collect();
         let map = Arc::new(Map::from_rooms(rooms).expect("a subset"));
@@ -225,20 +254,20 @@ mod tests {
         let atlas = Atlas::start(&map, "5555555555555555", &dir);
         let deadline = std::time::Instant::now() + std::time::Duration::from_mins(1);
         let next = loop {
-            let next = atlas.next_door(&map, "Kraken Manor", 1);
+            let next = atlas.next_door(&map, &here, 1);
             if !next.is_empty() || std::time::Instant::now() > deadline {
                 break next;
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
         };
-        assert_eq!(next.len(), 1, "the cellar next door");
-        assert_eq!(next[0].scene.area, "Wine Cellar");
-        let manor = cells(&atlas.laid("Kraken Manor").expect("laid"), (0, 0));
+        assert_eq!(next.len(), 1, "{there} next door to {here}");
+        assert_eq!(next[0].scene.area, there);
+        let first = cells(&atlas.laid(&here).expect("laid"), (0, 0));
         #[allow(clippy::cast_possible_truncation)]
         let at = (next[0].offset.0 as i32, next[0].offset.1 as i32);
         assert!(
-            cells(&next[0].scene, at).iter().all(|c| !near(&manor, *c)),
-            "no room of the cellar on the manor's"
+            cells(&next[0].scene, at).iter().all(|c| !near(&first, *c)),
+            "no room of {there} on {here}'s"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

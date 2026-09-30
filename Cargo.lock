@@ -529,7 +529,7 @@ dependencies = [
 [[package]]
 name = "cena-gs-map"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/hydra-mapper?branch=main#5358db20f72deb284473cfb5109da478e18c5c77"
+source = "git+https://github.com/Nisugi/hydra-mapper?branch=main#defeb84295793499655226a885bd83d87fbb2461"
 
 [[package]]
 name = "cena-gui"
@@ -574,7 +574,7 @@ dependencies = [
 [[package]]
 name = "cena-map-layout"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/hydra-mapper?branch=main#5358db20f72deb284473cfb5109da478e18c5c77"
+source = "git+https://github.com/Nisugi/hydra-mapper?branch=main#defeb84295793499655226a885bd83d87fbb2461"
 dependencies = [
  "cena-map",
  "serde",
