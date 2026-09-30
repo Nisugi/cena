@@ -41,9 +41,6 @@ const TABLES: &[(&str, &str)] = &[
     ),
 ];
 
-/// The kinds of script file the runner runs.
-const KINDS: &[&str] = &["lic", "rb"];
-
 /// What an import brought.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct Imported {
@@ -168,10 +165,17 @@ fn copy_scripts(from: &Path, into: &Path, imported: &mut Imported) -> Result<(),
         };
         for entry in entries.filter_map(Result::ok) {
             let path = entry.path();
+            // What `;name` would run, and no less: `foo.lic.gz` was left
+            // behind (the review of 2026-09-29).
             let script = path
-                .extension()
-                .and_then(|e| e.to_str())
-                .is_some_and(|e| KINDS.iter().any(|kind| e.eq_ignore_ascii_case(kind)));
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|name| {
+                    let lower = name.to_ascii_lowercase();
+                    super::KINDS.iter().any(|kind| {
+                        lower.len() > kind.len() + 1 && lower.ends_with(&format!(".{kind}"))
+                    })
+                });
             if !script || !path.is_file() {
                 continue;
             }
@@ -220,6 +224,7 @@ mod tests {
         )?;
         std::fs::write(root.join("scripts/wander.lic"), "echo 'lich'").ok();
         std::fs::write(root.join("scripts/notes.txt"), "not a script").ok();
+        std::fs::write(root.join("scripts/packed.lic.gz"), "gz").ok();
         std::fs::write(root.join("scripts/custom/mine.rb"), "echo 'mine'").ok();
         std::fs::write(root.join("data/gameobj-data.xml"), "<data/>").ok();
         Ok(())
@@ -252,7 +257,7 @@ mod tests {
                 ("uservars", 1)
             ]
         );
-        assert_eq!((imported.scripts, imported.kept), (1, 1));
+        assert_eq!((imported.scripts, imported.kept), (2, 1));
         assert!(imported.gameobj);
         assert_eq!(
             std::fs::read_to_string(hydra.join("scripts/wander.lic")).unwrap(),
@@ -261,6 +266,10 @@ mod tests {
         );
         assert!(hydra.join("scripts/custom/mine.rb").is_file());
         assert!(!hydra.join("scripts/notes.txt").exists());
+        assert!(
+            hydra.join("scripts/packed.lic.gz").is_file(),
+            "a packed script runs, so it is brought"
+        );
 
         let db = Connection::open(hydra.join("lich/lich.db3")).unwrap();
         let wander: Vec<u8> = db

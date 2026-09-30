@@ -80,7 +80,7 @@ const STARTING: &[&str] = &["force", "e", "eq", "exec", "execq", "en", "execname
 
 /// The script files a runner runs: Lich's own kinds, less the Wizard's
 /// `.cmd` and `.wiz`, which the bridge does not take (`plan/46` §5).
-const KINDS: &[&str] = &["lic", "rb", "lic.gz", "rb.gz"];
+pub(crate) const KINDS: &[&str] = &["lic", "rb", "lic.gz", "rb.gz"];
 
 /// What is said when the player has no Ruby.
 const NO_RUBY: &str = "scripts need Ruby 4.0, which Lich's installer puts in C:\\Ruby4Lich5; none was found there or on the PATH.";
