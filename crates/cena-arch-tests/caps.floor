@@ -266,3 +266,17 @@ crates/cena/src/atlas.rs 100
 # is the minimap, its tests moved to widget/minimap/tests.rs when the maps next door took it
 # toward 800: 529 lines, so 600.
 crates/cena-gui/src/widget/minimap.rs 600
+
+# NEW SPLIT PARENTS, 2026-09-30, capped at birth (plan/57). crates/cena-ui/src/theme.rs is the
+# palette's tokens and their roles over theme/{oklch,harmony,file,shape,typeface,wrayth}.rs:
+# 708 lines, so 800. crates/cena-ui/src/theme/harmony.rs is the generator, its tests beside
+# it: 421 lines, so 500. crates/cena-gui/src/theme_editor.rs is the editor's state and
+# layout over theme_editor/{generate,pins,look,preview}.rs: 293 lines, so 350.
+# crates/cena-gui/src/play/options.rs lost a bar's page to options/bar.rs at the cap: 594
+# lines, so 650. crates/cena-gui/src/layout/tests.rs lost the looks' tests to
+# layout/tests/looks.rs at the cap: 747 lines, so 800.
+crates/cena-ui/src/theme.rs 800
+crates/cena-ui/src/theme/harmony.rs 500
+crates/cena-gui/src/theme_editor.rs 350
+crates/cena-gui/src/play/options.rs 650
+crates/cena-gui/src/layout/tests.rs 800

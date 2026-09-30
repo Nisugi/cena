@@ -117,32 +117,7 @@ impl Story {
                 if self.quiet && main {
                     return;
                 }
-                for shown in lines {
-                    let mut runs = shown.runs;
-                    // A blank line before anything to read since the prompt
-                    // is left out: what a line moved to its own window, or
-                    // a dialog's update, leaves behind (the author,
-                    // 2026-09-30: *"I'm also getting blank lines in the story
-                    // window"*). `VellumFE`'s rule (`flush_line.rs:284`);
-                    // a blank line inside what the game says stays.
-                    if main && !self.since_prompt && !visible(&runs) {
-                        continue;
-                    }
-                    // Only a line with something to read earns the prompt
-                    // after it (`prompt.rs`).
-                    self.since_prompt |= visible(&runs);
-                    if let Some(style) = &style {
-                        for run in runs.iter_mut().filter(|run| run.preset.is_none()) {
-                            run.preset = Some(style.clone());
-                        }
-                    }
-                    self.push(if main {
-                        Shown::Game(runs)
-                    } else {
-                        Shown::From(line.stream.clone(), runs)
-                    });
-                    self.heard += 1;
-                }
+                self.take_lines(&line.stream, lines, style.as_deref());
             }
             // The prompt a viewer shows, not the game's frame: while the
             // player's Lich runs, the frame comes before Lich's lines and

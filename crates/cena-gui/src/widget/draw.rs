@@ -526,7 +526,7 @@ fn room_list(
     ctx: &egui::Context,
     widget: &Widget,
     snapshot: Option<&Snapshot>,
-    tags: Option<usize>,
+    tags: Option<cena_session::targetid::Style>,
 ) -> Option<Vec<Vec<StyledRun>>> {
     let snapshot = snapshot?;
     let room = &snapshot.state.room;
@@ -555,8 +555,8 @@ fn room_list(
         .partition(|item| hostile(&item));
     let creature = theme::color(ctx, T::Creature);
     match widget {
-        Widget::Creatures => things(&targets, (creature, tags)),
-        Widget::Npcs => things(&npcs, (creature, tags)),
+        Widget::Creatures => things(&targets, (creature, tags.map(|style| (snapshot, style)))),
+        Widget::Npcs => things(&npcs, (creature, tags.map(|style| (snapshot, style)))),
         Widget::Objects => things(&room.objects, (theme::color(ctx, T::Object), None)),
         _ => room.saw_players().then(|| {
             room.players

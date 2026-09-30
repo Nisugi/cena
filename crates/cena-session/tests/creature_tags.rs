@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use cena_model::targetid::tag;
+use cena_model::targetid::{Style, assign, tag};
 use cena_platform::AnsweringSource;
 use cena_session::{Event, Generation, Outcome, Session};
 
@@ -17,10 +17,17 @@ const KOBOLD: i64 = 123_456;
 fn look() -> Vec<u8> {
     format!(
         "<component id='room objs'>You also see <pushBold/>a <a exist=\"{KOBOLD}\" noun=\"kobold\">kobold</a><popBold/>.</component>\n\
+         <crtrStatus exist=\"{KOBOLD}\" hostile=\"1\"/>\n\
          <pushBold/>A <a exist=\"{KOBOLD}\" noun=\"kobold\">kobold</a><popBold/> growls at you.\n\
          <prompt time=\"1\">&gt;</prompt>\n"
     )
     .into_bytes()
+}
+
+/// The kobold's tag, the first creature in the room: its unique letter
+/// `A`, its random ones from its id.
+fn kobolds_tag() -> String {
+    tag(assign(KOBOLD, []), Style::default(), None)
 }
 
 /// The text of every line viewers were shown.
@@ -37,7 +44,7 @@ fn shown(events: &mut tokio::sync::broadcast::Receiver<Event>) -> Vec<String> {
 /// `on`: the lines shown after a look, and what the game got for `kill` of
 /// the kobold's tag.
 async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
-    let key = tag(KOBOLD, 3).to_ascii_lowercase();
+    let key = kobolds_tag().to_ascii_lowercase();
     let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     transcript.answer("look", &look());
     // The game always answers a swing: a bare prompt answers nothing.
@@ -46,7 +53,7 @@ async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
     transcript.answer(&format!("kill {key}"), later);
     let session = Session::new(source);
     let handle = session.handle();
-    handle.tag_creatures(on.then_some(3));
+    handle.tag_creatures(on.then(Style::default));
     let (_, mut events) = session.subscribe();
     tokio::spawn(session.into_actor().run());
     let looked = handle
@@ -62,7 +69,7 @@ async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_creature_is_tagged_and_its_tag_names_it_back() {
-    let tagged = format!("A kobold ({}) growls at you.", tag(KOBOLD, 3));
+    let tagged = format!("A kobold ({}) growls at you.", kobolds_tag());
     let (lines, sent) = with_tags(true).await;
     assert!(lines.contains(&tagged), "{lines:?}");
     assert_eq!(sent.last(), Some(&format!("kill #{KOBOLD}")), "{sent:?}");
@@ -74,7 +81,7 @@ async fn a_creature_is_tagged_and_its_tag_names_it_back() {
     );
     assert_eq!(
         sent.last(),
-        Some(&format!("kill {}", tag(KOBOLD, 3).to_ascii_lowercase())),
+        Some(&format!("kill {}", kobolds_tag().to_ascii_lowercase())),
         "off, the line as typed"
     );
 }

@@ -139,7 +139,7 @@ fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
     let commands: claimant::Settings = section(file, claimant::SECTION)?;
     let sorter: Sorter = section(file, SORTER)?;
     let targetid: crate::targetid::Saved = section(file, crate::targetid::SECTION)?;
-    Ok(vec![
+    let mut rows = vec![
         Row {
             key: "symbol".to_owned(),
             label: "Command symbol".to_owned(),
@@ -156,33 +156,9 @@ fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
             sorter.enabled,
             false,
         ),
-        toggle(
-            crate::targetid::SECTION,
-            "Creature tags",
-            "A tag after each creature's name, and kill <tag> reaching it, as targetid does: .targetid.",
-            targetid.enabled,
-            false,
-        ),
-        Row {
-            key: crate::targetid::LENGTH_KEY.to_owned(),
-            label: "Creature tag length".to_owned(),
-            help: "Characters in each tag, 1 to 6: shorter is quicker to read and more often \
-                   shared by two creatures in a room: .targetid length."
-                .to_owned(),
-            kind: RowKind::Whole {
-                min: 1,
-                max: u32::try_from(cena_session::targetid::LONGEST).unwrap_or(6),
-            },
-            value: Value::Text(
-                targetid
-                    .length
-                    .map_or(cena_session::targetid::DEFAULT_LENGTH, usize::from)
-                    .to_string(),
-            ),
-            here: targetid.length.is_some(),
-            from: None,
-        },
-    ])
+    ];
+    rows.extend(crate::targetid::rows(&targetid));
+    Ok(rows)
 }
 
 fn log_rows(log: &LogSettings, name: &str) -> Vec<Row> {
@@ -381,38 +357,11 @@ fn changed(
                 }
             )
         }
-        (GENERAL, crate::targetid::SECTION) => {
-            let enabled = switch(key, to)?;
+        (GENERAL, key) if crate::targetid::owns(key) => {
             let mut saved: crate::targetid::Saved = section(&file, crate::targetid::SECTION)?;
-            saved.enabled = enabled;
+            let done = crate::targetid::change(&mut saved, key, to)?;
             put(&mut file, crate::targetid::SECTION, &saved)?;
-            format!(
-                "Creature tags {}.",
-                if enabled.unwrap_or(false) {
-                    "on"
-                } else {
-                    "off"
-                }
-            )
-        }
-        (GENERAL, crate::targetid::LENGTH_KEY) => {
-            let mut saved: crate::targetid::Saved = section(&file, crate::targetid::SECTION)?;
-            saved.length = to
-                .map(|to| {
-                    to.trim()
-                        .parse::<u8>()
-                        .ok()
-                        .filter(|n| (1..=6).contains(n))
-                        .ok_or_else(|| "A creature tag is 1 to 6 characters long.".to_owned())
-                })
-                .transpose()?;
-            put(&mut file, crate::targetid::SECTION, &saved)?;
-            format!(
-                "Creature tags are {} characters long.",
-                saved
-                    .length
-                    .map_or(cena_session::targetid::DEFAULT_LENGTH, usize::from)
-            )
+            done
         }
         (LOG, key) => {
             let mut log: LogSettings = section(&file, LOG_SECTION)?;

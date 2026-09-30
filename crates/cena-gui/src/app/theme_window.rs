@@ -9,7 +9,57 @@ use crate::theme_editor::Asked;
 /// The editor's key among the windows' places.
 const THEME: &str = "theme";
 
+/// What `worn` holds while the theme editor's draft is worn: no theme's name.
+pub(super) const PREVIEW: &str = "\u{1}preview";
+
 impl App {
+    /// Wear the theme Hydra's own settings choose, once, and again after a
+    /// change: the one chosen, or the light one while the computer is in
+    /// light mode and the setting follows it (`plan/57` step 2). A theme
+    /// that cannot be worn is said on the hub, and Despana is worn.
+    pub(super) fn wear_theme(&mut self, context: &egui::Context) {
+        if self.fonts.is_none() {
+            let data = self.keys_file.as_deref().and_then(std::path::Path::parent);
+            self.fonts = Some(data.map_or_else(Vec::new, |data| {
+                crate::fonts::load(context, &data.join("fonts")).1
+            }));
+        }
+        // The editor's draft, while it is worn: over whatever is chosen.
+        if let Some(outfit) = &self.preview {
+            if self.worn.as_deref() != Some(PREVIEW) {
+                crate::theme::wear(context, outfit);
+                self.worn = Some(PREVIEW.to_owned());
+                self.looks.wear_again();
+            }
+            return;
+        }
+        let light =
+            self.own.follow_computer() && context.system_theme() == Some(egui::Theme::Light);
+        let wanted = if light {
+            self.own.light_theme()
+        } else {
+            self.own.theme()
+        };
+        if self.worn.as_deref() == Some(wanted) {
+            return;
+        }
+        let outfit = match self.themes.outfit(wanted) {
+            Ok(outfit) => {
+                self.theme_problem = None;
+                outfit
+            }
+            Err(why) => {
+                self.theme_problem = Some(format!("{wanted} is not worn: {why}"));
+                self.themes
+                    .outfit(cena_ui::theme::Theme::DEFAULT)
+                    .unwrap_or_default()
+            }
+        };
+        crate::theme::wear(context, &outfit);
+        self.worn = Some(wanted.to_owned());
+        self.looks.wear_again();
+    }
+
     /// Open the theme editor, starting its draft from the theme worn.
     pub(super) fn open_theme_editor(&mut self) {
         if self.themer.open() {

@@ -123,7 +123,7 @@ pub(crate) struct PlayView<'a> {
     pub(crate) minimap: Option<&'a cena_ui::MinimapView>,
     /// How long each creature's tag after its name is, when shown
     /// (`.targetid`).
-    pub(crate) tags: Option<usize>,
+    pub(crate) tags: Option<cena_session::targetid::Style>,
     /// `NumLock`, once a numpad press has shown it.
     pub(crate) numlock: Option<bool>,
     /// The macro set the character uses over set 0; 0 for none.
@@ -212,22 +212,6 @@ pub(crate) struct Play {
     /// What the game last listed as ones to attack, in its order, and the
     /// one targeted (step 7).
     targets: (Vec<i64>, Option<i64>),
-}
-
-/// What a top-bar button asks of the app, for the buttons that change
-/// nothing in the window itself: stop, and the windows they open.
-fn opened(top: draw::Top) -> Option<Asked> {
-    Some(match top {
-        draw::Top::Stop => Asked::Stop,
-        draw::Top::Settings => Asked::Settings(None),
-        draw::Top::Keys => Asked::Keys,
-        draw::Top::Log => Asked::Log,
-        draw::Top::Triggers => Asked::Triggers,
-        draw::Top::Theme => Asked::Theme,
-        draw::Top::ReloadKeys => Asked::ReloadKeys,
-        draw::Top::Lich(on) => Asked::Lich(on),
-        _ => return None,
-    })
 }
 
 impl Play {
@@ -350,7 +334,7 @@ impl Play {
                     changed = true;
                 }
             }
-            Some(top) => asked = opened(top),
+            Some(top) => asked = top.asked(),
             None => {}
         }
         egui::Panel::bottom(Id::new(("play-input-panel", session))).show(ui, |ui| {

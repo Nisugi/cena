@@ -298,3 +298,41 @@ impl Layout {
         }
     }
 }
+
+/// What a layout is asked of its windows: the streams its widgets show, and
+/// for a test, where a window is and which one has a title. Moved down from
+/// `layout.rs` when it reached its cap.
+impl Layout {
+    /// The streams a widget here shows, showing or a tab behind another:
+    /// the story leaves their lines out (`plan/49` Stage B step 4).
+    pub(crate) fn streams(&self) -> Vec<String> {
+        self.placed()
+            .into_iter()
+            .filter_map(|placed| match &placed.widget {
+                Widget::Stream(id) => Some(id.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Where window `id` sits, if it is here, from its zone's top left.
+    #[cfg(test)]
+    pub(crate) fn rect(&self, id: u32) -> Option<Rect> {
+        self.holder(id).map(Holder::rect)
+    }
+
+    /// Put window `id` at `at`, from its zone's top left.
+    #[cfg(test)]
+    pub(crate) fn set(&mut self, id: u32, at: Rect) {
+        if let Some(holder) = self.holders.iter_mut().find(|holder| holder.id == id) {
+            holder.set(at);
+        }
+    }
+
+    /// The window titled `title`: for a test, which finds a window as a
+    /// player does.
+    #[cfg(test)]
+    pub(crate) fn titled(&self, title: &str) -> Option<&Holder> {
+        self.holders.iter().find(|holder| holder.title() == title)
+    }
+}

@@ -65,7 +65,7 @@ pub(crate) struct Seen<'a> {
     pub(crate) minimap: Option<&'a cena_ui::MinimapView>,
     /// How long each creature's tag after its name is, when shown
     /// (`.targetid`, `cena_session::targetid`).
-    pub(crate) tags: Option<usize>,
+    pub(crate) tags: Option<cena_session::targetid::Style>,
 }
 
 /// Another character running in this Hydra, as a widget that follows it

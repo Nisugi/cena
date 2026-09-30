@@ -104,6 +104,25 @@ pub(super) enum Top {
     Lich(bool),
 }
 
+impl Top {
+    /// What it asks of the app, for the buttons that change nothing in the
+    /// window itself: stop, and the windows they open.
+    pub(super) fn asked(self) -> Option<super::Asked> {
+        use super::Asked;
+        Some(match self {
+            Top::Stop => Asked::Stop,
+            Top::Settings => Asked::Settings(None),
+            Top::Keys => Asked::Keys,
+            Top::Log => Asked::Log,
+            Top::Triggers => Asked::Triggers,
+            Top::Theme => Asked::Theme,
+            Top::ReloadKeys => Asked::ReloadKeys,
+            Top::Lich(on) => Asked::Lich(on),
+            _ => return None,
+        })
+    }
+}
+
 /// The buttons that open another window: *Settings*, *Triggers* and *Log*,
 /// right to left as the top bar draws them.
 fn windows(ui: &mut egui::Ui) -> Option<Top> {
