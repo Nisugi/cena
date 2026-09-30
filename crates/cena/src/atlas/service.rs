@@ -419,7 +419,7 @@ mod tests {
 
     /// `room`'s sheet, asked for until it comes, or `None` after a minute.
     fn wait_for(atlas: &Atlas, room: u32) -> Option<Arc<cena_ui::MapScene>> {
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_mins(1);
         let mut queue = atlas.queue.lock().unwrap_or_else(PoisonError::into_inner);
         while std::time::Instant::now() < deadline {
             drop(queue);
