@@ -252,6 +252,19 @@ impl super::GameState {
     /// combat exchange is several lines and one event (`plan/12` §3a's
     /// "multi-line events"). Line-at-a-time delivery would push that memory
     /// back into the consumers, which is what this refactor removes.
+    ///
+    /// **Where a line's time goes.** MEASURED 2026-09-29, debug build, the
+    /// 1,591 frames of `cena-behavior/tests/fixtures/arch_kill.xml` (350
+    /// wire lines, a whole hunt) applied to a fresh `GameState` twenty times,
+    /// timed round each consumer below: 118 ms a pass, 338 us a line, against
+    /// the parser's 27 us a line for the same bytes. Of it, `combat`
+    /// `parse_chunk` 76 ms, `read_chunk_line` 4.9 ms, `queue_loot` 4.4 ms,
+    /// `incident` 4.0 ms, `consume_chunk` 0.5 ms, the rest under 0.1 ms each.
+    /// The review of 2026-09-29 pointed at the per-line readers' regexes;
+    /// they are four percent. Combat is two thirds, and is gated already
+    /// (`combat/defs.rs`, its header's release figure). Nothing changed on
+    /// this measurement: at combat's pace of lines it is milliseconds a
+    /// second in debug, and the release build is the one that ships.
     pub(super) fn close_chunk(&mut self) {
         let chunk = self.chunk.take();
         let at = self.game_time;
