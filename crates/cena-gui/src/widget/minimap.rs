@@ -112,29 +112,22 @@ pub(super) fn minimap(
     let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 4.0, BACKGROUND);
-    let (scene, you, target, route, next_door) = match view {
-        Some(MinimapView::Here {
-            scene,
-            room,
-            target,
-            route,
-            next_door,
-        }) => (
-            scene.as_ref(),
-            *room,
-            *target,
-            route.as_slice(),
-            next_door.as_slice(),
-        ),
-        Some(MinimapView::Waiting(why)) => {
-            waiting(&painter, rect, why);
-            return None;
-        }
-        None => {
-            waiting(&painter, rect, "No map.");
-            return None;
-        }
+    let Some(MinimapView::Here {
+        scene,
+        room: you,
+        target,
+        route,
+        next_door,
+    }) = view
+    else {
+        let why = match view {
+            Some(MinimapView::Waiting(why)) => why.as_str(),
+            _ => "No map.",
+        };
+        waiting(&painter, rect, why);
+        return None;
     };
+    let (scene, you, target) = (scene.as_ref(), *you, *target);
     let Some((here_cell, inside)) = whereabouts(scene, you) else {
         waiting(&painter, rect, "You are not on this area's map.");
         return None;
@@ -179,6 +172,7 @@ pub(super) fn minimap(
         let moved = |p: Vec2| to_screen(p + offset);
         draw_lines(&painter, next, &moved, zoom, &|_| FADED);
         draw_rooms(&painter, rect, next, &moved, zoom, &|_| FADED);
+        marks::draw_marks(&painter, next, &moved, zoom, &|_| FADED);
     }
     // In a place, the rest of the sheet dimmed; outdoors, everything.
     let fade = |building: Option<usize>| {
@@ -189,8 +183,10 @@ pub(super) fn minimap(
         }
     };
     draw_lines(&painter, scene, &to_screen, zoom, &fade);
-    draw_route(&painter, &layers, route, &to_screen);
+    draw_route(&painter, &layers, route.as_slice(), &to_screen);
     draw_rooms(&painter, rect, scene, &to_screen, zoom, &fade);
+    marks::draw_marks(&painter, scene, &to_screen, zoom, &fade);
+    marks::draw_labels(&painter, scene, &to_screen, zoom, &fade);
     if let Some(at) = target.and_then(|t| spot(&layers, t)) {
         painter.circle_stroke(to_screen(at), square * 0.9 + 3.0, Stroke::new(2.0, ROUTE));
     }
@@ -199,11 +195,18 @@ pub(super) fn minimap(
         square * 0.9 + 3.0,
         Stroke::new(2.5, YOU),
     );
+    let from_screen = |p: Pos2| centre + (p - rect.center()) / zoom;
+    let reach = (square * 0.9 + 3.0) / zoom;
+    // The card for the room under the pointer, on anyone's minimap.
+    marks::hover(
+        ui,
+        &response,
+        &|at| hit(&layers, from_screen(at), reach),
+        &layers,
+    );
     if !own {
         return None;
     }
-    let from_screen = |p: Pos2| centre + (p - rect.center()) / zoom;
-    let reach = (square * 0.9 + 3.0) / zoom;
     let pointed = response
         .interact_pointer_pos()
         .and_then(|at| hit(&layers, from_screen(at), reach));
@@ -538,6 +541,7 @@ fn cell((x, y): (i32, i32)) -> Vec2 {
 }
 
 pub(crate) mod look;
+mod marks;
 #[cfg(test)]
 mod tests;
 

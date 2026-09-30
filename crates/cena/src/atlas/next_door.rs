@@ -199,6 +199,8 @@ mod tests {
                     cell,
                     title: String::new(),
                     building: None,
+                    paths: String::new(),
+                    marks: Vec::new(),
                 })
                 .collect(),
             ..MapScene::default()

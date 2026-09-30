@@ -58,6 +58,9 @@ pub struct MapScene {
     /// The buildings drawn with the streets: a room's `building` indexes
     /// here, so a map can show one building alone when you are in it.
     pub buildings: Vec<String>,
+    /// The buildings' names, where they are drawn.
+    #[serde(default)]
+    pub labels: Vec<SceneLabel>,
     /// The least cell across and down any room reaches.
     pub min: (i32, i32),
     /// The greatest.
@@ -76,6 +79,13 @@ pub struct SceneRoom {
     /// The building it is in, by index into [`MapScene::buildings`];
     /// `None` for a street or the country between.
     pub building: Option<usize>,
+    /// Its ways out as the game lists them (`Obvious paths: north, east`),
+    /// for the card a hover shows.
+    #[serde(default)]
+    pub paths: String,
+    /// What it is, as Despana marks places: `bank`, `healer`, `gemshop`...
+    #[serde(default)]
+    pub marks: Vec<String>,
 }
 
 /// How a line is drawn.
@@ -123,6 +133,20 @@ pub struct SceneDoor {
     pub place: String,
     /// Whether the place is big enough to name on the map.
     pub named: bool,
+    /// What the place is, as its first room marks it (see [`SceneRoom::marks`]).
+    #[serde(default)]
+    pub marks: Vec<String>,
+}
+
+/// A building's name, drawn above it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SceneLabel {
+    /// The name.
+    pub text: String,
+    /// Where it is drawn, as a point: its building's top-left.
+    pub at: (f32, f32),
+    /// The building it names, by index into [`MapScene::buildings`].
+    pub building: Option<usize>,
 }
 
 impl MapScene {

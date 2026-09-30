@@ -53,8 +53,8 @@ pub(crate) fn open_place(
             &alone,
             cena_map_layout::interior_shelf::TOWN_SCALE,
         ) {
-            Some(opened) => convert(key, &opened.scene),
-            None => convert(key, &alone),
+            Some(opened) => convert(map, key, &opened.scene),
+            None => convert(map, key, &alone),
         },
     )
 }
@@ -70,7 +70,11 @@ fn sheet(name: &str, subset: &Map) -> Option<cena_map_layout::MapScene> {
 
 /// The engine's scene as the window's: rooms, lines with their bends, the
 /// way-in dots, and which building each room and line is in.
-pub(crate) fn convert(area: &str, scene: &cena_map_layout::MapScene) -> cena_ui::MapScene {
+pub(crate) fn convert(
+    map: &Map,
+    area: &str,
+    scene: &cena_map_layout::MapScene,
+) -> cena_ui::MapScene {
     let sheet = &scene.sheet;
     // Units are the streets and each building; the window only needs to
     // know the buildings, numbered from 0.
@@ -92,6 +96,11 @@ pub(crate) fn convert(area: &str, scene: &cena_map_layout::MapScene) -> cena_ui:
             cell: (r.cell.x, r.cell.y),
             title: r.title.clone(),
             building: building_of.get(&r.unit).copied(),
+            paths: map
+                .room(r.id)
+                .and_then(|room| room.paths.last().cloned())
+                .unwrap_or_default(),
+            marks: marks(map, r.id),
         })
         .collect();
     let edges = sheet
@@ -124,6 +133,16 @@ pub(crate) fn convert(area: &str, scene: &cena_map_layout::MapScene) -> cena_ui:
             at: (d.at.x, d.at.y),
             place: d.place.clone(),
             named: d.named(),
+            marks: marks(map, d.inside),
+        })
+        .collect();
+    let labels = sheet
+        .labels
+        .iter()
+        .map(|l| cena_ui::SceneLabel {
+            text: l.text.clone(),
+            at: point(l.cell.x, l.cell.y),
+            building: l.unit.and_then(|u| building_of.get(&u).copied()),
         })
         .collect();
     cena_ui::MapScene {
@@ -132,9 +151,38 @@ pub(crate) fn convert(area: &str, scene: &cena_map_layout::MapScene) -> cena_ui:
         edges,
         doors,
         buildings,
+        labels,
         min: (sheet.min.x, sheet.min.y),
         max: (sheet.max.x, sheet.max.y),
     }
+}
+
+/// What room `id` is, as Despana marks places (`preferences.mjs:2-16`):
+/// its map tags' kinds of place, each once.
+fn marks(map: &Map, id: RoomId) -> Vec<String> {
+    let mut marks: Vec<String> = map
+        .room(id)
+        .into_iter()
+        .flat_map(|room| &room.tags)
+        .filter_map(|tag| {
+            Some(match tag.as_str() {
+                "bank" => "bank",
+                "furrier" => "furrier",
+                "gemshop" => "gemshop",
+                "pawnshop" => "pawnshop",
+                "advguild" | "advguard" | "advguard2" | "advpickup" => "advguild",
+                "locksmith" => "locksmith",
+                "npchealer" | "npccleric" => "healer",
+                "herbalist" => "herbalist",
+                "alchemist" => "alchemist",
+                _ => return None,
+            })
+        })
+        .map(str::to_owned)
+        .collect();
+    marks.sort();
+    marks.dedup();
+    marks
 }
 
 #[cfg(test)]
@@ -155,7 +203,7 @@ mod tests {
         let placeable = cena_map_layout::regions::placeable_rooms(&map);
         let rooms = &areas["icemule-trace-ranger-guild"];
         let scene = lay_out(&map, "icemule-trace-ranger-guild", rooms, &placeable)
-            .map(|engine| convert("icemule-trace-ranger-guild", &engine))
+            .map(|engine| convert(&map, "icemule-trace-ranger-guild", &engine))
             .expect("the guild is a place");
 
         assert_eq!(scene.area, "icemule-trace-ranger-guild");

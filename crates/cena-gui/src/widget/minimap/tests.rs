@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use cena_ui::{SceneDoor, SceneRoom};
 use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
 
 use super::*;
 
@@ -22,6 +23,12 @@ fn town() -> MapScene {
         cell,
         title: format!("[Room {id}]"),
         building,
+        paths: "Obvious paths: east, west".to_owned(),
+        marks: if id == 3 {
+            vec!["healer".to_owned()]
+        } else {
+            Vec::new()
+        },
     };
     let line = |a: u32, b: u32, kind: EdgeKind, path: &[(f32, f32)], building| SceneEdge {
         a,
@@ -62,8 +69,14 @@ fn town() -> MapScene {
             at: (4.0, 4.45),
             place: "Angargreft".to_owned(),
             named: true,
+            marks: Vec::new(),
         }],
         buildings: vec!["Shop".to_owned()],
+        labels: vec![cena_ui::SceneLabel {
+            text: "Shop".to_owned(),
+            at: (5.0, 1.0),
+            building: Some(0),
+        }],
         min: (0, 0),
         max: (30, 4),
     }
@@ -106,12 +119,16 @@ fn farm() -> NextDoor {
                     cell: (0, 0),
                     title: "[Farm, Gate]".to_owned(),
                     building: None,
+                    paths: String::new(),
+                    marks: Vec::new(),
                 },
                 SceneRoom {
                     id: 91,
                     cell: (4, 0),
                     title: "[Farm, Barn]".to_owned(),
                     building: None,
+                    paths: String::new(),
+                    marks: Vec::new(),
                 },
             ],
             edges: vec![SceneEdge {
@@ -480,4 +497,22 @@ fn the_page_sets_the_zooms_and_the_maps_next_door() {
         ..MinimapLook::default()
     };
     assert!((run(here(5, None, &[]), inside, None).1 - 24.0).abs() < 1e-3);
+}
+
+/// Hovering room 3 shows its card: its title, its number and map, its ways
+/// out, and what it is.
+#[test]
+fn hovering_a_room_shows_its_card() {
+    let mut harness = drawn(here(2, None, &[]));
+    harness.run();
+    let three = Pos2::new(4.0f32.mul_add(ZOOM, 130.0), 100.0);
+    harness
+        .input_mut()
+        .events
+        .push(egui::Event::PointerMoved(three));
+    harness.run();
+    harness.run();
+    let _ = harness.get_by_label("[Room 3]");
+    let _ = harness.get_by_label("#3 · test town");
+    let _ = harness.get_by_label("Healer");
 }

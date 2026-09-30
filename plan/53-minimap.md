@@ -649,6 +649,13 @@ added, walking the Landing and Hinterwilds.
   (`itinerary`, priced by the walker `;scripts` uses), worked out again only when the
   room or the target changes (`atlas/follow.rs`), and the target is forgotten on arrival.
   Another character's minimap only shows.
+- **The card, the marks, the names** (step 7's, 2026-09-29, `widget/minimap/marks.rs`).
+  Hovering a room or a way-in dot shows its card: title, number, the building or map it is in,
+  its ways out, what kind of place it is. Rooms and dots are marked in Despana's colours for
+  bank, furrier, gemshop, pawnshop, Adventurer's Guild, locksmith, healer, herbalist and
+  alchemist (from the map's tags, a dot's from the first room behind it; glyphs later). The
+  buildings' names are drawn from 12 pixels a cell, above, below, right or left of the
+  building, wherever they cover no room.
 
 ## 8. Inside and next door: the author's goal after the first run, 2026-09-29
 

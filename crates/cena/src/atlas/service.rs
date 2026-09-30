@@ -239,7 +239,7 @@ impl Atlas {
                     Some(engine)
                 });
                 engine.map(|engine| {
-                    let scene = super::scene::convert(&name, &engine);
+                    let scene = super::scene::convert(map, &name, &engine);
                     self.engines
                         .write()
                         .unwrap_or_else(PoisonError::into_inner)
@@ -396,7 +396,7 @@ mod tests {
             .join(file_name("icemule-trace-ranger-guild"));
         let engine: cena_map_layout::MapScene = read(&cached).expect("the engine's scene kept");
         assert_eq!(
-            &super::super::scene::convert("icemule-trace-ranger-guild", &engine),
+            &super::super::scene::convert(&map, "icemule-trace-ranger-guild", &engine),
             scene.as_ref()
         );
         let _ = std::fs::remove_dir_all(&dir);

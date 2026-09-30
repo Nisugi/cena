@@ -20,7 +20,9 @@ pub use input::{
     InputError, MAX_COMMAND_BYTES, MAX_REQUEST_ID_BYTES, validate_command, validate_line,
 };
 pub use lines::{MAX_LINE_BYTES, MAX_LINE_RUNS, painted, story_lines};
-pub use map_scene::{EdgeKind, MapScene, MinimapView, NextDoor, SceneDoor, SceneEdge, SceneRoom};
+pub use map_scene::{
+    EdgeKind, MapScene, MinimapView, NextDoor, SceneDoor, SceneEdge, SceneLabel, SceneRoom,
+};
 pub use merge::{
     MATCH_WINDOW, MAX_MERGED_HISTORY, MERGED_STREAMS, MergedHistory, MergedLine, Merger,
 };
