@@ -287,8 +287,8 @@ fn the_rooms_right_click_opens_its_page() {
 #[test]
 fn the_room_shows_the_parts_its_page_picks() {
     let (mut harness, room, page) = with_the_room_widget();
-    assert!(harness.query_by_label("Also here:").is_some());
-    assert!(harness.query_by_label("Creatures:").is_none());
+    assert!(harness.query_by_label_contains("Also here:").is_some());
+    assert!(harness.query_by_label_contains("Creatures:").is_none());
     let play = &mut harness.state_mut().play;
     play.widget_change(&page, "players", Some("off"))
         .expect("changed");
@@ -298,10 +298,13 @@ fn the_room_shows_the_parts_its_page_picks() {
     assert!(play.widget_change(&page, "weather", Some("on")).is_err());
     harness.run();
     assert!(
-        harness.query_by_label("Also here:").is_none(),
+        harness.query_by_label_contains("Also here:").is_none(),
         "drawn at once"
     );
-    assert!(harness.query_by_label("Creatures:").is_some(), "apart");
+    assert!(
+        harness.query_by_label_contains("Creatures:").is_some(),
+        "apart"
+    );
     let kept = layout(&harness).rooms.get(&room).copied().expect("kept");
     assert!(!kept.players && kept.apart && kept.exits);
     let pages = harness

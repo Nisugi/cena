@@ -72,9 +72,17 @@ pub(super) fn draw(
         Widget::Minimap => {
             return super::minimap::minimap(ui, seen.minimap, id, seen.who.is_none());
         }
-        Widget::Room => scrolled(ui, &mut |ui| {
-            super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default());
-        }),
+        // Another character's room only shows: its ids are not this
+        // window's character's to send.
+        Widget::Room => {
+            let mut clicked = None;
+            let own = seen.who.is_none();
+            scrolled(ui, &mut |ui| {
+                clicked =
+                    super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default(), own);
+            });
+            return clicked;
+        }
         Widget::Spellbook => scrolled(ui, &mut |ui| lists::spellbook(ui, state)),
         Widget::Reserve => scrolled(ui, &mut |ui| lists::reserve(ui, state)),
         Widget::Containers => {

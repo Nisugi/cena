@@ -103,10 +103,7 @@ impl Lines {
         let job = text::job(&all, ui.style());
         let drawn = ui.scope(|ui| {
             if all.iter().any(|run| run.link.is_some()) {
-                return text::linked(ui, job, &all).map(|acted| match acted {
-                    text::Acted::Clicked(link, at) => Clicked::Link(link, at),
-                    text::Acted::Quietly(line) => Clicked::Quietly(line),
-                });
+                return text::linked(ui, job, &all).map(Clicked::from);
             }
             ui.label(job);
             None

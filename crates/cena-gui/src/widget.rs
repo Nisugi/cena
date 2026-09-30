@@ -133,6 +133,15 @@ pub(crate) enum Clicked {
     },
 }
 
+impl From<crate::text::Acted> for Clicked {
+    fn from(acted: crate::text::Acted) -> Self {
+        match acted {
+            crate::text::Acted::Clicked(link, at) => Self::Link(link, at),
+            crate::text::Acted::Quietly(line) => Self::Quietly(line),
+        }
+    }
+}
+
 /// What the player chose for one placed widget on its own page, whichever
 /// its kind takes: a bar's look, the Room's parts, how lines are drawn.
 #[derive(Clone, Debug, Default)]

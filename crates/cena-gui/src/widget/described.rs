@@ -15,9 +15,16 @@
 //! from the objects when asked: *"take the objects and break it up into
 //! creatures / objects based on the pushBold wrapping it"*, each on its own
 //! line.
+//!
+//! **Its links are the story's** (the author, 2026-09-29: *"links are not
+//! rendered in the room window, they should be"*): the game's own, in what
+//! is here and the exits, and each creature, object and player drawn apart
+//! a link to it by its id. A click opens its menu, and an object is carried
+//! from it with the drag key, as in the story; only in the window's own
+//! character's widget, whose ids are its to send.
 
 use cena_session::{RoomItem, Snapshot};
-use cena_ui::StyledRun;
+use cena_ui::{RunLink, StyledRun};
 use egui::{Color32, RichText};
 use serde::{Deserialize, Serialize};
 
@@ -64,11 +71,28 @@ impl Default for RoomParts {
     }
 }
 
-/// The room in `snapshot`, its `parts`.
-pub(super) fn room(ui: &mut egui::Ui, snapshot: Option<&Snapshot>, parts: RoomParts) {
+/// The room in `snapshot`, its `parts`; its links live when `own`, the
+/// window's own character's. The link clicked, if one was.
+pub(super) fn room(
+    ui: &mut egui::Ui,
+    snapshot: Option<&Snapshot>,
+    parts: RoomParts,
+    own: bool,
+) -> Option<super::Clicked> {
     let Some(snapshot) = snapshot else {
         ui.weak("Room unknown");
-        return;
+        return None;
+    };
+    let mut clicked = None;
+    let mut said = |ui: &mut egui::Ui, runs: &[StyledRun]| {
+        let job = text::job(runs, ui.style());
+        if own && runs.iter().any(|run| run.link.is_some()) {
+            clicked = clicked
+                .take()
+                .or_else(|| text::linked(ui, job, runs).map(super::Clicked::from));
+        } else {
+            ui.label(job);
+        }
     };
     let room = &snapshot.state.room;
     if parts.title {
@@ -100,43 +124,90 @@ pub(super) fn room(ui: &mut egui::Ui, snapshot: Option<&Snapshot>, parts: RoomPa
         prose.extend(styled(seen, true));
     }
     if !prose.is_empty() {
-        ui.label(text::job(&prose, ui.style()));
+        said(ui, &prose);
     }
     if parts.apart && seen.is_some() {
         if parts.objects {
-            listed(ui, "You also see", &room.objects, OBJECT);
+            listed(&mut said, ui, "You also see", &room.objects, OBJECT);
         }
         if parts.creatures {
-            listed(ui, "Creatures", &room.creatures, CREATURE);
+            listed(&mut said, ui, "Creatures", &room.creatures, CREATURE);
         }
     }
     if parts.players && !room.players.is_empty() {
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Also here:");
-            for player in &room.players {
-                match cena_ui::room_player(&player.text, &snapshot.triggers, &snapshot.state) {
-                    Some(runs) => ui.label(text::job(&runs, ui.style())),
-                    None => ui.colored_label(PLAYER, &player.text),
-                };
-            }
-        });
+        said(ui, &players(snapshot));
     }
     if parts.exits {
         match (room.component("room exits"), &room.exits) {
-            (Some(said), _) => {
-                ui.label(text::job(&styled(said, false), ui.style()));
-            }
+            (Some(exits), _) => said(ui, &styled(exits, false)),
             (None, Some(exits)) if exits.is_empty() => {
                 ui.label("Obvious exits: none");
             }
-            (None, Some(exits)) => {
-                ui.label(format!("Obvious exits: {}", exits.join(", ")));
-            }
+            (None, Some(exits)) => said(ui, &ways_out(exits)),
             (None, None) => {
                 ui.weak("Exits unknown");
             }
         }
     }
+    clicked
+}
+
+/// Who else is here, each a link to them, painted as the triggers paint a
+/// name.
+fn players(snapshot: &Snapshot) -> Vec<StyledRun> {
+    let mut runs = vec![plain("Also here: ")];
+    for (at, player) in snapshot.state.room.players.iter().enumerate() {
+        if at > 0 {
+            runs.push(plain(", "));
+        }
+        let link = Some(object(player));
+        match cena_ui::room_player(&player.text, &snapshot.triggers, &snapshot.state) {
+            Some(painted) => runs.extend(painted.into_iter().map(|run| StyledRun {
+                link: link.clone(),
+                ..run
+            })),
+            None => runs.push(StyledRun {
+                text: player.text.clone(),
+                color: Some(colour(PLAYER)),
+                link,
+                ..StyledRun::default()
+            }),
+        }
+    }
+    runs
+}
+
+/// The ways out the model holds, when the game sent no line of them, each
+/// a link that goes there.
+fn ways_out(exits: &[String]) -> Vec<StyledRun> {
+    let mut runs = vec![plain("Obvious exits: ")];
+    for (at, exit) in exits.iter().enumerate() {
+        if at > 0 {
+            runs.push(plain(", "));
+        }
+        runs.push(StyledRun {
+            text: exit.clone(),
+            link: Some(RunLink::Command {
+                command: exit.clone(),
+            }),
+            ..StyledRun::default()
+        });
+    }
+    runs
+}
+
+/// A link to `item` by its id, as the game's own link to it is.
+fn object(item: &RoomItem) -> RunLink {
+    RunLink::Object {
+        exist: item.id.clone(),
+        noun: item.noun.clone(),
+        coord: None,
+    }
+}
+
+/// `color` as a run's colour.
+fn colour(color: Color32) -> String {
+    crate::menu::hex([color.r(), color.g(), color.b()])
 }
 
 /// The room's name without the number the game adds to it when the player
@@ -168,6 +239,7 @@ fn styled(runs: &cena_session::Runs, creatures: bool) -> Vec<StyledRun> {
                 } else {
                     run.style.preset.clone()
                 },
+                link: run.link.as_ref().and_then(RunLink::of),
                 ..StyledRun::default()
             }
         })
@@ -182,23 +254,34 @@ fn plain(text: &str) -> StyledRun {
     }
 }
 
-/// `items` on one line after `label`, in `color`; nothing when there are
-/// none.
-fn listed(ui: &mut egui::Ui, label: &str, items: &[RoomItem], color: Color32) {
+/// `items` on one line after `label`, in `color`, each a link to it, drawn
+/// by `said`; nothing when there are none.
+fn listed(
+    said: &mut impl FnMut(&mut egui::Ui, &[StyledRun]),
+    ui: &mut egui::Ui,
+    label: &str,
+    items: &[RoomItem],
+    color: Color32,
+) {
     if items.is_empty() {
         return;
     }
-    ui.horizontal_wrapped(|ui| {
-        ui.label(format!("{label}:"));
-        for (at, item) in items.iter().enumerate() {
-            let text = match &item.status {
-                Some(status) => format!("{} ({status})", item.text),
-                None => item.text.clone(),
-            };
-            let comma = if at + 1 < items.len() { "," } else { "" };
-            ui.colored_label(color, format!("{text}{comma}"));
+    let mut runs = vec![plain(&format!("{label}: "))];
+    for (at, item) in items.iter().enumerate() {
+        if at > 0 {
+            runs.push(plain(", "));
         }
-    });
+        runs.push(StyledRun {
+            text: item.text.clone(),
+            color: Some(colour(color)),
+            link: Some(object(item)),
+            ..StyledRun::default()
+        });
+        if let Some(status) = &item.status {
+            runs.push(plain(&format!(" ({status})")));
+        }
+    }
+    said(ui, &runs);
 }
 
 #[cfg(test)]
@@ -272,7 +355,9 @@ mod tests {
         let snapshot = watering_hole();
         let mut harness = Harness::builder()
             .with_size((420.0, 260.0))
-            .build_ui(move |ui| room(ui, Some(&snapshot), parts));
+            .build_ui(move |ui| {
+                let _ = room(ui, Some(&snapshot), parts, true);
+            });
         harness.run();
         harness
     }
@@ -287,13 +372,12 @@ mod tests {
         for said in [
             "[Rawknuckle's, Watering Hole] (7503251)",
             JOINED,
-            "Also here:",
-            "Regyy",
+            "Also here: Regyy",
             "Obvious exits: east, out",
         ] {
             assert!(harness.query_by_label(said).is_some(), "{said}");
         }
-        assert!(harness.query_by_label("Creatures:").is_none());
+        assert!(harness.query_by_label_contains("Creatures:").is_none());
     }
 
     /// Each part turned off is left out, and nothing else moves.
@@ -306,7 +390,7 @@ mod tests {
             ..RoomParts::default()
         });
         assert!(harness.query_by_label_contains("Rawknuckle").is_none());
-        assert!(harness.query_by_label("Also here:").is_none());
+        assert!(harness.query_by_label_contains("Also here").is_none());
         assert!(
             harness
                 .query_by_label("You also see a tree hawk-eagle that is flying around, a raw-boned halfling tavernkeeper and a gaunt masked artificer.")
@@ -332,24 +416,80 @@ mod tests {
                 .is_some(),
             "the description alone"
         );
-        assert!(harness.query_by_label("You also see:").is_some());
-        assert!(harness.query_by_label("a gaunt masked artificer").is_some());
-        assert!(harness.query_by_label("Creatures:").is_some());
-        assert!(harness.query_by_label("a tree hawk-eagle").is_some());
+        assert!(
+            harness
+                .query_by_label(
+                    "You also see: a raw-boned halfling tavernkeeper, a gaunt masked artificer"
+                )
+                .is_some()
+        );
+        assert!(harness.query_by_label(CREATURES).is_some());
         let without = drawn(RoomParts {
             apart: true,
             creatures: false,
             ..RoomParts::default()
         });
-        assert!(without.query_by_label("Creatures:").is_none());
-        assert!(without.query_by_label("You also see:").is_some());
+        assert!(without.query_by_label_contains("Creatures").is_none());
+        assert!(without.query_by_label_contains("You also see:").is_some());
         let without = drawn(RoomParts {
             apart: true,
             objects: false,
             ..RoomParts::default()
         });
-        assert!(without.query_by_label("You also see:").is_none());
-        assert!(without.query_by_label("Creatures:").is_some());
+        assert!(without.query_by_label_contains("You also see:").is_none());
+        assert!(without.query_by_label(CREATURES).is_some());
+    }
+
+    /// The creatures' line, apart.
+    const CREATURES: &str = "Creatures: a tree hawk-eagle";
+
+    /// The room's links are the story's: a creature drawn apart is a link to
+    /// it by its id, its menu asked for as a click on it in the story asks;
+    /// in another character's widget, nothing (the author, 2026-09-29).
+    #[test]
+    fn a_creature_in_the_room_is_a_link() {
+        let clicked = |own: bool| {
+            let snapshot = watering_hole();
+            let parts = RoomParts {
+                apart: true,
+                ..RoomParts::default()
+            };
+            let mut harness = Harness::builder().with_size((420.0, 260.0)).build_ui_state(
+                move |ui, clicked: &mut Option<crate::widget::Clicked>| {
+                    if let Some(now) = room(ui, Some(&snapshot), parts, own) {
+                        *clicked = Some(now);
+                    }
+                },
+                None,
+            );
+            harness.run();
+            let at = harness.get_by_label(CREATURES).rect().right_center() - egui::vec2(8.0, 0.0);
+            let button = |pressed| egui::Event::PointerButton {
+                pos: at,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            };
+            harness.hover_at(at);
+            harness.step();
+            harness.event(button(true));
+            harness.step();
+            harness.event(button(false));
+            harness.run();
+            harness.state().clone()
+        };
+        let Some(crate::widget::Clicked::Link(link, _)) = clicked(true) else {
+            panic!("a link clicked");
+        };
+        assert_eq!(
+            link,
+            RunLink::Object {
+                exist: "17".to_owned(),
+                noun: "hawk-eagle".to_owned(),
+                coord: None,
+            }
+        );
+        assert_eq!(clicked(false), None, "another's room only shows");
     }
 
     /// `parts` of the room, rendered and compared with the committed image
@@ -359,7 +499,9 @@ mod tests {
         let mut harness = Harness::builder()
             .with_size((420.0, 220.0))
             .wgpu()
-            .build_ui(move |ui| room(ui, Some(&snapshot), parts));
+            .build_ui(move |ui| {
+                let _ = room(ui, Some(&snapshot), parts, true);
+            });
         harness.run();
         harness.snapshot(name);
     }
