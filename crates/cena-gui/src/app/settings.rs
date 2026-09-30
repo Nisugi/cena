@@ -75,29 +75,17 @@ impl App {
             },
             widgets: &widgets,
         };
-        let builder = self
-            .placements
-            .builder(SETTINGS, [760.0, 560.0])
-            .with_title(format!("Settings — {TITLE}"));
         let menu = &mut self.menu;
-        // What every pass asks, kept: see `App::play`.
-        let (mut asked, mut closed, mut seen) = (Vec::new(), false, None);
-        context.show_viewport_immediate(
+        let mut asked = Vec::new();
+        let closed = self.placements.show(
+            context,
+            SETTINGS,
             egui::ViewportId::from_hash_of("settings"),
-            builder,
-            |ui, _class| {
-                closed |= ui.input(|input| input.viewport().close_requested());
-                seen = Some(ui.input(|input| input.viewport().clone()));
-                asked.extend(menu.show(ui, &view));
-            },
+            ([760.0, 560.0], format!("Settings — {TITLE}")),
+            |ui| asked.extend(menu.show(ui, &view)),
         );
-        if let Some(seen) = &seen {
-            self.placements
-                .note(SETTINGS, seen, std::time::Instant::now());
-        }
         if closed {
             self.menu.open = false;
-            self.placements.closed(SETTINGS);
         }
         for asked in asked {
             self.menu_asked(asked);

@@ -25,10 +25,6 @@ impl App {
         if !self.triggers.open {
             return;
         }
-        let builder = self
-            .placements
-            .builder(TRIGGERS, [1100.0, 680.0])
-            .with_title(format!("Triggers — {TITLE}"));
         let editor = &mut self.triggers;
         let said = glance.said.as_ref().map(|(said, _)| said.as_str());
         let characters: Vec<String> = glance
@@ -36,24 +32,16 @@ impl App {
             .iter()
             .map(|card| card.character.clone())
             .collect();
-        // What every pass asks, kept: see `App::play`.
-        let (mut asked, mut closed, mut seen) = (Vec::new(), false, None);
-        context.show_viewport_immediate(
+        let mut asked = Vec::new();
+        let closed = self.placements.show(
+            context,
+            TRIGGERS,
             egui::ViewportId::from_hash_of(TRIGGERS),
-            builder,
-            |ui, _class| {
-                closed |= ui.input(|input| input.viewport().close_requested());
-                seen = Some(ui.input(|input| input.viewport().clone()));
-                asked.extend(editor.show(ui, glance.triggers.as_ref(), said, &characters));
-            },
+            ([1100.0, 680.0], format!("Triggers — {TITLE}")),
+            |ui| asked.extend(editor.show(ui, glance.triggers.as_ref(), said, &characters)),
         );
-        if let Some(seen) = &seen {
-            self.placements
-                .note(TRIGGERS, seen, std::time::Instant::now());
-        }
         if closed {
             self.triggers.open = false;
-            self.placements.closed(TRIGGERS);
         }
         for change in asked {
             self.sessions.ask(HubRequest::Trigger(change));

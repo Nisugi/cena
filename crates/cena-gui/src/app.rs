@@ -368,25 +368,15 @@ impl App {
             .filter(|other| other.id != seat.id)
             .map(|other| other.seen_from(seat))
             .collect();
-        let builder = self
-            .placements
-            .builder(&place, [980.0, 680.0])
-            .with_title(format!("{} — {TITLE}", seat.name));
-        // What every pass asks, kept. egui may draw a window's frame more
-        // than once and keep only the last pass (`Context::run_ui`), as when
-        // a layout settles -- a new window's first frame -- and a click or a
-        // key is in the first pass alone. The settings menu's first opening
-        // asked for a character's pages in a pass thrown away, noted them as
-        // asked for, and waited for pages that never came (the author,
-        // 2026-09-28: "when clicking on settings for the first time it only
-        // shows widget settings").
-        let (mut asked, mut sends, mut closed, mut seen) = (None, Vec::new(), false, None);
-        context.show_viewport_immediate(
+        // What every pass asks, kept (`Placements::show`).
+        let (mut asked, mut sends) = (None, Vec::new());
+        let presets = &self.presets;
+        let closed = self.placements.show(
+            context,
+            &place,
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
-            builder,
-            |ui, _class| {
-                closed |= ui.input(|input| input.viewport().close_requested());
-                seen = Some(ui.input(|input| input.viewport().clone()));
+            ([980.0, 680.0], format!("{} — {TITLE}", seat.name)),
+            |ui| {
                 let (pressed, has) = keyed::pressed(ui, keys, &window.play, caught);
                 focused |= has;
                 for made in pressed {
@@ -416,19 +406,15 @@ impl App {
                     keys: &keys_said,
                     set: chosen,
                     others: &others,
-                    presets: &self.presets,
+                    presets,
                     lich: seat.handle.lich_running(),
                 };
                 asked = asked.take().or(window.play.show(ui, &view));
                 drop(story);
             },
         );
-        if let Some(seen) = &seen {
-            self.placements.note(&place, seen, Instant::now());
-        }
         if closed {
             window.open = false;
-            self.placements.closed(&place);
         }
         if focused {
             self.took_keyboard(seat.id.0, file);

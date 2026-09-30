@@ -101,6 +101,45 @@ impl Placements {
         }
     }
 
+    /// Show the framed window `key`, `size` the first time and where it
+    /// was since, `draw` run on each of egui's passes, and say whether the
+    /// system asked to close it: its place is noted after the passes, and
+    /// written when it closes. The four windows that did this each in their
+    /// own words (the review of 2026-09-29) do it here.
+    ///
+    /// **What every pass asks, `draw` keeps.** egui may draw a window's
+    /// frame more than once and keep only the last pass
+    /// (`Context::run_ui`), as when a layout settles -- a new window's
+    /// first frame -- and a click or a key is in the first pass alone. The
+    /// settings menu's first opening asked for a character's pages in a
+    /// pass thrown away, noted them as asked for, and waited for pages that
+    /// never came (the author, 2026-09-28: "when clicking on settings for
+    /// the first time it only shows widget settings"). So `draw` adds what
+    /// it asks to something outside itself, and the caller takes it after.
+    pub(crate) fn show(
+        &mut self,
+        context: &egui::Context,
+        key: &str,
+        id: egui::ViewportId,
+        (size, title): ([f32; 2], String),
+        mut draw: impl FnMut(&mut egui::Ui),
+    ) -> bool {
+        let builder = self.builder(key, size).with_title(title);
+        let (mut closed, mut seen) = (false, None);
+        context.show_viewport_immediate(id, builder, |ui, _class| {
+            closed |= ui.input(|input| input.viewport().close_requested());
+            seen = Some(ui.input(|input| input.viewport().clone()));
+            draw(ui);
+        });
+        if let Some(seen) = &seen {
+            self.note(key, seen, Instant::now());
+        }
+        if closed {
+            self.closed(key);
+        }
+        closed
+    }
+
     /// Where the window `key` is now, as its viewport says: noted, and
     /// written once it settles. A minimised window, or one whose system
     /// will not say where it is (Wayland), changes nothing.
