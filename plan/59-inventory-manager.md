@@ -343,14 +343,23 @@ Rule 3.4, since every command here is named for the game):
 - **The collection:** a classifier over `gem list all`, and one over `gem slots`. Each
   collected jewel is keyed by **its number, checked against its short name and
   properties**; it has no id to key it by.
+  - It is kept in the character's store and read **passively**, whenever the player types
+    either command.
+  - It is asked for only when the store has none, as one more group of the first-login sync
+    (`cena-behavior/src/sync.rs`: *"a group with no timestamp is always stale"*), quiet as
+    the sync is (§5b G2).
 - **Loose jewels:** a classifier over LOOK. The properties are tied to the jewel's id while
   the login lasts, and to its **full name, properties and place** beyond that, as §1b says.
+  - A jewel is dropped at the finder's feet and may never touch a hand. So Hydra sends one
+    quiet `look #<id>` **when the spawn message is seen**, the id taken from the message's own
+    link, and hides the answer from the story (§5b G1).
   - At each login's snapshot, every remembered jewel is found again by name and place.
   - Two jewels of the same name in the same place are told apart by the moves seen since. If
     the moves cannot tell them apart, they are marked as needing a look, never guessed.
 - **Following it:**
   - `gem expel N` gives the jewel in hand collection number N's properties.
-  - `gem collect` moves the jewel in hand into the collection and re-reads the list.
+  - `gem collect` moves the jewel in hand into the collection, its properties with it.
+    Hydra asks nothing: the numbering is confirmed by the next `gem list all` the player types.
   - A reshape's list replaces the properties.
   - Confirmed moves (§3c) carry the properties with the item.
   - Step 8's trees on disk carry them to every character's search.
@@ -439,7 +448,9 @@ Each step is a commit on branch `inventory`, with its tests.
    - The classifiers for `gem list all`, `gem slots`, `gem info`, a jewel's LOOK, collect,
      expel and reshape, each tested from the September logs' lines.
    - The collection and the loose jewels, and following them.
-   - The collection and slots taken after each login with the snapshot (§5b item G2).
+   - The collection and slots kept in the character's store and read passively. They are
+     asked for only by the sync, when the store has none (§5b G2).
+   - The quiet `look #<id>` at a jewel's spawn message (§5b G1).
 10. **Gemstones, what the player sees** (§3d): the row, the Item tab, the Gemstones tab, and
     `.inv gems`.
 
@@ -490,20 +501,22 @@ written after this one.
    - Recommended: a plan of their own after this one. Each is a text classifier over one
      command's answer, a different kind of work from a tree the game hands over.
 
-### 5b. Gemstone questions (§3d)
+### 5b. The author's gemstone answers, 2026-09-30
 
-G1. **Look at a newly found jewel by itself?**
-   - A loose jewel's properties show only in its LOOK.
-   - Hydra could send one quiet `look` when a jewel first reaches a hand, and hide the
-     answer from the story as it hides the nerves' `health`.
-   - Recommended: yes. Otherwise a jewel picked up by the loot round is a name with no
-     properties until the player looks.
-G2. **Read `gem list all` and `gem slots` after each login, quietly, with the snapshot?**
-   Recommended: yes. They are two commands, and the collection and slots then need nobody to
-   ask.
-G3. **Loadouts**: named sets of collection numbers equipped in one step, as `gems.lic` and
-   `gem_loadouts.lic` do, including the lesser-binding confirmation.
-   Recommended: after step 10, as its own step.
-G4. **Where gemstones show**: a tab in the Inventory window and `.inv gems`, or a widget and
-   command of their own (`.gem`)? Recommended: the tab and `.inv gems`. A jewel is an item
-   the tree already holds.
+*"all your recommendations are good other than 2 unless you meant only when the data is not
+there."*
+
+G1. **A found jewel is looked at quietly, when its spawn message is seen.** The author: *"the
+    gem may not actually touch your hand. It spawns at your feet. So probably do a `look jewel`
+    quietly when you see the spawn message."*
+    - Hydra sends `look #<id>`, the id taken from the spawn message's own link. Plain
+      `look jewel` could name another jewel in the room.
+    - The answer is hidden from the story, as the nerves' `health` answer is.
+G2. **Not at every login.** The author: *"It can add it to the first run infomon thing, but
+    every login no? it can passively parse it when the user does the command."*
+    - `gem list all` and `gem slots` are read whenever the player types them.
+    - They are asked for only as a group of the first-login sync, when the character's store
+      has no collection yet.
+    - The inventory snapshot is unchanged: it is still taken after each login (§5 item 1).
+G3. **Loadouts: later** (*"sure later"*), as a step after 10.
+G4. **The Gemstones tab and `.inv gems`** (*"sure"*).
