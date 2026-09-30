@@ -2,10 +2,13 @@
 
 use cena_behavior::cast::Answer;
 use cena_behavior::waggle::{Step, WaggleProfile, Waggled, Waggler, read_spell_active};
-use cena_session::{Frame, GameState, Link, LinkKind, Run, Runs, SkillLine};
+use cena_session::{Effect, Frame, GameState, Link, LinkKind, Run, Runs, SkillLine};
 
 /// A character who knows Elemental Defense I (401) with 30 ranks of Minor
-/// Elemental: 150 minutes a cast on self, 50 on another.
+/// Elemental: 150 minutes a cast on self, 50 on another. Also Spirit Shield
+/// (202), refreshable on another and 25 minutes there with 5 ranks of Major
+/// Spiritual, and Spirit Fog (106), which the table gives no span: 125
+/// minutes with 5 ranks of Minor Spiritual.
 #[expect(
     clippy::default_trait_access,
     reason = "the run's style type is not re-exported for behaviors; only the link matters"
@@ -17,25 +20,37 @@ fn caster() -> GameState {
         text: ">".into(),
     });
     state.character.name = Some("Nisugi".to_owned());
-    if let Some(line) = SkillLine::classify("  Minor Elemental..................|           30") {
-        state.character.skills.apply(&line, false);
+    for circle in [
+        "  Minor Elemental..................|           30",
+        "  Major Spiritual..................|            5",
+        "  Minor Spiritual..................|            5",
+    ] {
+        if let Some(line) = SkillLine::classify(circle) {
+            state.character.skills.apply(&line, false);
+        }
     }
     state.known_spells.begin();
-    state.known_spells.read_line(&Runs {
-        runs: vec![Run {
-            text: "Elemental Defense I".to_owned(),
-            style: Default::default(),
-            link: Some(Link {
-                kind: LinkKind::Exist {
-                    id: "x".to_owned(),
-                    noun: "401".to_owned(),
-                },
-                text: "Elemental Defense I".to_owned(),
-                coord: None,
-            }),
-            inner_link: None,
-        }],
-    });
+    for (number, name) in [
+        ("401", "Elemental Defense I"),
+        ("202", "Spirit Shield"),
+        ("106", "Spirit Fog"),
+    ] {
+        state.known_spells.read_line(&Runs {
+            runs: vec![Run {
+                text: name.to_owned(),
+                style: Default::default(),
+                link: Some(Link {
+                    kind: LinkKind::Exist {
+                        id: "x".to_owned(),
+                        noun: number.to_owned(),
+                    },
+                    text: name.to_owned(),
+                    coord: None,
+                }),
+                inner_link: None,
+            }],
+        });
+    }
     state
 }
 
@@ -245,4 +260,137 @@ fn cast_roundtime_is_waited_out_for_as_long_as_it_has_left() {
     state.apply(&Frame::CastTime { value: 1_003 });
     let mut run = Waggler::new(profile(), &[]);
     assert_eq!(run.next(&state), Step::Wait(3));
+}
+
+/// The refreshable pass: a spell the table calls refreshable on the target
+/// is cast once when it is under `refreshable_min`, and not above it.
+#[test]
+fn a_refreshable_spell_is_recast_once_only_under_refreshable_min() {
+    let state = caster();
+    assert_eq!(
+        state.spell_minutes(202, cena_session::spells::CastType::Target),
+        Some(25.0)
+    );
+    let profile = WaggleProfile {
+        cast_list: vec![202],
+        ..WaggleProfile::default()
+    };
+    let asked = |time: &str| {
+        let mut run = Waggler::new(profile.clone(), &["Bob".to_owned()]);
+        assert_eq!(run.next(&state), Step::Ask("Bob".to_owned()));
+        let lines = vec![
+            "Bob currently has the following active effects:".to_owned(),
+            format!("  Spirit Shield ......... {time}"),
+        ];
+        run.outcome(&lines, &[], &state);
+        run
+    };
+    let mut run = asked("0:10:00");
+    let Step::Cast(casting) = run.next(&state) else {
+        panic!("10 minutes is under 15: a cast");
+    };
+    assert_eq!((casting.spell, casting.count), (202, None));
+    run.outcome(&[], &[Answer::Cast], &state);
+    assert_eq!(
+        run.next(&state),
+        Step::Done(Waggled::Done(1)),
+        "refreshed once, not topped up like a stackable"
+    );
+    assert_eq!(
+        asked("0:20:00").next(&state),
+        Step::Done(Waggled::Done(0)),
+        "20 minutes is over refreshable_min"
+    );
+}
+
+/// The last pass: a spell with no span is cast only when it is not up at
+/// all, and after the stackable ones whatever the list's order.
+#[test]
+fn a_spell_with_no_span_is_cast_last_and_only_when_down() {
+    let state = caster();
+    let profile = WaggleProfile {
+        cast_list: vec![106, 401],
+        ..WaggleProfile::default()
+    };
+    let mut run = Waggler::new(profile.clone(), &[]);
+    let mut spells = Vec::new();
+    for _ in 0..3 {
+        let Step::Cast(casting) = run.next(&state) else {
+            panic!("a cast: {spells:?}");
+        };
+        spells.push(casting.spell);
+        run.outcome(&[], &[Answer::Cast], &state);
+    }
+    assert_eq!(
+        spells,
+        [401, 401, 106],
+        "stackable pass first, then the solid one"
+    );
+    assert_eq!(run.next(&state), Step::Done(Waggled::Done(3)));
+
+    // Up already, by however little: left alone. (Spirit Fog is self-cast
+    // only, so the effect is the character's own, from the effects list.)
+    let mut state = state;
+    state.effects.insert(
+        "106".to_owned(),
+        Effect {
+            category: "Active Spells".to_owned(),
+            text: "Spirit Fog".to_owned(),
+            ends_at: Some(1_030),
+            percent: 1,
+        },
+    );
+    let mut run = Waggler::new(
+        WaggleProfile {
+            cast_list: vec![106],
+            ..profile
+        },
+        &[],
+    );
+    assert_eq!(run.next(&state), Step::Done(Waggled::Done(0)));
+}
+
+/// ewaggle's ceiling: a Wizard's Elemental Mana Control ranks over 25, plus
+/// one, is how many of a stackable spell go in one cast; under 25 ranks, or
+/// with `multicast` off, or for a profession the ranks do not serve, one.
+#[test]
+fn multicast_follows_the_professions_mana_control_ranks() {
+    let mut state = caster();
+    state.character.identity.profession = Some("Wizard".to_owned());
+    let count = |state: &GameState, profile: WaggleProfile| {
+        let mut run = Waggler::new(profile, &[]);
+        let Step::Cast(casting) = run.next(state) else {
+            panic!("a cast");
+        };
+        casting.count
+    };
+    // 180 wanted at 150 a cast is two casts, but no ranks allow one.
+    assert_eq!(count(&state, profile()), None, "no ranks: one at a time");
+
+    if let Some(line) = SkillLine::classify("  Elemental Mana Control...........|  150      50") {
+        state.character.skills.apply(&line, false);
+    }
+    assert_eq!(
+        count(&state, profile()),
+        Some(2),
+        "two wanted, three allowed"
+    );
+    let mut run = Waggler::new(profile(), &[]);
+    assert!(matches!(run.next(&state), Step::Cast(_)));
+    run.outcome(&[], &[Answer::Cast], &state);
+    assert_eq!(
+        run.next(&state),
+        Step::Done(Waggled::Done(1)),
+        "one cast of two"
+    );
+
+    let single = WaggleProfile {
+        multicast: false,
+        ..profile()
+    };
+    assert_eq!(count(&state, single), None, "multicast off: one at a time");
+
+    // A Cleric's Elemental Mana Control counts for nothing.
+    state.character.identity.profession = Some("Cleric".to_owned());
+    assert_eq!(count(&state, profile()), None);
 }
