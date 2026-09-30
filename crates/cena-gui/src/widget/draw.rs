@@ -146,13 +146,13 @@ pub(super) fn draw(
         ),
         Widget::RightHand => {
             let hand = state.map(|state| &state.right_hand);
-            held(ui, &named("Right"), hand, seen.who.is_none());
-            return place(ui, id, "right", hand);
+            let clicked = held(ui, &named("Right"), hand, seen.who.is_none());
+            return clicked.or_else(|| place(ui, id, "right", hand));
         }
         Widget::LeftHand => {
             let hand = state.map(|state| &state.left_hand);
-            held(ui, &named("Left"), hand, seen.who.is_none());
-            return place(ui, id, "left", hand);
+            let clicked = held(ui, &named("Left"), hand, seen.who.is_none());
+            return clicked.or_else(|| place(ui, id, "left", hand));
         }
         Widget::Roundtime => clock(
             ui,
@@ -222,7 +222,7 @@ pub(super) fn draw(
         Widget::Level => line(ui, named(&character::level(state))),
         Widget::TrainingPoints => line(ui, named(&character::training(state))),
         Widget::ExperienceTotals => scrolled(ui, &mut |ui| character::experience(ui, state)),
-        Widget::Prepared => line(ui, named(&character::prepared(state))),
+        Widget::Prepared => return spell_hand(ui, &named("Spell"), state, seen.who.is_none()),
         Widget::Society => line(ui, named(&character::society(state))),
         Widget::Resources => scrolled(ui, &mut |ui| character::resources(ui, state)),
         Widget::Objectives => scrolled(ui, &mut |ui| character::objectives(ui, state)),
@@ -319,9 +319,12 @@ fn place(ui: &mut egui::Ui, id: Id, onto: &str, hand: Option<&Hand>) -> Option<s
     crate::carry::target(ui, id, onto, holding).map(super::Clicked::Quietly)
 }
 
-/// What a hand holds, after which hand; on the window's `own` character's,
-/// the item carried from it with the drag key held (`carry.rs`).
-fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>, own: bool) {
+/// What a hand holds, after which hand. On the window's `own` character's
+/// it is a link, as the game sends it (the author, 2026-09-29: *"hands,
+/// left, right, and spell are links"*): a click asks for the item's menu,
+/// as a click on it in the story does, and with the drag key held the item
+/// is carried from it (`carry.rs`). The link clicked, if it was.
+fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>, own: bool) -> Option<super::Clicked> {
     let holds = match hand {
         None | Some(Hand::Unknown) => "?",
         Some(Hand::Empty) => "empty",
@@ -332,9 +335,17 @@ fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>, own: bool) {
         .selectable(false);
     match hand {
         Some(Hand::Holding {
-            id: Some(id), name, ..
+            id: Some(id),
+            noun,
+            name,
         }) if own => {
-            let response = ui.add(label.sense(crate::carry::sense(ui)));
+            let carrying = crate::carry::held(ui);
+            let sense = if carrying {
+                crate::carry::sense(ui)
+            } else {
+                egui::Sense::click()
+            };
+            let response = ui.add(label.sense(sense));
             crate::carry::source(
                 &response,
                 crate::carry::Carried {
@@ -342,11 +353,64 @@ fn held(ui: &mut egui::Ui, which: &str, hand: Option<&Hand>, own: bool) {
                     name: name.clone(),
                 },
             );
+            linked(&response, id, noun.as_deref().unwrap_or_default())
         }
         _ => {
             ui.add(label);
+            None
         }
     }
+}
+
+/// The spell prepared, after `which`: on the window's `own` character's a
+/// link to it, `#spell`, as the game sends it, whose menu a click asks for.
+/// Never carried: a spell is not put anywhere. The link clicked, if it was.
+fn spell_hand(
+    ui: &mut egui::Ui,
+    which: &str,
+    state: Option<&GameState>,
+    own: bool,
+) -> Option<super::Clicked> {
+    let spell = match state.map(|state| state.prepared.as_deref()) {
+        None => "?",
+        Some(None) => "none",
+        Some(Some(spell)) if spell.eq_ignore_ascii_case("none") => "none",
+        Some(Some(spell)) => spell,
+    };
+    let label = egui::Label::new(format!("{which}: {spell}"))
+        .truncate()
+        .selectable(false);
+    match state.and_then(|state| state.prepared_id.as_deref()) {
+        Some(id) if own => {
+            let response = ui.add(label.sense(egui::Sense::click()));
+            linked(&response, id, "")
+        }
+        _ => {
+            ui.add(label);
+            None
+        }
+    }
+}
+
+/// A hand's words as a link to the object `id` (`noun`): the hand shown on
+/// hover, a click its link, where the pointer was.
+fn linked(response: &egui::Response, id: &str, noun: &str) -> Option<super::Clicked> {
+    let response = response
+        .clone()
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
+    response.clicked().then(|| {
+        let at = response
+            .interact_pointer_pos()
+            .unwrap_or(response.rect.center());
+        super::Clicked::Link(
+            cena_ui::RunLink::Object {
+                exist: id.to_owned(),
+                noun: noun.to_owned(),
+                coord: None,
+            },
+            at,
+        )
+    })
 }
 
 /// A clock counting down, in whole seconds, or that none runs.

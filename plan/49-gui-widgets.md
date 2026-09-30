@@ -431,7 +431,8 @@ Claude's order, cheapest first, set when Stage A was done (2026-09-27):
    game's words (*"Stance: defensive (100%)"*, which says its percent already, so the bar
    does not say it twice) and plain while unknown (*"Stance ?"*); *Encumbrance, in words*;
    *Level*; *Training points*; *Experience*, the numbers the game has told, grouped as it
-   writes them; *Prepared spell*; *Society* with its rank; *Resources* (the profession's
+   writes them; *Prepared spell* (named *Spell hand* since 2026-09-29, and a link like
+   the hands, below); *Society* with its rank; *Resources* (the profession's
    resource against its caps, suffusion, Covert Arts charges, shadow essence); and
    *Objectives*. Hydra's presets gain *Experience* (level, mind, next level, training
    points, the numbers). The catalog's kinds moved to `widget/kind.rs` in step 6 took
@@ -817,6 +818,9 @@ Each BUILT the same day, each with its tests:
      distance carries the object; a short press is still a click. While carried, the
      pointer says *Dragging: a grey rat*. The key is Hydra's own setting, *Drag an item
      with*, Ctrl, Alt or Shift (`own.rs`), as `VellumFE`'s `drag_modifier_key` is.
+     A hand is a link too (the author, 2026-09-29: *"hands, left, right, and spell are
+     links"*): a click on what it holds asks for its menu, `_menu #<id>`, as a story link
+     does; the spell hand's is `#spell`, the game's `<spell exist='spell'>`, never carried.
      Alt by default since 2026-09-29 (the author: *"maybe the default drag key should be
      alt instead of ctrl"*), since holding Ctrl dropped a text selection before Ctrl+C.
    - Let go on another object's link: `_drag #<item> #<it>`, as Lich's `stash.rb`

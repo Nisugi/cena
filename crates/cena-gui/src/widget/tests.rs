@@ -77,7 +77,7 @@ fn each_widget_draws_what_it_shows() {
         "Hunt: resting until mana is 50%.",
         "ojandhaart",
         "Waiting: mana 30%, wants 50%",
-        "Prepared: none",
+        "Spell: none",
     ] {
         // Some twice: the Room widget says the room whole, beside its parts.
         assert!(
@@ -217,7 +217,7 @@ fn the_characters_widgets_say_what_it_is() {
         "Total 68,809,898",
         "Field 12/1,403",
         "Ascension 24,904,977",
-        "Prepared: Spirit Warding I",
+        "Spell: Spirit Warding I",
         "Council of Light, rank 20",
         "Covert Arts charges: 120/200",
         "Suffused: 1,500",
@@ -240,7 +240,7 @@ fn the_characters_widgets_say_what_is_not_known() {
         "Level ?",
         "PTPs ? · MTPs ?",
         "Experience unknown",
-        "Prepared: ?",
+        "Spell: ?",
         "Society unknown",
         "Resources unknown",
         "Objectives unknown",

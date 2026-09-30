@@ -143,15 +143,6 @@ pub(super) fn experience(ui: &mut egui::Ui, state: Option<&GameState>) {
     }
 }
 
-/// The spell prepared, if any.
-pub(super) fn prepared(state: Option<&GameState>) -> String {
-    match state.map(|state| state.prepared.as_deref()) {
-        None => "Prepared: ?".to_owned(),
-        Some(None) => "Prepared: none".to_owned(),
-        Some(Some(spell)) => format!("Prepared: {spell}"),
-    }
-}
-
 /// The society and its rank.
 pub(super) fn society(state: Option<&GameState>) -> String {
     let standing = state.map(|state| &state.character.standing);

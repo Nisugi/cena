@@ -246,7 +246,7 @@ impl Widget {
             Widget::Level => "Level",
             Widget::TrainingPoints => "Training points",
             Widget::ExperienceTotals => "Experience",
-            Widget::Prepared => "Prepared spell",
+            Widget::Prepared => "Spell hand",
             Widget::Society => "Society",
             Widget::Resources => "Resources",
             Widget::Objectives => "Objectives",

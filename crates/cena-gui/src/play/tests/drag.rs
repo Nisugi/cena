@@ -365,3 +365,43 @@ fn another_characters_hand_is_no_source() {
     carry(&mut harness, Modifiers::ALT, mace, right);
     assert!(harness.state().asked.is_empty());
 }
+
+/// A hand is a link (the author, 2026-09-29: *"hands, left, right, and
+/// spell are links"*): a click on what it holds asks for the item's menu,
+/// as a click on it in the story does, and an empty hand is no link.
+#[test]
+fn a_click_on_a_hand_asks_for_its_items_menu() {
+    let mut harness = harness();
+    armed(harness.state_mut());
+    harness.run();
+    harness.get_by_label("Right: empty").click();
+    harness.run();
+    assert!(harness.state().asked.is_empty(), "an empty hand");
+    harness.get_by_label("Left: a steel broadsword").click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [Asked::Quietly("_menu #321 1".to_owned())]
+    );
+}
+
+/// The spell hand too: the spell prepared is `#spell`, as the game sends
+/// it, and a click asks for its menu; with none prepared, nothing.
+#[test]
+fn a_click_on_the_spell_hand_asks_for_the_spells_menu() {
+    let mut harness = harness();
+    beside_the_story(&mut harness, Widget::Prepared, None);
+    harness.get_by_label("Spell: none").click();
+    harness.run();
+    assert!(harness.state().asked.is_empty(), "no spell prepared");
+    let state = &mut harness.state_mut().snapshot.state;
+    state.prepared = Some("Tangleweed".to_owned());
+    state.prepared_id = Some("spell".to_owned());
+    harness.run();
+    harness.get_by_label("Spell: Tangleweed").click();
+    harness.run();
+    assert_eq!(
+        harness.state().asked,
+        [Asked::Quietly("_menu #spell 1".to_owned())]
+    );
+}
