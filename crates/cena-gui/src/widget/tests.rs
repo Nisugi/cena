@@ -737,3 +737,23 @@ fn an_overlay_is_read_from_its_file() {
     assert_eq!(*harness.state(), (true, false));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Field experience and the betrayer's Blood Points as bars (the author,
+/// 2026-09-30): the mind bar's pair, and the Betrayer panel's label out of
+/// 100.
+#[test]
+fn field_experience_and_blood_points_are_bars() {
+    let mut ashryn = crate::fixture::snapshot();
+    let state = &mut ashryn.state;
+    state.character.experience.field_experience = Some(648);
+    state.character.experience.field_experience_max = Some(1_403);
+    state.apply(&cena_session::Frame::Label {
+        id: "lblBPs".to_owned(),
+        value: "Blood Points: 50".to_owned(),
+        dialog: Some("BetrayerPanel".to_owned()),
+        attrs: Vec::new(),
+    });
+    let harness = drawn(Some(ashryn), None);
+    assert!(harness.query_by_label("Field 648/1403 46%").is_some());
+    assert!(harness.query_by_label("Blood Points 50/100 50%").is_some());
+}

@@ -22,6 +22,8 @@ pub const MANA: Color32 = Color32::from_rgb(0x47, 0x84, 0xd9);
 pub const STAMINA: Color32 = Color32::from_rgb(0x55, 0xb8, 0x6c);
 /// Spirit's colour, `VellumFE`'s.
 pub const SPIRIT: Color32 = Color32::from_rgb(0xcb, 0xa9, 0x42);
+/// The betrayer's Blood Points' colour: darker than health's.
+pub const BLOOD: Color32 = Color32::from_rgb(0x8b, 0x1a, 0x1a);
 /// Stance's colour.
 pub const STANCE: Color32 = Color32::from_rgb(0x4f, 0xa3, 0xa5);
 /// Encumbrance's colour.

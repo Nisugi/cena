@@ -34,6 +34,12 @@ pub(crate) enum Widget {
     Roundtime,
     /// The cast time left.
     CastTime,
+    /// Field experience against its most, as a bar (the author,
+    /// 2026-09-30).
+    FieldExperience,
+    /// The betrayer's Blood Points, out of 100, as a bar (the author,
+    /// 2026-09-30).
+    BloodPoints,
     /// The stun left, by the rounds the game gave (`plan/49`, the author,
     /// 2026-09-30).
     Stun,
@@ -174,7 +180,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 43] = [
+    const PLAIN: [Widget; 45] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -185,6 +191,8 @@ impl Widget {
         Widget::Roundtime,
         Widget::CastTime,
         Widget::Stun,
+        Widget::FieldExperience,
+        Widget::BloodPoints,
         Widget::Aim,
         Widget::Room,
         Widget::RoomTitle,
@@ -232,6 +240,8 @@ impl Widget {
             Widget::RightHand => "Right hand",
             Widget::LeftHand => "Left hand",
             Widget::Roundtime => "Roundtime",
+            Widget::FieldExperience => "Field experience",
+            Widget::BloodPoints => "Blood Points",
             Widget::Stun => "Stun",
             Widget::CastTime => "Cast time",
             Widget::Aim => "Aim",
@@ -287,6 +297,8 @@ impl Widget {
             | Widget::LeftHand
             | Widget::Roundtime
             | Widget::Stun
+            | Widget::FieldExperience
+            | Widget::BloodPoints
             | Widget::CastTime
             | Widget::Aim
             | Widget::Mind
@@ -343,8 +355,8 @@ impl Widget {
     /// words. `None` for a widget that is not a bar.
     pub(crate) fn bar_look(&self) -> Option<crate::bar::Look> {
         use crate::bar::{
-            ENCUMBRANCE, Fills, HEALTH, LEVEL, Look, MANA, MIND, Place, SPIRIT, STAMINA, STANCE,
-            Says,
+            BLOOD, ENCUMBRANCE, Fills, HEALTH, LEVEL, Look, MANA, MIND, Place, SPIRIT, STAMINA,
+            STANCE, Says,
         };
         let vital = Says {
             label: true,
@@ -363,6 +375,8 @@ impl Widget {
             Widget::Mana => (vital, MANA),
             Widget::Stamina => (vital, STAMINA),
             Widget::Spirit => (vital, SPIRIT),
+            Widget::FieldExperience => (vital, MIND),
+            Widget::BloodPoints => (vital, BLOOD),
             // The game words these: the label, its word and the percent.
             Widget::Stance => (worded, STANCE),
             Widget::Encumbrance => (worded, ENCUMBRANCE),
@@ -428,7 +442,9 @@ impl Widget {
             Widget::Injuries => (180.0, 240.0),
             Widget::Combat | Widget::Dialog(_) => (260.0, 140.0),
             Widget::Roundtime | Widget::CastTime | Widget::Stun | Widget::Aim => (110.0, LINE),
-            Widget::Health
+            Widget::FieldExperience
+            | Widget::BloodPoints
+            | Widget::Health
             | Widget::Mana
             | Widget::Stamina
             | Widget::Spirit

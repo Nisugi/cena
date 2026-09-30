@@ -150,6 +150,20 @@ pub(super) fn draw(
             bar::SPIRIT,
             look,
         ),
+        Widget::FieldExperience => vital(
+            ui,
+            &named("Field"),
+            state.and_then(field_experience),
+            bar::MIND,
+            look,
+        ),
+        Widget::BloodPoints => vital(
+            ui,
+            &named("Blood Points"),
+            state.and_then(blood_points),
+            bar::BLOOD,
+            look,
+        ),
         Widget::RightHand => {
             let hand = state.map(|state| &state.right_hand);
             let clicked = held(ui, &named("Right"), hand, seen.who.is_none());
@@ -280,6 +294,42 @@ fn vital(
     });
     let drawn = as_looks(ui, Bar::new(label, amount).fill(color), look);
     ui.add(drawn.fitted(ui));
+}
+
+/// `current` of `max` as a vital is: its percent, and the pair.
+fn out_of(current: u64, max: u64) -> Option<Vital> {
+    let percent = current.saturating_mul(100).checked_div(max)?;
+    Some(Vital {
+        percent: u32::try_from(percent.min(100)).unwrap_or(100),
+        current: i32::try_from(current).ok(),
+        max: i32::try_from(max).ok(),
+    })
+}
+
+/// Field experience against its most, as the mind bar's `field_exp` and
+/// `max_field_exp` say.
+fn field_experience(state: &GameState) -> Option<Vital> {
+    let experience = &state.character.experience;
+    out_of(
+        experience.field_experience?.into(),
+        experience.field_experience_max?.into(),
+    )
+}
+
+/// The Betrayer panel's `Blood Points: 50`, out of 100 (the author,
+/// 2026-09-30): a label in the game's `BetrayerPanel` dialog, measured in
+/// the author's logs at 0 to 100.
+fn blood_points(state: &GameState) -> Option<Vital> {
+    let panel = state.dialogs.get("BetrayerPanel")?;
+    let points = panel.parts.iter().find_map(|(id, part)| match part {
+        cena_session::dialogs::Part::Label(text) if id == "lblBPs" => text
+            .strip_prefix("Blood Points:")?
+            .trim()
+            .parse::<u64>()
+            .ok(),
+        _ => None,
+    })?;
+    out_of(points, 100)
 }
 
 /// `bar` as `look` says, its images among it (`plan/49` §2).
