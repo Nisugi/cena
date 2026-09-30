@@ -45,6 +45,7 @@ can be on two games. Absent from a server that does not say.
 | `shutdown` | -- | Hub only: shut Hydra down in order, as Ctrl-C does: every character quits, the logs flush, the process exits. |
 | `merged` | `lines` | Hub only (step 5d): thoughts, speech, logons, deaths and announcements across every character. Each line has decimal `id`, `stream`, styled `runs` and `from`, the characters that received it. Identical text on one stream from different characters within 1 second is one line; a line sent again with the same `id` has gained a character. |
 | `hub_note` | `detail` | What became of the hub request just made, as one line of plain text. |
+| `theme` | `name`, `colors` | The theme Hydra wears (`plan/57` step 7), sent once to every page after it authenticates, the hub's and a character's alike: each token of the palette by its name (`canvas`, `text`, `health`, `speech`, ...), as `#rrggbb`. The page sets its colours from it; a token it does not know it ignores. Not part of a snapshot: a theme changed later reaches a page opened after. Absent from a server given no data folder. |
 
 `status` is `sent`, `refused`, `uncertain`, or `handled` (a `;` command Hydra ran itself; nothing was sent). Sent establishes that command
 bytes were written, not that the requested game action completed. An observed

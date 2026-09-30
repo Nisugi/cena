@@ -78,7 +78,7 @@ pub(super) fn paint(
 
 /// A rectangle filled from the edge `fills` says.
 fn across(painter: &Painter, fills: Fills, frame: Rect, share: f32, paint: &Paint) -> bool {
-    let corners = CornerRadius::same(3);
+    let corners = CornerRadius::same(crate::theme::shape(painter.ctx()).corner);
     match paint.background {
         Some(image) => painter.image(image, frame, WHOLE, Color32::WHITE),
         None => painter.rect_filled(frame, corners, paint.trough),

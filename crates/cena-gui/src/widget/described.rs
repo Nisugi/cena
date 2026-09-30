@@ -28,7 +28,8 @@ use cena_ui::{RunLink, StyledRun};
 use egui::{Color32, RichText};
 use serde::{Deserialize, Serialize};
 
-use crate::text::{self, AMBER, CREATURE, OBJECT, PLAYER};
+use crate::text;
+use crate::theme::{self, T};
 
 /// Which parts of the room the Room widget shows, and whether the creatures
 /// stand apart from the objects.
@@ -85,7 +86,7 @@ pub(super) fn room(
     };
     let mut clicked = None;
     let mut said = |ui: &mut egui::Ui, runs: &[StyledRun]| {
-        let job = text::job(runs, ui.style());
+        let job = text::job(runs, ui.style(), &theme::palette(ui.ctx()));
         if own && runs.iter().any(|run| run.link.is_some()) {
             clicked = clicked
                 .take()
@@ -103,7 +104,7 @@ pub(super) fn room(
             .map_or_else(String::new, |id| format!(" ({id})"));
         ui.label(
             RichText::new(format!("[{title}]{number}"))
-                .color(AMBER)
+                .color(theme::color(ui.ctx(), T::RoomName))
                 .strong(),
         );
     }
@@ -129,20 +130,23 @@ pub(super) fn room(
     }
     if parts.apart && seen.is_some() {
         if parts.objects {
-            listed(&mut said, ui, "You also see", &room.objects, (OBJECT, None));
+            let object = theme::color(ui.ctx(), T::Object);
+            listed(&mut said, ui, "You also see", &room.objects, (object, None));
         }
         if parts.creatures {
+            let creature = theme::color(ui.ctx(), T::Creature);
             listed(
                 &mut said,
                 ui,
                 "Creatures",
                 &room.creatures,
-                (CREATURE, tags.map(|style| (snapshot, style))),
+                (creature, tags.map(|style| (snapshot, style))),
             );
         }
     }
     if parts.players && !room.players.is_empty() {
-        said(ui, &players(snapshot));
+        let player = theme::color(ui.ctx(), T::Player);
+        said(ui, &players(snapshot, player));
     }
     if parts.exits {
         match (room.component("room exits"), &room.exits) {
@@ -161,20 +165,24 @@ pub(super) fn room(
 
 /// Who else is here, each a link to them, painted as the triggers paint a
 /// name.
-fn players(snapshot: &Snapshot) -> Vec<StyledRun> {
+fn players(snapshot: &Snapshot, color: Color32) -> Vec<StyledRun> {
     let mut runs = vec![plain("Also here: ")];
     for (at, player) in snapshot.state.room.players.iter().enumerate() {
         if at > 0 {
             runs.push(plain(", "));
         }
-        runs.extend(player_runs(snapshot, player));
+        runs.extend(player_runs(snapshot, player, color));
     }
     runs
 }
 
 /// A player in the room, a link to them, painted as the triggers paint a
-/// name.
-pub(super) fn player_runs(snapshot: &Snapshot, player: &RoomItem) -> Vec<StyledRun> {
+/// name, or in `color`, the palette's for a player.
+pub(super) fn player_runs(
+    snapshot: &Snapshot,
+    player: &RoomItem,
+    color: Color32,
+) -> Vec<StyledRun> {
     let link = Some(object(player));
     match cena_ui::room_player(&player.text, &snapshot.triggers, &snapshot.state) {
         Some(painted) => painted
@@ -186,7 +194,7 @@ pub(super) fn player_runs(snapshot: &Snapshot, player: &RoomItem) -> Vec<StyledR
             .collect(),
         None => vec![StyledRun {
             text: player.text.clone(),
-            color: Some(colour(PLAYER)),
+            color: Some(colour(color)),
             link,
             ..StyledRun::default()
         }],

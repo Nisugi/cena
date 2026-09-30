@@ -370,6 +370,28 @@ export function mount(document, environment) {
   }
 
   // A trigger's banners, as text: the session keeps them only a while.
+  // The page's colours from the theme's tokens: each CSS variable the
+  // stylesheet reads, by the token it means. A token missing keeps the
+  // stylesheet's own.
+  const THEME_VARIABLES = [
+    ["canvas", "--canvas"], ["surface", "--shell"], ["surface", "--surface"],
+    ["raised", "--surface-raised"], ["inset", "--surface-inset"], ["line", "--line"],
+    ["line_strong", "--line-strong"], ["accent", "--amber"], ["text", "--text"],
+    ["muted", "--muted"], ["link", "--link"], ["room_name", "--room-name"],
+    ["creature", "--creature"], ["player", "--player"], ["object", "--object"],
+    ["speech", "--speech"], ["whisper", "--whisper"], ["thought", "--thought"],
+  ];
+  let renderedTheme = null;
+  function renderTheme(theme) {
+    if (theme === renderedTheme) return;
+    renderedTheme = theme;
+    const root = document.documentElement;
+    if (!theme || !root?.style?.setProperty) return;
+    for (const [token, variable] of THEME_VARIABLES) {
+      if (typeof theme.colors[token] === "string") root.style.setProperty(variable, theme.colors[token]);
+    }
+  }
+
   function renderAlerts(alerts) {
     const box = element("alerts");
     box.replaceChildren();
@@ -382,6 +404,7 @@ export function mount(document, environment) {
   }
 
   function render(state, ready) {
+    renderTheme(state.theme);
     minimap.update(state);
     renderAlerts(state.alerts);
     element("hub").hidden = state.hub === null;

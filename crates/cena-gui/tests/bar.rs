@@ -3,7 +3,18 @@
 //! saying any mix of label, numbers and percent. The last test renders every
 //! kind at once and compares it with `tests/snapshots/bars.png`.
 
-use cena_gui::bar::{Amount, Bar, Fills, HEALTH, MANA, Overlay, Place, SPIRIT, STAMINA, Says};
+use cena_gui::bar::{Amount, Bar, Fills, Overlay, Place, Says};
+use cena_ui::theme::Token;
+
+/// A vital's colour before any theme, as the gallery's bars fill.
+fn bare(token: Token) -> egui::Color32 {
+    let [red, green, blue] = token.bare();
+    egui::Color32::from_rgb(red, green, blue)
+}
+const HEALTH: Token = Token::Health;
+const MANA: Token = Token::Mana;
+const STAMINA: Token = Token::Stamina;
+const SPIRIT: Token = Token::Spirit;
 use egui::{Color32, Rect, Vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
@@ -52,23 +63,26 @@ fn gallery(ui: &mut egui::Ui, drawn: &mut Drawn) {
         add(
             ui,
             Bar::new("HP", Some(amount(87)))
-                .fill(HEALTH)
+                .fill(bare(HEALTH))
                 .says(ALL)
                 .size([160.0, 20.0]),
         );
         add(
             ui,
             Bar::new("MP", Some(amount(40)))
-                .fill(MANA)
+                .fill(bare(MANA))
                 .text(Place::Right),
         );
-        add(ui, Bar::new("SP", None).fill(STAMINA).text(Place::Left));
+        add(
+            ui,
+            Bar::new("SP", None).fill(bare(STAMINA)).text(Place::Left),
+        );
     });
     ui.horizontal(|ui| {
         add(
             ui,
             Bar::new("Sp", Some(amount(100)))
-                .fill(SPIRIT)
+                .fill(bare(SPIRIT))
                 .text(Place::Above),
         );
         add(
@@ -80,13 +94,13 @@ fn gallery(ui: &mut egui::Ui, drawn: &mut Drawn) {
         add(
             ui,
             Bar::new("Hidden", Some(amount(60)))
-                .fill(MANA)
+                .fill(bare(MANA))
                 .text(Place::Hidden),
         );
         add(
             ui,
             Bar::new("Framed", Some(amount(55)))
-                .fill(HEALTH)
+                .fill(bare(HEALTH))
                 .size([120.0, 22.0])
                 .overlay(Overlay::framed(
                     texture.id(),
@@ -99,21 +113,21 @@ fn gallery(ui: &mut egui::Ui, drawn: &mut Drawn) {
         add(
             ui,
             Bar::new("HP", Some(amount(75)))
-                .fill(HEALTH)
+                .fill(bare(HEALTH))
                 .fills(Fills::Up)
                 .text(Place::Below),
         );
         add(
             ui,
             Bar::new("MP", Some(amount(25)))
-                .fill(MANA)
+                .fill(bare(MANA))
                 .fills(Fills::Down)
                 .text(Place::Right),
         );
         add(
             ui,
             Bar::new("Tall", Some(amount(50)))
-                .fill(STAMINA)
+                .fill(bare(STAMINA))
                 .fills(Fills::Up)
                 .size([30.0, 100.0])
                 .says(Says {
@@ -274,7 +288,7 @@ fn round_gallery(ui: &mut egui::Ui, art: &mut Option<[egui::TextureHandle; 3]>) 
         fills: Fills::Ring,
         place: Place::Inside,
         says: Says::default(),
-        color: [0x55, 0xb8, 0x6c],
+        color: Some([0x55, 0xb8, 0x6c]),
         overlay: None,
         background: None,
         fill_image: None,
@@ -287,8 +301,8 @@ fn round_gallery(ui: &mut egui::Ui, art: &mut Option<[egui::TextureHandle; 3]>) 
             .size([80.0, 80.0])
     };
     ui.horizontal(|ui| {
-        ui.add(round("HP", 30, Fills::Orb).fill(HEALTH));
-        ui.add(round("MP", 75, Fills::Orb).fill(MANA).says(ALL));
+        ui.add(round("HP", 30, Fills::Orb).fill(bare(HEALTH)));
+        ui.add(round("MP", 75, Fills::Orb).fill(bare(MANA)).says(ALL));
         ui.add(
             round("HP", 60, Fills::Orb)
                 .fill_image(liquid.id())
@@ -297,7 +311,7 @@ fn round_gallery(ui: &mut egui::Ui, art: &mut Option<[egui::TextureHandle; 3]>) 
         );
     });
     ui.horizontal(|ui| {
-        ui.add(round("Sp", 40, Fills::Ring).fill(SPIRIT));
+        ui.add(round("Sp", 40, Fills::Ring).fill(bare(SPIRIT)));
         ui.add(
             round("SP", 70, Fills::Ring)
                 .look(&thick)
@@ -307,7 +321,7 @@ fn round_gallery(ui: &mut egui::Ui, art: &mut Option<[egui::TextureHandle; 3]>) 
         ui.add(
             Bar::new("MP", Some(amount(50)))
                 .fills(Fills::Orb)
-                .fill(MANA)
+                .fill(bare(MANA))
                 .size([140.0, 60.0])
                 .overlay(rim),
         );

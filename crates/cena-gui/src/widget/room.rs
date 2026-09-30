@@ -5,8 +5,8 @@
 use cena_session::{CreatureInstance, GameState};
 use egui::{Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2, pos2, vec2};
 
-use crate::bar::{Amount, Bar, HEALTH, Says};
-use crate::text::{AMBER, CREATURE, PLAYER};
+use crate::bar::{Amount, Bar, Says};
+use crate::theme::{self, T, readable_on};
 
 /// A direction on the compass: its word, what the rose calls it, and where
 /// it sits, in cells from the top left of a four-by-three grid.
@@ -57,8 +57,9 @@ pub(super) fn compass(ui: &mut egui::Ui, state: Option<&GameState>, goes: bool) 
         direction.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, open, word));
         let painter = ui.painter();
         let text = if open {
-            painter.rect_filled(rect, 4.0, AMBER);
-            Color32::BLACK
+            let accent = theme::color(ui.ctx(), T::Accent);
+            painter.rect_filled(rect, theme::corner(ui.ctx()), accent);
+            readable_on(accent)
         } else {
             painter.rect_stroke(
                 rect,
@@ -146,14 +147,15 @@ pub(super) fn combat(ui: &mut egui::Ui, state: Option<&GameState>) {
 /// friends; *FOES*, the rest, or that there are none.
 pub(super) fn fighting(ui: &mut egui::Ui, stance: Option<&str>, fighters: &[Fighter]) {
     ui.label(egui::RichText::new("FRIENDLY").small().weak());
+    let player = theme::color(ui.ctx(), T::Player);
     ui.horizontal(|ui| {
-        ui.colored_label(PLAYER, "You");
+        ui.colored_label(player, "You");
         if let Some(stance) = stance {
             ui.weak(stance);
         }
     });
     for friend in fighters.iter().filter(|fighter| fighter.friend) {
-        fighter(ui, friend, PLAYER);
+        fighter(ui, friend, player);
     }
     ui.label(egui::RichText::new("FOES").small().weak());
     let mut foes = fighters.iter().filter(|fighter| !fighter.friend).peekable();
@@ -161,7 +163,7 @@ pub(super) fn fighting(ui: &mut egui::Ui, stance: Option<&str>, fighters: &[Figh
         ui.weak("No foes.");
     }
     for foe in foes {
-        fighter(ui, foe, CREATURE);
+        fighter(ui, foe, theme::color(ui.ctx(), T::Creature));
     }
 }
 
@@ -186,7 +188,7 @@ fn fighter(ui: &mut egui::Ui, fighter: &Fighter, color: Color32) {
                 max: None,
             }),
         )
-        .fill(HEALTH)
+        .fill(theme::color(ui.ctx(), T::Health))
         .size([ui.available_width(), 6.0])
         .says(Says {
             label: false,

@@ -4,6 +4,8 @@ use super::*;
 use crate::widget::LINE;
 use std::path::Path;
 
+mod looks;
+
 fn at(x: f32, y: f32, width: f32, height: f32) -> Rect {
     Rect::from_min_size(pos2(x, y), Vec2::new(width, height))
 }
@@ -731,59 +733,6 @@ fn a_custom_window_is_renamed_and_a_widget_unfollowed() {
     layout.follow(exits, Some("Baelor".to_owned()));
     layout.follow(exits, None);
     assert!(layout.follows.is_empty());
-}
-
-/// A bar's look is kept with the layout and read back as it was.
-#[test]
-fn a_bars_look_is_kept_with_the_layout() {
-    use crate::bar::{Fills, Look, Place, Says};
-    let dir = std::env::temp_dir().join(format!("cena-layout-look-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    let mut layout = Layout::with_room_parts(Vec2::new(900.0, 600.0));
-    let look = Look {
-        fills: Fills::Up,
-        place: Place::Below,
-        says: Says {
-            label: true,
-            numbers: false,
-            percent: true,
-            words: false,
-        },
-        color: [0x10, 0x20, 0x30],
-        overlay: Some("C:/overlays/gloss.png".to_owned()),
-        background: Some("C:/overlays/glass.png".to_owned()),
-        fill_image: None,
-        ring: 40,
-        clock: false,
-    };
-    layout.looks.insert(7, look.clone());
-    let lines = crate::widget::Lines {
-        stamps: crate::widget::Stamps::End,
-        seconds: true,
-        hours: crate::story::Hours::TwentyFour,
-        ..crate::widget::Lines::default()
-    };
-    layout.lines.insert(8, lines);
-    layout.save(&dir, None, "Ashryn").expect("saved");
-    let read = Layout::load(&dir, None, "Ashryn").expect("read back");
-    assert_eq!(read.looks.get(&7), Some(&look));
-    assert_eq!(read.lines.get(&8), Some(&lines), "a story's times too");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-/// A look saved before orbs, rings and their images reads as it was, a
-/// ring's thickness its default: a look that failed to read would lose the
-/// whole layout to a fitted one.
-#[test]
-fn a_look_saved_before_orbs_reads_as_it_was() {
-    use crate::bar::{Fills, Look};
-    let saved = r#"{"fills":"up","place":"inside","says":{"label":true,"numbers":false,"percent":true},"color":[71,132,217]}"#;
-    let look: Look = serde_json::from_str(saved).expect("read");
-    assert_eq!(look.fills, Fills::Up);
-    assert_eq!(
-        (look.ring, look.background, look.fill_image),
-        (Look::RING, None, None)
-    );
 }
 
 /// The first layout's Room window is the one Room widget, the room as the

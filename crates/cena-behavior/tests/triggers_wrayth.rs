@@ -290,3 +290,34 @@ fn a_commented_out_entry_does_not_come_in() {
     let unclosed = wrayth::read(unclosed, ORIGIN).unwrap();
     assert!(unclosed.triggers.is_empty());
 }
+
+/// The presets, for a theme (`plan/57` step 8): each colour resolved
+/// through the palette, `skin` left out, what cannot be read noted.
+#[test]
+fn the_presets_are_read_through_the_palette() {
+    let xml = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/wrayth.xml"
+    ))
+    .expect("the fixture");
+    let (presets, notes) = cena_behavior::triggers::wrayth::presets(&xml);
+    // roomName's colour is `skin`, left out; bold's is @6, which the fixture's
+    // palette does not have.
+    assert!(presets.is_empty(), "{presets:?}");
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(
+        notes[0].contains("bold") && notes[0].contains("@6"),
+        "{notes:?}"
+    );
+    let resolved = cena_behavior::triggers::wrayth::presets(
+        r##"<settings><palette><i id="6" color="#FF3300"/></palette>
+        <presets><p id="bold" color="@6"/><p id="speech" color="#F0EEE8"/>
+        <p id="thought" color="green"/></presets></settings>"##,
+    );
+    assert_eq!(resolved.0.get("bold").map(String::as_str), Some("#ff3300"));
+    assert_eq!(
+        resolved.0.get("speech").map(String::as_str),
+        Some("#f0eee8")
+    );
+    assert_eq!(resolved.1.len(), 1, "{:?}", resolved.1);
+}

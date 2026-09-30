@@ -5,26 +5,27 @@
 //! card of §1e: its title, number, where it is, its ways out, what it is).
 
 use cena_ui::MapScene;
-use egui::{Color32, FontId, Pos2, Rect, Vec2, vec2};
+use egui::{FontId, Pos2, Rect, Vec2, vec2};
 
 use super::cell;
+use crate::theme::{self, T};
 
 /// Pixels a cell before the buildings' names are drawn (`map_view.rs:253`).
 const LABELS_FROM: f32 = 12.0;
 
-/// A kind of place: its colour, and what the card calls it.
-fn kind(mark: &str) -> Option<(Color32, &'static str)> {
-    let rgb = |r, g, b| Color32::from_rgb(r, g, b);
+/// A kind of place: the palette's token for its colour, and what the card
+/// calls it.
+fn kind(mark: &str) -> Option<(T, &'static str)> {
     Some(match mark {
-        "bank" => (rgb(0xe5, 0xbe, 0x52), "Bank"),
-        "furrier" => (rgb(0xcf, 0xaa, 0x80), "Furrier"),
-        "gemshop" => (rgb(0x64, 0xda, 0xfa), "Gemshop"),
-        "pawnshop" => (rgb(0xf3, 0xa2, 0x5c), "Pawnshop"),
-        "advguild" => (rgb(0x82, 0x9f, 0xff), "Adventurer's Guild"),
-        "locksmith" => (rgb(0xc4, 0xa0, 0xef), "Locksmith"),
-        "healer" => (rgb(0xf3, 0x8d, 0x99), "Healer"),
-        "herbalist" => (rgb(0x91, 0xd5, 0x78), "Herbalist"),
-        "alchemist" => (rgb(0x60, 0xd3, 0xbd), "Alchemist"),
+        "bank" => (T::MarkBank, "Bank"),
+        "furrier" => (T::MarkFurrier, "Furrier"),
+        "gemshop" => (T::MarkGemshop, "Gemshop"),
+        "pawnshop" => (T::MarkPawnshop, "Pawnshop"),
+        "advguild" => (T::MarkGuild, "Adventurer's Guild"),
+        "locksmith" => (T::MarkLocksmith, "Locksmith"),
+        "healer" => (T::MarkHealer, "Healer"),
+        "herbalist" => (T::MarkHerbalist, "Herbalist"),
+        "alchemist" => (T::MarkAlchemist, "Alchemist"),
         _ => return None,
     })
 }
@@ -62,6 +63,7 @@ pub(super) fn draw_marks(
             #[allow(clippy::cast_precision_loss)]
             let step = n as f32 * r * 2.2;
             let spot = to_screen(at) + vec2(beside + r + step, -beside - r);
+            let colour = theme::color(painter.ctx(), colour);
             painter.circle_filled(spot, r, colour.gamma_multiply(fade));
         }
     }
@@ -88,7 +90,7 @@ pub(super) fn draw_labels(
         .collect();
     let font = FontId::proportional(11.0);
     for label in &scene.labels {
-        let colour = super::MUTED.gamma_multiply(fade(label.building));
+        let colour = theme::color(painter.ctx(), T::MapMuted).gamma_multiply(fade(label.building));
         let galley = painter.layout_no_wrap(label.text.clone(), font.clone(), colour);
         let size = galley.size();
         let anchor = to_screen(vec2(label.at.0, label.at.1));

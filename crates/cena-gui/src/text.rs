@@ -2,16 +2,20 @@
 //! font. The colours were decided in the session, by the character's
 //! triggers (`plan/45` §0); this only reads them, never picks one.
 
+use cena_ui::theme::{Palette, Token};
 use cena_ui::{RunLink, StyledRun};
 use egui::text::{LayoutJob, TextFormat};
 use egui::{Color32, Pos2, TextStyle};
 
-/// `runs` as one job, in `style`'s fonts: a run's trigger colour, else its
-/// preset's ([`preset`]), else a link's ([`LINK`]) where it is not bold (a
-/// creature keeps its own), else the strong colour for a bold run, else the
-/// text colour; monospace runs in the monospace font.
-pub(crate) fn job(runs: &[StyledRun], style: &egui::Style) -> LayoutJob {
-    let body = TextStyle::Body.resolve(style);
+use crate::theme::rgb;
+
+/// `runs` as one job, in `style`'s fonts and `palette`'s colours: a run's
+/// trigger colour, else its preset's ([`preset`]), else a link's
+/// ([`Token::Link`]) where it is not bold (a creature keeps its own), else
+/// the strong colour for a bold run, else the text colour; monospace runs
+/// in the monospace font.
+pub(crate) fn job(runs: &[StyledRun], style: &egui::Style, palette: &Palette) -> LayoutJob {
+    let body = crate::theme::story_font(style);
     let mono = TextStyle::Monospace.resolve(style);
     let mut job = LayoutJob::default();
     for run in runs {
@@ -33,8 +37,10 @@ pub(crate) fn job(runs: &[StyledRun], style: &egui::Style) -> LayoutJob {
                     .color
                     .as_deref()
                     .and_then(hex)
-                    .or_else(|| run.preset.as_deref().and_then(preset))
-                    .or_else(|| (run.link.is_some() && !run.bold).then_some(LINK))
+                    .or_else(|| run.preset.as_deref().and_then(|name| preset(name, palette)))
+                    .or_else(|| {
+                        (run.link.is_some() && !run.bold).then(|| rgb(palette.get(Token::Link)))
+                    })
                     .unwrap_or(plain),
                 background: run
                     .background
@@ -48,17 +54,18 @@ pub(crate) fn job(runs: &[StyledRun], style: &egui::Style) -> LayoutJob {
     job
 }
 
-/// The colour of a game preset, as Despana draws it
-/// (`cena-web/assets/app.js`'s `PRESETS`, `style.css`); `None` for one it
-/// does not colour.
-pub(crate) fn preset(name: &str) -> Option<Color32> {
-    match name {
-        "roomName" => Some(AMBER),
-        "monsterbold" => Some(CREATURE),
-        "speech" => Some(Color32::from_rgb(0xf0, 0xee, 0xe8)),
-        "whisper" | "thought" => Some(Color32::from_rgb(0xa9, 0xbb, 0xf5)),
-        _ => None,
-    }
+/// The colour of a game preset in `palette`; `None` for one it does not
+/// colour.
+pub(crate) fn preset(name: &str, palette: &Palette) -> Option<Color32> {
+    let token = match name {
+        "roomName" => Token::RoomName,
+        "monsterbold" => Token::Creature,
+        "speech" => Token::Speech,
+        "whisper" => Token::Whisper,
+        "thought" => Token::Thought,
+        _ => return None,
+    };
+    Some(rgb(palette.get(token)))
 }
 
 /// What a line with links in it was asked this frame.
@@ -168,23 +175,6 @@ pub(crate) fn linked(ui: &mut egui::Ui, job: LayoutJob, runs: &[StyledRun]) -> O
     link_at(pointer).map(|link| Acted::Clicked(link, pointer))
 }
 
-/// A link's colour: `VellumFE`'s, its `links` and `commands` presets' `Link`
-/// (`defaults/globals/colors.toml`).
-pub(crate) const LINK: Color32 = Color32::from_rgb(0x47, 0x7a, 0xb3);
-
-/// Hydra's own words among the game's in the story: its answers.
-pub(crate) const HYDRA: Color32 = Color32::from_rgb(0x8f, 0xc9, 0xa8);
-/// Despana's amber: a room's name, a warning.
-pub(crate) const AMBER: Color32 = Color32::from_rgb(0xd7, 0xad, 0x63);
-/// A creature's colour, Despana's room window's and `monsterbold`'s.
-pub(crate) const CREATURE: Color32 = Color32::from_rgb(0xbd, 0x8c, 0xff);
-/// A player's colour in the room window, Despana's.
-pub(crate) const PLAYER: Color32 = Color32::from_rgb(0x8c, 0xa8, 0xff);
-/// An object's colour in the room window, Despana's.
-pub(crate) const OBJECT: Color32 = Color32::from_rgb(0xb7, 0xbd, 0xc3);
-/// Despana's colour for something lost or wrong.
-pub(crate) const WRONG: Color32 = Color32::from_rgb(0xf0, 0x96, 0x8c);
-
 /// A `#rrggbb` colour, as the session writes a trigger's paint
 /// (`cena_model::trigger::Color`'s `Display`).
 fn hex(text: &str) -> Option<Color32> {
@@ -209,6 +199,7 @@ mod tests {
         let job = job(
             &[run("Kiyna", Some("#ff8000")), run(" says, hi", None)],
             &style,
+            &Palette::bare(),
         );
         assert_eq!(job.text, "Kiyna says, hi");
         let colors: Vec<Color32> = job.sections.iter().map(|s| s.format.color).collect();
@@ -241,12 +232,13 @@ mod tests {
                 linked(false, Some("#ff8000")),
             ],
             &style,
+            &Palette::bare(),
         );
         let colors: Vec<Color32> = job.sections.iter().map(|s| s.format.color).collect();
         assert_eq!(
             colors,
             [
-                LINK,
+                rgb(Palette::bare().get(Token::Link)),
                 style.visuals.strong_text_color(),
                 Color32::from_rgb(0xff, 0x80, 0x00)
             ]
@@ -263,7 +255,11 @@ mod tests {
             color: color.map(str::to_owned),
             ..StyledRun::default()
         };
-        let job = job(&[spoken(None), spoken(Some("#ff0000"))], &style);
+        let job = job(
+            &[spoken(None), spoken(Some("#ff0000"))],
+            &style,
+            &Palette::bare(),
+        );
         assert_eq!(
             job.sections[0].format.color,
             Color32::from_rgb(0xf0, 0xee, 0xe8)
@@ -274,7 +270,7 @@ mod tests {
     #[test]
     fn a_colour_that_does_not_parse_is_plain() {
         let style = egui::Style::default();
-        let job = job(&[run("x", Some("orange"))], &style);
+        let job = job(&[run("x", Some("orange"))], &style, &Palette::bare());
         assert_eq!(job.sections[0].format.color, style.visuals.text_color());
     }
 }

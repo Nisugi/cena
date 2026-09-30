@@ -50,6 +50,7 @@ pub(crate) fn pages(
         .map(|profile| page(dir, &profile, instance, name));
     Ok(crate::general::pages(dir, instance, name)
         .into_iter()
+        .chain([crate::theme_page::page(dir, instance, name)])
         .chain([crate::travel_page::page(dir, instance, name, map)])
         .chain(behaviors)
         .chain(crate::hunt_pages::pages(dir, instance, name))
@@ -149,6 +150,12 @@ pub(crate) fn apply(dir: &Path, map: &BTreeSet<String>, wanted: &Change) -> Stri
             Ok(done) | Err(done) => done,
         };
     }
+    if wanted.page == crate::theme_page::PAGE {
+        let to = wanted.to.as_deref();
+        return match crate::theme_page::change(dir, (instance, name), &wanted.key, to) {
+            Ok(done) | Err(done) => done,
+        };
+    }
     let Some(profile) = profiles()
         .into_iter()
         .find(|profile| profile.id == wanted.page)
@@ -218,12 +225,12 @@ mod tests {
         assert_eq!(
             ids,
             [
-                "general", "log", "record", "travel", "heal", "waggle", "keep", "sc", "loot",
-                "skin", "town"
+                "general", "log", "record", "theme", "travel", "heal", "waggle", "keep", "sc",
+                "loot", "skin", "town"
             ],
             "the character's own file first"
         );
-        let heal = &pages[4];
+        let heal = &pages[5];
         assert_eq!(
             heal.file,
             std::path::Path::new("hunt")

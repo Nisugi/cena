@@ -11,10 +11,14 @@
 //! - **The key held to drag an object** from a link (`carry.rs`): Alt, or
 //!   Ctrl or Shift, as `VellumFE`'s `drag_modifier_key` is. Alt by default
 //!   since 2026-09-29 (the author), so Ctrl is left to copying.
+//! - **The theme** (`plan/57` step 2): the one worn, Despana unless chosen;
+//!   and, with *Follow the computer* on, a light one worn while the
+//!   computer is in light mode.
 
 use std::path::{Path, PathBuf};
 
 use cena_ui::settings::{Page, Row, RowKind, Value};
+use cena_ui::theme::Theme;
 use egui::Modifiers;
 
 use crate::hub::CardWidth;
@@ -36,6 +40,12 @@ struct File {
     close_with_session: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     drag_with: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    theme: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    light_theme: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    follow_computer: Option<bool>,
 }
 
 /// The keys an object may be dragged with: each as the file writes it, as
@@ -95,6 +105,22 @@ impl Own {
         self.file.close_with_session.unwrap_or(false)
     }
 
+    /// The theme worn: Despana unless chosen.
+    pub(crate) fn theme(&self) -> &str {
+        self.file.theme.as_deref().unwrap_or(Theme::DEFAULT)
+    }
+
+    /// The theme worn while the computer is in light mode, when following
+    /// it: Light unless chosen.
+    pub(crate) fn light_theme(&self) -> &str {
+        self.file.light_theme.as_deref().unwrap_or(Theme::LIGHT)
+    }
+
+    /// Whether the theme follows the computer's dark or light mode.
+    pub(crate) fn follow_computer(&self) -> bool {
+        self.file.follow_computer.unwrap_or(false)
+    }
+
     /// Keep `width`, which a drag set, when it is not what is kept already.
     ///
     /// # Errors
@@ -111,8 +137,10 @@ impl Own {
         self.save(file)
     }
 
-    /// The *Window* page, as the menu draws it.
-    pub(crate) fn page(&self) -> Page {
+    /// The *Window* page, as the menu draws it; `themes` are the names to
+    /// choose a theme from, and `theme_problem` why the one chosen is not
+    /// worn, said on its row.
+    pub(crate) fn page(&self, themes: &[String], theme_problem: Option<&str>) -> Page {
         let file = self.data.as_ref().map_or_else(
             || FILE.to_owned(),
             |data| data.join(FILE).display().to_string(),
@@ -165,6 +193,37 @@ impl Own {
                 ),
                 value: Value::Text(self.file.drag_with.clone().unwrap_or_else(|| "alt".to_owned())),
                 here: self.file.drag_with.is_some(),
+                from: None,
+            },
+            Row {
+                key: "theme".to_owned(),
+                label: "Theme".to_owned(),
+                help: theme_problem.map_or_else(
+                    || "The colours Hydra wears. A file in the themes folder adds one.".to_owned(),
+                    |why| format!("{why}. Despana is worn instead."),
+                ),
+                kind: RowKind::Choice(themes.iter().map(|t| (t.clone(), t.clone())).collect()),
+                value: Value::Text(self.theme().to_owned()),
+                here: self.file.theme.is_some(),
+                from: None,
+            },
+            Row {
+                key: "follow_computer".to_owned(),
+                label: "Follow the computer's dark or light mode".to_owned(),
+                help: "On, the light theme is worn while the computer is in light mode."
+                    .to_owned(),
+                kind: RowKind::Toggle,
+                value: Value::On(self.follow_computer()),
+                here: self.file.follow_computer.is_some(),
+                from: None,
+            },
+            Row {
+                key: "light_theme".to_owned(),
+                label: "Light theme".to_owned(),
+                help: "Worn while the computer is in light mode, when following it.".to_owned(),
+                kind: RowKind::Choice(themes.iter().map(|t| (t.clone(), t.clone())).collect()),
+                value: Value::Text(self.light_theme().to_owned()),
+                here: self.file.light_theme.is_some(),
                 from: None,
             },
         ];
@@ -222,6 +281,38 @@ impl Own {
                 file.drag_with = None;
                 "an item is dragged with Alt, its default".to_owned()
             }
+            ("theme", Some(to)) => {
+                file.theme = Some(to.trim().to_owned());
+                format!("the theme is {}", to.trim())
+            }
+            ("theme", None) => {
+                file.theme = None;
+                format!("the theme is {}, its default", Theme::DEFAULT)
+            }
+            ("light_theme", Some(to)) => {
+                file.light_theme = Some(to.trim().to_owned());
+                format!("the light theme is {}", to.trim())
+            }
+            ("light_theme", None) => {
+                file.light_theme = None;
+                format!("the light theme is {}, its default", Theme::LIGHT)
+            }
+            ("follow_computer", Some(to)) => {
+                let on = match to.trim() {
+                    "on" => true,
+                    "off" => false,
+                    other => return Err(format!("Window: `{other}` is not on or off.")),
+                };
+                file.follow_computer = Some(on);
+                format!(
+                    "the theme {} the computer's dark or light mode",
+                    if on { "follows" } else { "does not follow" }
+                )
+            }
+            ("follow_computer", None) => {
+                file.follow_computer = None;
+                "the theme does not follow the computer, its default".to_owned()
+            }
             ("card_width", None) => {
                 file.card_width = None;
                 "the card width is back to its default".to_owned()
@@ -268,7 +359,9 @@ mod tests {
         assert_eq!(own.card_width(), CardWidth::FOUR_BARS);
         assert!(!own.close_with_session(), "off by default");
         assert_eq!(own.drag_with(), Modifiers::ALT, "Alt by default");
-        assert!(own.page().rows.iter().all(|row| !row.here));
+        assert_eq!((own.theme(), own.light_theme()), ("Despana", "Light"));
+        assert!(!own.follow_computer());
+        assert!(own.page(&[], None).rows.iter().all(|row| !row.here));
 
         assert_eq!(
             own.change("close_with_session", Some("on")).as_deref(),
@@ -276,11 +369,18 @@ mod tests {
         );
         own.change("card_width", Some("420.4")).expect("changed");
         own.change("drag_with", Some("alt")).expect("changed");
+        own.change("theme", Some("Ember")).expect("changed");
+        own.change("light_theme", Some("Paper")).expect("changed");
+        own.change("follow_computer", Some("on")).expect("changed");
         let read = Own::load(&data);
         assert!(read.close_with_session());
         assert_eq!(read.drag_with(), Modifiers::ALT);
         assert_eq!(read.card_width(), CardWidth(420.0));
-        assert!(read.page().rows.iter().all(|row| row.here));
+        assert_eq!((read.theme(), read.light_theme()), ("Ember", "Paper"));
+        assert!(read.follow_computer());
+        assert!(read.page(&[], None).rows.iter().all(|row| row.here));
+        own.change("theme", None).expect("put back");
+        assert_eq!(Own::load(&data).theme(), "Despana");
 
         own.change("card_width", None).expect("put back");
         assert_eq!(Own::load(&data).card_width(), CardWidth::FOUR_BARS);
@@ -312,7 +412,7 @@ mod tests {
         std::fs::create_dir_all(&data).expect("made");
         std::fs::write(data.join(FILE), "card_width = \"wide\"\n").expect("written");
         let mut own = Own::load(&data);
-        let page = own.page();
+        let page = own.page(&[], None);
         assert!(page.rows.is_empty());
         assert!(
             page.problem.as_deref().is_some_and(

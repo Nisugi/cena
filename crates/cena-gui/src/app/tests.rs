@@ -1,6 +1,7 @@
 //! The window's tests: the hub, play windows, keybinds and the settings
 //! menu, driven through [`App::draw`].
 
+use super::clocks::clocks_run;
 use super::*;
 use crate::MenuAsked;
 use egui::accesskit::Role;
@@ -15,6 +16,47 @@ fn handle() -> cena_session::SessionHandle {
         cena_session::GenerationCell::default(),
         tokio::sync::broadcast::channel(1).0,
     )
+}
+
+/// The app wears Despana unless a theme is chosen (`plan/57` step 2): the
+/// hub and a play window in its colours, egui's own chrome among them.
+#[test]
+fn the_app_wears_despana_unless_a_theme_is_chosen() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .expect("a runtime");
+    let sessions = Sessions::new(runtime.handle().clone());
+    sessions.seat_for_test(handle(), "Ashryn");
+    let mut harness = Harness::builder()
+        .with_size((1200.0, 900.0))
+        .build_ui_state(|ui, app: &mut App| app.draw(ui), App::new(sessions));
+    harness.run();
+    assert_eq!(harness.state().worn.as_deref(), Some("Despana"));
+    let canvas = crate::theme::color(&harness.ctx, crate::theme::T::Canvas);
+    assert_eq!(canvas, egui::Color32::from_rgb(0x0d, 0x11, 0x15));
+    assert_eq!(harness.ctx.global_style().visuals.panel_fill, canvas);
+    harness.snapshot("despana");
+    // A theme that is not there is said, and Despana stays on.
+    harness.state_mut().menu_asked(MenuAsked::Own {
+        key: "theme".to_owned(),
+        to: Some("Nope".to_owned()),
+    });
+    harness.run();
+    assert_eq!(harness.state().worn.as_deref(), Some("Nope"), "asked for");
+    assert!(
+        harness
+            .state()
+            .theme_problem
+            .as_deref()
+            .is_some_and(|why| why.contains("no theme `Nope`")),
+        "{:?}",
+        harness.state().theme_problem
+    );
+    assert_eq!(
+        crate::theme::color(&harness.ctx, crate::theme::T::Canvas),
+        canvas,
+        "Despana's colours stay"
+    );
 }
 
 /// A character that starts gets its play window; closed, it runs

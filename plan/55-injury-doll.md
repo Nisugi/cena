@@ -375,7 +375,7 @@ own.
   races, but just humanoid for now"*). The form is chosen in one function, so a race-to-form
   table replaces one line when the puppets exist.
 - **Call `field_gpu::init`** in `cena-gui`'s `run`, from the creation context
-  (`crates/cena-gui/src/app.rs:528-535`).
+  (`crates/cena-gui/src/app.rs:495-502`).
 - **An adapter, `widget/doll/infinite.rs`,** turns the character into gs_studio's input:
   - the wounds and scars from `Character.injuries`;
   - the statuses from `StatusInfo`'s active flags and the afflictions;

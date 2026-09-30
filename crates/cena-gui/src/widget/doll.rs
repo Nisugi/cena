@@ -19,6 +19,8 @@ use cena_session::Injury;
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use serde::{Deserialize, Serialize};
 
+use crate::theme::{self, T, readable_on};
+
 use crate::calibration::Calibration;
 
 /// What a part shows: its wound, else its scar.
@@ -47,20 +49,23 @@ impl Shown {
     }
 }
 
-/// `VellumFE`'s palette: whole, three wounds brown to red, three scars light
-/// to dark grey.
-pub(crate) const PALETTE: [Color32; 7] = [
-    Color32::from_rgb(0x33, 0x33, 0x33),
-    Color32::from_rgb(0xaa, 0x55, 0x00),
-    Color32::from_rgb(0xff, 0x88, 0x00),
-    Color32::from_rgb(0xff, 0x00, 0x00),
-    Color32::from_rgb(0x99, 0x99, 0x99),
-    Color32::from_rgb(0x77, 0x77, 0x77),
-    Color32::from_rgb(0x55, 0x55, 0x55),
+/// The palette's tokens by level: whole, three wounds, three scars
+/// (`VellumFE`'s palette, brown to red and light to dark grey, is what
+/// they hold before a theme).
+const LEVELS: [T; 7] = [
+    T::Unhurt,
+    T::Wound1,
+    T::Wound2,
+    T::Wound3,
+    T::Scar1,
+    T::Scar2,
+    T::Scar3,
 ];
 
-/// The body drawn under the dots.
-const BODY: Color32 = Color32::from_rgb(0x4a, 0x4a, 0x50);
+/// The colour of `level`, 0 whole, 1 to 3 a wound, 4 to 6 a scar.
+pub(crate) fn level_color(ctx: &egui::Context, level: usize) -> Color32 {
+    theme::color(ctx, LEVELS[level.min(LEVELS.len() - 1)])
+}
 
 /// A part's shape on the body, in fractions of the doll's rect; sizes in
 /// fractions of its height.
@@ -502,16 +507,17 @@ pub(crate) fn drawn(
 /// The body drawn in code, every part in its colour.
 fn body(painter: &egui::Painter, at: &impl Fn((f32, f32)) -> Pos2, scale: f32) {
     let letters = egui::FontId::proportional((scale * 0.09).clamp(10.0, 18.0));
+    let flesh = theme::color(painter.ctx(), T::Body);
     for part in &PARTS {
         match part.shape {
             Shape::Circle { c, r } => {
-                painter.circle_filled(at(c), r * scale, BODY);
+                painter.circle_filled(at(c), r * scale, flesh);
             }
             Shape::Block { min, max } => {
-                painter.rect_filled(Rect::from_min_max(at(min), at(max)), scale * 0.02, BODY);
+                painter.rect_filled(Rect::from_min_max(at(min), at(max)), scale * 0.02, flesh);
             }
             Shape::Line { a, b, w } => {
-                painter.line_segment([at(a), at(b)], Stroke::new(w * scale, BODY));
+                painter.line_segment([at(a), at(b)], Stroke::new(w * scale, flesh));
             }
             Shape::Letter { c, letter } => {
                 painter.text(
@@ -519,7 +525,7 @@ fn body(painter: &egui::Painter, at: &impl Fn((f32, f32)) -> Pos2, scale: f32) {
                     egui::Align2::CENTER_CENTER,
                     letter,
                     letters.clone(),
-                    BODY,
+                    flesh,
                 );
             }
         }
@@ -538,8 +544,12 @@ fn shape_rect(shape: Shape, at: &impl Fn((f32, f32)) -> Pos2, scale: f32) -> Rec
 
 /// A part's dot: its level's colour, its rank in it.
 fn dot(painter: &egui::Painter, center: Pos2, dots: &Dots<'_>, shows: Shown) {
-    let fill = PALETTE[shows.level()].gamma_multiply(dots.opacity);
-    let edge = Color32::BLACK.gamma_multiply(dots.opacity);
+    let level = level_color(painter.ctx(), shows.level());
+    let fill = level.gamma_multiply(dots.opacity);
+    // The rank in whichever of black and white reads on the dot, its edge
+    // in the other.
+    let numeral = readable_on(level);
+    let edge = readable_on(numeral).gamma_multiply(dots.opacity);
     painter.circle(center, dots.radius, fill, Stroke::new(1.0, edge));
     // The rank, when there is room to read it (`VellumFE`'s threshold).
     if dots.radius >= 5.5 {
@@ -548,7 +558,7 @@ fn dot(painter: &egui::Painter, center: Pos2, dots: &Dots<'_>, shows: Shown) {
             egui::Align2::CENTER_CENTER,
             rank_text(shows.rank()),
             egui::FontId::proportional(dots.radius * 1.3),
-            Color32::WHITE.gamma_multiply(dots.opacity),
+            numeral.gamma_multiply(dots.opacity),
         );
     }
 }

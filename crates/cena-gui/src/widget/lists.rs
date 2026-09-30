@@ -6,7 +6,7 @@
 use cena_session::GameState;
 use egui::RichText;
 
-use crate::text::OBJECT;
+use crate::theme::{self, T};
 
 /// The spells the game lists for the character: number, name, circle.
 pub(super) fn spellbook(ui: &mut egui::Ui, state: Option<&GameState>) {
@@ -127,7 +127,8 @@ pub(super) fn containers_listed(
                     ui.weak("empty");
                 }
                 for (words, item) in items {
-                    let label = egui::Label::new(egui::RichText::new(*words).color(OBJECT))
+                    let object = theme::color(ui.ctx(), T::Object);
+                    let label = egui::Label::new(egui::RichText::new(*words).color(object))
                         .selectable(false);
                     if !own {
                         ui.add(label);

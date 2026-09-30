@@ -170,8 +170,9 @@ fn a_frame_keeps_its_corners_and_leaves_the_middle_clear() {
 fn text_reads_on_light_and_dark() {
     assert_eq!(readable_on(Color32::WHITE), Color32::BLACK);
     assert_eq!(readable_on(Color32::from_rgb(20, 20, 20)), Color32::WHITE);
-    assert_eq!(readable_on(SPIRIT), Color32::BLACK);
-    assert_eq!(readable_on(HEALTH), Color32::WHITE);
+    let bare = |token: crate::theme::T| crate::theme::rgb(token.bare());
+    assert_eq!(readable_on(bare(crate::theme::T::Spirit)), Color32::BLACK);
+    assert_eq!(readable_on(bare(crate::theme::T::Health)), Color32::WHITE);
 }
 
 /// A bar the game words says its word after its label, which takes a colon

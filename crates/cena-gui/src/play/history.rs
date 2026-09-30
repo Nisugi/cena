@@ -107,3 +107,26 @@ impl History {
         self.unsaved.as_deref()
     }
 }
+
+impl super::Play {
+    /// What is typed, sent: taken from the input, and kept in the history
+    /// unless it is the last line again. Nothing for an empty line.
+    pub(super) fn enter(&mut self) -> Option<String> {
+        let line = std::mem::take(&mut self.input);
+        if line.trim().is_empty() {
+            self.history.reset();
+            return None;
+        }
+        self.history.keep(&line);
+        Some(line)
+    }
+
+    /// Keep what is sent in `dir`, by the character's game and name, and
+    /// take up what was kept there: the app's windows do, and a test's
+    /// need not.
+    #[must_use]
+    pub(crate) fn keeping_history(mut self, dir: &std::path::Path) -> Self {
+        self.history = History::kept(dir, self.instance, &self.name);
+        self
+    }
+}

@@ -60,7 +60,7 @@ What follows from them:
   theme the moment one is set.
 - **A bar's colour is saved with the layout** as three bytes
   (`crates/cena-gui/src/bar.rs:125`, and the saved form in
-  `crates/cena-gui/src/layout/tests.rs:780`). INFERRED from those two: a saved layout holds
+  `crates/cena-gui/src/layout/tests/looks.rs:50`). INFERRED from those two: a saved layout holds
   the colour whether the player chose it or not, so a theme could not change it. Step 0
   settles it (§5).
 - **The web page has twelve tokens** as CSS variables, `crates/cena-web/assets/style.css:4`
@@ -212,28 +212,156 @@ On a branch `themes` once the author approves.
    (`kittest.toml`) must not change.* Settle the saved bar colour (§2a): a layout saves a
    colour only when the player chose one, and a saved colour equal to the old default is
    read as none.
+
+   **BUILT 2026-09-30.** 61 tokens (`crates/cena-ui/src/theme.rs`, `Token::ALL`;
+   `Palette::bare` holds each literal's value); the GUI's `crates/cena-gui/src/theme.rs`,
+   `theme::color(ctx, token)` read from egui's own data so a theme (step 2) and a window's
+   own (step 3) have a place to go; the test
+   `crates/cena-arch-tests/tests/colour_literals.rs`, which scans `cena-gui`'s code lines
+   for `Color32`'s constructors and named colours outside the theme module and test code.
+   A bar's saved colour is `Option`al, `Look::themed(token)` reading the old default as
+   none where the layout is read (`play/draw.rs`, `play/options.rs`).
+
+   *One thing does look different.* Text on a lit indicator was always black, and a doll
+   dot's numeral always white; both now pick black or white by the colour behind them
+   (`theme::readable_on`, the bars' own rule), which a light theme needs. Four images
+   changed for it and were reviewed: `status` (*Standing* and *Poisoned* read white),
+   `injuries_hurt` and `injuries_picture` (the numeral on a light grey scar reads black),
+   and `calibrator` (the same dots).
 1. **Harmony.** The engine ported whole into `cena-ui` with its sixteen tests, Niffy
    credited. The roles widened to §3a's table. New tests: every vital stays in its band under
    every scheme; every token clears the floor on a dark and on a light background.
+
+   **BUILT 2026-09-30.** `crates/cena-ui/src/theme/oklch.rs` (the colour maths, over `Rgb`
+   rather than hex strings) and `crates/cena-ui/src/theme/harmony.rs` (`Recipe`, `Scheme`,
+   `generate`, `hue_variants`, `seed_swatches`), Niffy credited in each module's first
+   lines. Every token has a `Role` (`Token::role`): *free* in a slot of the scheme; *anchored*,
+   keeping the hue of its bare colour, so the vitals' bands are measured from what Hydra has
+   always drawn rather than typed; a *surface* from the background; the room's *plate*; or
+   *fixed*, for chrome that is not a colour. Each token keeps its distance within its `Group`
+   (`Token::group`: text, vitals, injuries, status, map, marks, chrome), as `VellumFE` kept the
+   prompt's apart from the story's. A 62nd token, `RoomPlate`, which no widget draws yet.
+   `crates/cena-ui/src/theme/harmony/tests.rs` holds the promises: the same recipe gives the
+   same palette; every drawn token clears the floor on four backgrounds, two of them light,
+   under all eight schemes; tokens in a group stay apart; a pin survives; an anchored token
+   keeps its hue under every scheme and seed; health is still red and mana still blue with a
+   green seed on the golden scheme; the plate hits its spread. Nothing applies a palette yet:
+   that is step 2.
 2. **The theme applied.** The file's form, `base`, recipe and pins; egui's visuals set from
    the surfaces and text; the two built-ins, **Despana** (the default, from the web page's
    twelve tokens) and a **light** one generated from a recipe; the choice on Hydra's *Window*
    page, and *Follow the computer*: a theme for dark and one for light, egui's reading of the
    system picking between them. The images change here, once, and are reviewed.
+
+   **BUILT 2026-09-30.** Nine more tokens, the surfaces and the text on them (`Canvas`,
+   `Surface`, `Raised`, `Inset`, `Line`, `LineStrong`, `Text`, `Muted`, `Selection`; 71 in
+   all), from which egui's own visuals are set (`crates/cena-gui/src/theme.rs`, `visuals`):
+   dark or light by the canvas, the surfaces on every control, the text and lines, the
+   selection, the link, a warning and a wrong. Text takes a new role, *onto*: its lightness
+   measured from the background's, toward the light on a dark ground and the dark on a light
+   one. The file (`crates/cena-ui/src/theme/file.rs`): `name`, `base`, `[recipe]` with each
+   dial optional, `[pins]` by token name, a bad value refused when read; `Themes` holds the
+   two built-ins and every `.toml` in the `themes` folder in the data folder, and resolves a
+   theme over its bases (eight deep at most, a circle refused). **Despana** is every token
+   pinned to what Hydra drew, with the web page's chrome round it; **Light** is generated
+   from Despana's link blue on a warm white, nothing pinned. The app wears the theme once
+   and again after a change (`App::wear_theme`); on the *Window* page, *Theme*, *Follow the
+   computer's dark or light mode* and *Light theme*, kept in `window.toml`; a theme that
+   cannot be worn is said on its row and Despana worn. Wearing a theme pins egui's own
+   dark-or-light choice, so the computer's mode changing does not swap the visuals out from
+   under the palette. One image added, `despana`, the hub and a play window worn; the
+   widgets' own images are drawn without the app and did not change.
 3. **A character's own.** Its theme and its accent in its settings file; its play window
    wearing it. UNVERIFIED: whether egui lets one window take a style the others do not; if it
    cannot be set per window, it is set at the top of each window's drawing. Checked first.
+
+   **BUILT 2026-09-30.** Checked: egui keeps one style per context, not per window, so a
+   character's palette is worn at the top of its play window's drawing and put off at the
+   end (`theme::wearing`, a guard: the palette under that viewport's id in egui's data, the
+   visuals swapped and swapped back). The character's `theme` section (`Chosen`: a theme's
+   name, an accent as `#rrggbb`) in its settings file, written by the binary's *Theme* page
+   among the character's pages (`crates/cena/src/theme_page.rs`, after *Recording*): the
+   theme, *Hydra's* unless chosen, and the accent, a colour picker. The GUI reads the section
+   itself (`crates/cena-gui/src/app/looks.rs`), the file's modified time looked at once a
+   second, and works the palette out over Hydra's own theme, the accent pinned
+   (`Themes::palette_for`); every character's is worked out again when Hydra's theme changes.
 4. **Shape.** Corner radius, strokes, padding, density, scrollbar width, from the theme into
    egui's style and into Hydra's own drawing (`crates/cena-gui/src/bar/shape.rs:81` fixes a
    bar's corners at 3 today).
+
+   **BUILT 2026-09-30.** `[shape]` in the file (`crates/cena-ui/src/theme/shape.rs`): `corner`
+   (a control's radius, a window's twice it), `stroke` (an edge's width), `density` (`tight`,
+   `normal`, `roomy`: egui's gaps and padding at 0.6, 1 and 1.5), `scrollbar` and `shadows`,
+   each optional over the base's, bounded when read. A theme is worn as an `Outfit`, its
+   palette and its shape together; egui's whole style is set from it (`theme::style`), and
+   Hydra's seven own corners (a bar's, the compass's lit exit, a lit indicator, the
+   minimap's ground, a find's hit, the window in use, the arrange ghost) read
+   `theme::corner`. Hydra's own edges stay at their widths. Four images changed for the
+   corners, 2 and 4 where they were, 3 now.
 5. **Type.** The UI's font and the story's, and their sizes. Where fonts come from is §6's.
+
+   **BUILT 2026-09-30** (§6 item 3, Claude's recommendation taken: a `fonts` folder first).
+   `[type]` in the file (`crates/cena-ui/src/theme/typeface.rs`): `ui_font` and `story_font`
+   by a file's stem, `ui_size` and `story_size` (6 to 48), each optional over the base's, an
+   empty font name egui's own. Every `.ttf` and `.otf` in the data folder's `fonts` is loaded
+   into egui once, when the app first wears a theme, each a family named by its stem
+   (`crates/cena-gui/src/fonts.rs`; a file that is not a font by its first bytes is refused,
+   since egui stops on one it cannot parse). The style's text styles come from the type
+   (`theme::style`): Small, Body, Button and Heading in the UI's font, scaled from its size;
+   Monospace at the story's size; and a `story` text style, the story's font at its size,
+   which the story's runs take (`theme::story_font`, egui's body where no theme set it). A
+   font named that is not loaded is egui's own. Fonts are one set for the whole GUI, so a
+   character's own theme brings its sizes to its window and not its fonts.
 6. **The editor.** A *Theme* page in the settings menu: Generate first (seed, scheme, the
    dials, a preview of the whole palette and a sample of story text, live), then each token
    with its pin, then Type and Shape. *Save as* makes a file; a built-in is never written over.
+
+   **BUILT 2026-09-30**, as a window of its own beside *Settings* and *Triggers* rather than a
+   page of the menu, since the menu draws rows and this needs swatches and a sample: *Theme*
+   on the hub and on a play window's bar (`crates/cena-gui/src/theme_editor.rs`, its parts
+   under `theme_editor/`, the app's window `crates/cena-gui/src/app/theme_window.rs`). *Start
+   from* a theme: a built-in becomes the base of a new theme named *My ...*, a file's theme is
+   edited as it is over its own base. The draft is held whole, resolved, and saved as only
+   what differs from its base (`RecipeFile::differing`, `ShapeFile::differing`,
+   `TypeFile::differing`), so a file says only what it changes. *Generate*: the seed and the
+   background as colour buttons, seeds offered from the theme begun from (`seed_swatches`),
+   the scheme, and the four dials; *Pins*: every token by group, its colour as it comes out,
+   pinned with a click or a colour, and for a free token six other hues (`hue_variants`);
+   *Shape* and *Type* as controls, the fonts from those loaded. The preview: a sample of story
+   text through the story's own layout, on the draft's canvas in its fonts, four bars, and
+   every token a swatch. *Wear while editing* puts the draft on the whole window, sent again
+   only when it changes; *Save* writes the file to the themes folder (a built-in's name, no
+   name, and a theme as its own base refused), reads the themes again and says where. One
+   image, `theme_editor`; the play window's and the hub's moved by the button.
 7. **The web.** The theme sent to the page as a new wire message (`crates/cena-ui/WIRE.md`,
    a version's step), the page's CSS variables set from it. The page's design is not touched.
+
+   **BUILT 2026-09-30.** `theme` (`ServerMessage::Theme`: the name, every token by name as
+   `#rrggbb`), sent to every page first, after it authenticates, the hub's and a
+   character's alike; additive within version 1, so no version step. The server reads the
+   theme as the page opens (`WebServer::with_data`, the binary giving it the data folder):
+   the `theme` key of `window.toml` (`cena_ui::theme::chosen_for_hydra`, a second reader of
+   the GUI's file, which stays its one writer) and the themes folder, so a theme changed
+   later reaches a page opened after; a server given no data folder sends none. The page
+   keeps the message (`session.js`) and sets eighteen CSS variables from it (`app.js`,
+   `renderTheme`), the stylesheet's own values where a token is missing; the text presets
+   and the room's names moved from literals to variables (`style.css`). Tested by a page
+   through the binary's web helpers (`crates/cena/tests/web_theme.rs`) and in the browser's
+   own tests.
 8. **Wrayth's colours.** `<presets>` and `<palette>` of a Wrayth settings file, which the
    trigger importer names and leaves (`plan/45` line 530), read into a theme's pins.
+
+   **BUILT 2026-09-30**, with the `;theme` command (§6 item 4, Claude's call taken): `theme
+   list` (every theme, and the one Hydra wears), `theme mine <name> | off` and `theme accent
+   <#rrggbb> | off` (the character's own, through the *Theme* page's writer), and `theme
+   import <file> [as <name>]` (`crates/cena/src/theme_command.rs`). The trigger importer
+   reads the `<presets>` through the `<palette>` (`wrayth::presets`, `skin` left out, what
+   cannot be read noted); `cena_ui::theme::pins_from_wrayth` pins the tokens that mean the
+   same (`roomName`, `bold` and `monsterbold`, `speech`, `whisper`, `thought`, `link`), and
+   notes a preset Hydra has no token for; the theme is written to the `themes` folder over
+   Despana, named for the file unless said, never over a file already there or a built-in's
+   name. Hydra's own theme is the *Window* page's alone, that file's one writer, so
+   `;theme` does not set it.
 
 Steps 0 to 3 are the theme; 4 to 8 can come in any order after.
 

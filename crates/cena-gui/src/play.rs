@@ -90,6 +90,8 @@ pub(crate) enum Asked {
     Log,
     /// Open the trigger editor (`plan/54`).
     Triggers,
+    /// Open the theme editor (`plan/57` step 6).
+    Theme,
     /// Open the trigger editor on a new trigger for this line's words
     /// (`plan/54` step 4).
     TriggerFrom(String),
@@ -318,13 +320,6 @@ impl Play {
         }
         let mut changed = false;
         match top {
-            Some(draw::Top::Stop) => asked = Some(Asked::Stop),
-            Some(draw::Top::Settings) => asked = Some(Asked::Settings(None)),
-            Some(draw::Top::Keys) => asked = Some(Asked::Keys),
-            Some(draw::Top::Log) => asked = Some(Asked::Log),
-            Some(draw::Top::Triggers) => asked = Some(Asked::Triggers),
-            Some(draw::Top::ReloadKeys) => asked = Some(Asked::ReloadKeys),
-            Some(draw::Top::Lich(on)) => asked = Some(Asked::Lich(on)),
             Some(draw::Top::Fit) => {
                 self.layout = None;
                 changed = true;
@@ -349,6 +344,7 @@ impl Play {
                     changed = true;
                 }
             }
+            Some(top) => asked = top.asked(),
             None => {}
         }
         egui::Panel::bottom(Id::new(("play-input-panel", session))).show(ui, |ui| {
@@ -426,27 +422,6 @@ impl Play {
         }
         response.request_focus();
         self.enter()
-    }
-
-    /// What is typed, sent: taken from the input, and kept in the history
-    /// unless it is the last line again. Nothing for an empty line.
-    fn enter(&mut self) -> Option<String> {
-        let line = std::mem::take(&mut self.input);
-        if line.trim().is_empty() {
-            self.history.reset();
-            return None;
-        }
-        self.history.keep(&line);
-        Some(line)
-    }
-
-    /// Keep what is sent in `dir`, by the character's game and name, and
-    /// take up what was kept there: the app's windows do, and a test's
-    /// need not.
-    #[must_use]
-    pub(crate) fn keeping_history(mut self, dir: &std::path::Path) -> Self {
-        self.history = history::History::kept(dir, self.instance, &self.name);
-        self
     }
 }
 

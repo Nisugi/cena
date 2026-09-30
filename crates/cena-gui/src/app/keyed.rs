@@ -96,6 +96,33 @@ pub(super) fn asked(context: &egui::Context, window: &mut Play, action: Action) 
 }
 
 impl App {
+    /// Read the keybinds file again, and say what it bound; each
+    /// character's own is read again when next needed.
+    pub(super) fn read_keys(&mut self) {
+        self.mine.clear();
+        let Some(file) = &self.keys_file else {
+            return;
+        };
+        let (keys, problems) = crate::keys::Keybinds::load(file);
+        self.keys_said = std::iter::once(match keys.changed() {
+            0 => format!(
+                "{} keys bound, all Hydra's: change them here, and the changes are kept in {}.",
+                keys.len(),
+                file.display()
+            ),
+            changed => format!(
+                "{} keys bound, {changed} of them yours, from {}.",
+                keys.len(),
+                file.display()
+            ),
+        })
+        .chain(problems)
+        .collect();
+        self.clear_sends = keys.numpad_always();
+        self.keys = keys;
+        self.catch_again = true;
+    }
+
     /// The keys file of the character `name` of the game `game`, in the
     /// data folder; `None` where nothing is kept, or the game is unknown.
     pub(super) fn mine_path(&self, game: &str, name: &str) -> Option<PathBuf> {

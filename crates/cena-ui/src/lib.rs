@@ -11,6 +11,7 @@ mod merge;
 mod object_menu;
 mod projection;
 pub mod settings;
+pub mod theme;
 pub mod triggers;
 mod view;
 mod wire;

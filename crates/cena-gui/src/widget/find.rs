@@ -11,7 +11,7 @@
 
 use egui::Id;
 
-use crate::text::AMBER;
+use crate::theme::{self, T};
 
 /// What the Find bar looks for in a widget.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -123,8 +123,10 @@ impl Seek {
         }
         let rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), top..=ui.cursor().top());
         let current = self.current == Some(self.seen);
-        let fill = AMBER.gamma_multiply(if current { 0.35 } else { 0.12 });
-        ui.painter().rect_filled(rect, 2.0, fill);
+        let fill =
+            theme::color(ui.ctx(), T::Accent).gamma_multiply(if current { 0.35 } else { 0.12 });
+        ui.painter()
+            .rect_filled(rect, theme::corner(ui.ctx()), fill);
         if current && self.go && player {
             let now = egui::style::ScrollAnimation::none();
             ui.scroll_to_rect_animation(rect, Some(egui::Align::Center), now);

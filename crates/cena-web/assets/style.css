@@ -11,6 +11,14 @@
   --amber: #d7ad63;
   --text: #dddcd7;
   --muted: #a4aeb7;
+  --link: #477ab3;
+  --room-name: #d7ad63;
+  --creature: #bd8cff;
+  --player: #8ca8ff;
+  --object: #b7bdc3;
+  --speech: #f0eee8;
+  --whisper: #a9bbf5;
+  --thought: #a9bbf5;
   --font-ui: "Segoe UI", system-ui, sans-serif;
   --font-text: "Iosevka", "Cascadia Mono", "DejaVu Sans Mono", monospace;
 }
@@ -47,9 +55,9 @@ h3 { margin: 0 0 10px; color: var(--amber); font-size: .9375rem; }
 .room-details { margin: 18px 0; }
 .room-details dt { margin-top: 12px; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
 .room-details dd { margin: 3px 0 0; font-family: var(--font-text); }
-#room-creatures, .text-monster { color: #bd8cff; }
-#room-players { color: #8ca8ff; }
-#room-objects { color: #b7bdc3; }
+#room-creatures, .text-monster { color: var(--creature); }
+#room-players { color: var(--player); }
+#room-objects { color: var(--object); }
 details { border-top: 1px solid var(--line); padding-top: 8px; }
 summary { cursor: pointer; color: var(--amber); }
 #unknown-tags { font: .75rem var(--font-text); white-space: pre-wrap; }
@@ -59,10 +67,11 @@ summary { cursor: pointer; color: var(--amber); }
 .text-line { min-height: 1.3em; margin: 0 0 .35em; }
 .text-bold { font-weight: 700; }
 .text-mono { font-family: var(--font-text); }
-.text-room { color: var(--amber); font-weight: 700; }
+.text-room { color: var(--room-name); font-weight: 700; }
 .text-description { color: var(--text); }
-.text-speech { color: #f0eee8; }
-.text-whisper, .text-thought { color: #a9bbf5; }
+.text-speech { color: var(--speech); }
+.text-whisper { color: var(--whisper); }
+.text-thought { color: var(--thought); }
 .stream-label, .empty-state { color: var(--muted); font-style: italic; }
 .output-gap { color: #f0968c; font-style: italic; margin: 4px 10px; }
 .alerts { position: fixed; top: 12px; right: 12px; z-index: 10; max-width: 40ch; }

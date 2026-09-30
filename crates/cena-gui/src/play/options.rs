@@ -18,12 +18,15 @@ use std::path::PathBuf;
 use cena_ui::settings::{Page, Row, RowKind, Value};
 
 use super::Play;
-use crate::bar::{Fills, Look, Place};
+use crate::bar::{Fills, Place};
 use crate::story::Hours;
-use crate::widget::doll::{Backdrop, DollLook, Style};
-#[cfg(feature = "doll-infinite")]
-use crate::widget::infinite::BARE;
+use crate::widget::doll::DollLook;
 use crate::widget::{Lines, Listing, RoomParts, Stamps, Widget};
+use bar::{bar_rows, set};
+use doll::{doll_rows, doll_set};
+
+mod bar;
+mod doll;
 
 /// What a widget page's id begins with; the widget's id follows.
 pub(crate) const PREFIX: &str = "widget:";
@@ -151,7 +154,13 @@ impl Play {
                     (_, Some(default)) => {
                         let pulse = one.widget == Widget::Pulse;
                         bar_rows(
-                            layout.looks.get(&one.id),
+                            layout
+                                .looks
+                                .get(&one.id)
+                                .cloned()
+                                .zip(one.widget.bar_token())
+                                .map(|(look, token)| look.themed(token))
+                                .as_ref(),
                             &default,
                             &pictures.overlays,
                             pulse,
@@ -342,54 +351,6 @@ fn lines_set(lines: &mut Lines, key: &str, to: Option<&str>, story: bool) -> Res
     Ok(())
 }
 
-/// `look`'s `key` set to `to`, or to `default`'s.
-fn set(look: &mut Look, default: &Look, key: &str, to: Option<&str>) -> Result<(), String> {
-    let on = on_off;
-    match (key, to) {
-        ("fills", Some(to)) => {
-            look.fills = FILLS
-                .iter()
-                .find(|(_, value, _)| *value == to)
-                .map(|(fills, ..)| *fills)
-                .ok_or_else(|| format!("A bar does not fill `{to}`."))?;
-        }
-        ("fills", None) => look.fills = default.fills,
-        ("text", Some(to)) => {
-            look.place = PLACES
-                .iter()
-                .find(|(_, value, _)| *value == to)
-                .map(|(place, ..)| *place)
-                .ok_or_else(|| format!("A bar's text does not go `{to}`."))?;
-        }
-        ("text", None) => look.place = default.place,
-        ("label", to) => look.says.label = to.map_or(Ok(default.says.label), on)?,
-        ("numbers", to) => look.says.numbers = to.map_or(Ok(default.says.numbers), on)?,
-        ("percent", to) => look.says.percent = to.map_or(Ok(default.says.percent), on)?,
-        ("words", to) => look.says.words = to.map_or(Ok(default.says.words), on)?,
-        ("clock", to) => look.clock = to.map_or(Ok(default.clock), on)?,
-        ("color", Some(to)) => {
-            look.color = crate::menu::rgb(to).ok_or_else(|| format!("`{to}` is not a colour."))?;
-        }
-        ("color", None) => look.color = default.color,
-        ("ring", Some(to)) => {
-            look.ring = to
-                .parse::<u8>()
-                .ok()
-                .filter(|width| (RING_LEAST..=100).contains(width))
-                .ok_or_else(|| format!("`{to}` is not a thickness from {RING_LEAST} to 100."))?;
-        }
-        ("ring", None) => look.ring = default.ring,
-        ("overlay", Some("") | None) => look.overlay = None,
-        ("overlay", Some(path)) => look.overlay = Some(path.to_owned()),
-        ("background", Some("") | None) => look.background = None,
-        ("background", Some(path)) => look.background = Some(path.to_owned()),
-        ("fill_image", Some("") | None) => look.fill_image = None,
-        ("fill_image", Some(path)) => look.fill_image = Some(path.to_owned()),
-        (key, _) => return Err(format!("A bar has no setting {key}.")),
-    }
-    Ok(())
-}
-
 /// The Room widget's rows: each part, on or off, as `parts` says or all.
 fn room_rows(parts: Option<&RoomParts>) -> Vec<Row> {
     let default = RoomParts::default();
@@ -504,24 +465,6 @@ fn choice<'a>(named: impl Iterator<Item = (&'a str, &'a str)>) -> RowKind {
     )
 }
 
-/// How `fills` is written on the page.
-fn fills_value(fills: Fills) -> String {
-    FILLS
-        .iter()
-        .find(|(each, ..)| *each == fills)
-        .map_or("", |(_, value, _)| value)
-        .to_owned()
-}
-
-/// How `place` is written on the page.
-fn place_value(place: Place) -> String {
-    PLACES
-        .iter()
-        .find(|(each, ..)| *each == place)
-        .map_or("", |(_, value, _)| value)
-        .to_owned()
-}
-
 /// The overlays to choose from: none, then each image by its file's name.
 fn overlay_choice(overlays: &[PathBuf]) -> RowKind {
     let mut images: Vec<(String, String)> = vec![(String::new(), "None".to_owned())];
@@ -565,346 +508,3 @@ fn list_set(listing: &mut Listing, key: &str, to: Option<&str>) -> Result<(), St
     }
     Ok(())
 }
-
-/// The Injuries widget's rows: its picture, any in the data folder's
-/// `dolls`, or none for the body drawn in code.
-fn doll_rows(look: Option<&DollLook>, dolls: &[PathBuf]) -> Vec<Row> {
-    let picture = look.and_then(|look| look.picture.clone());
-    let style = look.map(|look| look.style).unwrap_or_default();
-    let mut styles = vec![
-        ("doll".to_owned(), "Doll".to_owned()),
-        ("text".to_owned(), "Text".to_owned()),
-    ];
-    if cfg!(feature = "doll-infinite") {
-        styles.push(("infinite".to_owned(), "Infinite".to_owned()));
-    }
-    let mut rows = vec![Row {
-        key: "style".to_owned(),
-        label: "Style".to_owned(),
-        help: "The Doll: dots on a picture or a body, or a picture's own art. Text: a line \
-               for each part hurt or scarred. Infinite: a puppet that moves as your \
-               character does."
-            .to_owned(),
-        kind: RowKind::Choice(styles),
-        value: Value::Text(
-            match style {
-                Style::Doll => "doll",
-                Style::Text => "text",
-                Style::Infinite => "infinite",
-            }
-            .to_owned(),
-        ),
-        here: style != Style::Doll,
-        from: None,
-    }];
-    rows.push(Row {
-        key: "picture".to_owned(),
-        label: "Picture".to_owned(),
-        help: "A picture of your own for the doll, from the dolls folder in Hydra's data \
-               folder; None draws a body. Calibrate it from the doll's right-click menu."
-            .to_owned(),
-        kind: overlay_choice(dolls),
-        value: Value::Text(picture.clone().unwrap_or_default()),
-        here: picture.is_some(),
-        from: None,
-    });
-    #[cfg(feature = "doll-infinite")]
-    if style == Style::Infinite {
-        let skin = look.and_then(|look| look.skin.clone());
-        let mut skins = vec![
-            (String::new(), "Lay figure".to_owned()),
-            (BARE.to_owned(), "The form's own".to_owned()),
-        ];
-        skins.extend(
-            crate::widget::infinite::skins()
-                .into_iter()
-                .map(|skin| (skin.clone(), skin.replace('_', " "))),
-        );
-        rows.push(Row {
-            key: "skin".to_owned(),
-            label: "Skin".to_owned(),
-            help: "What the Infinite puppet wears: the lay figure, the form's own \
-                   texture, or any skin gs_studio has for it."
-                .to_owned(),
-            kind: RowKind::Choice(skins),
-            value: Value::Text(skin.clone().unwrap_or_default()),
-            here: skin.is_some(),
-            from: None,
-        });
-        let backdrop = look.map_or(Backdrop::Day, |look| look.backdrop);
-        rows.push(Row {
-            key: "backdrop".to_owned(),
-            label: "Backdrop".to_owned(),
-            help: "What the puppet stands in front of: a day sky, gs_studio's dark display, \
-                   black, or a colour of your own."
-                .to_owned(),
-            kind: RowKind::Choice(
-                BACKDROPS
-                    .iter()
-                    .map(|(_, value, called)| ((*value).to_owned(), (*called).to_owned()))
-                    .collect(),
-            ),
-            value: Value::Text(backdrop_value(backdrop)),
-            here: backdrop != Backdrop::Day,
-            from: None,
-        });
-        if backdrop == Backdrop::Colour {
-            let colour = look.and_then(|look| look.colour.clone());
-            rows.push(Row {
-                key: "colour".to_owned(),
-                label: "Colour".to_owned(),
-                help: "The colour behind the puppet.".to_owned(),
-                kind: RowKind::Color,
-                value: Value::Text(colour.clone().unwrap_or_else(|| "#000000".to_owned())),
-                here: colour.is_some(),
-                from: None,
-            });
-        }
-    }
-    rows
-}
-
-/// The Injuries widget's backdrops: each, how it is written, its name.
-const BACKDROPS: [(Backdrop, &str, &str); 4] = [
-    (Backdrop::Day, "day", "Day sky"),
-    (Backdrop::Display, "display", "Display"),
-    (Backdrop::Black, "black", "Black"),
-    (Backdrop::Colour, "colour", "Solid colour"),
-];
-
-/// How `backdrop` is written on the page.
-#[cfg_attr(
-    not(feature = "doll-infinite"),
-    expect(dead_code, reason = "the doll's page")
-)]
-fn backdrop_value(backdrop: Backdrop) -> String {
-    BACKDROPS
-        .iter()
-        .find(|(each, ..)| *each == backdrop)
-        .map_or("", |(_, value, _)| value)
-        .to_owned()
-}
-
-/// Set the Injuries widget's `key` to `to`, or back to its own.
-fn doll_set(look: &mut DollLook, key: &str, to: Option<&str>) -> Result<(), String> {
-    match key {
-        "picture" => {
-            look.picture = to.filter(|path| !path.is_empty()).map(str::to_owned);
-            Ok(())
-        }
-        #[cfg(feature = "doll-infinite")]
-        "skin" => {
-            let skin = to.filter(|skin| !skin.is_empty());
-            if let Some(skin) = skin
-                && skin != BARE
-                && !crate::widget::infinite::skins()
-                    .iter()
-                    .any(|one| one == skin)
-            {
-                return Err(format!("Injuries has no skin {skin}."));
-            }
-            look.skin = skin.map(str::to_owned);
-            Ok(())
-        }
-        "facing" => {
-            look.facing = match to.map(str::trim).filter(|to| !to.is_empty()) {
-                None => None,
-                Some(to) => {
-                    let deg: f32 = to
-                        .trim_end_matches('\u{b0}')
-                        .parse()
-                        .ok()
-                        .filter(|deg: &f32| deg.is_finite())
-                        .ok_or_else(|| format!("`{to}` is not a facing in degrees."))?;
-                    #[expect(
-                        clippy::cast_possible_truncation,
-                        reason = "wrapped to -180..180 first"
-                    )]
-                    Some(((deg + 180.0).rem_euclid(360.0) - 180.0).round() as i16)
-                }
-            };
-            Ok(())
-        }
-        "backdrop" => {
-            look.backdrop = match to {
-                None => Backdrop::Day,
-                Some(to) => BACKDROPS
-                    .iter()
-                    .find(|(_, value, _)| *value == to)
-                    .map(|(each, ..)| *each)
-                    .ok_or_else(|| format!("Injuries has no backdrop {to}."))?,
-            };
-            Ok(())
-        }
-        "colour" => {
-            look.colour = match to.filter(|colour| !colour.is_empty()) {
-                None => None,
-                Some(to) => Some(
-                    crate::menu::rgb(to)
-                        .map(crate::menu::hex)
-                        .ok_or_else(|| format!("`{to}` is not a colour."))?,
-                ),
-            };
-            Ok(())
-        }
-        "style" => {
-            look.style = match to {
-                None | Some("doll") => Style::Doll,
-                Some("infinite") => Style::Infinite,
-                Some("text") => Style::Text,
-                Some(other) => return Err(format!("Injuries has no style {other}.")),
-            };
-            Ok(())
-        }
-        _ => Err(format!("Injuries has no setting {key}.")),
-    }
-}
-
-/// A bar widget's rows: how it draws, as `look` says, or its kind's own.
-fn bar_rows(look: Option<&Look>, default: &Look, overlays: &[PathBuf], clock: bool) -> Vec<Row> {
-    let now = look.unwrap_or(default);
-    let row = |key: &str, label: &str, help: &str, kind: RowKind, value: Value, here: bool| Row {
-        key: key.to_owned(),
-        label: label.to_owned(),
-        help: help.to_owned(),
-        kind,
-        value,
-        here,
-        from: None,
-    };
-    let says = |key: &str, label: &str, help: &str, now: bool, default: bool| {
-        row(
-            key,
-            label,
-            help,
-            RowKind::Toggle,
-            Value::On(now),
-            now != default,
-        )
-    };
-    vec![
-        row(
-            "fills",
-            "Fills",
-            "Across or upright and from which edge, or round: an orb or a ring. A bar takes its whole space, a round one the square in its middle: size it by its window or cell.",
-            choice(FILLS.iter().map(|(_, value, called)| (*value, *called))),
-            Value::Text(fills_value(now.fills)),
-            now.fills != default.fills,
-        ),
-        row(
-            "ring",
-            "Ring thickness",
-            "A ring's thickness, in percent of its radius: 100 is a disc.",
-            RowKind::Whole {
-                min: u32::from(RING_LEAST),
-                max: 100,
-            },
-            Value::Text(now.ring.to_string()),
-            now.ring != default.ring,
-        ),
-        row(
-            "text",
-            "Text",
-            "Where its words go: inside, beside it, or none.",
-            choice(PLACES.iter().map(|(_, value, called)| (*value, *called))),
-            Value::Text(place_value(now.place)),
-            now.place != default.place,
-        ),
-        says(
-            "label",
-            "Says its label",
-            "Its name: HP, MP, Stance, Mind.",
-            now.says.label,
-            default.says.label,
-        ),
-        // A bar the game words has its word to say, and no current/max.
-        if default.says.words {
-            says(
-                "words",
-                "Says the game's word",
-                "What the game calls it: offensive, Light, clear as a bell.",
-                now.says.words,
-                default.says.words,
-            )
-        } else {
-            says(
-                "numbers",
-                "Says current/max",
-                "350/400, when the game has said both.",
-                now.says.numbers,
-                default.says.numbers,
-            )
-        },
-        says(
-            "percent",
-            "Says its percent",
-            "87%.",
-            now.says.percent,
-            default.says.percent,
-        ),
-        row(
-            "color",
-            "Colour",
-            "Its fill's colour.",
-            RowKind::Color,
-            Value::Text(crate::menu::hex(now.color)),
-            now.color != default.color,
-        ),
-    ]
-    .into_iter()
-    .chain(clock.then(|| clock_row(now, default)))
-    .chain(image_rows(now, overlays))
-    .collect()
-}
-
-/// The pulse's Clock row: just a clock, in place of its bar.
-fn clock_row(now: &Look, default: &Look) -> Row {
-    Row {
-        key: "clock".to_owned(),
-        label: "Clock".to_owned(),
-        help: "Just a clock: seconds to the earliest pulse, then below zero until it comes."
-            .to_owned(),
-        kind: RowKind::Toggle,
-        value: Value::On(now.clock),
-        here: now.clock != default.clock,
-        from: None,
-    }
-}
-
-/// A bar widget's images, as `now` has them: the fill's, the one under it
-/// and the one over it, each any PNG in the data folder's overlays folder. An
-/// orb's or a ring's is laid over the square it sits in.
-fn image_rows(now: &Look, overlays: &[PathBuf]) -> Vec<Row> {
-    let row = |key: &str, label: &str, help: &str, set: &Option<String>| Row {
-        key: key.to_owned(),
-        label: label.to_owned(),
-        help: help.to_owned(),
-        kind: overlay_choice(overlays),
-        value: Value::Text(set.clone().unwrap_or_default()),
-        here: set.is_some(),
-        from: None,
-    };
-    vec![
-        row(
-            "fill_image",
-            "Fill image",
-            "An image the fill uncovers as it fills, in place of its colour: a liquid.",
-            &now.fill_image,
-        ),
-        row(
-            "background",
-            "Background",
-            "An image under the fill, in place of the empty part: an orb's glass.",
-            &now.background,
-        ),
-        row(
-            "overlay",
-            "Overlay",
-            "An image laid over the bar and its fill, stretched: a frame, a gloss.",
-            &now.overlay,
-        ),
-    ]
-}
-
-/// The thinnest a ring may be, in percent of its radius.
-const RING_LEAST: u8 = 5;

@@ -17,13 +17,11 @@
 //! anything: the author asked that the everyday surface stay simple
 //! (`plan/49` §1 row 3).
 
-use egui::{
-    Align2, Color32, CursorIcon, FontId, Id, LayerId, Order, Pos2, Rect, Sense, Stroke, Vec2,
-};
+use egui::{Align2, CursorIcon, FontId, Id, LayerId, Order, Pos2, Rect, Sense, Stroke, Vec2};
 
 use crate::layout::{Cell, Custom, SMALLEST_CELL, Taking, stacks_at, tabs_and_body};
 use crate::snap;
-use crate::text::AMBER;
+use crate::theme::{self, T, readable_on};
 
 /// How far inside a cell's edge a press takes the edge rather than the cell.
 const EDGE: f32 = 5.0;
@@ -243,14 +241,21 @@ fn overlay(ui: &egui::Ui, body: Rect, holder: u32, placed: u32, names: &str) -> 
     );
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, names));
     let painter = ui.painter();
-    painter.rect_filled(body, 0.0, Color32::from_black_alpha(170));
-    painter.rect_stroke(body, 0.0, Stroke::new(1.0, AMBER), egui::StrokeKind::Inside);
+    let accent = theme::color(ui.ctx(), T::Accent);
+    let veil = theme::color(ui.ctx(), T::Veil).gamma_multiply(170.0 / 255.0);
+    painter.rect_filled(body, 0.0, veil);
+    painter.rect_stroke(
+        body,
+        0.0,
+        Stroke::new(1.0, accent),
+        egui::StrokeKind::Inside,
+    );
     painter.text(
         body.center(),
         Align2::CENTER_CENTER,
         names,
         FontId::proportional(12.0),
-        AMBER,
+        accent,
     );
     if let Some(at) = response.hover_pos() {
         ui.ctx().set_cursor_icon(Grab::at(body, at).cursor());
@@ -320,8 +325,9 @@ impl Arranging<'_> {
             if let Some(onto) = onto {
                 // Let go here, it stacks: the cell it would join lights up.
                 let target = self.rects[onto].translate(self.inside.min.to_vec2());
+                let accent = theme::color(ui.ctx(), T::Accent);
                 ui.painter()
-                    .rect_filled(target, 0.0, AMBER.gamma_multiply(0.35));
+                    .rect_filled(target, 0.0, accent.gamma_multiply(0.35));
             }
             if matches!(taking, Taking::Cell(_)) {
                 cell.set(snapped);
@@ -381,7 +387,7 @@ impl Arranging<'_> {
 
     /// A line for each snap a cell's gesture has engaged, in its window.
     fn guide(&self, ui: &egui::Ui, guides: &[snap::Guide]) {
-        let accent = Stroke::new(1.5, AMBER);
+        let accent = Stroke::new(1.5, theme::color(ui.ctx(), T::Accent));
         for guide in guides {
             if guide.vertical {
                 ui.painter()
@@ -421,13 +427,14 @@ fn kept_in(rect: Rect, bounds: Rect, grab: Grab) -> Rect {
 fn ghost(context: &egui::Context, at: Pos2, name: &str) {
     let painter = context.layer_painter(LayerId::new(Order::Tooltip, Id::new("arrange-ghost")));
     let rect = Rect::from_center_size(at, Vec2::new(140.0, 24.0));
-    painter.rect_filled(rect, 3.0, AMBER.gamma_multiply(0.85));
+    let accent = theme::color(context, T::Accent);
+    painter.rect_filled(rect, theme::corner(context), accent.gamma_multiply(0.85));
     painter.text(
         rect.center(),
         Align2::CENTER_CENTER,
         name,
         FontId::proportional(13.0),
-        egui::Color32::BLACK,
+        readable_on(accent),
     );
 }
 

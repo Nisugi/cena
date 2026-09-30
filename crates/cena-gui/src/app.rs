@@ -102,8 +102,24 @@ pub struct App {
     placements: Placements,
     /// The trigger editor (`plan/54`).
     triggers: crate::triggers::Editor,
+    /// The theme editor (`plan/57` step 6).
+    themer: crate::theme_editor::Editor,
+    /// The editor's draft, worn on the whole window while it is open and
+    /// asked to; `None`, the theme chosen.
+    preview: Option<cena_ui::theme::Outfit>,
     /// The trigger import's question, while one is asked (`import.rs`).
     asking: trigger_import::Asking,
+    /// The themes there are: the built-ins and the `themes` folder's.
+    themes: cena_ui::theme::Themes,
+    /// The theme worn, by name; `None` until one is, or after a change.
+    worn: Option<String>,
+    /// Why the theme asked for is not worn, shown on the *Window* page.
+    theme_problem: Option<String>,
+    /// Each character's own theme and accent, as its file says (`looks.rs`).
+    looks: looks::Looks,
+    /// What the fonts folder said when it was loaded into egui, each file
+    /// refused (`fonts.rs`); `None` until it is.
+    fonts: Option<Vec<String>>,
 }
 
 /// One character's play window.
@@ -140,12 +156,19 @@ impl App {
             numlock: None,
             menu: Menu::default(),
             own: Own::default(),
+            themes: cena_ui::theme::Themes::built_in(),
+            worn: None,
+            theme_problem: None,
+            looks: looks::Looks::default(),
+            fonts: None,
             menu_waits: false,
             caught_for_page: None,
             clear_sends: false,
             logs: BTreeMap::new(),
             placements: Placements::default(),
             triggers: crate::triggers::Editor::default(),
+            themer: crate::theme_editor::Editor::default(),
+            preview: None,
             asking: trigger_import::Asking::default(),
         }
     }
@@ -162,6 +185,7 @@ impl App {
             presets: Library::load(Some(data.join("layouts"))),
             keys_file: Some(keys::path(data)),
             placements: Placements::load(data),
+            themes: cena_ui::theme::Themes::load(&data.join("themes")),
             ..Self::new(sessions)
         };
         app.hub.card_width = own.card_width();
@@ -170,38 +194,12 @@ impl App {
         app
     }
 
-    /// Read the keybinds file again, and say what it bound; each
-    /// character's own is read again when next needed.
-    fn read_keys(&mut self) {
-        self.mine.clear();
-        let Some(file) = &self.keys_file else {
-            return;
-        };
-        let (keys, problems) = Keybinds::load(file);
-        self.keys_said = std::iter::once(match keys.changed() {
-            0 => format!(
-                "{} keys bound, all Hydra's: change them here, and the changes are kept in {}.",
-                keys.len(),
-                file.display()
-            ),
-            changed => format!(
-                "{} keys bound, {changed} of them yours, from {}.",
-                keys.len(),
-                file.display()
-            ),
-        })
-        .chain(problems)
-        .collect();
-        self.clear_sends = keys.numpad_always();
-        self.keys = keys;
-        self.catch_again = true;
-    }
-
     /// Draw one frame into `ui` -- the hub, then each open play window --
     /// and act on what the player asked. What eframe calls each frame, and
     /// what a test drives directly.
     pub fn draw(&mut self, ui: &mut egui::Ui) {
         crate::carry::set_key(ui.ctx(), self.own.drag_with());
+        self.wear_theme(ui.ctx());
         let glance = self.sessions.glance();
         let seats = self.sessions.seated();
         self.seat(&seats);
@@ -250,6 +248,7 @@ impl App {
             }
             Some(HubAction::Settings) => self.menu.open_for(None),
             Some(HubAction::Triggers) => self.open_triggers(),
+            Some(HubAction::Theme) => self.open_theme_editor(),
             Some(HubAction::Lich(session, on)) => {
                 if let Some(seat) = seats.iter().find(|seat| seat.id.0 == session) {
                     self.hydras(seat, lich_word(on));
@@ -293,6 +292,7 @@ impl App {
         self.left_keyboard();
         self.settings(ui.ctx(), &glance);
         self.trigger_window(ui.ctx(), &glance);
+        self.theme_window(ui.ctx());
         self.import_question(ui.ctx(), glance.import.as_ref());
         self.log_windows(ui.ctx(), &seats);
         if let Some(after) = self.placements.save_due(Instant::now()) {
@@ -342,6 +342,13 @@ impl App {
         let keys = self.keys.of(mine.map(|(mine, _)| mine));
         let chosen = mine.map_or(0, |(mine, _)| mine.chosen);
         let keys_said = self.keys_said(mine, &seat.name);
+        let own_outfit = self.settings_path(&seat.game, &seat.name).and_then(|file| {
+            self.looks.outfit(
+                &file,
+                &self.themes,
+                self.worn.as_deref().unwrap_or_default(),
+            )
+        });
         let caught = &mut self.caught;
         let numlock = self.numlock;
         let mut focused = false;
@@ -377,6 +384,7 @@ impl App {
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             ([980.0, 680.0], format!("{} — {TITLE}", seat.name)),
             |ui| {
+                let worn = crate::theme::wearing(ui.ctx(), own_outfit.as_ref());
                 let (pressed, has) = keyed::pressed(ui, keys, &window.play, caught);
                 focused |= has;
                 for made in pressed {
@@ -415,6 +423,7 @@ impl App {
                 };
                 asked = asked.take().or(window.play.show(ui, &view));
                 drop(story);
+                drop(worn);
             },
         );
         if closed {
@@ -423,7 +432,7 @@ impl App {
         if focused {
             self.took_keyboard(seat.id.0, file);
         }
-        if let Some(after) = clocks_run(snapshot.as_deref(), &seat.story) {
+        if let Some(after) = clocks::clocks_run(snapshot.as_deref(), &seat.story) {
             context.request_repaint_after(after);
         }
         self.send_macros(context, seat, sends);
@@ -447,39 +456,6 @@ impl App {
         self.placements.save();
         true
     }
-}
-
-/// When something in a play window counts down by itself -- roundtime,
-/// cast time, a banner, an effect's time left -- how soon it must be drawn
-/// again without an event to prompt it: the clocks a quarter of a second,
-/// an effect, which counts whole seconds, a second.
-fn clocks_run(
-    snapshot: Option<&cena_session::Snapshot>,
-    story: &std::sync::Mutex<crate::story::Story>,
-) -> Option<Duration> {
-    let state = snapshot.map(|snapshot| &snapshot.state);
-    let clocks = state.is_some_and(|state| {
-        state.roundtime_remaining().is_some_and(|s| s > 0)
-            || state.casttime_remaining().is_some_and(|s| s > 0)
-    });
-    if clocks || lock(story).alerts_at(Instant::now()).next().is_some() {
-        return Some(Duration::from_millis(250));
-    }
-    let effects = state.is_some_and(|state| {
-        state.game_time_now().is_some_and(|now| {
-            state
-                .effects
-                .iter()
-                .any(|(id, _)| state.effects.remaining(id, now).is_some_and(|s| s > 0))
-                || state
-                    .world
-                    .pulse
-                    .as_ref()
-                    .and_then(|pulse| pulse.due(now))
-                    .is_some_and(|(_, most)| most > 0)
-        })
-    });
-    effects.then_some(Duration::from_secs(1))
 }
 
 impl eframe::App for App {
@@ -529,12 +505,15 @@ pub fn run(sessions: Sessions) -> eframe::Result {
 }
 
 mod asked;
+mod clocks;
 use asked::lich_word;
 mod import;
 mod keyed;
 mod logs;
+mod looks;
 mod settings;
 #[cfg(test)]
 mod tests;
+mod theme_window;
 mod trigger_import;
 mod triggers;

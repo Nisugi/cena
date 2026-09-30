@@ -21,6 +21,7 @@ mod doll_import;
 mod feed;
 #[cfg(test)]
 mod fixture;
+mod fonts;
 mod hub;
 mod keys;
 mod launch;
@@ -35,6 +36,8 @@ mod sessions;
 mod snap;
 mod story;
 mod text;
+mod theme;
+mod theme_editor;
 mod triggers;
 mod widget;
 

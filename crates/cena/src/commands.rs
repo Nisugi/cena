@@ -106,6 +106,7 @@ pub(crate) const HELP: &[&str] = &[
     "sorter           show a container's contents one line per category: sorter on, off or status",
     "targetid         a tag after each creature's name, tk <tag> and the rest as the script's: targetid on, off, status, slot or health",
     "doll import <folder>   your VellumFE injury dolls into Hydra, each calibration kept in its picture",
+    "theme help       themes: list them, this character's own and its accent, a Wrayth file's presets as one",
     "multi help, foreach help   run commands several times, or once for each item",
     "agent help       what an agent (a program such as Claude Code) may do with this character",
     "lich help        run your own Lich for this character, and keep it on",
@@ -137,6 +138,8 @@ pub(crate) struct Commands {
     history: Arc<OnceLock<Handler>>,
     /// The injury doll's import (`crate::doll`).
     doll: Arc<OnceLock<Handler>>,
+    /// The themes (`crate::theme_command`).
+    theme: Arc<OnceLock<Handler>>,
     sorter: Arc<OnceLock<Handler>>,
     /// Creature tags (`crate::targetid`).
     targetid: Arc<OnceLock<Handler>>,
@@ -247,6 +250,7 @@ impl Commands {
             &self.combat,
             &self.history,
             &self.doll,
+            &self.theme,
             &self.sorter,
             &self.targetid,
             &self.trigger,
@@ -310,6 +314,11 @@ impl Commands {
     /// Route `;doll` to `handler` from now on. Once, as for travel.
     pub(crate) fn doll(&self, handler: Handler) {
         once(&self.doll, "doll", handler);
+    }
+
+    /// Route `;theme` to `handler` from now on. Once, as for travel.
+    pub(crate) fn theme(&self, handler: Handler) {
+        once(&self.theme, "theme", handler);
     }
 
     /// Route `;sorter` to `handler` from now on. Once, as for travel.

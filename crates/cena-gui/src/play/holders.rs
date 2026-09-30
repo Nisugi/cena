@@ -36,7 +36,7 @@ use super::drawers::backdrop;
 use super::{Play, PlayView, arrange, draw};
 use crate::layout::{Holds, Layout, SMALLEST, Zone, Zones};
 use crate::snap::{self, Guide};
-use crate::text::AMBER;
+use crate::theme::{self, T};
 use crate::widget::{Clicked, Seen};
 
 /// How far outside a window its resize handles reach, so a press there
@@ -495,7 +495,10 @@ fn guide(context: &egui::Context, area: Rect, grid: f32, guides: &[Guide], sessi
         ))
         .with_clip_rect(area);
     if grid >= 4.0 {
-        let faint = Stroke::new(1.0, egui::Color32::from_white_alpha(18));
+        let faint = Stroke::new(
+            1.0,
+            theme::color(context, T::Grid).gamma_multiply(18.0 / 255.0),
+        );
         let mut x = area.min.x;
         while x <= area.max.x {
             painter.vline(x, area.y_range(), faint);
@@ -507,7 +510,7 @@ fn guide(context: &egui::Context, area: Rect, grid: f32, guides: &[Guide], sessi
             y += grid;
         }
     }
-    let accent = Stroke::new(1.5, AMBER);
+    let accent = Stroke::new(1.5, theme::color(context, T::Accent));
     for guide in guides {
         if guide.vertical {
             painter.vline(area.min.x + guide.at, area.y_range(), accent);

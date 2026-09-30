@@ -4,11 +4,11 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use egui::{Color32, Id, UiBuilder};
+use egui::{Id, UiBuilder};
 
 use super::PlayView;
 use crate::layout::{Holds, Placed, tabs_and_body};
-use crate::text::{AMBER, WRONG};
+use crate::theme::{self, T, readable_on};
 use crate::widget::{Character, Seen};
 
 /// What a play window's widgets are drawn with, this frame.
@@ -56,10 +56,17 @@ pub(super) struct Drawing<'a> {
 }
 
 impl Drawing<'_> {
-    /// What the player chose for widget `placed` on its own page.
-    fn chosen(&self, placed: u32) -> crate::widget::Chosen {
+    /// What the player chose for the widget placed as `placed` on its own
+    /// page.
+    fn chosen(&self, placed: &Placed) -> crate::widget::Chosen {
+        let (placed, widget) = (placed.id, &placed.widget);
         crate::widget::Chosen {
-            look: self.looks.get(&placed).cloned(),
+            look: self
+                .looks
+                .get(&placed)
+                .cloned()
+                .zip(widget.bar_token())
+                .map(|(look, token)| look.themed(token)),
             room: self.rooms.get(&placed).copied(),
             lines: self.lines.get(&placed).copied(),
             doll: self.dolls.get(&placed).cloned(),
@@ -92,10 +99,31 @@ pub(super) enum Top {
     Log,
     /// The trigger editor was asked for.
     Triggers,
+    /// The theme editor was asked for.
+    Theme,
     /// The settings menu's *Keys* page was asked for.
     Keys,
     /// The player's own Lich was switched on, or off.
     Lich(bool),
+}
+
+impl Top {
+    /// What it asks of the app, for the buttons that change nothing in the
+    /// window itself: stop, and the windows they open.
+    pub(super) fn asked(self) -> Option<super::Asked> {
+        use super::Asked;
+        Some(match self {
+            Top::Stop => Asked::Stop,
+            Top::Settings => Asked::Settings(None),
+            Top::Keys => Asked::Keys,
+            Top::Log => Asked::Log,
+            Top::Triggers => Asked::Triggers,
+            Top::Theme => Asked::Theme,
+            Top::ReloadKeys => Asked::ReloadKeys,
+            Top::Lich(on) => Asked::Lich(on),
+            _ => return None,
+        })
+    }
 }
 
 /// The buttons that open another window: *Settings*, *Triggers* and *Log*,
@@ -117,6 +145,11 @@ fn windows(ui: &mut egui::Ui) -> Option<Top> {
             "Log",
             "What this character saw, read back: by day, searched, or exported",
             Top::Log,
+        ),
+        (
+            "Theme",
+            "Make a theme: its colours, shape and type",
+            Top::Theme,
         ),
     ] {
         if ui.button(label).on_hover_text(hover).clicked() {
@@ -204,7 +237,7 @@ pub(super) fn top(
             ui.toggle_value(locked, "Lock")
                 .on_hover_text("Keep every window where it is: none is dragged or resized");
             if let Some(why) = unsaved {
-                ui.colored_label(WRONG, why);
+                ui.colored_label(theme::color(ui.ctx(), T::Wrong), why);
             }
             if let Some(on) = view.numlock {
                 ui.weak(if on { "NumLock on" } else { "NumLock off" });
@@ -215,12 +248,13 @@ pub(super) fn top(
             }
         });
     });
+    let ground = theme::color(ui.ctx(), T::Warning);
     for alert in view.story.alerts_at(view.now) {
         egui::Frame::new()
-            .fill(AMBER)
+            .fill(ground)
             .inner_margin(4.0)
             .show(ui, |ui| {
-                ui.colored_label(Color32::BLACK, alert);
+                ui.colored_label(readable_on(ground), alert);
             });
     }
     asked
@@ -315,9 +349,13 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
     }
     if drawing.in_use == Some(placed.id) {
         // The window in use, which a scrolling key acts on.
-        let stroke = egui::Stroke::new(1.0, crate::text::AMBER.gamma_multiply(0.5));
-        ui.painter()
-            .rect_stroke(rect, 2.0, stroke, egui::StrokeKind::Inside);
+        let stroke = egui::Stroke::new(1.0, theme::color(ui.ctx(), T::Accent).gamma_multiply(0.5));
+        ui.painter().rect_stroke(
+            rect,
+            theme::corner(ui.ctx()),
+            stroke,
+            egui::StrokeKind::Inside,
+        );
     }
     drawn(ui, placed, drawing);
 }
@@ -333,7 +371,7 @@ fn drawn(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
         if let Some(count) = placed.widget.count(&drawing.seen) {
             drawing.read.insert(placed.id, count);
         }
-        let chosen = drawing.chosen(placed.id);
+        let chosen = drawing.chosen(placed);
         match placed.widget.draw_with(ui, &drawing.seen, id, &chosen) {
             Some(crate::widget::Clicked::Set { key, to }) => {
                 drawing.set = Some((placed.id, key, to));
@@ -358,7 +396,7 @@ fn drawn(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
                 ..drawing.seen
             };
             // Another character's widget sends nothing on this one's.
-            let chosen = drawing.chosen(placed.id);
+            let chosen = drawing.chosen(placed);
             let _ = placed.widget.draw_with(ui, &seen, id, &chosen);
         }
         None => {

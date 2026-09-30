@@ -104,8 +104,9 @@ pub async fn receipt(
                 } if request_id == expected_id => return Ok(status),
                 ServerMessage::Update { lines: new, .. } => lines.extend(new),
                 ServerMessage::Snapshot { story, .. } => *lines = story,
-                // A banner is a session page's, and says nothing of the receipt.
-                ServerMessage::Alert { .. } => {}
+                // A banner is a session page's, and says nothing of the
+                // receipt; nor does the theme every page is sent.
+                ServerMessage::Alert { .. } | ServerMessage::Theme { .. } => {}
                 ServerMessage::Receipt { .. } => {
                     return Err(io::Error::other("unexpected command receipt").into());
                 }
