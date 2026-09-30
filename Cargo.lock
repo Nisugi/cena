@@ -1926,7 +1926,7 @@ dependencies = [
 [[package]]
 name = "gs_field"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/gs_studio?rev=cd9d990497a4a020ef74cf776e71e35d051af606#cd9d990497a4a020ef74cf776e71e35d051af606"
+source = "git+https://github.com/Nisugi/gs_studio?branch=main#c6e76030f16cd4482d6a9384920435b6cd5fc7a7"
 dependencies = [
  "anyhow",
  "dirs",
@@ -1943,7 +1943,7 @@ dependencies = [
 [[package]]
 name = "gs_field_egui"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/gs_studio?rev=cd9d990497a4a020ef74cf776e71e35d051af606#cd9d990497a4a020ef74cf776e71e35d051af606"
+source = "git+https://github.com/Nisugi/gs_studio?branch=main#c6e76030f16cd4482d6a9384920435b6cd5fc7a7"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1958,7 +1958,7 @@ dependencies = [
 [[package]]
 name = "gs_puppet"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/gs_studio?rev=cd9d990497a4a020ef74cf776e71e35d051af606#cd9d990497a4a020ef74cf776e71e35d051af606"
+source = "git+https://github.com/Nisugi/gs_studio?branch=main#c6e76030f16cd4482d6a9384920435b6cd5fc7a7"
 dependencies = [
  "egui",
  "rig",
@@ -3989,7 +3989,7 @@ dependencies = [
 [[package]]
 name = "rig"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/gs_studio?rev=cd9d990497a4a020ef74cf776e71e35d051af606#cd9d990497a4a020ef74cf776e71e35d051af606"
+source = "git+https://github.com/Nisugi/gs_studio?branch=main#c6e76030f16cd4482d6a9384920435b6cd5fc7a7"
 dependencies = [
  "png 0.17.16",
  "rig_bake",
@@ -4001,7 +4001,7 @@ dependencies = [
 [[package]]
 name = "rig_bake"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/gs_studio?rev=cd9d990497a4a020ef74cf776e71e35d051af606#cd9d990497a4a020ef74cf776e71e35d051af606"
+source = "git+https://github.com/Nisugi/gs_studio?branch=main#c6e76030f16cd4482d6a9384920435b6cd5fc7a7"
 
 [[package]]
 name = "rmcp"
@@ -5307,7 +5307,7 @@ dependencies = [
 [[package]]
 name = "vellum_light"
 version = "0.1.0"
-source = "git+https://github.com/Nisugi/gs_studio?rev=cd9d990497a4a020ef74cf776e71e35d051af606#cd9d990497a4a020ef74cf776e71e35d051af606"
+source = "git+https://github.com/Nisugi/gs_studio?branch=main#c6e76030f16cd4482d6a9384920435b6cd5fc7a7"
 
 [[package]]
 name = "version_check"

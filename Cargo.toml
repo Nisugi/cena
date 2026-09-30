@@ -57,11 +57,14 @@ egui_kittest = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b
 # the bundled fonts; not glow, not persistence, not eframe's defaults.
 eframe = { git = "https://github.com/Nisugi/egui.git", rev = "ed8b2649fd4b1c3351e38988b045f1bf33335f38", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"] }
 # The injury doll's Infinite style (plan/55 §2f): gs_studio's puppet and its
-# renderer, at one commit, built on the same egui commit as above (gs_studio
-# pins it so; two egui builds could not share a `Ui`). Only `cena-gui` uses
-# them, behind its `doll-infinite` feature.
-gs_field = { git = "https://github.com/Nisugi/gs_studio", rev = "cd9d990497a4a020ef74cf776e71e35d051af606" }
-gs_field_egui = { git = "https://github.com/Nisugi/gs_studio", rev = "cd9d990497a4a020ef74cf776e71e35d051af606" }
+# renderer, from gs_studio's main, built on the same egui commit as above
+# (gs_studio pins it so; two egui builds could not share a `Ui`). Cargo.lock
+# holds the commit in use; `cargo update -p gs_field --precise <main's commit>`
+# takes a newer one (a plain `cargo update -p gs_field` also lifts wgpu's
+# dependencies past what builds together).
+# Only `cena-gui` uses them, behind its `doll-infinite` feature.
+gs_field = { git = "https://github.com/Nisugi/gs_studio", branch = "main" }
+gs_field_egui = { git = "https://github.com/Nisugi/gs_studio", branch = "main" }
 
 # The first and only serialization in the workspace, added for M3 step 8.
 # `research/04-inherited-decisions.md:1878` (C21) argues the character store is

@@ -502,7 +502,9 @@ The glossary gains *doll*, *anchor*, *overlay* and *style*.
   carries `054a86c` and the humanoid's lay figure and grid textures. Only the gs_studio source
   moved: `cargo update -p gs_field` also lifted its graphics dependencies to versions that do
   not build together (`wgpu-hal` against a newer `windows`), so the lock is edited by a
-  `cargo check`, not an update.
+  `cargo check`, not an update. **Then followed on `main`** (the author: *"why does hydra have
+  to pin a commit from gs_studio and not just main?"*): `branch = "main"`, the lock at
+  `c6e7603`; the egui fork does not move, so the reason for a `rev` is gone.
 - **The Doll plus is not a style of its own.** As VellumFE has it, a picture with overlays is
   the Doll plus: the page offers the Doll and Infinite, and a picture's art does the rest.
 - **The Doll's colours are the palette's, not a calibration's.** VellumFE's `wound_color` and
