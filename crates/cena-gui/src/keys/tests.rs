@@ -339,3 +339,24 @@ fn a_chosen_set_goes_over_set_0() {
         "set 1's own keys, none of set 0's or Hydra's"
     );
 }
+
+/// A chord holding Cmd is bindable on macOS alone, where the Command key
+/// is; elsewhere it is refused with why, rather than written and never
+/// fired.
+#[test]
+fn cmd_is_refused_where_there_is_no_command_key() {
+    let chord = Chord::parse("win+F1").expect("parses everywhere");
+    assert_eq!(chord.written(), "Cmd+F1");
+    let refused = chord.refused();
+    if cfg!(target_os = "macos") {
+        assert_eq!(refused, None);
+    } else {
+        assert!(
+            refused
+                .as_deref()
+                .is_some_and(|why| why.contains("Command key")),
+            "{refused:?}"
+        );
+    }
+    assert_eq!(Chord::parse("ctrl+F1").expect("parses").refused(), None);
+}

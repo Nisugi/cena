@@ -54,7 +54,11 @@ pub(crate) const CTRL: u8 = 1;
 pub(crate) const SHIFT: u8 = 2;
 /// Alt, Option on macOS.
 pub(crate) const ALT: u8 = 4;
-/// Cmd on macOS, the Windows key elsewhere.
+/// Cmd, on macOS. Nowhere else: egui-winit sets `mac_cmd` only there
+/// (`crates/egui-winit/src/lib.rs:479` in the fork, `cfg!(target_os =
+/// "macos") && super_`), so a chord holding it is refused off macOS
+/// ([`Chord::refused`]) rather than written and never fired. (This said
+/// *"the Windows key elsewhere"*: the review of 2026-09-29.)
 pub(crate) const CMD: u8 = 8;
 
 /// A key with the modifiers held.
@@ -130,9 +134,14 @@ impl Chord {
     /// something rather than commanding -- a letter, a digit, a mark or the
     /// space, with no Ctrl, Alt or Cmd held -- or it is Enter alone, which
     /// sends what is typed (`plan/52` §3: a key that cannot be bound should
-    /// not look bindable).
+    /// not look bindable); or it holds Cmd where there is none ([`CMD`]).
     pub(crate) fn refused(&self) -> Option<String> {
         let written = self.written();
+        if self.held & CMD != 0 && !cfg!(target_os = "macos") {
+            return Some(format!(
+                "{written}: Cmd is macOS's Command key; Hydra does not see the Windows key."
+            ));
+        }
         if self.held & (CTRL | ALT | CMD) == 0 && types(&self.key) {
             return Some(format!(
                 "{written} types: hold Ctrl, Alt or Cmd with it, or it could not be typed."
