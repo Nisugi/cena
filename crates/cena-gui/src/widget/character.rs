@@ -8,7 +8,8 @@ use std::fmt::Write as _;
 
 use cena_session::GameState;
 
-use crate::bar::{self, Amount, Bar, ENCUMBRANCE, LEVEL, MIND, STANCE};
+use crate::bar::{self, Amount, Bar};
+use crate::theme::{self, T};
 
 /// A bar the game words, as a vital is drawn (the author, 2026-09-29:
 /// *"It's basically a progress bar right? So it should have all the same
@@ -18,7 +19,7 @@ fn gauge(
     ui: &mut egui::Ui,
     (label, words): (&str, Option<&str>),
     percent: Option<u32>,
-    color: egui::Color32,
+    token: T,
     look: Option<&bar::Look>,
 ) {
     let amount = percent.map(|percent| Amount {
@@ -26,6 +27,7 @@ fn gauge(
         current: None,
         max: None,
     });
+    let color = theme::color(ui.ctx(), token);
     let drawn = super::draw::as_looks(ui, Bar::new(label, amount).fill(color).state(words), look);
     ui.add(drawn.fitted(ui));
 }
@@ -49,7 +51,7 @@ pub(super) fn stance(
     let character = state.map(|state| &state.character);
     let text = character.and_then(|c| c.stance.as_deref()).map(worded);
     let percent = character.and_then(|c| c.stance_percent);
-    gauge(ui, (&named("Stance"), text), percent, STANCE, look);
+    gauge(ui, (&named("Stance"), text), percent, T::Stance, look);
 }
 
 /// Encumbrance as a bar.
@@ -66,7 +68,7 @@ pub(super) fn encumbrance(
         ui,
         (&named("Encumbrance"), text),
         percent,
-        ENCUMBRANCE,
+        T::Encumbrance,
         look,
     );
 }
@@ -81,7 +83,7 @@ pub(super) fn mind(
     let experience = state.map(|state| &state.character.experience);
     let text = experience.and_then(|e| e.mind_state.as_deref()).map(worded);
     let percent = experience.and_then(|e| e.mind_percent);
-    gauge(ui, (&named("Mind"), text), percent, MIND, look);
+    gauge(ui, (&named("Mind"), text), percent, T::Mind, look);
 }
 
 /// How near the next level, as a bar.
@@ -94,7 +96,7 @@ pub(super) fn next_level(
     let experience = state.map(|state| &state.character.experience);
     let text = experience.and_then(|e| e.next_level.as_deref()).map(worded);
     let percent = experience.and_then(|e| e.next_level_percent);
-    gauge(ui, (&named("Next level"), text), percent, LEVEL, look);
+    gauge(ui, (&named("Next level"), text), percent, T::Level, look);
 }
 
 /// The level, as the game words it.

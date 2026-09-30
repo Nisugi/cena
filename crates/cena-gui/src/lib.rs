@@ -35,6 +35,7 @@ mod sessions;
 mod snap;
 mod story;
 mod text;
+mod theme;
 mod triggers;
 mod widget;
 

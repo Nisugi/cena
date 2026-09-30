@@ -83,7 +83,7 @@ pub(super) fn list(
     };
     let mut clicked = None;
     for runs in &lines {
-        let job = text::job(runs, ui.style());
+        let job = text::job(runs, ui.style(), &crate::theme::palette(ui.ctx()));
         if own && runs.iter().any(|run| run.link.is_some()) {
             clicked = clicked
                 .take()

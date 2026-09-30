@@ -354,10 +354,7 @@ impl Widget {
     /// one bar: a vital says its label, numbers and percent; the pulse its
     /// words. `None` for a widget that is not a bar.
     pub(crate) fn bar_look(&self) -> Option<crate::bar::Look> {
-        use crate::bar::{
-            BLOOD, ENCUMBRANCE, Fills, HEALTH, LEVEL, Look, MANA, MIND, Place, SPIRIT, STAMINA,
-            STANCE, Says,
-        };
+        use crate::bar::{Fills, Look, Place, Says};
         let vital = Says {
             label: true,
             numbers: true,
@@ -370,39 +367,51 @@ impl Widget {
             percent: true,
             words: true,
         };
-        let (says, color) = match self {
-            Widget::Health => (vital, HEALTH),
-            Widget::Mana => (vital, MANA),
-            Widget::Stamina => (vital, STAMINA),
-            Widget::Spirit => (vital, SPIRIT),
-            Widget::FieldExperience => (vital, MIND),
-            Widget::BloodPoints => (vital, BLOOD),
+        let says = match self {
+            Widget::Health
+            | Widget::Mana
+            | Widget::Stamina
+            | Widget::Spirit
+            | Widget::FieldExperience
+            | Widget::BloodPoints => vital,
             // The game words these: the label, its word and the percent.
-            Widget::Stance => (worded, STANCE),
-            Widget::Encumbrance => (worded, ENCUMBRANCE),
-            Widget::Mind => (worded, MIND),
-            Widget::NextLevel => (worded, LEVEL),
-            Widget::Pulse => (
-                Says {
-                    label: true,
-                    numbers: false,
-                    percent: false,
-                    words: false,
-                },
-                MANA,
-            ),
+            Widget::Stance | Widget::Encumbrance | Widget::Mind | Widget::NextLevel => worded,
+            Widget::Pulse => Says {
+                label: true,
+                numbers: false,
+                percent: false,
+                words: false,
+            },
             _ => return None,
         };
         Some(Look {
             fills: Fills::Right,
             place: Place::Inside,
             says,
-            color: [color.r(), color.g(), color.b()],
+            color: None,
             overlay: None,
             background: None,
             fill_image: None,
             ring: Look::RING,
             clock: false,
+        })
+    }
+
+    /// The palette's token its bar fills with, when it is one bar.
+    pub(crate) fn bar_token(&self) -> Option<crate::theme::T> {
+        use crate::theme::T;
+        Some(match self {
+            Widget::Health => T::Health,
+            Widget::Mana => T::Mana,
+            Widget::Stamina => T::Stamina,
+            Widget::Spirit => T::Spirit,
+            Widget::FieldExperience | Widget::Mind => T::Mind,
+            Widget::BloodPoints => T::Blood,
+            Widget::Stance => T::Stance,
+            Widget::Encumbrance => T::Encumbrance,
+            Widget::NextLevel => T::Level,
+            Widget::Pulse => T::Pulse,
+            _ => return None,
         })
     }
 

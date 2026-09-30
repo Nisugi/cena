@@ -8,7 +8,8 @@ use egui::{Color32, Id, RichText};
 
 use super::{Seen, Widget, character, lists, room, status};
 use crate::bar::{self, Amount, Bar};
-use crate::text::{self, AMBER, CREATURE, OBJECT, WRONG};
+use crate::text;
+use crate::theme::{self, T};
 
 /// Draw `widget` for `seen` into `ui`. Following another character, a
 /// one-line widget puts its name before what it says, and the rest a line
@@ -130,42 +131,42 @@ pub(super) fn draw(
             ui,
             &named("HP"),
             state.and_then(GameState::health),
-            bar::HEALTH,
+            T::Health,
             look,
         ),
         Widget::Mana => vital(
             ui,
             &named("MP"),
             state.and_then(GameState::mana),
-            bar::MANA,
+            T::Mana,
             look,
         ),
         Widget::Stamina => vital(
             ui,
             &named("SP"),
             state.and_then(GameState::stamina),
-            bar::STAMINA,
+            T::Stamina,
             look,
         ),
         Widget::Spirit => vital(
             ui,
             &named("Sp"),
             state.and_then(GameState::spirit),
-            bar::SPIRIT,
+            T::Spirit,
             look,
         ),
         Widget::FieldExperience => vital(
             ui,
             &named("Field"),
             state.and_then(field_experience),
-            bar::MIND,
+            T::Mind,
             look,
         ),
         Widget::BloodPoints => vital(
             ui,
             &named("Blood Points"),
             state.and_then(blood_points),
-            bar::BLOOD,
+            T::Blood,
             look,
         ),
         Widget::RightHand => {
@@ -182,7 +183,7 @@ pub(super) fn draw(
             ui,
             &named("RT"),
             state.and_then(GameState::roundtime_remaining),
-            AMBER,
+            T::Warning,
         ),
         Widget::Stun => stun(ui, &named("Stun"), state),
         // Where the character aims, as the game last said (the author,
@@ -191,7 +192,8 @@ pub(super) fn draw(
         Widget::Aim => line(
             ui,
             match state.and_then(|state| state.aiming.as_deref()) {
-                Some(at) => RichText::new(named(&format!("Aim: {at}"))).color(AMBER),
+                Some(at) => RichText::new(named(&format!("Aim: {at}")))
+                    .color(theme::color(ui.ctx(), T::Accent)),
                 None => RichText::new(named("Aim —")).weak(),
             },
         ),
@@ -199,7 +201,7 @@ pub(super) fn draw(
             ui,
             &named("CT"),
             state.and_then(GameState::casttime_remaining),
-            bar::MANA,
+            T::Mana,
         ),
         Widget::RoomTitle => line(
             ui,
@@ -208,17 +210,17 @@ pub(super) fn draw(
                     .and_then(|state| state.room.title.as_deref())
                     .unwrap_or("Room unknown"),
             ))
-            .color(AMBER)
+            .color(theme::color(ui.ctx(), T::RoomName))
             .strong(),
         ),
         Widget::RoomDescription => scrolled(ui, &mut |ui| {
             match state.and_then(cena_ui::room_description) {
-                Some(runs) => ui.label(text::job(&runs, ui.style())),
+                Some(runs) => ui.label(text::job(&runs, ui.style(), &theme::palette(ui.ctx()))),
                 None => ui.weak("Description unknown"),
             };
         }),
         Widget::Creatures | Widget::Npcs | Widget::Objects | Widget::Players => {
-            let items = room_list(widget, seen.snapshot, seen.tags);
+            let items = room_list(ui.ctx(), widget, seen.snapshot, seen.tags);
             let (listing, own) = (chosen.list.unwrap_or_default(), seen.who.is_none());
             let mut clicked = None;
             scrolled(ui, &mut |ui| {
@@ -284,18 +286,13 @@ fn scrolled(ui: &mut egui::Ui, id: Id, add: impl FnOnce(&mut egui::Ui)) {
 }
 
 /// A vital as a bar fitted to what it is given, drawn as `look` says.
-fn vital(
-    ui: &mut egui::Ui,
-    label: &str,
-    vital: Option<Vital>,
-    color: Color32,
-    look: Option<&bar::Look>,
-) {
+fn vital(ui: &mut egui::Ui, label: &str, vital: Option<Vital>, token: T, look: Option<&bar::Look>) {
     let amount = vital.map(|vital| Amount {
         percent: vital.percent,
         current: vital.current,
         max: vital.max,
     });
+    let color = theme::color(ui.ctx(), token);
     let drawn = as_looks(ui, Bar::new(label, amount).fill(color), look);
     ui.add(drawn.fitted(ui));
 }
@@ -469,11 +466,11 @@ fn linked(response: &egui::Response, id: &str, noun: &str) -> Option<super::Clic
 }
 
 /// A clock counting down, in whole seconds, or that none runs.
-fn clock(ui: &mut egui::Ui, label: &str, seconds: Option<u32>, color: Color32) {
+fn clock(ui: &mut egui::Ui, label: &str, seconds: Option<u32>, token: T) {
     match seconds.filter(|seconds| *seconds > 0) {
         Some(seconds) => line(
             ui,
-            RichText::new(format!("{label} {seconds}s")).color(color),
+            RichText::new(format!("{label} {seconds}s")).color(theme::color(ui.ctx(), token)),
         ),
         None => line(ui, RichText::new(format!("{label} —")).weak()),
     }
@@ -484,10 +481,11 @@ fn clock(ui: &mut egui::Ui, label: &str, seconds: Option<u32>, color: Color32) {
 /// gave none (`cena_model`'s `state/stun.rs`).
 fn stun(ui: &mut egui::Ui, label: &str, state: Option<&GameState>) {
     let left = state.and_then(GameState::stun_remaining).unwrap_or(0);
+    let wrong = theme::color(ui.ctx(), T::Wrong);
     if left > 0 {
-        line(ui, RichText::new(format!("{label} {left}s")).color(WRONG));
+        line(ui, RichText::new(format!("{label} {left}s")).color(wrong));
     } else if state.is_some_and(|state| state.status.get("stunned")) {
-        line(ui, RichText::new(format!("{label}: stunned")).color(WRONG));
+        line(ui, RichText::new(format!("{label}: stunned")).color(wrong));
     } else {
         line(ui, RichText::new(format!("{label} —")).weak());
     }
@@ -509,11 +507,14 @@ fn hunt(ui: &mut egui::Ui, hunt: Option<&cena_ui::HuntView>) {
     if let Some(target) = &hunt.target {
         ui.horizontal_wrapped(|ui| {
             ui.weak("Fighting:");
-            ui.colored_label(CREATURE, target);
+            ui.colored_label(theme::color(ui.ctx(), T::Creature), target);
         });
     }
     if let Some(waiting) = &hunt.waiting {
-        ui.colored_label(AMBER, format!("Waiting: {waiting}"));
+        ui.colored_label(
+            theme::color(ui.ctx(), T::Warning),
+            format!("Waiting: {waiting}"),
+        );
     }
 }
 
@@ -522,6 +523,7 @@ fn hunt(ui: &mut egui::Ui, hunt: Option<&cena_ui::HuntView>) {
 /// character's triggers as Despana paints them ([`cena_ui::room_player`]).
 /// `None` until the game has said.
 fn room_list(
+    ctx: &egui::Context,
     widget: &Widget,
     snapshot: Option<&Snapshot>,
     tags: Option<usize>,
@@ -551,14 +553,17 @@ fn room_list(
         .iter()
         .cloned()
         .partition(|item| hostile(&item));
+    let creature = theme::color(ctx, T::Creature);
     match widget {
-        Widget::Creatures => things(&targets, (CREATURE, tags)),
-        Widget::Npcs => things(&npcs, (CREATURE, tags)),
-        Widget::Objects => things(&room.objects, (OBJECT, None)),
+        Widget::Creatures => things(&targets, (creature, tags)),
+        Widget::Npcs => things(&npcs, (creature, tags)),
+        Widget::Objects => things(&room.objects, (theme::color(ctx, T::Object), None)),
         _ => room.saw_players().then(|| {
             room.players
                 .iter()
-                .map(|player| super::described::player_runs(snapshot, player))
+                .map(|player| {
+                    super::described::player_runs(snapshot, player, theme::color(ctx, T::Player))
+                })
                 .collect()
         }),
     }
@@ -585,8 +590,8 @@ fn hydra(ui: &mut egui::Ui, said: &std::collections::VecDeque<Notice>, id: Id) {
 /// what is neither wrong nor off.
 pub(super) fn notice_lines(ui: &mut egui::Ui, notice: &Notice, info: Color32) {
     let color = match notice.kind {
-        NoticeKind::Error => WRONG,
-        NoticeKind::Warn => AMBER,
+        NoticeKind::Error => theme::color(ui.ctx(), T::Wrong),
+        NoticeKind::Warn => theme::color(ui.ctx(), T::Warning),
         NoticeKind::Info | NoticeKind::Debug => info,
     };
     match &notice.body {

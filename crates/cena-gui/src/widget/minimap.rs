@@ -24,25 +24,8 @@
 use cena_ui::{EdgeKind, MapScene, MinimapView, NextDoor, SceneEdge};
 
 use super::Clicked;
-use egui::{Color32, FontId, Id, Pos2, Rect, Sense, Shape, Stroke, Vec2, vec2};
-
-/// The minimap's inset background (`assets/style.css:141-154`).
-const BACKGROUND: Color32 = Color32::from_rgb(0x11, 0x16, 0x1b);
-/// A room: fill and edge (`atlas-view.mjs:275-276`).
-const ROOM_FILL: Color32 = Color32::from_rgb(0x49, 0x7f, 0xa3);
-const ROOM_STROKE: Color32 = Color32::from_rgb(0xa2, 0xc8, 0xdf);
-/// A line with a direction (`atlas-view.mjs:233`).
-const LINE: Color32 = Color32::from_rgb(0x6e, 0x99, 0xb5);
-/// A line without one, dashed.
-const CONNECTOR: Color32 = Color32::from_rgb(0x38, 0x51, 0x64);
-/// A way in, and its place's name: the transition gold (`atlas-view.mjs:303`).
-const DOOR: Color32 = Color32::from_rgb(0xff, 0xc7, 0x78);
-/// You (`minimap.mjs:132-147`).
-const YOU: Color32 = Color32::from_rgb(0xdd, 0xdc, 0xd7);
-/// Muted text, for what is waiting.
-const MUTED: Color32 = Color32::from_rgb(0x8e, 0x9f, 0xad);
-/// A route (`preferences.mjs:18`, `routeColor`).
-const ROUTE: Color32 = Color32::from_rgb(0x57, 0xf3, 0xcb);
+use crate::theme::{self, T};
+use egui::{FontId, Id, Pos2, Rect, Sense, Shape, Stroke, Vec2, vec2};
 
 /// Pixels a cell outdoors at first, and in a place, whose rooms are drawn
 /// at half the streets' scale: zoomed in so they are no more crowded than
@@ -111,7 +94,7 @@ pub(super) fn minimap(
     let size = ui.available_size().max(vec2(80.0, 60.0));
     let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
     let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 4.0, BACKGROUND);
+    painter.rect_filled(rect, 4.0, theme::color(ui.ctx(), T::MapBackground));
     let Some(MinimapView::Here {
         scene,
         room: you,
@@ -187,13 +170,14 @@ pub(super) fn minimap(
     draw_rooms(&painter, rect, scene, &to_screen, zoom, &fade);
     marks::draw_marks(&painter, scene, &to_screen, zoom, &fade);
     marks::draw_labels(&painter, scene, &to_screen, zoom, &fade);
+    let ring = |token, width| Stroke::new(width, theme::color(ui.ctx(), token));
     if let Some(at) = target.and_then(|t| spot(&layers, t)) {
-        painter.circle_stroke(to_screen(at), square * 0.9 + 3.0, Stroke::new(2.0, ROUTE));
+        painter.circle_stroke(to_screen(at), square * 0.9 + 3.0, ring(T::MapRoute, 2.0));
     }
     painter.circle_stroke(
         to_screen(here_cell),
         square * 0.9 + 3.0,
-        Stroke::new(2.5, YOU),
+        ring(T::MapYou, 2.5),
     );
     let from_screen = |p: Pos2| centre + (p - rect.center()) / zoom;
     let reach = (square * 0.9 + 3.0) / zoom;
@@ -243,8 +227,11 @@ fn draw_rooms(
             painter.rect(
                 Rect::from_center_size(at, Vec2::splat(square)),
                 1.4,
-                ROOM_FILL.gamma_multiply(f),
-                Stroke::new(1.0, ROOM_STROKE.gamma_multiply(f)),
+                theme::color(painter.ctx(), T::MapRoom).gamma_multiply(f),
+                Stroke::new(
+                    1.0,
+                    theme::color(painter.ctx(), T::MapRoomEdge).gamma_multiply(f),
+                ),
                 egui::StrokeKind::Inside,
             );
         }
@@ -405,13 +392,14 @@ fn draw_route(
                 _ => continue,
             },
         };
+        let route = theme::color(painter.ctx(), T::MapRoute);
         painter.add(Shape::line(
             points.clone(),
-            Stroke::new(5.0, ROUTE.gamma_multiply(0.3)),
+            Stroke::new(5.0, route.gamma_multiply(0.3)),
         ));
         painter.extend(Shape::dashed_line(
             &points,
-            Stroke::new(2.0, ROUTE),
+            Stroke::new(2.0, route),
             6.0,
             4.0,
         ));
@@ -469,7 +457,10 @@ fn draw_edge(
     zoom: f32,
     fade: f32,
 ) {
-    let (line, connector) = (LINE.gamma_multiply(fade), CONNECTOR.gamma_multiply(fade));
+    let (line, connector) = (
+        theme::color(painter.ctx(), T::MapLine).gamma_multiply(fade),
+        theme::color(painter.ctx(), T::MapConnector).gamma_multiply(fade),
+    );
     let points: Vec<Pos2> = edge
         .path
         .iter()
@@ -508,7 +499,7 @@ fn draw_doors(
     zoom: f32,
     fade: f32,
 ) {
-    let colour = DOOR.gamma_multiply(fade);
+    let colour = theme::color(painter.ctx(), T::MapDoor).gamma_multiply(fade);
     for door in &scene.doors {
         let at = to_screen(vec2(door.at.0, door.at.1));
         let r = if door.named { 3.5 } else { 2.2 } * (zoom / ZOOM).clamp(0.6, 1.6);
@@ -531,7 +522,7 @@ fn waiting(painter: &egui::Painter, rect: Rect, why: &str) {
         egui::Align2::CENTER_CENTER,
         why,
         FontId::proportional(12.0),
-        MUTED,
+        theme::color(painter.ctx(), T::MapMuted),
     );
 }
 

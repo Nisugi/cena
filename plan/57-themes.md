@@ -60,7 +60,7 @@ What follows from them:
   theme the moment one is set.
 - **A bar's colour is saved with the layout** as three bytes
   (`crates/cena-gui/src/bar.rs:125`, and the saved form in
-  `crates/cena-gui/src/layout/tests.rs:780`). INFERRED from those two: a saved layout holds
+  `crates/cena-gui/src/layout/tests/looks.rs:50`). INFERRED from those two: a saved layout holds
   the colour whether the player chose it or not, so a theme could not change it. Step 0
   settles it (§5).
 - **The web page has twelve tokens** as CSS variables, `crates/cena-web/assets/style.css:4`
@@ -212,6 +212,22 @@ On a branch `themes` once the author approves.
    (`kittest.toml`) must not change.* Settle the saved bar colour (§2a): a layout saves a
    colour only when the player chose one, and a saved colour equal to the old default is
    read as none.
+
+   **BUILT 2026-09-30.** 61 tokens (`crates/cena-ui/src/theme.rs`, `Token::ALL`;
+   `Palette::bare` holds each literal's value); the GUI's `crates/cena-gui/src/theme.rs`,
+   `theme::color(ctx, token)` read from egui's own data so a theme (step 2) and a window's
+   own (step 3) have a place to go; the test
+   `crates/cena-arch-tests/tests/colour_literals.rs`, which scans `cena-gui`'s code lines
+   for `Color32`'s constructors and named colours outside the theme module and test code.
+   A bar's saved colour is `Option`al, `Look::themed(token)` reading the old default as
+   none where the layout is read (`play/draw.rs`, `play/options.rs`).
+
+   *One thing does look different.* Text on a lit indicator was always black, and a doll
+   dot's numeral always white; both now pick black or white by the colour behind them
+   (`theme::readable_on`, the bars' own rule), which a light theme needs. Four images
+   changed for it and were reviewed: `status` (*Standing* and *Poisoned* read white),
+   `injuries_hurt` and `injuries_picture` (the numeral on a light grey scar reads black),
+   and `calibrator` (the same dots).
 1. **Harmony.** The engine ported whole into `cena-ui` with its sixteen tests, Niffy
    credited. The roles widened to §3a's table. New tests: every vital stays in its band under
    every scheme; every token clears the floor on a dark and on a light background.

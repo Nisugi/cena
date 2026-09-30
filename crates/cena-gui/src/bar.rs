@@ -14,24 +14,7 @@
 
 use egui::{Align2, Color32, Sense, Vec2, WidgetInfo, WidgetType};
 
-/// Health's colour: `VellumFE`'s, so a bar is the same red wherever it is.
-pub const HEALTH: Color32 = Color32::from_rgb(0xcd, 0x4d, 0x4d);
-/// Mana's colour, `VellumFE`'s.
-pub const MANA: Color32 = Color32::from_rgb(0x47, 0x84, 0xd9);
-/// Stamina's colour, `VellumFE`'s.
-pub const STAMINA: Color32 = Color32::from_rgb(0x55, 0xb8, 0x6c);
-/// Spirit's colour, `VellumFE`'s.
-pub const SPIRIT: Color32 = Color32::from_rgb(0xcb, 0xa9, 0x42);
-/// The betrayer's Blood Points' colour: darker than health's.
-pub const BLOOD: Color32 = Color32::from_rgb(0x8b, 0x1a, 0x1a);
-/// Stance's colour.
-pub const STANCE: Color32 = Color32::from_rgb(0x4f, 0xa3, 0xa5);
-/// Encumbrance's colour.
-pub const ENCUMBRANCE: Color32 = Color32::from_rgb(0xb0, 0x7a, 0x3c);
-/// The mind's colour.
-pub const MIND: Color32 = Color32::from_rgb(0x8e, 0x6b, 0xc9);
-/// The next level's colour.
-pub const LEVEL: Color32 = Color32::from_rgb(0xc9, 0xa2, 0x3c);
+use crate::theme::readable_on;
 
 /// Which way a bar fills as its value grows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -121,8 +104,10 @@ pub struct Look {
     pub place: Place,
     /// What its text says.
     pub says: Says,
-    /// Its fill's colour, red, green and blue.
-    pub color: [u8; 3],
+    /// Its fill's colour, red, green and blue, when the player chose one;
+    /// none is the theme's for its kind (`plan/57` §3c).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<[u8; 3]>,
     /// An image laid over it, stretched, by its file's path; none unset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overlay: Option<String>,
@@ -147,6 +132,18 @@ pub struct Look {
 impl Look {
     /// A ring's thickness unless the player chose: a quarter of its radius.
     pub const RING: u8 = 25;
+
+    /// A saved colour that is the one its kind had before Hydra had themes
+    /// (`token.bare()`) is read as none: a layout saved then held every
+    /// bar's colour whether the player chose it or not, and a theme could
+    /// not have changed it (`plan/57` step 0).
+    #[must_use]
+    pub fn themed(mut self, token: cena_ui::theme::Token) -> Self {
+        if self.color == Some(token.bare()) {
+            self.color = None;
+        }
+        self
+    }
 
     const fn default_ring() -> u8 {
         Self::RING
@@ -256,15 +253,13 @@ impl<'a> Bar<'a> {
     }
 
     /// Drawn as `look` says: which way it fills, where its text goes, what
-    /// the text says, its colour and a ring's thickness. Its images are the
-    /// caller's to load.
+    /// the text says, its colour where the player chose one, and a ring's
+    /// thickness. Its images are the caller's to load.
     pub fn look(self, look: &Look) -> Self {
-        let [red, green, blue] = look.color;
-        let mut drawn = self
-            .fills(look.fills)
-            .text(look.place)
-            .says(look.says)
-            .fill(Color32::from_rgb(red, green, blue));
+        let mut drawn = self.fills(look.fills).text(look.place).says(look.says);
+        if let Some(color) = look.color {
+            drawn = drawn.fill(crate::theme::rgb(color));
+        }
         drawn.ring = look.ring;
         drawn
     }
@@ -454,18 +449,6 @@ impl egui::Widget for Bar<'_> {
             painter.galley(at, galley, color);
         }
         response
-    }
-}
-
-/// Black or white, whichever reads on `behind`: by its luminance, the ITU
-/// weights.
-fn readable_on(behind: Color32) -> Color32 {
-    let [r, g, b, _] = behind.to_array();
-    let luminance = 0.299 * f32::from(r) + 0.587 * f32::from(g) + 0.114 * f32::from(b);
-    if luminance > 140.0 {
-        Color32::BLACK
-    } else {
-        Color32::WHITE
     }
 }
 

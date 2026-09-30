@@ -20,7 +20,7 @@ use egui::{CursorIcon, Id, LayerId, Order, Rect, Sense, Stroke};
 
 use super::Play;
 use crate::layout::{CLEAR, Drawers, Mode, SMALLEST, THINNEST, Zone, Zones};
-use crate::text::AMBER;
+use crate::theme::{self, T};
 
 /// How thick a drawer's edge is, to take a press: half in the drawer, half
 /// out.
@@ -96,8 +96,10 @@ impl Play {
                     let response = response.on_hover_and_drag_cursor(cursor);
                     if response.hovered() || response.dragged() {
                         let middle = Zones::edge(zone, at, 0.0);
-                        ui.painter()
-                            .line_segment([middle.min, middle.max], Stroke::new(2.0, AMBER));
+                        ui.painter().line_segment(
+                            [middle.min, middle.max],
+                            Stroke::new(2.0, theme::color(ui.ctx(), T::Accent)),
+                        );
                     }
                     if response.dragged() {
                         let most = if Zones::sideways(zone) {

@@ -323,7 +323,10 @@ fn presets(
         });
     }
     if let Some(why) = &library.unsaved {
-        ui.colored_label(crate::text::WRONG, format!("Presets not saved: {why}"));
+        ui.colored_label(
+            crate::theme::color(ui.ctx(), crate::theme::T::Wrong),
+            format!("Presets not saved: {why}"),
+        );
     }
 }
 

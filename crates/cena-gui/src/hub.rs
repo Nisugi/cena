@@ -24,7 +24,8 @@ use cena_ui::{
     GroupView, HubRequest, LifecycleView, Listing, MergedLine, RosterCard, SessionCard, VitalView,
 };
 
-use crate::bar::{self, Amount, Bar};
+use crate::bar::{Amount, Bar};
+use crate::theme::{self, T};
 
 /// Which of the hub's tabs is showing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -325,12 +326,13 @@ fn draw(
         });
         ui.horizontal_wrapped(|ui| {
             let vitals = &card.vitals;
-            for (label, vital, color) in [
-                ("HP", &vitals.health, bar::HEALTH),
-                ("MP", &vitals.mana, bar::MANA),
-                ("SP", &vitals.stamina, bar::STAMINA),
-                ("Sp", &vitals.spirit, bar::SPIRIT),
+            for (label, vital, token) in [
+                ("HP", &vitals.health, T::Health),
+                ("MP", &vitals.mana, T::Mana),
+                ("SP", &vitals.stamina, T::Stamina),
+                ("Sp", &vitals.spirit, T::Spirit),
             ] {
+                let color = theme::color(ui.ctx(), token);
                 ui.add(Bar::new(label, vital.as_ref().map(amount)).fill(color));
             }
         });
@@ -399,7 +401,11 @@ fn merged(ui: &mut egui::Ui, lines: &[MergedLine]) {
                     ..cena_ui::StyledRun::default()
                 }];
                 runs.extend(line.runs.iter().cloned());
-                ui.label(crate::text::job(&runs, ui.style()));
+                ui.label(crate::text::job(
+                    &runs,
+                    ui.style(),
+                    &theme::palette(ui.ctx()),
+                ));
             }
         });
 }

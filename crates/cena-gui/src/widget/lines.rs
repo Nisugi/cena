@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use super::find::Seek;
 use super::{Clicked, Seen};
 use crate::story::{Hours, Shown, Stamp, Story};
-use crate::text::{self, HYDRA, WRONG};
+use crate::text;
+use crate::theme::{self, T};
 
 /// Where a line's time goes.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,7 +101,7 @@ impl Lines {
                 Cow::Owned(all)
             }
         };
-        let job = text::job(&all, ui.style());
+        let job = text::job(&all, ui.style(), &theme::palette(ui.ctx()));
         let drawn = ui.scope(|ui| {
             if all.iter().any(|run| run.link.is_some()) {
                 return text::linked(ui, job, &all).map(Clicked::from);
@@ -197,11 +198,14 @@ pub(super) fn story(
                     }
                 }
                 Shown::Gap => {
-                    ui.colored_label(WRONG, "Some lines were missed here.");
+                    ui.colored_label(
+                        theme::color(ui.ctx(), T::Wrong),
+                        "Some lines were missed here.",
+                    );
                 }
                 Shown::Said(notice) => {
                     prompts.said();
-                    super::draw::notice_lines(ui, notice, HYDRA);
+                    super::draw::notice_lines(ui, notice, theme::color(ui.ctx(), T::Hydra));
                 }
             };
             // Each line by its own number, never its place: a selection is

@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use cena_session::Injury;
-use egui::{Color32, Pos2, Rect, Stroke, Vec2};
+use egui::{Pos2, Rect, Stroke, Vec2};
 
 use crate::calibration::{self, Calibration};
 use crate::widget::doll::{self, PARTS};
@@ -142,8 +142,11 @@ impl Calibrator {
         let part = &PARTS[self.chosen];
         let (x, y) = self.calibration.anchor(part);
         let marked = rect.min + Vec2::new(x * rect.width(), y * rect.height());
-        ui.painter()
-            .circle_stroke(marked, 12.0, Stroke::new(2.0, Color32::YELLOW));
+        ui.painter().circle_stroke(
+            marked,
+            12.0,
+            Stroke::new(2.0, crate::theme::color(ui.ctx(), crate::theme::T::Mark)),
+        );
         if response.clicked()
             && let Some(at) = response.interact_pointer_pos()
             && let Some(put) = fraction(rect, at)

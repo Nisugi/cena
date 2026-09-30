@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use cena_session::Injury;
 
-use super::doll::{PALETTE, PARTS, said, shown};
+use super::doll::{PARTS, level_color, said, shown};
 
 /// `injuries` as lines, part by part in the Doll's order.
 pub(super) fn text(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>>) {
@@ -24,7 +24,7 @@ pub(super) fn text(ui: &mut egui::Ui, injuries: Option<&BTreeMap<String, Injury>
         };
         any = true;
         ui.colored_label(
-            PALETTE[shows.level()],
+            level_color(ui.ctx(), shows.level()),
             format!("{}: {}", capital(part.name), said(Some(shows))),
         );
     }

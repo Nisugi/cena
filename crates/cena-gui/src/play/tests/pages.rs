@@ -125,7 +125,7 @@ fn a_bar_is_drawn_as_its_page_says() {
     assert!(play.widget_change(&page, "volume", Some("on")).is_err());
     let look = layout(&harness).looks.get(&health).cloned().expect("kept");
     assert_eq!((look.fills, look.place), (Fills::Up, Place::Below));
-    assert_eq!(look.color, [0x10, 0x20, 0x30]);
+    assert_eq!(look.color, Some([0x10, 0x20, 0x30]));
     assert!(!look.says.numbers);
     let pages = harness
         .state()

@@ -182,7 +182,7 @@ fn painted(ui: &egui::Ui, line: &Line) -> egui::text::LayoutJob {
         while end < text.len() && (looks[end] == look || !text.is_char_boundary(end)) {
             end += 1;
         }
-        let colour = |c: Color| egui::Color32::from_rgb(c.red, c.green, c.blue);
+        let colour = |c: Color| crate::theme::rgb([c.red, c.green, c.blue]);
         job.append(
             &text[start..end],
             0.0,

@@ -6,10 +6,11 @@
 
 use cena_session::GameState;
 use cena_session::world::Pulse;
-use egui::{Align2, Color32, FontId, Sense, Stroke, StrokeKind, Vec2};
+use egui::{Align2, FontId, Sense, Stroke, StrokeKind, Vec2};
 use serde::{Deserialize, Serialize};
 
 use crate::bar::{Amount, Bar, Says};
+use crate::theme::{self, T, readable_on};
 use crate::widget::LINE;
 
 /// One status indicator, as the game names it
@@ -131,25 +132,22 @@ impl Indicator {
         }
     }
 
-    /// Its colour when on: the dangers warm, the postures and the rest cool.
-    fn color(self) -> Color32 {
+    /// The palette's token for it when on: the dangers warm, the postures
+    /// and the rest cool.
+    fn token(self) -> T {
         match self {
             Indicator::Stunned | Indicator::Webbed | Indicator::Bound | Indicator::Calmed => {
-                Color32::from_rgb(0xd8, 0xb4, 0x3a)
+                T::Stunned
             }
-            Indicator::Bleeding | Indicator::Dead | Indicator::Cutthroat => {
-                Color32::from_rgb(0xcd, 0x4d, 0x4d)
-            }
-            Indicator::Poisoned | Indicator::Diseased | Indicator::Thorned => {
-                Color32::from_rgb(0x6d, 0xa8, 0x3c)
-            }
-            Indicator::Hidden | Indicator::Invisible => Color32::from_rgb(0x7a, 0x86, 0xa8),
-            Indicator::Silenced | Indicator::Sleeping => Color32::from_rgb(0x8e, 0x6b, 0xc9),
+            Indicator::Bleeding | Indicator::Dead | Indicator::Cutthroat => T::Bleeding,
+            Indicator::Poisoned | Indicator::Diseased | Indicator::Thorned => T::Poisoned,
+            Indicator::Hidden | Indicator::Invisible => T::Hidden,
+            Indicator::Silenced | Indicator::Sleeping => T::Silenced,
             Indicator::Standing
             | Indicator::Kneeling
             | Indicator::Sitting
             | Indicator::Prone
-            | Indicator::Joined => Color32::from_rgb(0x4f, 0xa3, 0xa5),
+            | Indicator::Joined => T::Posture,
         }
     }
 }
@@ -188,13 +186,13 @@ impl Category {
         }
     }
 
-    /// Its bars' fill.
-    fn color(self) -> Color32 {
+    /// The palette's token its bars fill with.
+    fn token(self) -> T {
         match self {
-            Category::ActiveSpells => Color32::from_rgb(0x47, 0x84, 0xd9),
-            Category::Buffs => Color32::from_rgb(0x55, 0xb8, 0x6c),
-            Category::Debuffs => Color32::from_rgb(0xcd, 0x4d, 0x4d),
-            Category::Cooldowns => Color32::from_rgb(0x7a, 0x86, 0xa8),
+            Category::ActiveSpells => T::ActiveSpells,
+            Category::Buffs => T::Buffs,
+            Category::Debuffs => T::Debuffs,
+            Category::Cooldowns => T::Cooldowns,
         }
     }
 }
@@ -227,12 +225,13 @@ pub(super) fn indicator(
     response.widget_info(|| {
         egui::WidgetInfo::labeled(egui::WidgetType::Label, true, format!("{name}: {said}"))
     });
+    let lit = theme::color(ui.ctx(), indicator.token());
     let painter = ui.painter();
     let rect = rect.shrink(1.0);
     let (text, color) = match known {
         Some(true) => {
-            painter.rect_filled(rect, 4.0, indicator.color());
-            (name.to_owned(), Color32::BLACK)
+            painter.rect_filled(rect, 4.0, lit);
+            (name.to_owned(), readable_on(lit))
         }
         Some(false) => {
             painter.rect_stroke(
@@ -277,7 +276,7 @@ pub(super) fn effects(ui: &mut egui::Ui, category: Category, state: Option<&Game
         };
         ui.add(
             Bar::new(&label, Some(amount))
-                .fill(category.color())
+                .fill(theme::color(ui.ctx(), category.token()))
                 .size([ui.available_width(), 16.0])
                 .says(Says {
                     label: true,
@@ -302,9 +301,6 @@ pub(super) fn clock(seconds: u32) -> String {
     }
 }
 
-/// The pulse's fill.
-const PULSE: Color32 = Color32::from_rgb(0x47, 0x84, 0xd9);
-
 /// When the next pulse comes, as a bar that fills toward it, drawn as
 /// `look` says.
 pub(super) fn pulse(
@@ -323,7 +319,8 @@ pub(super) fn pulse(
             Some(left) => format!("{name} {left}s"),
             None => format!("{name} ?"),
         };
-        super::draw::line(ui, egui::RichText::new(said).color(PULSE));
+        let pulse = theme::color(ui.ctx(), T::Pulse);
+        super::draw::line(ui, egui::RichText::new(said).color(pulse));
         return;
     }
     let (label, percent) = pulse_said(
@@ -336,7 +333,8 @@ pub(super) fn pulse(
         current: None,
         max: None,
     });
-    let drawn = super::draw::as_looks(ui, Bar::new(&label, amount).fill(PULSE), look);
+    let pulse = theme::color(ui.ctx(), T::Pulse);
+    let drawn = super::draw::as_looks(ui, Bar::new(&label, amount).fill(pulse), look);
     ui.add(drawn.fitted(ui));
 }
 

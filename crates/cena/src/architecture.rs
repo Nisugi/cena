@@ -48,7 +48,8 @@
 //! cena-agent        MCP for an outside program         map, session, platform*
 //! cena-gui          the window (egui)                  session, ui
 //! cena-web          the embedded browser viewer        session, ui
-//! cena-ui           projection and wire vocabulary     model
+//! cena-ui           projection, wire vocabulary,       model
+//!                   the palette's tokens
 //! cena-host         the table of sessions              session, platform*
 //! cena-behavior     curated behaviors                  session, map, platform*
 //! cena-session      one character, as one actor        model, protocol, platform
@@ -76,7 +77,7 @@
 //! | `cena-map` | [`Map`](cena_behavior::travel::Map) |
 //! | [`cena_session`] | its crate page, which gives the reading order |
 //! | [`cena_behavior`] | [`travel`](cena_behavior::travel) |
-//! | [`cena_ui`] | [`SessionView`](cena_ui::SessionView), and `crates/cena-ui/WIRE.md` for the contract |
+//! | [`cena_ui`] | [`SessionView`](cena_ui::SessionView), and `crates/cena-ui/WIRE.md` for the contract; the palette's [`Token`](cena_ui::theme::Token)s, `plan/57` |
 //! | [`cena_gui`] | [`Sessions`](cena_gui::Sessions), and [`run`](cena_gui::run) for the window |
 //! | [`cena_web`] | [`WebServer`](cena_web::WebServer) |
 //! | [`cena_agent`] | [`Characters`](cena_agent::Characters), and `crates/cena-agent/CONTRACT.md` for the contract; a script runner's [`scripts`](cena_agent::scripts), `SCRIPTS.md` |
@@ -432,6 +433,7 @@
 //! |---|---|---|
 //! | dependencies point one way, and the graph equals the table | `crate_dependency_edges_match_the_plan` | `layering.rs` |
 //! | the projection knows no toolkit; the model and the map do no file I/O | `cena_ui_depends_on_no_ui_toolkit`, `model_does_no_file_io`, `map_does_no_file_io` | `layering.rs` |
+//! | no colour literal in the GUI outside its theme module: every colour is a token of the palette (`plan/57` §4) | `no_colour_literal_outside_the_theme_module` | `colour_literals.rs` |
 //! | an agent acts only through the session's door, which checks its level, and a script runner only through its own | `the_agent_acts_only_through_the_door` | `layering.rs` |
 //! | no process globals: every `static` is allowlisted with a reason | `every_static_is_allowlisted`, `no_static_mut_anywhere` | `architecture.rs` |
 //! | one owning field each for the roundtime, the server clock and the session handle | `roundtime_has_a_single_owning_field` and its two siblings | `single_owner.rs` |

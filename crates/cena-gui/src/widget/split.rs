@@ -25,7 +25,7 @@
 
 use egui::{CursorIcon, Id, Rect, Sense, Stroke, vec2};
 
-use crate::text::AMBER;
+use crate::theme::{self, T};
 #[cfg(test)]
 use scroll::ASKED;
 use scroll::steps;
@@ -239,7 +239,7 @@ fn both(
         split.share = (split.share + bar.drag_delta().y / panes).clamp(LEAST, 1.0 - LEAST);
     }
     let line = if bar.hovered() || bar.dragged() {
-        Stroke::new(2.0, AMBER)
+        Stroke::new(2.0, theme::color(ui.ctx(), T::Accent))
     } else {
         ui.visuals().widgets.noninteractive.bg_stroke
     };
