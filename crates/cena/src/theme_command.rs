@@ -13,6 +13,7 @@
 //! Hydra's own theme is chosen on the *Window* page, which is the window's
 //! file's one writer; this command does not reach it.
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -87,15 +88,11 @@ fn parse(line: &str) -> Option<Result<Asked, String>> {
     })
 }
 
-/// Register `;theme` on `character`'s command line (`GAME:Name`; none, and
-/// `mine` and `accent` say so), its files in `dir`, the data folder.
-pub(crate) fn open(
-    handle: &SessionHandle,
-    commands: &Commands,
-    dir: PathBuf,
-    character: Option<String>,
-) {
+/// Register `;theme` on `character`'s command line (`GAME:Name`), its
+/// files in `dir`, the data folder.
+pub(crate) fn open(handle: &SessionHandle, commands: &Commands, dir: &Path, character: &str) {
     let told = handle.clone();
+    let (dir, character) = (dir.to_owned(), character.to_owned());
     commands.theme(Arc::new(move |line: &str| {
         let asked = match parse(line)? {
             Ok(asked) => asked,
@@ -107,8 +104,8 @@ pub(crate) fn open(
         let said = match asked {
             Asked::Help => Ok(HELP.to_owned()),
             Asked::List => Ok(list(&dir)),
-            Asked::Mine(name) => own(&dir, character.as_deref(), "theme", name.as_deref()),
-            Asked::Accent(colour) => own(&dir, character.as_deref(), "accent", colour.as_deref()),
+            Asked::Mine(name) => own(&dir, &character, "theme", name.as_deref()),
+            Asked::Accent(colour) => own(&dir, &character, "accent", colour.as_deref()),
             Asked::Import { file, name } => import(&dir, &file, name.as_deref()),
         };
         let notice = match said {
@@ -129,15 +126,13 @@ fn list(dir: &Path) -> String {
         themes.names().join(", ")
     );
     for problem in &themes.problems {
-        said.push_str(&format!(" A file does not read: {problem}."));
+        let _ = write!(said, " A file does not read: {problem}.");
     }
     said
 }
 
 /// The character's own `key`, through the *Theme* page's writer.
-fn own(dir: &Path, character: Option<&str>, key: &str, to: Option<&str>) -> Result<String, String> {
-    let character = character
-        .ok_or_else(|| "Theme: this character has no settings file to keep it in.".to_owned())?;
+fn own(dir: &Path, character: &str, key: &str, to: Option<&str>) -> Result<String, String> {
     let (instance, name) = crate::pages::who(character)?;
     crate::theme_page::change(dir, (instance, name), key, to)
 }
