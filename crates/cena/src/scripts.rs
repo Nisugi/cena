@@ -235,7 +235,7 @@ impl Scripts {
 /// travel's desk makes one: what prices a script's route (`plan/46` §11
 /// step 8). A character the game has not named, or whose file cannot be
 /// read, walks with no notes, and what they alone open is shut to it.
-fn walker_of(dir: &Path) -> cena_agent::scripts::local::WalkerOf {
+pub(crate) fn walker_of(dir: &Path) -> cena_agent::scripts::local::WalkerOf {
     let dir = dir.to_owned();
     Arc::new(move |_, state| {
         let character = &state.character;

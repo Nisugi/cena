@@ -140,6 +140,7 @@ fn open_travel(
         }));
         return;
     };
+    let said = Arc::clone(&map);
     let travel = Desk::new(
         map,
         cena_session::character_store::data_dir(),
@@ -150,6 +151,9 @@ fn open_travel(
     commands.stops("go2", Arc::new(move || walking.stop()));
     let handler = handle.clone();
     commands.travel(Arc::new(move |line: &str| {
+        if let Some(took) = crate::atlas::room_command(&said, &handler, line) {
+            return Some(took);
+        }
         let command = travel_command(&handler, line)?;
         let (travel, handle) = (Arc::clone(&travel), handler.clone());
         let observer = observer.clone();

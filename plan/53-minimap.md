@@ -633,7 +633,18 @@ added, walking the Landing and Hinterwilds.
 - **The widget** (`cena-gui/src/widget/minimap.rs`): *Minimap* under Hydra's own. Rooms,
   lines (solid, dashed, marks), the way-in dots and big places' names, you; the camera,
   indoors the building alone. Three images and the dead zone as a unit. Not yet: the
-  hover card, clicks, labels, icons, the settings page, a glide (step 7).
+  hover card, labels, icons, the settings page, a glide (step 7).
+- **The clicks** (step 7's, §6 item 6, as the author asked again after the first run:
+  *"click previewing the route on the minimap, and then a second click or something
+  initiating the travel"*, *"shift + click showing the room info in the story window"*,
+  *"ctrl + click showing the room number"*). A room or a way-in dot clicked is the target,
+  its route drawn in Despana's route colour along the sheet's own lines; the target
+  clicked again, or any room right-clicked, is walked to (`go2`, echoed); Shift+click is
+  `;room <n>`, the room as Lich's `Room#to_s` says it, and Ctrl+click `;room <n> number`
+  (`crates/cena/src/atlas/room.rs`), neither echoed. The route is travel's own
+  (`itinerary`, priced by the walker `;scripts` uses), worked out again only when the
+  room or the target changes (`atlas/follow.rs`), and the target is forgotten on arrival.
+  Another character's minimap only shows.
 
 ## 8. Inside and next door: the author's goal after the first run, 2026-09-29
 

@@ -32,18 +32,27 @@ impl App {
                 self.triggers.start_from(&line);
             }
             Asked::Lich(on) => self.hydras(seat, lich_word(on)),
+            Asked::Aim(target) => seat.aim(target),
+            Asked::Hydra { word, echo: true } => self.hydras(seat, &word),
+            Asked::Hydra { word, echo: false } => {
+                self.sessions
+                    .send_quietly(seat, format!("{}{word}", symbol(seat)));
+            }
         }
         None
     }
 
     /// Send Hydra's command `word` on `seat`'s character, with its symbol.
     pub(super) fn hydras(&self, seat: &Arc<Seat>, word: &str) {
-        let symbol = seat
-            .handle
-            .command_symbol()
-            .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
-        self.sessions.send(seat, format!("{symbol}{word}"));
+        self.sessions.send(seat, format!("{}{word}", symbol(seat)));
     }
+}
+
+/// What `seat`'s character marks Hydra's commands with.
+fn symbol(seat: &Seat) -> char {
+    seat.handle
+        .command_symbol()
+        .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL)
 }
 
 /// `;lich`'s word for switching the player's own Lich `on`, or off.

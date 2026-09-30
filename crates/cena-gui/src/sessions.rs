@@ -25,7 +25,8 @@ use crate::feed;
 /// Where a character is on the map, from its game state: the binary's
 /// answer (`plan/53` §7 steps 4-5), which alone holds the map and its
 /// layout. Asked each time the character's feed takes a snapshot.
-pub type Minimap = Arc<dyn Fn(&cena_session::GameState) -> cena_ui::MinimapView + Send + Sync>;
+pub type Minimap =
+    Arc<dyn Fn(&cena_session::GameState, Option<u32>) -> cena_ui::MinimapView + Send + Sync>;
 use crate::story::Story;
 
 /// The sessions the window shows. Cloneable, and usable from the binary's
@@ -95,6 +96,9 @@ pub(crate) struct Seat {
     pub(crate) minimap: Option<Minimap>,
     /// That, as its feed last worked it out from a snapshot.
     pub(crate) where_now: Mutex<Option<cena_ui::MinimapView>>,
+    /// The room clicked on its minimap to go to (`plan/53` §6 item 6),
+    /// which the minimap routes to until the character is there.
+    pub(crate) map_target: Mutex<Option<u32>>,
     /// Its card on the hub, as its feed last saw it.
     pub(crate) card: Mutex<SessionCard>,
     /// The character as its feed last saw it, for its play window.
@@ -121,6 +125,33 @@ pub(crate) struct Seat {
 }
 
 impl Seat {
+    /// Where it is on the map for this state, routed to its target; a
+    /// target reached is forgotten, so the route ends where the walk did.
+    pub(crate) fn find_on_map(&self, state: &cena_session::GameState) {
+        let Some(minimap) = &self.minimap else {
+            return;
+        };
+        let mut target = lock(&self.map_target);
+        let view = minimap(state, *target);
+        if let cena_ui::MinimapView::Here { room, .. } = &view
+            && *target == Some(*room)
+        {
+            *target = None;
+        }
+        drop(target);
+        *lock(&self.where_now) = Some(view);
+    }
+
+    /// Route its minimap to `target`, or to none, from where it last was:
+    /// at once, not at the game's next line.
+    pub(crate) fn aim(&self, target: Option<u32>) {
+        *lock(&self.map_target) = target;
+        let snapshot = lock(&self.snapshot).clone();
+        if let Some(snapshot) = snapshot {
+            self.find_on_map(&snapshot.state);
+        }
+    }
+
     /// Give its story what the feed heard: at once while nothing holds the
     /// story, and otherwise when it is next taken. Never waits on a draw.
     pub(crate) fn tell_story(&self, heard: crate::story::inbox::Heard) {
@@ -151,6 +182,7 @@ impl Seat {
             }),
             minimap: None,
             where_now: Mutex::default(),
+            map_target: Mutex::default(),
             snapshot: Mutex::default(),
             story: Mutex::default(),
             inbox: crate::story::inbox::Inbox::default(),

@@ -20,9 +20,7 @@ pub(super) fn show(seat: &Seat, snapshot: Snapshot, window: &Wake) {
         lifecycle(&snapshot),
         snapshot.state.game_time_now(),
     );
-    if let Some(minimap) = &seat.minimap {
-        *lock(&seat.where_now) = Some(minimap(&snapshot.state));
-    }
+    seat.find_on_map(&snapshot.state);
     *lock(&seat.snapshot) = Some(snapshot);
     {
         let mut card = seat.card.lock().unwrap_or_else(PoisonError::into_inner);

@@ -411,6 +411,7 @@ impl Table {
                 (Ok(context), Some(atlas)) => Some(crate::atlas::minimap(
                     Arc::clone(&context.map),
                     Arc::clone(atlas),
+                    crate::scripts::walker_of(&cena_session::character_store::data_dir()),
                 )),
                 _ => None,
             };

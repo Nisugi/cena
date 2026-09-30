@@ -91,6 +91,16 @@ pub(crate) enum Asked {
     /// The play window of the hub's first to ninth character, 1 to 9, open
     /// and with the keyboard (`plan/52` step 8).
     Character(u8),
+    /// Route the minimap to this room, or to none (`plan/53` §6 item 6).
+    Aim(Option<u32>),
+    /// Send Hydra's command `word` with the character's own symbol, echoed
+    /// or not.
+    Hydra {
+        /// The command, without its symbol.
+        word: String,
+        /// Whether the story shows it.
+        echo: bool,
+    },
 }
 
 /// What a play window shows this frame.

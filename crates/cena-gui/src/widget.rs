@@ -120,6 +120,17 @@ pub(crate) enum Clicked {
     Quietly(String),
     /// A link in a line of the game's, clicked at a place on the screen.
     Link(cena_ui::RunLink, egui::Pos2),
+    /// A room clicked on the minimap to go to, its route shown; `None`
+    /// to forget it.
+    Aim(Option<u32>),
+    /// One of Hydra's own commands, its symbol put in front: `go2 228`
+    /// echoed as if typed, or `room 228` said with no echo.
+    Hydra {
+        /// The command, without its symbol.
+        word: String,
+        /// Whether the story shows it, as it shows what was typed.
+        echo: bool,
+    },
 }
 
 /// What the player chose for one placed widget on its own page, whichever

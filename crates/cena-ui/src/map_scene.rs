@@ -20,6 +20,11 @@ pub enum MinimapView {
         scene: Arc<MapScene>,
         /// The room's number.
         room: u32,
+        /// The room the player clicked to go to, if any.
+        target: Option<u32>,
+        /// The way there as travel would walk it, the room it is in first
+        /// and the target last; empty with no target, or no way.
+        route: Vec<u32>,
     },
     /// Nothing to draw yet, and why, to say where the map would be.
     Waiting(String),

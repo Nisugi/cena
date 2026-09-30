@@ -252,6 +252,10 @@ impl Play {
             Some(Clicked::Send(line)) => self.out = Some(super::Asked::Send(line)),
             Some(Clicked::Quietly(line)) => self.out = Some(super::Asked::Quietly(line)),
             Some(Clicked::Link(link, at)) => self.clicked(context, (link, at), (snapshot, story)),
+            Some(Clicked::Aim(target)) => self.out = Some(super::Asked::Aim(target)),
+            Some(Clicked::Hydra { word, echo }) => {
+                self.out = Some(super::Asked::Hydra { word, echo });
+            }
             None => {}
         }
         ((drawn, insides), released)
