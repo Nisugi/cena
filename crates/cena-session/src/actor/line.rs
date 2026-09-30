@@ -155,6 +155,17 @@ impl<S: ByteSource> SessionActor<S> {
 
     /// Publish `lines` to every viewer, add them to what is held, or neither.
     fn show(&self, lines: Vec<Arc<Line>>, show: &mut Show<'_>) {
+        // Each creature's tag after its name, when shown: after the triggers
+        // read the line, so a trigger on `kobold swings` still fires
+        // (`cena_model::targetid`).
+        let lines = if self.events.tags_creatures() {
+            lines
+                .into_iter()
+                .map(|line| cena_model::targetid::tagged(&line).map_or(line, Arc::new))
+                .collect()
+        } else {
+            lines
+        };
         match show {
             Show::Held(held) => held.extend(lines),
             Show::Now | Show::Lichs => {

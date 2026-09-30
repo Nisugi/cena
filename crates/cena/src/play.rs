@@ -307,7 +307,8 @@ impl Table {
         let commands = Commands::install(&hosted.handle);
         crate::relay::open(&hosted.handle, &commands, self.characters());
         let kept = crate::general::Kept::of(&self.dir, &login);
-        sorter::open(&hosted.handle, &commands, kept);
+        sorter::open(&hosted.handle, &commands, kept.clone());
+        crate::targetid::open(&hosted.handle, &commands, kept);
         // Following before the first read, so no change falls between.
         let following = self.changes.follow();
         triggers::open(&hosted.handle, &self.dir, &character);

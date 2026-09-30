@@ -170,6 +170,10 @@ pub(crate) struct EventPublisher {
     /// given, and because every connection's actor shares this publisher, so
     /// the switch outlives a reconnect. Off until asked, `VellumFE`'s default.
     sorting: Arc<AtomicBool>,
+    /// `.targetid`: whether each creature's tag is shown after its name
+    /// (`cena_model::targetid`), and a typed command's tag taken for its
+    /// creature. Here for `sorting`'s reasons; off until asked.
+    tagging: Arc<AtomicBool>,
     /// Whether each finished line is also published as the game sent it
     /// ([`Event::Heard`]), for a script runner. Here for `sorting`'s reasons.
     hearing: Arc<AtomicBool>,
@@ -229,6 +233,7 @@ impl EventPublisher {
             retry: Arc::new(Mutex::new(None)),
             fence: Arc::new(Mutex::new(())),
             sorting: Arc::new(AtomicBool::new(false)),
+            tagging: Arc::new(AtomicBool::new(false)),
             hearing: Arc::new(AtomicBool::new(false)),
             hooks: Arc::default(),
             triggers: Arc::default(),
@@ -324,6 +329,16 @@ impl EventPublisher {
     /// Whether container looks are published sorted.
     pub(crate) fn sorts_containers(&self) -> bool {
         self.sorting.load(Ordering::Relaxed)
+    }
+
+    /// Show each creature's tag after its name, or stop.
+    pub(crate) fn tag_creatures(&self, on: bool) {
+        self.tagging.store(on, Ordering::Relaxed);
+    }
+
+    /// Whether each creature's tag is shown after its name.
+    pub(crate) fn tags_creatures(&self) -> bool {
+        self.tagging.load(Ordering::Relaxed)
     }
 
     /// Answer each line published from now on with `triggers`.

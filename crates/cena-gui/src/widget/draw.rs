@@ -90,8 +90,12 @@ pub(super) fn draw(
             let mut clicked = None;
             let own = seen.who.is_none();
             scrolled(ui, &mut |ui| {
-                clicked =
-                    super::described::room(ui, seen.snapshot, chosen.room.unwrap_or_default(), own);
+                clicked = super::described::room(
+                    ui,
+                    seen.snapshot,
+                    chosen.room.unwrap_or_default(),
+                    (own, seen.tags),
+                );
             });
             return clicked;
         }
@@ -214,7 +218,7 @@ pub(super) fn draw(
             };
         }),
         Widget::Creatures | Widget::Npcs | Widget::Objects | Widget::Players => {
-            let items = room_list(widget, seen.snapshot);
+            let items = room_list(widget, seen.snapshot, seen.tags);
             let (listing, own) = (chosen.list.unwrap_or_default(), seen.who.is_none());
             let mut clicked = None;
             scrolled(ui, &mut |ui| {
@@ -513,20 +517,22 @@ fn hunt(ui: &mut egui::Ui, hunt: Option<&cena_ui::HuntView>) {
     }
 }
 
-/// A labelled list of room items, each with its status when it has one;
-/// `None` while the room's contents are not yet known.
 /// The names a room list shows, each its runs: its creatures or objects
 /// once the game has said what is here, or its players, each painted by the
 /// character's triggers as Despana paints them ([`cena_ui::room_player`]).
 /// `None` until the game has said.
-fn room_list(widget: &Widget, snapshot: Option<&Snapshot>) -> Option<Vec<Vec<StyledRun>>> {
+fn room_list(
+    widget: &Widget,
+    snapshot: Option<&Snapshot>,
+    tags: bool,
+) -> Option<Vec<Vec<StyledRun>>> {
     let snapshot = snapshot?;
     let room = &snapshot.state.room;
-    let things = |items: &[RoomItem], color| {
+    let things = |items: &[RoomItem], look| {
         room.component("room objs").is_some().then(|| {
             items
                 .iter()
-                .map(|item| super::described::item_runs(item, color))
+                .map(|item| super::described::item_runs(item, look))
                 .collect()
         })
     };
@@ -546,9 +552,9 @@ fn room_list(widget: &Widget, snapshot: Option<&Snapshot>) -> Option<Vec<Vec<Sty
         .cloned()
         .partition(|item| hostile(&item));
     match widget {
-        Widget::Creatures => things(&targets, CREATURE),
-        Widget::Npcs => things(&npcs, CREATURE),
-        Widget::Objects => things(&room.objects, OBJECT),
+        Widget::Creatures => things(&targets, (CREATURE, tags)),
+        Widget::Npcs => things(&npcs, (CREATURE, tags)),
+        Widget::Objects => things(&room.objects, (OBJECT, false)),
         _ => room.saw_players().then(|| {
             room.players
                 .iter()

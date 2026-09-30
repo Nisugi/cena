@@ -77,7 +77,7 @@ pub(super) fn room(
     ui: &mut egui::Ui,
     snapshot: Option<&Snapshot>,
     parts: RoomParts,
-    own: bool,
+    (own, tags): (bool, bool),
 ) -> Option<super::Clicked> {
     let Some(snapshot) = snapshot else {
         ui.weak("Room unknown");
@@ -121,17 +121,30 @@ pub(super) fn room(
         if !prose.is_empty() {
             prose.push(plain("  "));
         }
-        prose.extend(styled(seen, true));
+        let seen = tagged(seen, tags);
+        prose.extend(styled(&seen, true));
     }
     if !prose.is_empty() {
         said(ui, &prose);
     }
     if parts.apart && seen.is_some() {
         if parts.objects {
-            listed(&mut said, ui, "You also see", &room.objects, OBJECT);
+            listed(
+                &mut said,
+                ui,
+                "You also see",
+                &room.objects,
+                (OBJECT, false),
+            );
         }
         if parts.creatures {
-            listed(&mut said, ui, "Creatures", &room.creatures, CREATURE);
+            listed(
+                &mut said,
+                ui,
+                "Creatures",
+                &room.creatures,
+                (CREATURE, tags),
+            );
         }
     }
     if parts.players && !room.players.is_empty() {
@@ -186,15 +199,19 @@ pub(super) fn player_runs(snapshot: &Snapshot, player: &RoomItem) -> Vec<StyledR
     }
 }
 
-/// A creature or an object in the room, in `color`, a link to it, and what
-/// it is doing when the game says (`dead`, `lying down`).
-pub(super) fn item_runs(item: &RoomItem, color: Color32) -> Vec<StyledRun> {
+/// A creature or an object in the room, in `color`, a link to it, its
+/// tag after it when `tag` (`.targetid`), and what it is doing when the
+/// game says (`dead`, `lying down`).
+pub(super) fn item_runs(item: &RoomItem, (color, tag): (Color32, bool)) -> Vec<StyledRun> {
     let mut runs = vec![StyledRun {
         text: item.text.clone(),
         color: Some(colour(color)),
         link: Some(object(item)),
         ..StyledRun::default()
     }];
+    if let Some(id) = item.id.parse().ok().filter(|_| tag) {
+        runs.push(plain(&format!(" ({})", cena_session::targetid::tag(id))));
+    }
     if let Some(status) = &item.status {
         runs.push(plain(&format!(" ({status})")));
     }
@@ -247,6 +264,16 @@ fn bare(title: &str) -> &str {
     }
 }
 
+/// `runs` with each creature's tag after its name, when `tags`
+/// (`.targetid`).
+fn tagged(runs: &cena_session::Runs, tags: bool) -> std::borrow::Cow<'_, cena_session::Runs> {
+    let line = cena_session::Line::new("", runs.clone());
+    match cena_session::targetid::tagged(&line).filter(|_| tags) {
+        Some(line) => std::borrow::Cow::Owned(line.runs),
+        None => std::borrow::Cow::Borrowed(runs),
+    }
+}
+
 /// A component's runs as the window draws them; `creatures`, its bold runs
 /// in the creatures' colour, as the game's bold marks them.
 fn styled(runs: &cena_session::Runs, creatures: bool) -> Vec<StyledRun> {
@@ -285,7 +312,7 @@ fn listed(
     ui: &mut egui::Ui,
     label: &str,
     items: &[RoomItem],
-    color: Color32,
+    look: (Color32, bool),
 ) {
     if items.is_empty() {
         return;
@@ -295,7 +322,7 @@ fn listed(
         if at > 0 {
             runs.push(plain(", "));
         }
-        runs.extend(item_runs(item, color));
+        runs.extend(item_runs(item, look));
     }
     said(ui, &runs);
 }
@@ -372,7 +399,7 @@ mod tests {
         let mut harness = Harness::builder()
             .with_size((420.0, 260.0))
             .build_ui(move |ui| {
-                let _ = room(ui, Some(&snapshot), parts, true);
+                let _ = room(ui, Some(&snapshot), parts, (true, false));
             });
         harness.run();
         harness
@@ -459,6 +486,36 @@ mod tests {
     /// The creatures' line, apart.
     const CREATURES: &str = "Creatures: a tree hawk-eagle";
 
+    /// With `.targetid` on, each creature drawn apart has its tag after its
+    /// name, and an object none (the author, 2026-09-30).
+    #[test]
+    fn a_creature_apart_has_its_tag() {
+        let snapshot = watering_hole();
+        let parts = RoomParts {
+            apart: true,
+            ..RoomParts::default()
+        };
+        let mut harness = Harness::builder()
+            .with_size((420.0, 260.0))
+            .build_ui(move |ui| {
+                let _ = room(ui, Some(&snapshot), parts, (true, true));
+            });
+        harness.run();
+        let tagged = format!(
+            "Creatures: a tree hawk-eagle ({})",
+            cena_session::targetid::tag(17)
+        );
+        assert!(harness.query_by_label(&tagged).is_some(), "{tagged}");
+        assert!(
+            harness
+                .query_by_label(
+                    "You also see: a raw-boned halfling tavernkeeper, a gaunt masked artificer"
+                )
+                .is_some(),
+            "objects untagged"
+        );
+    }
+
     /// The room's links are the story's: a creature drawn apart is a link to
     /// it by its id, its menu asked for as a click on it in the story asks;
     /// in another character's widget, nothing (the author, 2026-09-29).
@@ -472,7 +529,7 @@ mod tests {
             };
             let mut harness = Harness::builder().with_size((420.0, 260.0)).build_ui_state(
                 move |ui, clicked: &mut Option<crate::widget::Clicked>| {
-                    if let Some(now) = room(ui, Some(&snapshot), parts, own) {
+                    if let Some(now) = room(ui, Some(&snapshot), parts, (own, false)) {
                         *clicked = Some(now);
                     }
                 },
@@ -516,7 +573,7 @@ mod tests {
             .with_size((420.0, 220.0))
             .wgpu()
             .build_ui(move |ui| {
-                let _ = room(ui, Some(&snapshot), parts, true);
+                let _ = room(ui, Some(&snapshot), parts, (true, false));
             });
         harness.run();
         harness.snapshot(name);

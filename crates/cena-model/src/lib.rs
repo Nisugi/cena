@@ -26,6 +26,7 @@ pub mod sorter;
 pub mod spells;
 pub mod state;
 pub mod status;
+pub mod targetid;
 pub mod trigger;
 
 pub use effects::{Effect, Effects};

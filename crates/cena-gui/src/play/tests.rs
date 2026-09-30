@@ -51,6 +51,7 @@ impl Scene {
             now: Instant::now(),
             hunt: self.hunt.as_ref(),
             minimap: None,
+            tags: false,
             numlock: None,
             set: 0,
             keys: &[],

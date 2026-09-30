@@ -260,6 +260,20 @@ impl SessionHandle {
         self.events.sorts_containers()
     }
 
+    /// Show each creature's tag after its name, to every viewer, and take a
+    /// tag the player types after a tag verb for its creature
+    /// (`cena_model::targetid`, `.targetid`), or stop. It holds across a
+    /// reconnect, as `;sorter` does.
+    pub fn tag_creatures(&self, on: bool) {
+        self.events.tag_creatures(on);
+    }
+
+    /// Whether each creature's tag is shown after its name.
+    #[must_use]
+    pub fn tags_creatures(&self) -> bool {
+        self.events.tags_creatures()
+    }
+
     /// Publish each finished line as the game sent it too
     /// ([`Event::Heard`](crate::Event::Heard)), for a script runner, or
     /// stop. It holds across a reconnect, as `;sorter` does.

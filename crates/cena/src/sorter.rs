@@ -57,8 +57,15 @@ pub(crate) enum Command {
 /// `sorter`; `Some(Err)` holding the rest of the line when it is not
 /// understood.
 pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
+    parse_switch(line, "sorter")
+}
+
+/// Parse a switch's command line, `word` then `on`, `off`, `status` or
+/// nothing to flip it: `.sorter`'s words, which `.targetid` shares. `None`
+/// when the line is not `word`'s.
+pub(crate) fn parse_switch(line: &str, word: &str) -> Option<Result<Command, String>> {
     let mut words = line.split_whitespace();
-    if !words.next()?.eq_ignore_ascii_case("sorter") {
+    if !words.next()?.eq_ignore_ascii_case(word) {
         return None;
     }
     let rest: Vec<&str> = words.collect();

@@ -384,6 +384,7 @@ mod tests {
                     who: None,
                     open: &[],
                     minimap: None,
+                    tags: false,
                 };
                 let chosen = Chosen {
                     lines: Some(lines),
@@ -451,6 +452,7 @@ mod tests {
                         who: None,
                         open: &[],
                         minimap: None,
+                        tags: false,
                     };
                     let chosen = Chosen {
                         lines: Some(Lines {
@@ -526,6 +528,7 @@ mod tests {
                         who: None,
                         open: &open,
                         minimap: None,
+                        tags: false,
                     };
                     let _ = Widget::Story.draw_with(ui, &seen, Id::new("p"), &Chosen::default());
                 });
@@ -565,6 +568,7 @@ mod tests {
                     who: None,
                     open: &[],
                     minimap: None,
+                    tags: false,
                 };
                 let _ = Widget::Story.draw_with(ui, &seen, Id::new("b"), &Chosen::default());
             });

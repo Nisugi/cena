@@ -402,6 +402,7 @@ impl App {
                     now: Instant::now(),
                     hunt: hunt.as_ref(),
                     minimap: minimap.as_ref(),
+                    tags: seat.handle.tags_creatures(),
                     numlock,
                     keys: &keys_said,
                     set: chosen,

@@ -55,6 +55,7 @@ pub use actor::{EndReason, Event, Line, SETUP_DEADLINE, Session, SessionActor, S
 // takes one, and the binary that calls it has no edge to `cena-model`.
 pub use cena_model::crit::CritTables;
 pub use cena_model::movement::{self, MoveFeedback};
+pub use cena_model::targetid;
 // What the travel driver reads to store the hands and cast (`plan/24` 4c).
 pub use cena_model::state::character::snapshot::{CharacterSnapshot, Group};
 pub use cena_model::state::character::stance::Stance;

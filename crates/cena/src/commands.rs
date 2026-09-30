@@ -104,6 +104,7 @@ pub(crate) const HELP: &[&str] = &[
     "loot, combat     reports on what was recorded: loot summary, combat hunts",
     "history help     read back what you saw: history tail, history last 15m, history search <text>",
     "sorter           show a container's contents one line per category: sorter on, off or status",
+    "targetid         a tag after each creature's name, and kill <tag> reaching it: targetid on, off or status",
     "doll import <folder>   your VellumFE injury dolls into Hydra, each calibration kept in its picture",
     "multi help, foreach help   run commands several times, or once for each item",
     "agent help       what an agent (a program such as Claude Code) may do with this character",
@@ -137,6 +138,8 @@ pub(crate) struct Commands {
     /// The injury doll's import (`crate::doll`).
     doll: Arc<OnceLock<Handler>>,
     sorter: Arc<OnceLock<Handler>>,
+    /// Creature tags (`crate::targetid`).
+    targetid: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
     batch: Arc<OnceLock<Starter>>,
     agent: Arc<OnceLock<Handler>>,
@@ -245,6 +248,7 @@ impl Commands {
             &self.history,
             &self.doll,
             &self.sorter,
+            &self.targetid,
             &self.trigger,
             &self.agent,
             &self.lich,
@@ -311,6 +315,11 @@ impl Commands {
     /// Route `;sorter` to `handler` from now on. Once, as for travel.
     pub(crate) fn sorter(&self, handler: Handler) {
         once(&self.sorter, "sorter", handler);
+    }
+
+    /// Route `.targetid` to `handler` from now on. Once, as for travel.
+    pub(crate) fn targetid(&self, handler: Handler) {
+        once(&self.targetid, "targetid", handler);
     }
 
     /// Route `;agent` to `handler` from now on. Once, as for travel.

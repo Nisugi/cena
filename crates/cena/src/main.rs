@@ -71,6 +71,7 @@ mod scripts;
 mod secrets;
 mod setup;
 mod sorter;
+mod targetid;
 mod travel;
 mod travel_page;
 mod triggers;

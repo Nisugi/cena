@@ -138,6 +138,7 @@ fn toggle(key: &str, label: &str, help: &str, set: Option<bool>, default: bool) 
 fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
     let commands: claimant::Settings = section(file, claimant::SECTION)?;
     let sorter: Sorter = section(file, SORTER)?;
+    let targetid: Sorter = section(file, crate::targetid::SECTION)?;
     Ok(vec![
         Row {
             key: "symbol".to_owned(),
@@ -153,6 +154,13 @@ fn general_rows(file: &SettingsFile) -> Result<Vec<Row>, String> {
             "Sort container looks",
             "A container look shown one line per kind of thing in it: ;sorter.",
             sorter.enabled,
+            false,
+        ),
+        toggle(
+            crate::targetid::SECTION,
+            "Creature tags",
+            "A tag after each creature's name, and kill <tag> reaching it, as targetid does: .targetid.",
+            targetid.enabled,
             false,
         ),
     ])
@@ -354,6 +362,18 @@ fn changed(
                 }
             )
         }
+        (GENERAL, crate::targetid::SECTION) => {
+            let enabled = switch(key, to)?;
+            put(&mut file, crate::targetid::SECTION, &Sorter { enabled })?;
+            format!(
+                "Creature tags {}.",
+                if enabled.unwrap_or(false) {
+                    "on"
+                } else {
+                    "off"
+                }
+            )
+        }
         (LOG, key) => {
             let mut log: LogSettings = section(&file, LOG_SECTION)?;
             let done = log_change(&mut log, name, key, to)?;
@@ -499,6 +519,9 @@ impl Kept {
         }
         if let Ok(sorter) = section::<Sorter>(&file, SORTER) {
             handle.sort_containers(sorter.enabled.unwrap_or(false));
+        }
+        if let Ok(tags) = section::<Sorter>(&file, crate::targetid::SECTION) {
+            handle.tag_creatures(tags.enabled.unwrap_or(false));
         }
     }
 }
