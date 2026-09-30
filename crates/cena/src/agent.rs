@@ -38,19 +38,32 @@ pub(crate) fn requested() -> bool {
 }
 
 /// `--agent-port N` or `--agent-port=N`, else the default.
-fn port() -> u16 {
-    let mut args = std::env::args().skip(1);
+///
+/// # Errors
+///
+/// A value that is not a port. It was taken as the default with nothing
+/// said, so an agent set up for the port typed found nobody listening (the
+/// review of 2026-09-29).
+fn port() -> Result<u16, String> {
+    port_of(std::env::args().skip(1))
+}
+
+/// [`port`] over `args`.
+fn port_of(mut args: impl Iterator<Item = String>) -> Result<u16, String> {
     while let Some(arg) = args.next() {
         let value = match arg.strip_prefix("--agent-port=") {
             Some(value) => Some(value.to_owned()),
             None if arg == "--agent-port" => args.next(),
             None => None,
         };
-        if let Some(port) = value.and_then(|v| v.parse().ok()) {
-            return port;
+        if let Some(value) = value {
+            return value
+                .trim()
+                .parse()
+                .map_err(|_| format!("--agent-port {value}: a port is a number from 1 to 65535."));
         }
     }
-    DEFAULT_PORT
+    Ok(DEFAULT_PORT)
 }
 
 /// The listener, and the characters it can see.
@@ -74,7 +87,13 @@ impl Agent {
                 return None;
             }
         };
-        let port = port();
+        let port = match port() {
+            Ok(port) => port,
+            Err(why) => {
+                eprintln!("[agent] not started: {why}");
+                return None;
+            }
+        };
         let listener =
             match tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await {
                 Ok(listener) => listener,
@@ -343,7 +362,10 @@ fn status(handle: &SessionHandle) -> Notice {
         level.allows()
     )];
     lines.push(if requested() {
-        format!("Agents connect at http://127.0.0.1:{}/mcp.", port())
+        match port() {
+            Ok(port) => format!("Agents connect at http://127.0.0.1:{port}/mcp."),
+            Err(why) => format!("No agent can connect: {why}"),
+        }
     } else {
         "No agent can connect: Hydra was not started with --agent.".to_owned()
     });
@@ -416,6 +438,20 @@ fn save(dir: &Path, url: &str, token: &str) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_port_that_is_not_one_is_refused_not_taken_as_the_default() {
+        let of = |args: &[&str]| super::port_of(args.iter().map(|a| (*a).to_owned()));
+        assert_eq!(of(&["--agent", "--agent-port", "47701"]), Ok(47701));
+        assert_eq!(of(&["--agent-port=47702"]), Ok(47702));
+        assert_eq!(of(&["--agent"]), Ok(super::DEFAULT_PORT));
+        assert!(of(&["--agent-port", "70000"]).is_err_and(|why| why.contains("70000")));
+        assert!(of(&["--agent-port=abc"]).is_err());
+        assert!(
+            of(&["--agent-port"]).is_ok(),
+            "nothing after it: the default, as before"
+        );
+    }
+
     use super::*;
     use cena_platform::AnsweringSource;
     use cena_session::agent::{Approval, Call, Denied};
