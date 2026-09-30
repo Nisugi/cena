@@ -48,6 +48,58 @@ pub(crate) fn apply(
     Ok(format!("{said}: {done}."))
 }
 
+/// Move a key between the two files: `bound` made to the file at `to`,
+/// `taken` to the one at `from`, both read and both changes made before
+/// either is saved. Should the second save fail, the first is put back as
+/// it was, so the key is in the file it started in, not in both with an
+/// error naming one of them (the review of 2026-09-29). Each save is
+/// atomic on its own (`cena_session::store::save_text`); this is the pair.
+///
+/// # Errors
+///
+/// Why nothing was changed, or, when the first file could not be put back
+/// either, that the key is now in both.
+pub(crate) fn apply_pair(
+    data: &Path,
+    (to, to_whose, bound): (&Path, Whose, &KeyChange),
+    (from, from_whose, taken): (&Path, Whose, &KeyChange),
+    (keys, said): (&Keybinds, &str),
+) -> Result<String, String> {
+    let read = |path: &Path| -> Result<String, String> {
+        let name = path
+            .file_name()
+            .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
+        let old = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(why) if why.kind() == std::io::ErrorKind::NotFound => String::new(),
+            Err(why) => return Err(format!("{said}: nothing was changed: {name}: {why}")),
+        };
+        if let Err(why) = toml::from_str::<toml::Table>(&old) {
+            return Err(format!(
+                "{said}: nothing was changed while {name} does not read: {why}"
+            ));
+        }
+        Ok(old)
+    };
+    let (old_to, old_from) = (read(to)?, read(from)?);
+    let (new_to, done) =
+        changed(&old_to, to_whose, bound, keys).map_err(|why| format!("{said}: {why}"))?;
+    let (new_from, _) =
+        changed(&old_from, from_whose, taken, keys).map_err(|why| format!("{said}: {why}"))?;
+    cena_session::store::save_text(data, to, &new_to)
+        .map_err(|why| format!("{said}: nothing was changed: {why}"))?;
+    if let Err(why) = cena_session::store::save_text(data, from, &new_from) {
+        return Err(match cena_session::store::save_text(data, to, &old_to) {
+            Ok(()) => format!("{said}: nothing was changed: {why}"),
+            Err(again) => format!(
+                "{said}: {done}, but it could not be taken out of the other file ({why}), \
+                 nor put back ({again}): it is in both."
+            ),
+        });
+    }
+    Ok(done)
+}
+
 /// Make every one of `changes` to the keys file at `path`, `whose` it is,
 /// in `data`, one after another in its text, and save it once: a Wrayth key
 /// set imported (step 9).
@@ -529,6 +581,72 @@ Numpad8 = \"north\"
                 .ok()
                 .as_deref(),
             Some("[keys\n")
+        );
+        let _ = std::fs::remove_dir_all(&data);
+    }
+
+    /// A key moved between the files, when the second cannot be saved, is
+    /// left where it was: the first file put back, the error naming what
+    /// happened.
+    #[test]
+    fn a_move_whose_second_save_fails_puts_the_first_file_back() {
+        let data = std::env::temp_dir().join(format!("cena-keys-pair-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&data);
+        let every = super::super::path(&data);
+        let keys = (&Keybinds::default(), "Keys");
+        assert!(
+            apply(
+                &data,
+                (&every, Whose::Every),
+                &bound("F5", "look", None),
+                keys
+            )
+            .is_ok()
+        );
+        let before = std::fs::read_to_string(&every).expect("saved");
+        // A file where the character's would be, so nothing can be saved
+        // beneath it: the read finds nothing there, the save fails.
+        let blocker = data.join("blocker");
+        std::fs::write(&blocker, "").expect("written");
+        let mine = blocker.join("gsiv_ashryn.keys.toml");
+        let taken = KeyChange::Restore {
+            key: "F5".to_owned(),
+            place: EVERY,
+        };
+        let moved = KeyChange::Bind {
+            key: "F5".to_owned(),
+            does: Macro::Send("look".to_owned()),
+            was: None,
+            place: Place {
+                set: 0,
+                every: false,
+            },
+        };
+        // The first save fails: nothing was saved.
+        let Err(why) = apply_pair(
+            &data,
+            (&mine, Whose::Character, &moved),
+            (&every, Whose::Every, &taken),
+            keys,
+        ) else {
+            panic!("a save beneath a file cannot succeed");
+        };
+        assert!(why.contains("nothing was changed"), "{why}");
+        assert_eq!(std::fs::read_to_string(&every).ok(), Some(before.clone()));
+        // The second save fails: the first, which bound F6, is put back.
+        let Err(why) = apply_pair(
+            &data,
+            (&every, Whose::Every, &bound("F6", "hide", None)),
+            (&mine, Whose::Character, &taken),
+            keys,
+        ) else {
+            panic!("a save beneath a file cannot succeed");
+        };
+        assert!(why.contains("nothing was changed"), "{why}");
+        assert_eq!(
+            std::fs::read_to_string(&every).ok(),
+            Some(before),
+            "put back"
         );
         let _ = std::fs::remove_dir_all(&data);
     }

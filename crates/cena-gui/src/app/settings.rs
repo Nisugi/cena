@@ -164,8 +164,8 @@ impl App {
                 set,
                 every: to_every,
             } => {
-                let (to, said) = file(*to_every)?;
-                let (from, _) = file(!*to_every)?;
+                let ((to, to_whose), said) = file(*to_every)?;
+                let ((from, from_whose), _) = file(!*to_every)?;
                 let place = |every| Place { set: *set, every };
                 let bound = KeyChange::Bind {
                     key: key.clone(),
@@ -177,8 +177,12 @@ impl App {
                     key: key.clone(),
                     place: place(!*to_every),
                 };
-                keys::write::apply(data, to, &bound, (&self.keys, &said))?;
-                keys::write::apply(data, from, &taken, (&self.keys, &said))?;
+                keys::write::apply_pair(
+                    data,
+                    (to, to_whose, &bound),
+                    (from, from_whose, &taken),
+                    (&self.keys, &said),
+                )?;
                 return Ok(format!(
                     "{said}: {key} is {} now.",
                     if *to_every {
