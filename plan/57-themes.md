@@ -274,6 +274,17 @@ On a branch `themes` once the author approves.
 3. **A character's own.** Its theme and its accent in its settings file; its play window
    wearing it. UNVERIFIED: whether egui lets one window take a style the others do not; if it
    cannot be set per window, it is set at the top of each window's drawing. Checked first.
+
+   **BUILT 2026-09-30.** Checked: egui keeps one style per context, not per window, so a
+   character's palette is worn at the top of its play window's drawing and put off at the
+   end (`theme::wearing`, a guard: the palette under that viewport's id in egui's data, the
+   visuals swapped and swapped back). The character's `theme` section (`Chosen`: a theme's
+   name, an accent as `#rrggbb`) in its settings file, written by the binary's *Theme* page
+   among the character's pages (`crates/cena/src/theme_page.rs`, after *Recording*): the
+   theme, *Hydra's* unless chosen, and the accent, a colour picker. The GUI reads the section
+   itself (`crates/cena-gui/src/app/looks.rs`), the file's modified time looked at once a
+   second, and works the palette out over Hydra's own theme, the accent pinned
+   (`Themes::palette_for`); every character's is worked out again when Hydra's theme changes.
 4. **Shape.** Corner radius, strokes, padding, density, scrollbar width, from the theme into
    egui's style and into Hydra's own drawing (`crates/cena-gui/src/bar/shape.rs:81` fixes a
    bar's corners at 3 today).

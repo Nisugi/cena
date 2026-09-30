@@ -14,6 +14,26 @@ use serde::{Deserialize, Serialize};
 
 use super::{Palette, Recipe, Rgb, Scheme, Token, generate, hex, parse_hex};
 
+/// What one character chose for its own window (`plan/57` §3c): a theme in
+/// place of Hydra's, and an accent pinned over whichever it wears. The
+/// `theme` section of its settings file, which the binary's *Theme* page
+/// writes and the GUI reads.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Chosen {
+    /// The theme's name; none, Hydra's.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theme: Option<String>,
+    /// The accent, `#rrggbb`; none, the theme's.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accent: Option<String>,
+}
+
+impl Chosen {
+    /// The section's name in the settings file.
+    pub const SECTION: &str = "theme";
+}
+
 /// One theme: what it says, over its base.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
@@ -301,6 +321,22 @@ impl Themes {
     /// As [`Themes::resolve`].
     pub fn palette(&self, name: &str) -> Result<Palette, String> {
         Ok(generate(&self.resolve(name)?))
+    }
+
+    /// The palette a character's window wears: `chosen`'s theme, or
+    /// `hydras`, with `chosen`'s accent pinned over it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Themes::resolve`], or an accent that is not a colour.
+    pub fn palette_for(&self, hydras: &str, chosen: &Chosen) -> Result<Palette, String> {
+        let mut recipe = self.resolve(chosen.theme.as_deref().unwrap_or(hydras))?;
+        if let Some(accent) = &chosen.accent {
+            let rgb =
+                parse_hex(accent).ok_or_else(|| format!("accent `{accent}` is not a colour"))?;
+            recipe.pins.insert(Token::Accent, rgb);
+        }
+        Ok(generate(&recipe))
     }
 }
 

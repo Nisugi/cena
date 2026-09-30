@@ -72,6 +72,7 @@ mod secrets;
 mod setup;
 mod sorter;
 mod targetid;
+mod theme_page;
 mod travel;
 mod travel_page;
 mod triggers;

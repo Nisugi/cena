@@ -20,10 +20,15 @@ fn key() -> egui::Id {
     egui::Id::new("theme")
 }
 
-/// The palette in force for what `ctx` is drawing.
+/// The palette in force for what `ctx` is drawing: the one worn for its
+/// viewport ([`wearing`]), else Hydra's ([`wear`]).
 pub(crate) fn palette(ctx: &egui::Context) -> Palette {
-    ctx.data(|data| data.get_temp::<Palette>(key()))
-        .unwrap_or_default()
+    let viewport = ctx.viewport_id();
+    ctx.data(|data| {
+        data.get_temp::<Palette>(key().with(viewport))
+            .or_else(|| data.get_temp::<Palette>(key()))
+    })
+    .unwrap_or_default()
 }
 
 /// `token`'s colour, in the palette in force for `ctx`.
@@ -45,6 +50,39 @@ pub(crate) fn wear(ctx: &egui::Context, palette: &Palette) {
         egui::Theme::Light
     });
     ctx.set_visuals(visuals);
+}
+
+/// `palette` worn for the viewport `ctx` is showing until the [`Worn`]
+/// is dropped: the palette answers under that viewport, and egui's visuals
+/// are the palette's meanwhile and put back after, so a play window wears
+/// its character's own theme while the rest wear Hydra's (`plan/57` §3c).
+/// With no palette, nothing changes.
+pub(crate) fn wearing(ctx: &egui::Context, palette: Option<&Palette>) -> Option<Worn> {
+    let palette = palette?;
+    let viewport = ctx.viewport_id();
+    let before = ctx.global_style().visuals.clone();
+    ctx.data_mut(|data| data.insert_temp(key().with(viewport), *palette));
+    ctx.set_visuals(visuals(palette));
+    Some(Worn {
+        ctx: ctx.clone(),
+        viewport,
+        before,
+    })
+}
+
+/// A palette worn for one viewport, put off when dropped.
+pub(crate) struct Worn {
+    ctx: egui::Context,
+    viewport: egui::ViewportId,
+    before: Visuals,
+}
+
+impl Drop for Worn {
+    fn drop(&mut self) {
+        self.ctx.set_visuals(self.before.clone());
+        self.ctx
+            .data_mut(|data| data.remove::<Palette>(key().with(self.viewport)));
+    }
 }
 
 /// egui's visuals from `palette`: dark or light by its canvas, the
@@ -139,6 +177,31 @@ mod tests {
         wear(&ctx, &light);
         assert!(!ctx.global_style().visuals.dark_mode);
         assert_eq!(color(&ctx, T::Canvas), rgb(light.get(T::Canvas)));
+    }
+
+    #[test]
+    fn a_palette_worn_for_a_viewport_is_put_off_when_dropped() {
+        let ctx = egui::Context::default();
+        let themes = Themes::built_in();
+        let (despana, light) = (
+            themes.palette(Theme::DEFAULT).unwrap(),
+            themes.palette(Theme::LIGHT).unwrap(),
+        );
+        wear(&ctx, &despana);
+        assert!(
+            wearing(&ctx, None).is_none(),
+            "nothing to wear: nothing changes"
+        );
+        let worn = wearing(&ctx, Some(&light));
+        assert_eq!(color(&ctx, T::Canvas), rgb(light.get(T::Canvas)));
+        assert!(!ctx.global_style().visuals.dark_mode);
+        drop(worn);
+        assert_eq!(
+            color(&ctx, T::Canvas),
+            rgb(despana.get(T::Canvas)),
+            "Hydra's again"
+        );
+        assert!(ctx.global_style().visuals.dark_mode);
     }
 
     #[test]

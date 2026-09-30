@@ -14,7 +14,7 @@ mod file;
 mod harmony;
 mod oklch;
 
-pub use file::{RecipeFile, Theme, Themes};
+pub use file::{Chosen, RecipeFile, Theme, Themes};
 pub use harmony::{Group, Recipe, Role, Scheme, generate, hue_variants, seed_swatches};
 pub use oklch::{contrast, delta_e, hue_distance};
 

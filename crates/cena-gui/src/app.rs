@@ -110,6 +110,8 @@ pub struct App {
     worn: Option<String>,
     /// Why the theme asked for is not worn, shown on the *Window* page.
     theme_problem: Option<String>,
+    /// Each character's own theme and accent, as its file says (`looks.rs`).
+    looks: looks::Looks,
 }
 
 /// One character's play window.
@@ -149,6 +151,7 @@ impl App {
             themes: cena_ui::theme::Themes::built_in(),
             worn: None,
             theme_problem: None,
+            looks: looks::Looks::default(),
             menu_waits: false,
             caught_for_page: None,
             clear_sends: false,
@@ -209,6 +212,7 @@ impl App {
         };
         crate::theme::wear(context, &palette);
         self.worn = Some(wanted.to_owned());
+        self.looks.wear_again();
     }
 
     /// Read the keybinds file again, and say what it bound; each
@@ -384,6 +388,13 @@ impl App {
         let keys = self.keys.of(mine.map(|(mine, _)| mine));
         let chosen = mine.map_or(0, |(mine, _)| mine.chosen);
         let keys_said = self.keys_said(mine, &seat.name);
+        let own_palette = self.settings_path(&seat.game, &seat.name).and_then(|file| {
+            self.looks.palette(
+                &file,
+                &self.themes,
+                self.worn.as_deref().unwrap_or_default(),
+            )
+        });
         let caught = &mut self.caught;
         let numlock = self.numlock;
         let mut focused = false;
@@ -419,6 +430,7 @@ impl App {
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             ([980.0, 680.0], format!("{} — {TITLE}", seat.name)),
             |ui| {
+                let worn = crate::theme::wearing(ui.ctx(), own_palette.as_ref());
                 let (pressed, has) = keyed::pressed(ui, keys, &window.play, caught);
                 focused |= has;
                 for made in pressed {
@@ -454,6 +466,7 @@ impl App {
                 };
                 asked = asked.take().or(window.play.show(ui, &view));
                 drop(story);
+                drop(worn);
             },
         );
         if closed {
@@ -572,6 +585,7 @@ use asked::lich_word;
 mod import;
 mod keyed;
 mod logs;
+mod looks;
 mod settings;
 #[cfg(test)]
 mod tests;
