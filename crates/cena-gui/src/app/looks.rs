@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
 use cena_session::settings_store;
-use cena_ui::theme::{Chosen, Palette, Themes};
+use cena_ui::theme::{Chosen, Outfit, Themes};
 
 use super::App;
 
@@ -28,10 +28,10 @@ pub(super) struct Looked {
     modified: Option<SystemTime>,
     /// What it chose.
     chosen: Chosen,
-    /// The palette its window wears, worked out from what it chose over
+    /// The outfit its window wears, worked out from what it chose over
     /// Hydra's own theme; `None` when it chose nothing, so the window wears
     /// Hydra's as it is.
-    palette: Option<Palette>,
+    outfit: Option<Outfit>,
 }
 
 /// The characters' looks, by settings file.
@@ -41,24 +41,19 @@ pub(super) struct Looks {
 }
 
 impl Looks {
-    /// Forget every palette worked out, so each is worked out again over
+    /// Forget every outfit worked out, so each is worked out again over
     /// the theme Hydra wears now.
     pub(super) fn wear_again(&mut self) {
         for looked in self.looked.values_mut() {
-            looked.palette = None;
+            looked.outfit = None;
             looked.checked = None;
             looked.modified = None;
         }
     }
 
-    /// The palette the character whose settings file is `file` wears, read
+    /// The outfit the character whose settings file is `file` wears, read
     /// from the file when it has changed; `None`, Hydra's own.
-    pub(super) fn palette(
-        &mut self,
-        file: &Path,
-        themes: &Themes,
-        hydras: &str,
-    ) -> Option<Palette> {
+    pub(super) fn outfit(&mut self, file: &Path, themes: &Themes, hydras: &str) -> Option<Outfit> {
         let now = Instant::now();
         let looked = self
             .looked
@@ -67,7 +62,7 @@ impl Looks {
                 checked: None,
                 modified: None,
                 chosen: Chosen::default(),
-                palette: None,
+                outfit: None,
             });
         let due = looked
             .checked
@@ -75,17 +70,17 @@ impl Looks {
         if due {
             looked.checked = Some(now);
             let modified = std::fs::metadata(file).and_then(|m| m.modified()).ok();
-            if modified != looked.modified || looked.palette.is_none() {
+            if modified != looked.modified || looked.outfit.is_none() {
                 looked.modified = modified;
                 looked.chosen = read(file);
-                looked.palette = if looked.chosen == Chosen::default() {
+                looked.outfit = if looked.chosen == Chosen::default() {
                     None
                 } else {
-                    themes.palette_for(hydras, &looked.chosen).ok()
+                    themes.outfit_for(hydras, &looked.chosen).ok()
                 };
             }
         }
-        looked.palette
+        looked.outfit
     }
 }
 
@@ -132,7 +127,7 @@ mod tests {
         let file = settings_store::settings_path(&dir, "prime", "Ashryn").expect("a path");
         let mut looks = Looks::default();
         assert_eq!(
-            looks.palette(&file, &themes, "Despana"),
+            looks.outfit(&file, &themes, "Despana"),
             None,
             "no file: Hydra's"
         );
@@ -149,7 +144,10 @@ mod tests {
             .expect("set");
         settings_store::save(&dir, &settings).expect("saved");
         looks.wear_again();
-        let palette = looks.palette(&file, &themes, "Despana").expect("its own");
+        let palette = looks
+            .outfit(&file, &themes, "Despana")
+            .expect("its own")
+            .palette;
         assert_eq!(
             palette.get(Token::Accent),
             [0xc9, 0x73, 0x3a],
@@ -157,7 +155,11 @@ mod tests {
         );
         assert_eq!(
             palette.get(Token::Canvas),
-            themes.palette("Light").expect("light").get(Token::Canvas),
+            themes
+                .outfit("Light")
+                .expect("light")
+                .palette
+                .get(Token::Canvas),
             "the Light theme's"
         );
         // An accent alone is pinned over Hydra's own theme.
@@ -172,7 +174,10 @@ mod tests {
             .expect("set");
         settings_store::save(&dir, &settings).expect("saved");
         looks.wear_again();
-        let palette = looks.palette(&file, &themes, "Despana").expect("its own");
+        let palette = looks
+            .outfit(&file, &themes, "Despana")
+            .expect("its own")
+            .palette;
         assert_eq!(palette.get(Token::Accent), [0xc9, 0x73, 0x3a]);
         assert_eq!(palette.get(Token::Canvas), [0x0d, 0x11, 0x15], "Despana's");
         let _ = std::fs::remove_dir_all(&dir);

@@ -10,25 +10,41 @@
 //! worn, [`palette`] answers with the colours Hydra drew before it had
 //! themes ([`Palette::bare`]), over egui's own dark mode.
 
-use cena_ui::theme::{Palette, Rgb, Token};
-use egui::{Color32, Stroke, Visuals};
+use cena_ui::theme::{Outfit, Palette, Rgb, Shape, Token};
+use egui::{Color32, CornerRadius, Stroke, Visuals};
 
 pub(crate) use cena_ui::theme::Token as T;
 
-/// Where the palette worn is kept in egui's data.
+/// Where the outfit worn is kept in egui's data.
 fn key() -> egui::Id {
     egui::Id::new("theme")
 }
 
-/// The palette in force for what `ctx` is drawing: the one worn for its
+/// The outfit in force for what `ctx` is drawing: the one worn for its
 /// viewport ([`wearing`]), else Hydra's ([`wear`]).
-pub(crate) fn palette(ctx: &egui::Context) -> Palette {
+pub(crate) fn outfit(ctx: &egui::Context) -> Outfit {
     let viewport = ctx.viewport_id();
     ctx.data(|data| {
-        data.get_temp::<Palette>(key().with(viewport))
-            .or_else(|| data.get_temp::<Palette>(key()))
+        data.get_temp::<Outfit>(key().with(viewport))
+            .or_else(|| data.get_temp::<Outfit>(key()))
     })
     .unwrap_or_default()
+}
+
+/// The palette in force for what `ctx` is drawing.
+pub(crate) fn palette(ctx: &egui::Context) -> Palette {
+    outfit(ctx).palette
+}
+
+/// The shape in force for what `ctx` is drawing.
+pub(crate) fn shape(ctx: &egui::Context) -> Shape {
+    outfit(ctx).shape
+}
+
+/// A control's corner radius in force for what `ctx` is drawing, as a
+/// painter takes it.
+pub(crate) fn corner(ctx: &egui::Context) -> f32 {
+    f32::from(shape(ctx).corner)
 }
 
 /// `token`'s colour, in the palette in force for `ctx`.
@@ -36,52 +52,93 @@ pub(crate) fn color(ctx: &egui::Context, token: Token) -> Color32 {
     rgb(palette(ctx).get(token))
 }
 
-/// Wear `palette`: every token answers from it, and egui's visuals are set
-/// from its surfaces and text.
-pub(crate) fn wear(ctx: &egui::Context, palette: &Palette) {
-    ctx.data_mut(|data| data.insert_temp(key(), *palette));
-    let visuals = visuals(palette);
+/// Wear `outfit`: every token answers from its palette, and egui's style
+/// is set from it, the visuals from its surfaces and text, the spacing and
+/// corners from its shape.
+pub(crate) fn wear(ctx: &egui::Context, outfit: &Outfit) {
+    ctx.data_mut(|data| data.insert_temp(key(), *outfit));
+    let style = style(outfit);
     // egui keeps a style for dark and one for light and picks by its own
     // theme; ours decides which, so the computer's mode changing does not
     // swap the visuals out from under the palette.
-    ctx.set_theme(if visuals.dark_mode {
+    let theme = if style.visuals.dark_mode {
         egui::Theme::Dark
     } else {
         egui::Theme::Light
-    });
-    ctx.set_visuals(visuals);
+    };
+    ctx.set_theme(theme);
+    ctx.set_style_of(theme, style);
 }
 
-/// `palette` worn for the viewport `ctx` is showing until the [`Worn`]
-/// is dropped: the palette answers under that viewport, and egui's visuals
-/// are the palette's meanwhile and put back after, so a play window wears
-/// its character's own theme while the rest wear Hydra's (`plan/57` §3c).
-/// With no palette, nothing changes.
-pub(crate) fn wearing(ctx: &egui::Context, palette: Option<&Palette>) -> Option<Worn> {
-    let palette = palette?;
+/// egui's style from `outfit`: egui's own, its visuals from the palette
+/// ([`visuals`]) and its spacing and corners from the shape.
+pub(crate) fn style(outfit: &Outfit) -> egui::Style {
+    let mut style = egui::Style {
+        visuals: visuals(&outfit.palette),
+        ..egui::Style::default()
+    };
+    let shape = &outfit.shape;
+    let factor = shape.density.factor();
+    let spacing = &mut style.spacing;
+    spacing.item_spacing *= factor;
+    spacing.button_padding *= factor;
+    spacing.scroll.bar_width = shape.scrollbar;
+    let corner = CornerRadius::same(shape.corner);
+    let visuals = &mut style.visuals;
+    visuals.window_corner_radius = CornerRadius::same(shape.corner.saturating_mul(2));
+    visuals.menu_corner_radius = corner;
+    visuals.window_stroke.width = shape.stroke;
+    if !shape.shadows {
+        visuals.window_shadow = egui::Shadow::NONE;
+        visuals.popup_shadow = egui::Shadow::NONE;
+    }
+    for state in [
+        &mut visuals.widgets.noninteractive,
+        &mut visuals.widgets.inactive,
+        &mut visuals.widgets.hovered,
+        &mut visuals.widgets.active,
+        &mut visuals.widgets.open,
+    ] {
+        state.corner_radius = corner;
+        state.bg_stroke.width = shape.stroke;
+    }
+    style
+}
+
+/// `outfit` worn for the viewport `ctx` is showing until the [`Worn`] is
+/// dropped: the outfit answers under that viewport, and egui's style is
+/// the outfit's meanwhile and put back after, so a play window wears its
+/// character's own theme while the rest wear Hydra's (`plan/57` §3c). With
+/// no outfit, nothing changes.
+pub(crate) fn wearing(ctx: &egui::Context, outfit: Option<&Outfit>) -> Option<Worn> {
+    let outfit = outfit?;
     let viewport = ctx.viewport_id();
-    let before = ctx.global_style().visuals.clone();
-    ctx.data_mut(|data| data.insert_temp(key().with(viewport), *palette));
-    ctx.set_visuals(visuals(palette));
+    let theme = ctx.theme();
+    let before = ctx.global_style();
+    ctx.data_mut(|data| data.insert_temp(key().with(viewport), *outfit));
+    ctx.set_style_of(theme, style(outfit));
     Some(Worn {
         ctx: ctx.clone(),
         viewport,
+        theme,
         before,
     })
 }
 
-/// A palette worn for one viewport, put off when dropped.
+/// An outfit worn for one viewport, put off when dropped.
 pub(crate) struct Worn {
     ctx: egui::Context,
     viewport: egui::ViewportId,
-    before: Visuals,
+    theme: egui::Theme,
+    before: std::sync::Arc<egui::Style>,
 }
 
 impl Drop for Worn {
     fn drop(&mut self) {
-        self.ctx.set_visuals(self.before.clone());
         self.ctx
-            .data_mut(|data| data.remove::<Palette>(key().with(self.viewport)));
+            .set_style_of(self.theme, std::sync::Arc::clone(&self.before));
+        self.ctx
+            .data_mut(|data| data.remove::<Outfit>(key().with(self.viewport)));
     }
 }
 
@@ -162,9 +219,13 @@ mod tests {
     fn a_theme_worn_answers_every_token_and_sets_the_visuals() {
         let ctx = egui::Context::default();
         let themes = Themes::built_in();
-        let despana = themes.palette(Theme::DEFAULT).unwrap();
+        let despana = themes.outfit(Theme::DEFAULT).unwrap();
         wear(&ctx, &despana);
         assert_eq!(color(&ctx, T::Canvas), Color32::from_rgb(0x0d, 0x11, 0x15));
+        assert!(
+            (corner(&ctx) - 3.0).abs() < f32::EPSILON,
+            "the default shape"
+        );
         let visuals = ctx.global_style().visuals.clone();
         assert!(visuals.dark_mode);
         assert_eq!(visuals.panel_fill, Color32::from_rgb(0x0d, 0x11, 0x15));
@@ -173,10 +234,35 @@ mod tests {
             Some(Color32::from_rgb(0xdd, 0xdc, 0xd7))
         );
         // The light theme is light.
-        let light = themes.palette(Theme::LIGHT).unwrap();
+        let light = themes.outfit(Theme::LIGHT).unwrap();
         wear(&ctx, &light);
         assert!(!ctx.global_style().visuals.dark_mode);
-        assert_eq!(color(&ctx, T::Canvas), rgb(light.get(T::Canvas)));
+        assert_eq!(color(&ctx, T::Canvas), rgb(light.palette.get(T::Canvas)));
+    }
+
+    #[test]
+    fn the_shape_reaches_egui_and_hydras_corners() {
+        let mut outfit = Outfit::default();
+        outfit.shape.corner = 0;
+        outfit.shape.density = cena_ui::theme::Density::Roomy;
+        outfit.shape.scrollbar = 12.0;
+        outfit.shape.shadows = false;
+        let style = style(&outfit);
+        assert_eq!(
+            style.visuals.widgets.inactive.corner_radius,
+            CornerRadius::ZERO
+        );
+        assert_eq!(style.visuals.window_corner_radius, CornerRadius::ZERO);
+        assert_eq!(style.visuals.window_shadow, egui::Shadow::NONE);
+        assert!((style.spacing.scroll.bar_width - 12.0).abs() < f32::EPSILON);
+        let plain = egui::Style::default();
+        assert!(
+            style.spacing.item_spacing.x > plain.spacing.item_spacing.x,
+            "roomier"
+        );
+        let ctx = egui::Context::default();
+        wear(&ctx, &outfit);
+        assert!(corner(&ctx).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -184,8 +270,8 @@ mod tests {
         let ctx = egui::Context::default();
         let themes = Themes::built_in();
         let (despana, light) = (
-            themes.palette(Theme::DEFAULT).unwrap(),
-            themes.palette(Theme::LIGHT).unwrap(),
+            themes.outfit(Theme::DEFAULT).unwrap(),
+            themes.outfit(Theme::LIGHT).unwrap(),
         );
         wear(&ctx, &despana);
         assert!(
@@ -193,12 +279,12 @@ mod tests {
             "nothing to wear: nothing changes"
         );
         let worn = wearing(&ctx, Some(&light));
-        assert_eq!(color(&ctx, T::Canvas), rgb(light.get(T::Canvas)));
+        assert_eq!(color(&ctx, T::Canvas), rgb(light.palette.get(T::Canvas)));
         assert!(!ctx.global_style().visuals.dark_mode);
         drop(worn);
         assert_eq!(
             color(&ctx, T::Canvas),
-            rgb(despana.get(T::Canvas)),
+            rgb(despana.palette.get(T::Canvas)),
             "Hydra's again"
         );
         assert!(ctx.global_style().visuals.dark_mode);

@@ -12,7 +12,27 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use super::shape::{Shape, ShapeFile};
 use super::{Palette, Recipe, Rgb, Scheme, Token, generate, hex, parse_hex};
+
+/// What a theme resolves to when it is worn: its palette and its shape.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Outfit {
+    /// Every token's colour.
+    pub palette: Palette,
+    /// The corners, edges, density, scrollbar and shadows.
+    pub shape: Shape,
+}
+
+impl Default for Outfit {
+    /// Hydra before it had themes: the bare palette, the default shape.
+    fn default() -> Self {
+        Self {
+            palette: Palette::bare(),
+            shape: Shape::default(),
+        }
+    }
+}
 
 /// What one character chose for its own window (`plan/57` §3c): a theme in
 /// place of Hydra's, and an accent pinned over whichever it wears. The
@@ -45,6 +65,8 @@ pub struct Theme {
     pub recipe: RecipeFile,
     /// Tokens kept as written.
     pub pins: BTreeMap<Token, Rgb>,
+    /// The parts of the shape it sets.
+    pub shape: ShapeFile,
 }
 
 /// The recipe as a file writes it: a dial left out is the base's.
@@ -86,6 +108,8 @@ struct File {
     recipe: RecipeFile,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pins: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "ShapeFile::is_empty")]
+    shape: ShapeFile,
 }
 
 impl RecipeFile {
@@ -154,6 +178,7 @@ impl Theme {
                 ..RecipeFile::default()
             },
             pins,
+            shape: ShapeFile::default(),
         }
     }
 
@@ -170,6 +195,7 @@ impl Theme {
                 ..RecipeFile::default()
             },
             pins: BTreeMap::new(),
+            shape: ShapeFile::default(),
         }
     }
 
@@ -194,6 +220,7 @@ impl Theme {
             base: file.base,
             recipe: file.recipe,
             pins,
+            shape: file.shape,
         })
     }
 
@@ -209,6 +236,7 @@ impl Theme {
                 .iter()
                 .map(|(token, rgb)| (token.name().to_owned(), hex(*rgb)))
                 .collect(),
+            shape: self.shape.clone(),
         };
         toml::to_string(&file).unwrap_or_default()
     }
@@ -284,13 +312,14 @@ impl Themes {
             .find(|t| t.name.eq_ignore_ascii_case(name))
     }
 
-    /// The recipe and pins of the theme named `name`, its base's under it.
+    /// The recipe and pins of the theme named `name`, its base's under it,
+    /// and its shape the same way.
     ///
     /// # Errors
     ///
     /// No theme of that name, a base that is missing or circular, or a
     /// value that does not read.
-    pub fn resolve(&self, name: &str) -> Result<Recipe, String> {
+    pub fn resolve(&self, name: &str) -> Result<(Recipe, Shape), String> {
         let mut chain: Vec<&Theme> = Vec::new();
         let mut next = Some(name);
         while let Some(name) = next {
@@ -304,39 +333,48 @@ impl Themes {
             chain.push(theme);
         }
         let mut recipe = Recipe::default();
+        let mut shape = Shape::default();
         for theme in chain.iter().rev() {
             recipe = theme
                 .recipe
                 .over(recipe)
                 .map_err(|why| format!("{}: {why}", theme.name))?;
             recipe.pins.extend(theme.pins.iter().map(|(t, c)| (*t, *c)));
+            shape = theme.shape.over(shape);
         }
-        Ok(recipe)
+        Ok((recipe, shape))
     }
 
-    /// The palette of the theme named `name`.
+    /// What the theme named `name` is worn as.
     ///
     /// # Errors
     ///
     /// As [`Themes::resolve`].
-    pub fn palette(&self, name: &str) -> Result<Palette, String> {
-        Ok(generate(&self.resolve(name)?))
+    pub fn outfit(&self, name: &str) -> Result<Outfit, String> {
+        let (recipe, shape) = self.resolve(name)?;
+        Ok(Outfit {
+            palette: generate(&recipe),
+            shape,
+        })
     }
 
-    /// The palette a character's window wears: `chosen`'s theme, or
-    /// `hydras`, with `chosen`'s accent pinned over it.
+    /// What a character's window wears: `chosen`'s theme, or `hydras`,
+    /// with `chosen`'s accent pinned over it.
     ///
     /// # Errors
     ///
     /// As [`Themes::resolve`], or an accent that is not a colour.
-    pub fn palette_for(&self, hydras: &str, chosen: &Chosen) -> Result<Palette, String> {
-        let mut recipe = self.resolve(chosen.theme.as_deref().unwrap_or(hydras))?;
+    pub fn outfit_for(&self, hydras: &str, chosen: &Chosen) -> Result<Outfit, String> {
+        let (mut recipe, shape) = self.resolve(chosen.theme.as_deref().unwrap_or(hydras))?;
         if let Some(accent) = &chosen.accent {
             let rgb =
                 parse_hex(accent).ok_or_else(|| format!("accent `{accent}` is not a colour"))?;
             recipe.pins.insert(Token::Accent, rgb);
         }
-        Ok(generate(&recipe))
+        Ok(Outfit {
+            palette: generate(&recipe),
+            shape,
+        })
     }
 }
 
@@ -347,7 +385,7 @@ mod tests {
     #[test]
     fn despana_is_what_hydra_drew_with_the_pages_chrome_round_it() {
         let themes = Themes::built_in();
-        let palette = themes.palette(Theme::DEFAULT).unwrap();
+        let palette = themes.outfit(Theme::DEFAULT).unwrap().palette;
         assert_eq!(palette.get(Token::Health), Token::Health.bare());
         assert_eq!(palette.get(Token::Accent), Token::Accent.bare());
         assert_eq!(palette.get(Token::Canvas), [0x0d, 0x11, 0x15]);
@@ -356,7 +394,7 @@ mod tests {
 
     #[test]
     fn light_is_light() {
-        let palette = Themes::built_in().palette(Theme::LIGHT).unwrap();
+        let palette = Themes::built_in().outfit(Theme::LIGHT).unwrap().palette;
         let [l, ..] = super::super::oklch::to_lch(palette.get(Token::Canvas));
         assert!(l > 0.9, "canvas lightness {l}");
         let [l, ..] = super::super::oklch::to_lch(palette.get(Token::Text));
@@ -366,14 +404,16 @@ mod tests {
     #[test]
     fn a_file_says_only_what_it_changes_over_its_base() {
         let theme = Theme::parse(
-            "base = \"Despana\"\n[recipe]\nseed = \"#c9733a\"\n[pins]\nhealth = \"#112233\"\n",
+            "base = \"Despana\"\n[recipe]\nseed = \"#c9733a\"\n[pins]\nhealth = \"#112233\"\n[shape]\ncorner = 0\n",
             "ember",
         )
         .unwrap();
         assert_eq!(theme.name, "ember");
         let mut themes = Themes::built_in();
         themes.add(theme.clone());
-        let recipe = themes.resolve("Ember").unwrap();
+        let (recipe, shape) = themes.resolve("Ember").unwrap();
+        assert_eq!(shape.corner, 0);
+        assert!(shape.shadows, "the base's");
         assert_eq!(recipe.seed, [0xc9, 0x73, 0x3a]);
         assert_eq!(recipe.background, [0x0d, 0x11, 0x15], "the base's");
         assert_eq!(recipe.scheme, Scheme::Compound, "the base's");
@@ -408,12 +448,14 @@ mod tests {
             base: Some("b".to_owned()),
             recipe: RecipeFile::default(),
             pins: BTreeMap::new(),
+            shape: ShapeFile::default(),
         });
         themes.add(Theme {
             name: "b".to_owned(),
             base: Some("a".to_owned()),
             recipe: RecipeFile::default(),
             pins: BTreeMap::new(),
+            shape: ShapeFile::default(),
         });
         assert!(themes.resolve("a").unwrap_err().contains("circle"));
     }

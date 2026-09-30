@@ -230,7 +230,7 @@ pub(super) fn indicator(
     let rect = rect.shrink(1.0);
     let (text, color) = match known {
         Some(true) => {
-            painter.rect_filled(rect, 4.0, lit);
+            painter.rect_filled(rect, theme::corner(ui.ctx()), lit);
             (name.to_owned(), readable_on(lit))
         }
         Some(false) => {

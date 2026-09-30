@@ -428,7 +428,7 @@ fn ghost(context: &egui::Context, at: Pos2, name: &str) {
     let painter = context.layer_painter(LayerId::new(Order::Tooltip, Id::new("arrange-ghost")));
     let rect = Rect::from_center_size(at, Vec2::new(140.0, 24.0));
     let accent = theme::color(context, T::Accent);
-    painter.rect_filled(rect, 3.0, accent.gamma_multiply(0.85));
+    painter.rect_filled(rect, theme::corner(context), accent.gamma_multiply(0.85));
     painter.text(
         rect.center(),
         Align2::CENTER_CENTER,

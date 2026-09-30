@@ -198,19 +198,19 @@ impl App {
         if self.worn.as_deref() == Some(wanted) {
             return;
         }
-        let palette = match self.themes.palette(wanted) {
-            Ok(palette) => {
+        let outfit = match self.themes.outfit(wanted) {
+            Ok(outfit) => {
                 self.theme_problem = None;
-                palette
+                outfit
             }
             Err(why) => {
                 self.theme_problem = Some(format!("{wanted} is not worn: {why}"));
                 self.themes
-                    .palette(cena_ui::theme::Theme::DEFAULT)
+                    .outfit(cena_ui::theme::Theme::DEFAULT)
                     .unwrap_or_default()
             }
         };
-        crate::theme::wear(context, &palette);
+        crate::theme::wear(context, &outfit);
         self.worn = Some(wanted.to_owned());
         self.looks.wear_again();
     }
@@ -388,8 +388,8 @@ impl App {
         let keys = self.keys.of(mine.map(|(mine, _)| mine));
         let chosen = mine.map_or(0, |(mine, _)| mine.chosen);
         let keys_said = self.keys_said(mine, &seat.name);
-        let own_palette = self.settings_path(&seat.game, &seat.name).and_then(|file| {
-            self.looks.palette(
+        let own_outfit = self.settings_path(&seat.game, &seat.name).and_then(|file| {
+            self.looks.outfit(
                 &file,
                 &self.themes,
                 self.worn.as_deref().unwrap_or_default(),
@@ -430,7 +430,7 @@ impl App {
             egui::ViewportId::from_hash_of(("play", seat.id.0)),
             ([980.0, 680.0], format!("{} — {TITLE}", seat.name)),
             |ui| {
-                let worn = crate::theme::wearing(ui.ctx(), own_palette.as_ref());
+                let worn = crate::theme::wearing(ui.ctx(), own_outfit.as_ref());
                 let (pressed, has) = keyed::pressed(ui, keys, &window.play, caught);
                 focused |= has;
                 for made in pressed {

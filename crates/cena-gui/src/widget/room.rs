@@ -58,7 +58,7 @@ pub(super) fn compass(ui: &mut egui::Ui, state: Option<&GameState>, goes: bool) 
         let painter = ui.painter();
         let text = if open {
             let accent = theme::color(ui.ctx(), T::Accent);
-            painter.rect_filled(rect, 4.0, accent);
+            painter.rect_filled(rect, theme::corner(ui.ctx()), accent);
             readable_on(accent)
         } else {
             painter.rect_stroke(

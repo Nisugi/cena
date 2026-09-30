@@ -13,10 +13,12 @@
 mod file;
 mod harmony;
 mod oklch;
+mod shape;
 
-pub use file::{Chosen, RecipeFile, Theme, Themes};
+pub use file::{Chosen, Outfit, RecipeFile, Theme, Themes};
 pub use harmony::{Group, Recipe, Role, Scheme, generate, hue_variants, seed_swatches};
 pub use oklch::{contrast, delta_e, hue_distance};
+pub use shape::{Density, Shape, ShapeFile};
 
 /// A colour: red, green, blue, as a bar's look and the settings pages
 /// already write one.

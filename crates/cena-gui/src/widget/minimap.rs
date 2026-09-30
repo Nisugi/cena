@@ -94,7 +94,8 @@ pub(super) fn minimap(
     let size = ui.available_size().max(vec2(80.0, 60.0));
     let (rect, response) = ui.allocate_exact_size(size, Sense::click_and_drag());
     let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 4.0, theme::color(ui.ctx(), T::MapBackground));
+    let ground = theme::color(ui.ctx(), T::MapBackground);
+    painter.rect_filled(rect, theme::corner(ui.ctx()), ground);
     let Some(MinimapView::Here {
         scene,
         room: you,

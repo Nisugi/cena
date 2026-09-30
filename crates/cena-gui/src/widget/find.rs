@@ -125,7 +125,8 @@ impl Seek {
         let current = self.current == Some(self.seen);
         let fill =
             theme::color(ui.ctx(), T::Accent).gamma_multiply(if current { 0.35 } else { 0.12 });
-        ui.painter().rect_filled(rect, 2.0, fill);
+        ui.painter()
+            .rect_filled(rect, theme::corner(ui.ctx()), fill);
         if current && self.go && player {
             let now = egui::style::ScrollAnimation::none();
             ui.scroll_to_rect_animation(rect, Some(egui::Align::Center), now);

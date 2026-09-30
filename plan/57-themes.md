@@ -288,6 +288,16 @@ On a branch `themes` once the author approves.
 4. **Shape.** Corner radius, strokes, padding, density, scrollbar width, from the theme into
    egui's style and into Hydra's own drawing (`crates/cena-gui/src/bar/shape.rs:81` fixes a
    bar's corners at 3 today).
+
+   **BUILT 2026-09-30.** `[shape]` in the file (`crates/cena-ui/src/theme/shape.rs`): `corner`
+   (a control's radius, a window's twice it), `stroke` (an edge's width), `density` (`tight`,
+   `normal`, `roomy`: egui's gaps and padding at 0.6, 1 and 1.5), `scrollbar` and `shadows`,
+   each optional over the base's, bounded when read. A theme is worn as an `Outfit`, its
+   palette and its shape together; egui's whole style is set from it (`theme::style`), and
+   Hydra's seven own corners (a bar's, the compass's lit exit, a lit indicator, the
+   minimap's ground, a find's hit, the window in use, the arrange ghost) read
+   `theme::corner`. Hydra's own edges stay at their widths. Four images changed for the
+   corners, 2 and 4 where they were, 3 now.
 5. **Type.** The UI's font and the story's, and their sizes. Where fonts come from is §6's.
 6. **The editor.** A *Theme* page in the settings menu: Generate first (seed, scheme, the
    dials, a preview of the whole palette and a sample of story text, live), then each token

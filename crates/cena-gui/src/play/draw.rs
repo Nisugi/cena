@@ -321,8 +321,12 @@ fn shown(ui: &mut egui::Ui, placed: &Placed, drawing: &mut Drawing<'_>) {
     if drawing.in_use == Some(placed.id) {
         // The window in use, which a scrolling key acts on.
         let stroke = egui::Stroke::new(1.0, theme::color(ui.ctx(), T::Accent).gamma_multiply(0.5));
-        ui.painter()
-            .rect_stroke(rect, 2.0, stroke, egui::StrokeKind::Inside);
+        ui.painter().rect_stroke(
+            rect,
+            theme::corner(ui.ctx()),
+            stroke,
+            egui::StrokeKind::Inside,
+        );
     }
     drawn(ui, placed, drawing);
 }
