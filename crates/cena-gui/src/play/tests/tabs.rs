@@ -170,7 +170,7 @@ fn a_tab_dragged_onto_a_widget_joins_its_stack() {
     harness.state_mut().play.arranging = true;
     harness.run();
     let tab = harness.get_by_role_and_label(Role::Button, "Hunt").rect();
-    let creatures = harness.get_by_label("Creatures").rect();
+    let creatures = harness.get_by_label("Targets").rect();
     drag(&mut harness, tab.center(), creatures.center());
     assert_eq!(stacks(&harness, "Hydra"), [vec![Widget::Hydra]]);
     assert!(
@@ -189,7 +189,7 @@ fn a_cell_moved_onto_a_widgets_middle_stacks() {
     harness.state_mut().play.arranging = true;
     harness.run();
     let objects = harness.get_by_label("Objects").rect();
-    let creatures = harness.get_by_label("Creatures").rect();
+    let creatures = harness.get_by_label("Targets").rect();
     drag(&mut harness, objects.center(), creatures.center());
     assert!(
         stacks(&harness, "Room").contains(&vec![Widget::Creatures, Widget::Objects]),
@@ -276,7 +276,7 @@ fn the_cell_it_would_stack_onto_lights_up() {
     harness.state_mut().play.arranging = true;
     harness.run();
     let objects = harness.get_by_label("Objects").rect().center();
-    let creatures = harness.get_by_label("Creatures").rect().center();
+    let creatures = harness.get_by_label("Targets").rect().center();
     harness.hover_at(objects);
     harness.step();
     harness.drag_at(objects);
@@ -299,7 +299,7 @@ fn a_tab_let_go_on_empty_space_takes_a_cell_of_its_own() {
     harness.state_mut().play.arranging = true;
     harness.run();
     let objects = harness.get_by_label("Objects").rect();
-    let creatures = harness.get_by_label("Creatures").rect();
+    let creatures = harness.get_by_label("Targets").rect();
     drag(&mut harness, objects.center(), creatures.center());
     // Where Objects was is empty now; its tab goes back there.
     let tab = harness

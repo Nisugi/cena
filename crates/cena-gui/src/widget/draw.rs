@@ -199,7 +199,7 @@ pub(super) fn draw(
                 None => ui.weak("Description unknown"),
             };
         }),
-        Widget::Creatures | Widget::Objects | Widget::Players => {
+        Widget::Creatures | Widget::Npcs | Widget::Objects | Widget::Players => {
             let items = room_list(widget, seen.snapshot);
             let (listing, own) = (chosen.list.unwrap_or_default(), seen.who.is_none());
             let mut clicked = None;
@@ -480,8 +480,24 @@ fn room_list(widget: &Widget, snapshot: Option<&Snapshot>) -> Option<Vec<Vec<Sty
                 .collect()
         })
     };
+    // Hostile when the game first said, whatever it says now (the author,
+    // 2026-09-30: a sympathied creature still is).
+    let hostile = |item: &&RoomItem| {
+        item.id
+            .parse()
+            .ok()
+            .and_then(|id| snapshot.state.creatures().get(id))
+            .and_then(cena_session::CreatureInstance::hostile_when_first_seen)
+            == Some(true)
+    };
+    let (targets, npcs): (Vec<RoomItem>, Vec<RoomItem>) = room
+        .creatures
+        .iter()
+        .cloned()
+        .partition(|item| hostile(&item));
     match widget {
-        Widget::Creatures => things(&room.creatures, CREATURE),
+        Widget::Creatures => things(&targets, CREATURE),
+        Widget::Npcs => things(&npcs, CREATURE),
         Widget::Objects => things(&room.objects, OBJECT),
         _ => room.saw_players().then(|| {
             room.players

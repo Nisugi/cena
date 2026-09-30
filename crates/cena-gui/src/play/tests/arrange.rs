@@ -238,7 +238,7 @@ fn a_new_custom_window_comes_empty_and_arranging() {
 #[test]
 fn a_window_resized_over_a_custom_window_stays_its_own() {
     let mut harness = arranging();
-    let room = harness.get_by_label("Creatures").rect().center();
+    let room = harness.get_by_label("Targets").rect().center();
     let hunt = layout(&harness)
         .titled("Hunt")
         .map(|holder| holder.id)

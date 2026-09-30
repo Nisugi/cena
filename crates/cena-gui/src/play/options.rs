@@ -155,9 +155,10 @@ impl Play {
                         doll_rows(layout.dolls.get(&one.id), &pictures.dolls)
                     }
                     (Widget::Room, None) => room_rows(layout.rooms.get(&one.id)),
-                    (Widget::Creatures | Widget::Objects | Widget::Players, None) => {
-                        list_rows(layout.lists.get(&one.id).copied())
-                    }
+                    (
+                        Widget::Creatures | Widget::Npcs | Widget::Objects | Widget::Players,
+                        None,
+                    ) => list_rows(layout.lists.get(&one.id).copied()),
                     (Widget::Minimap, None) => {
                         crate::widget::minimap::look::rows(layout.minimaps.get(&one.id))
                     }
@@ -211,7 +212,7 @@ impl Play {
             Widget::Room => keep(&mut layout.rooms, placed, &RoomParts::default(), |parts| {
                 room_set(parts, key, to)
             })?,
-            Widget::Creatures | Widget::Objects | Widget::Players => {
+            Widget::Creatures | Widget::Npcs | Widget::Objects | Widget::Players => {
                 keep(&mut layout.lists, placed, &Listing::default(), |listing| {
                     list_set(listing, key, to)
                 })?;

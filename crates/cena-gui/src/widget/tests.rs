@@ -99,7 +99,7 @@ fn a_widget_says_what_it_does_not_know() {
         ("RT —", 1),
         ("Room unknown", 2),
         ("Description unknown", 1),
-        ("unknown", 3),
+        ("unknown", 4),
         ("Exits unknown", 2),
         ("No hunt running.", 1),
         ("Spells unknown", 1),

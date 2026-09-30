@@ -51,17 +51,47 @@ pub(crate) fn snapshot() -> Snapshot {
         text: ">".to_owned(),
     });
     state.roundtime_ends = Some(1_030);
-    for id in ["room objs", "room players"] {
-        state.apply(&Frame::Component {
-            id: id.to_owned(),
-            body: ChunkLine::plain("").runs,
-        });
-    }
+    // A kobold, hostile as the game first says: its status, then the room's
+    // bold link that registers it, a target (`widget/draw.rs`).
+    state.apply(&Frame::CreatureStatus {
+        id: "-6".to_owned(),
+        attrs: vec![
+            ("exist".to_owned(), "-6".to_owned()),
+            ("hostile".to_owned(), "1".to_owned()),
+        ],
+    });
+    let kobold = cena_session::Run {
+        text: "kobold".to_owned(),
+        style: cena_session::Style {
+            bold_depth: 1,
+            ..cena_session::Style::default()
+        },
+        link: Some(cena_session::Link {
+            kind: cena_session::LinkKind::Exist {
+                id: "-6".to_owned(),
+                noun: "kobold".to_owned(),
+            },
+            text: "kobold".to_owned(),
+            coord: None,
+        }),
+        inner_link: None,
+    };
+    let mut seen = ChunkLine::plain("You also see a ").runs;
+    seen.runs.push(kobold);
+    state.apply(&Frame::Component {
+        id: "room objs".to_owned(),
+        body: seen,
+    });
+    state.apply(&Frame::Component {
+        id: "room players".to_owned(),
+        body: ChunkLine::plain("").runs,
+    });
     // As the model keeps it: the subtitle less its leading ` - `, with no
     // brackets (`cena_model::state::Room::title`).
     state.room.title = Some("Rawknuckle's, Watering Hole".to_owned());
     state.room.exits = Some(vec!["north".to_owned(), "out".to_owned()]);
     state.room.creatures = vec![item("kobold", "a kobold")];
+
     state.room.players = vec![item("Maravel", "Maravel")];
     Snapshot {
         session: SessionId::FIRST,

@@ -49,6 +49,8 @@ pub(crate) enum Widget {
     RoomDescription,
     /// The creatures in the room, each with its status.
     Creatures,
+    /// The room's creatures that were not hostile when first seen.
+    Npcs,
     /// What else is in the room.
     Objects,
     /// The players in the room, painted by the character's triggers.
@@ -172,7 +174,7 @@ impl Widget {
     }
 
     /// The kinds that hold nothing but their kind.
-    const PLAIN: [Widget; 42] = [
+    const PLAIN: [Widget; 43] = [
         Widget::Story,
         Widget::Health,
         Widget::Mana,
@@ -188,6 +190,7 @@ impl Widget {
         Widget::RoomTitle,
         Widget::RoomDescription,
         Widget::Creatures,
+        Widget::Npcs,
         Widget::Objects,
         Widget::Players,
         Widget::Exits,
@@ -235,7 +238,8 @@ impl Widget {
             Widget::Room => "Room",
             Widget::RoomTitle => "Room name",
             Widget::RoomDescription => "Room description",
-            Widget::Creatures => "Creatures",
+            Widget::Creatures => "Targets",
+            Widget::Npcs => "NPCs",
             Widget::Objects => "Objects",
             Widget::Players => "Players",
             Widget::Exits => "Exits",
@@ -285,7 +289,6 @@ impl Widget {
             | Widget::Stun
             | Widget::CastTime
             | Widget::Aim
-            | Widget::Creatures
             | Widget::Mind
             | Widget::NextLevel
             | Widget::Level
@@ -311,6 +314,8 @@ impl Widget {
             Widget::Room
             | Widget::RoomTitle
             | Widget::RoomDescription
+            | Widget::Creatures
+            | Widget::Npcs
             | Widget::Objects
             | Widget::Players
             | Widget::Exits
@@ -413,7 +418,7 @@ impl Widget {
             Widget::Minimap => (260.0, 220.0),
             Widget::RoomDescription => (320.0, 80.0),
             Widget::Room => (320.0, 160.0),
-            Widget::Creatures | Widget::Objects | Widget::Players => (260.0, 40.0),
+            Widget::Creatures | Widget::Npcs | Widget::Objects | Widget::Players => (260.0, 40.0),
             Widget::ExperienceTotals | Widget::Resources | Widget::Reserve => (260.0, 60.0),
             Widget::Spellbook | Widget::Containers => (280.0, 200.0),
             Widget::WorldEvents => (300.0, 80.0),

@@ -157,6 +157,11 @@ pub struct CreatureInstance {
     statuses: BTreeMap<StatusName, Option<u32>>,
     /// `<crtrStatus>` classifications, as last stated.
     flags: BTreeMap<Classification, bool>,
+    /// Whether it was hostile the first time the game said, kept: a
+    /// hostile creature sympathied reads not hostile, and still is (the
+    /// author, 2026-09-30: *"If first time they are seen, they are recorded
+    /// as hostile, then that's it, hostile can't change"*).
+    first_hostile: Option<bool>,
     /// Wound rank per part.
     injuries: BTreeMap<BodyPart, u8>,
     /// Parts that are gone.
@@ -211,6 +216,7 @@ impl CreatureInstance {
             name: name.to_owned(),
             statuses: BTreeMap::new(),
             flags: BTreeMap::new(),
+            first_hostile: None,
             injuries: BTreeMap::new(),
             amputated: BTreeSet::new(),
             damage_taken: 0,
@@ -332,6 +338,9 @@ impl CreatureInstance {
         }
         for c in Classification::ALL {
             self.flags.insert(c, status.is_classified(c));
+        }
+        if self.first_hostile.is_none() {
+            self.first_hostile = Some(status.is_classified(Classification::Hostile));
         }
         // Absolute hit points, when the server states them. A frame that
         // omits them says nothing, so the last stated value stands -- unlike
@@ -567,6 +576,14 @@ impl CreatureInstance {
             return None;
         }
         Some(self.flag(Classification::Hostile))
+    }
+
+    /// Whether it was hostile the first time the game said, whatever it
+    /// says now: a target, as the player sorts them, or an NPC. `None`
+    /// until a `<crtrStatus>` has been seen for it.
+    #[must_use]
+    pub fn hostile_when_first_seen(&self) -> Option<bool> {
+        self.first_hostile
     }
 
     /// Should this be attacked? (`valid_target?`, `creature.rb:642-651`):
