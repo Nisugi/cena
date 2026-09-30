@@ -10,13 +10,19 @@
 //! bold link to an object, the creatures' mark, as the script's pattern
 //! puts it, and never after a pronoun.
 //!
-//! **A tag names its creature back.** The script gave the game a dozen new
-//! verbs, `tkill 7QK`, because to Lich a tag is only text. Hydra knows each
-//! tag's creature, so a player types the game's own verb, `kill 7QK`, and
-//! Hydra sends `kill #<its id>` ([`resolve`]; the author: *"Targetting by
-//! targetid is cool and ok"*). Only after one of the script's verbs, only as
-//! the command's last word, only the whole three characters, and only a
-//! creature in the room: `look at bag` is never taken for a tag.
+//! **A tag names its creature back** ([`resolve`]; the author: *"Targetting
+//! by targetid is cool and ok"*), two ways:
+//!
+//! - **The script's own commands**, as its players type them (the author,
+//!   2026-09-30: *"I didn't realize the t commands were part of the script.
+//!   That can be added back."*): `tkill 7QK`, or its shortest, `tk 7`, the
+//!   tag's first letter or two enough, as the script's are
+//!   (`_build_targets`, `key_to_id`). A tag the room has not got says so, as
+//!   the script says it; one two creatures start with sends nothing.
+//! - **The game's own verbs**, a Hydra nicety: `kill 7QK` sent as
+//!   `kill #<its id>`. Only after one of the script's verbs, only as the
+//!   command's last word, only the whole tag, and only a creature in the
+//!   room: `look at bag` is never taken for a tag.
 
 use cena_protocol::frame::LinkKind;
 use cena_protocol::runs::{Run, Runs};
@@ -41,6 +47,22 @@ pub const LONGEST: usize = 6;
 const VERBS: [&str; 11] = [
     "target", "attack", "ambush", "kill", "cast", "cman", "punch", "grapple", "kick", "jab",
     "mstrike",
+];
+
+/// The script's own commands: each, the fewest letters of it a player may
+/// type, and the game's verb it sends (`targetid.lic`, `_build_targets`).
+const T_VERBS: [(&str, usize, &str); 11] = [
+    ("ttarget", 2, "target"),
+    ("tattack", 3, "attack"),
+    ("tambush", 3, "ambush"),
+    ("tkill", 2, "kill"),
+    ("tcast", 3, "cast"),
+    ("tcman", 3, "cman"),
+    ("tpunch", 2, "punch"),
+    ("tgrapple", 2, "grapple"),
+    ("tkick", 4, "kick"),
+    ("tjab", 2, "jab"),
+    ("tmstrike", 2, "mstrike"),
 ];
 
 /// What a bold link says that is no creature's name: `targetid`'s
@@ -141,6 +163,10 @@ pub fn resolve(
 ) -> Option<Result<String, String>> {
     let trimmed = line.trim();
     let verb = trimmed.split_whitespace().next()?;
+    if let Some(game) = t_verb(verb) {
+        let rest = trimmed[verb.len()..].trim();
+        return Some(t_command(game, rest, creatures));
+    }
     if !VERBS.iter().any(|known| verb.eq_ignore_ascii_case(known)) {
         return None;
     }
@@ -159,6 +185,66 @@ pub fn resolve(
         )));
     }
     Some(Ok(format!("{} #{id}", before.trim_end())))
+}
+
+/// The game's verb one of the script's commands, `word`, sends: `word` is
+/// the command, or as much of it as its fewest letters or more.
+fn t_verb(word: &str) -> Option<&'static str> {
+    let word = word.to_ascii_lowercase();
+    T_VERBS
+        .iter()
+        .find(|(command, fewest, _)| word.len() >= *fewest && command.starts_with(&word))
+        .map(|(_, _, game)| *game)
+}
+
+/// One of the script's commands, sending the game's `verb` at the creature
+/// whose tag starts with the last word of `rest`, a maneuver's name before
+/// it for `cman` and `mstrike`: `cman sweep #123456`.
+fn t_command(
+    verb: &str,
+    rest: &str,
+    creatures: impl IntoIterator<Item = i64>,
+) -> Result<String, String> {
+    let usage = || {
+        let shown = verb.to_ascii_uppercase();
+        if verb == "cman" {
+            format!("Usage: T{shown} maneuver targetID")
+        } else {
+            format!("Usage: T{shown} targetID")
+        }
+    };
+    let (before, key) = match rest.rsplit_once(char::is_whitespace) {
+        Some((before, key)) if verb == "cman" || verb == "mstrike" => (before.trim(), key),
+        Some(_) => return Err(usage()),
+        None if verb == "cman" || rest.is_empty() => return Err(usage()),
+        None => ("", rest),
+    };
+    let not_found = || format!("Target with tag '{}' not found!", key.to_ascii_uppercase());
+    if key.len() > LONGEST
+        || !key
+            .bytes()
+            .all(|b| ALPHABET.contains(&b.to_ascii_uppercase()))
+    {
+        return Err(not_found());
+    }
+    let mut matching = creatures.into_iter().filter(|id| {
+        tag(*id, LONGEST)
+            .get(..key.len())
+            .is_some_and(|start| start.eq_ignore_ascii_case(key))
+    });
+    let id = matching.next().ok_or_else(not_found)?;
+    if matching.next().is_some() {
+        return Err(format!(
+            "More than one creature's tag here starts {}; nothing was sent.",
+            key.to_ascii_uppercase()
+        ));
+    }
+    let verb = if before.is_empty() {
+        verb.to_owned()
+    } else {
+        format!("{verb} {before}")
+    };
+    Ok(format!("{verb} #{id}"))
 }
 
 #[cfg(test)]
@@ -267,5 +353,62 @@ mod tests {
         );
         assert_eq!(tag(troll, 6).len(), 6);
         assert_eq!(tag(troll, 9).len(), 6, "never longer than an id");
+    }
+
+    /// The script's own commands, its shortest forms among them, taking the
+    /// first letter or more of a tag; a tag the room has not got, or one two
+    /// creatures start with, sends nothing and says why, as the script
+    /// says it (the author, 2026-09-30).
+    #[test]
+    fn the_scripts_commands_take_a_tag_or_its_start() {
+        let troll = 123_456;
+        let key = tag(troll, 3).to_ascii_lowercase();
+        let first = &key[..1];
+        let sent = |line: &str| resolve(line, [troll], 3);
+        assert_eq!(
+            sent(&format!("tk {key}")),
+            Some(Ok(format!("kill #{troll}")))
+        );
+        assert_eq!(
+            sent(&format!("tkill {first}")),
+            Some(Ok(format!("kill #{troll}")))
+        );
+        assert_eq!(
+            sent(&format!("tat {key}")),
+            Some(Ok(format!("attack #{troll}")))
+        );
+        assert_eq!(
+            sent(&format!("tkic {key}")),
+            Some(Ok(format!("kick #{troll}")))
+        );
+        assert_eq!(
+            sent(&format!("tcm sweep {key}")),
+            Some(Ok(format!("cman sweep #{troll}")))
+        );
+        assert_eq!(
+            sent(&format!("tm jab {key}")),
+            Some(Ok(format!("mstrike jab #{troll}")))
+        );
+        assert_eq!(
+            sent(&format!("tm {key}")),
+            Some(Ok(format!("mstrike #{troll}")))
+        );
+        assert!(matches!(sent("tk"), Some(Err(why)) if why.starts_with("Usage")));
+        assert!(matches!(sent(&format!("tcm {key}")), Some(Err(why)) if why.starts_with("Usage")));
+        assert!(matches!(sent("tk zzz"), Some(Err(why)) if why.contains("not found")));
+        assert_eq!(
+            sent("tki bag"),
+            Some(Err("Target with tag 'BAG' not found!".to_owned()))
+        );
+        assert_eq!(sent(&format!("t {key}")), None, "not one of the script's");
+        assert_eq!(
+            sent(&format!("tkick {key}")),
+            Some(Ok(format!("kick #{troll}")))
+        );
+        // Two creatures 32 apart share a first letter.
+        assert!(matches!(
+            resolve(&format!("tk {first}"), [troll, troll + 32], 3),
+            Some(Err(why)) if why.starts_with("More than one")
+        ));
     }
 }

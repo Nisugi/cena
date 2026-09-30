@@ -133,7 +133,7 @@ fn answer(parsed: Result<Asked, String>, handle: &SessionHandle, kept: Option<&K
 fn said(tags: Option<usize>) -> String {
     match tags {
         Some(length) => format!(
-            "Creature tags on, {length} character{} long.",
+            "Creature tags on, {length} character{} long; tk <tag> and the script's other commands work.",
             if length == 1 { "" } else { "s" }
         ),
         None => "Creature tags off.".to_owned(),
