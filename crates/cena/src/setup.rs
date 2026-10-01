@@ -105,10 +105,20 @@ fn attach_player_log(
 /// logged in is archived at the next login. A failure is said and changes
 /// nothing: the day-files stay.
 fn archive_player_log(character: &str, game: &str) {
-    let log = crate::general::log_settings(
-        &cena_session::character_store::data_dir(),
-        &format!("{game}:{character}"),
-    );
+    let data = cena_session::character_store::data_dir();
+    // **The player log's folder is the name alone** (`writer::dir`), so a
+    // character of the same name on another instance shares it, and this
+    // one's choices would archive and delete the other's days (the crate
+    // review of 2026-10-01, SE-C-2). Until the folder carries the instance,
+    // a shared folder is left as it is.
+    if let Some(other) = shares_its_log(&data, game, character) {
+        eprintln!(
+            "[player log] not archived or pruned: {character} on {other} keeps its days in \
+             the same folder, and this character's choices would remove them"
+        );
+        return;
+    }
+    let log = crate::general::log_settings(&data, &format!("{game}:{character}"));
     let character = character.to_owned();
     tokio::task::spawn_blocking(move || {
         use cena_session::player_log::{archive, retention, writer};
@@ -137,6 +147,21 @@ fn archive_player_log(character: &str, game: &str) {
             Err(e) => eprintln!("[player log] old days not removed: {e}"),
         }
     });
+}
+
+/// The other instance a character of `name` has played on, by its
+/// character store file, when `game`'s is not the only one: their player
+/// logs share a folder.
+fn shares_its_log(data: &std::path::Path, game: &str, name: &str) -> Option<&'static str> {
+    let this = cena_platform::instance(game)?;
+    cena_platform::INSTANCES
+        .iter()
+        .map(|(_, instance)| *instance)
+        .filter(|instance| *instance != this)
+        .find(|instance| {
+            cena_session::store::character_path(data, instance, name, ".json")
+                .is_some_and(|path| path.exists())
+        })
 }
 
 /// How long a stop waits for a session's logs to finish writing.
@@ -398,6 +423,30 @@ mod tests {
         let path = settings_store::settings_path(&dir, prime, "Nisugi").expect("a path");
         std::fs::write(&path, "{ not json").expect("written");
         assert_eq!(recording(&dir, game, "Nisugi"), Record::default());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The crate review of 2026-10-01, SE-C-2: the player log's folder is the
+    /// name alone, so a same-named character on another instance shares it.
+    #[test]
+    fn a_name_on_another_instance_shares_the_log_folder() {
+        let dir = std::env::temp_dir().join(format!("cena-shared-log-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("made");
+        assert_eq!(super::shares_its_log(&dir, "GS3", "Nisugi"), None);
+        let prime =
+            cena_session::store::character_path(&dir, "Prime", "Nisugi", ".json").expect("a path");
+        std::fs::write(prime, "{}").expect("written");
+        assert_eq!(
+            super::shares_its_log(&dir, "GS3", "Nisugi"),
+            None,
+            "its own"
+        );
+        let test =
+            cena_session::store::character_path(&dir, "Test", "Nisugi", ".json").expect("a path");
+        std::fs::write(test, "{}").expect("written");
+        assert_eq!(super::shares_its_log(&dir, "GS3", "Nisugi"), Some("Test"));
+        assert_eq!(super::shares_its_log(&dir, "GST", "nisugi"), Some("Prime"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
