@@ -406,16 +406,13 @@ impl Editor {
             .copy_of
             .as_ref()
             .and_then(|of| book.triggers.iter().find(|entry| entry.name == *of));
-        match entry {
-            Some(entry) => {
-                ui.heading(entry.name.as_str());
-                status(ui, entry, pristine, asked);
-            }
-            None => {
-                ui.heading("A new trigger");
-                if let Some(original) = original {
-                    copied(ui, original, &draft.form);
-                }
+        if let Some(entry) = entry {
+            ui.heading(entry.name.as_str());
+            status(ui, entry, pristine, asked);
+        } else {
+            ui.heading("A new trigger");
+            if let Some(original) = original {
+                copied(ui, original, &draft.form);
             }
         }
         form::show(ui, &mut draft.form, &mut draft.watch, book, characters);
