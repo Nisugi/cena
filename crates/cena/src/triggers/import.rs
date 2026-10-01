@@ -184,7 +184,8 @@ pub(crate) fn answer(others: &Changes, id: u64, accept: Option<Vec<String>>) -> 
                 .iter()
                 .find(|(had, _)| had == name)
                 .map_or(name.as_str(), |(_, given)| given.as_str());
-            if merged.refused.iter().any(|refused| refused.name == *name) {
+            // The import refused it under the name it gave it (BE-F-7).
+            if merged.refused.iter().any(|refused| refused.name == given) {
                 continue;
             }
             text = edit::approve(&text, given)?.0;
@@ -261,4 +262,67 @@ fn imported(file: &str, brought: &wrayth::Import, merged: &Merged) -> String {
             .map(|refused| format!("left out {refused}")),
     );
     parts.join("; ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A command accepted in the window, of a trigger the import renamed and
+    /// then refused, is passed over; the rest of the import comes in (BE-F-7:
+    /// the refusal was looked for under the old name, so `approve` failed on
+    /// the new one and nothing was imported).
+    #[test]
+    fn an_accepted_trigger_renamed_then_refused_does_not_fail_the_import() {
+        let dir = std::env::temp_dir().join(format!("cena-trigger-import-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("a folder");
+        fs::write(
+            triggers::path(&dir),
+            "[trigger.stunned]\ntext = 'You are stunned'\nsquelch = true\n",
+        )
+        .expect("written");
+        let origin = "Shared: theirs.toml";
+        let brought = edit::shared(
+            "[trigger.stunned]\nregex = '('\nsend = 'stand'\n\n\
+             [trigger.webbed]\ntext = 'webbed'\nsend = 'stance defensive'\n",
+            origin,
+        )
+        .expect("their file");
+        let others = Changes::new();
+        let id = {
+            let mut imports = lock(&others.imports);
+            imports.waiting.insert(
+                7,
+                Waiting {
+                    dir: dir.clone(),
+                    file: "theirs.toml".to_owned(),
+                    origin: origin.to_owned(),
+                    brought,
+                },
+            );
+            7
+        };
+        let said = answer(
+            &others,
+            id,
+            Some(vec!["stunned".to_owned(), "webbed".to_owned()]),
+        );
+        assert!(said.contains("theirs.toml imported"), "{said}");
+        assert!(
+            said.contains("`stunned` is taken, so it came in as `stunned (Shared)`"),
+            "a Hydra file's rename is not called Wrayth's: {said}"
+        );
+        let listed = edit::list(&super::super::file(&dir).expect("the file")).expect("listed");
+        let names: Vec<(&str, Option<&str>)> = listed
+            .iter()
+            .map(|t| (t.name.as_str(), t.held.as_deref()))
+            .collect();
+        assert_eq!(
+            names,
+            [("stunned", None), ("webbed", None)],
+            "webbed approved"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

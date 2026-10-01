@@ -570,7 +570,7 @@ changes nothing. **MET**: `crates/cena/src/triggers/tests.rs`,
 | A trigger's name | **its words**: `[LNet]-`, `Maravel`; words twice in one file get `(2)` | what a player looks for in `;trigger list`; `VellumFE`'s `wrayth_merchant_2` slugs lose it |
 | Names as one trigger per style, as `VellumFE`? | **No**, one trigger per name | `VellumFE` merges because its engine is multi-literal; here one literal is one trigger, and a name is removed alone |
 | Importing a file again | **replaces** what that file brought (`origin = "Wrayth: <file>"`), whatever was changed since | the same file twice is the same file once; a change made since is lost, and the import says how many it replaced |
-| A name the player already uses | **left to the player**; the import's is `<name> (Wrayth)` | the player's own rule outranks an import |
+| A name the player already uses | **left to the player**; the import's is `<name> (Wrayth)` (another player's Hydra file's, `<name> (Shared)`, since 2026-10-01, BE-F-7) | the player's own rule outranks an import |
 | A sound | kept as `held = { sound = "<path>" }`, the trigger's look on. **Since Stage 3**, the trigger's `sound`; **since 2026-10-01**, only its file name (Stage 3's CORRECTED note) | Stage 3 is held; the path is from the original machine, as `VellumFE` notes |
 | An entry with no colour Hydra can show (`skin`, a palette miss, not `#rrggbb`) | **left out and noted**, unless the other colour stands | a trigger with no response is refused (§5a); the note says which |
 | `<ignores>` | imported, as squelches; `disable` sets the category's switch both ways | `VellumFE` does not import them; the Saga complaint is the master toggle |

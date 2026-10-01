@@ -496,14 +496,16 @@ pub struct Merged {
     pub replaced: usize,
     /// Triggers given another name because theirs was taken: `(had, given)`.
     pub renamed: Vec<(String, String)>,
-    /// Triggers left out, as the file would refuse them.
+    /// Triggers left out, as the file would refuse them, each by the name
+    /// the import gave it (a renamed one by its new name).
     pub refused: Vec<Refused>,
 }
 
 /// `text` with `import`'s triggers in it, marked with `origin`. What an
 /// earlier import from the same `origin` brought is replaced whole, so the
 /// same file imported twice is imported once; a name another trigger has is
-/// given `(Wrayth)`; a trigger the file would refuse is left out and named.
+/// given the origin's kind, `(Wrayth)` or `(Shared)`; a trigger the file
+/// would refuse is left out and named.
 /// The file's `disable` on its ignores sets their category's switch.
 ///
 /// # Errors
@@ -518,15 +520,21 @@ pub fn import(text: &str, origin: &str, import: &Import) -> Result<(String, Merg
     let before = triggers.len();
     triggers.retain(|_, trigger| trigger.get("origin").and_then(Value::as_str) != Some(origin));
     merged.replaced = before - triggers.len();
+    // A taken name is told apart by where the import came from: `Wrayth`,
+    // `Shared` (BE-F-7: a Hydra file's was called Wrayth's).
+    let from = origin
+        .split_once(':')
+        .map_or(origin, |(from, _)| from)
+        .trim();
     for (name, trigger) in &import.triggers {
         let mut given = name.clone();
         let mut count = 1;
         while triggers.contains_key(&given) {
             count += 1;
             given = if count == 2 {
-                format!("{name} (Wrayth)")
+                format!("{name} ({from})")
             } else {
-                format!("{name} (Wrayth {count})")
+                format!("{name} ({from} {count})")
             };
         }
         if given != *name {
