@@ -38,7 +38,7 @@
 //! **A Lich that stops reading is let go, never waited on** (as the
 //! session's copy is, `cena_session::script::lich`): one whose script's hook
 //! never returns reads neither its game nor its standard input. Each write
-//! to it is a task of its own ([`feed`]), so a stop, its exit, and the
+//! to it is a task of its own (`feed`), so a stop, its exit, and the
 //! [`WIRE_CHUNKS`] chunks it has left unread are always seen, and end it.
 
 use std::collections::VecDeque;
