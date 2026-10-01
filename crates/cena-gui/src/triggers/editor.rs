@@ -53,6 +53,9 @@ struct Catching {
 struct Draft {
     /// Its name in the file, or `None` while it is new.
     was: Option<String>,
+    /// For a new trigger made by *Duplicate*, the trigger it copies, whose
+    /// origin and held send the copy keeps (GU-D-6).
+    copy_of: Option<String>,
     /// What the form holds.
     form: Form,
     /// What it watches, as the form's radio says.
@@ -64,6 +67,7 @@ impl Draft {
         Self {
             watch: Watch::of(&form),
             was,
+            copy_of: None,
             form,
         }
     }
@@ -396,6 +400,12 @@ impl Editor {
             .was
             .as_ref()
             .and_then(|was| book.triggers.iter().find(|entry| entry.name == *was));
+        // A copy answers to the trigger it copies for where it came from and
+        // its held send, as the writer saves it.
+        let original = draft
+            .copy_of
+            .as_ref()
+            .and_then(|of| book.triggers.iter().find(|entry| entry.name == *of));
         match entry {
             Some(entry) => {
                 ui.heading(entry.name.as_str());
@@ -403,6 +413,9 @@ impl Editor {
             }
             None => {
                 ui.heading("A new trigger");
+                if let Some(original) = original {
+                    copied(ui, original, &draft.form);
+                }
             }
         }
         form::show(ui, &mut draft.form, &mut draft.watch, book, characters);
@@ -412,6 +425,7 @@ impl Editor {
         ui.separator();
         let send_changed = draft.form.send.is_some()
             && entry
+                .or(original)
                 .is_some_and(|entry| entry.held.is_some() && entry.form.send != draft.form.send);
         if send_changed {
             ui.colored_label(
@@ -429,6 +443,7 @@ impl Editor {
                 asked.push(Change::Save {
                     was: draft.was.clone(),
                     form: Box::new(draft.form.clone()),
+                    copy_of: draft.copy_of.clone(),
                 });
             }
             if let Some(entry) = entry {
@@ -441,7 +456,10 @@ impl Editor {
                 if ui.button("Duplicate").clicked() {
                     let mut copy = draft.form.clone();
                     copy.name = format!("{} copy", copy.name);
-                    *draft = Draft::of(None, copy);
+                    *draft = Draft {
+                        copy_of: Some(entry.name.clone()),
+                        ..Draft::of(None, copy)
+                    };
                 }
             }
         });
@@ -487,6 +505,24 @@ fn status(ui: &mut egui::Ui, entry: &Entry, pristine: bool, asked: &mut Vec<Chan
         if pristine && ui.button("Approve this command").clicked() {
             asked.push(Change::Approve(entry.name.clone()));
         }
+    }
+}
+
+/// What a copy made by *Duplicate* keeps of `original`: where it came from,
+/// and its held send while `form` leaves the send as it was (GU-D-6).
+fn copied(ui: &mut egui::Ui, original: &Entry, form: &Form) {
+    let from = original
+        .origin
+        .as_ref()
+        .map_or_else(String::new, |origin| format!(", from {origin}"));
+    ui.label(egui::RichText::new(format!("A copy of `{}`{from}", original.name)).weak());
+    if let Some(line) = &original.held
+        && form.send.as_deref() == Some(line.as_str())
+    {
+        ui.colored_label(
+            ui.visuals().warn_fg_color,
+            format!("The copy sends \"{line}\" only once you approve it, as the original does."),
+        );
     }
 }
 

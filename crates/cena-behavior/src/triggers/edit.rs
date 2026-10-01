@@ -381,17 +381,21 @@ pub fn tables(text: &str) -> Result<Vec<(String, Table)>, String> {
 
 /// The trigger editor's form saved: `fields` (only [`FORM_KEYS`]) as
 /// trigger `name`'s, which was `was` (`None` for a new trigger, renamed when
-/// the names differ). What the form does not edit is kept. With `approve`,
-/// its send is approved: the player typed it (`plan/54` §1 row 2).
+/// the names differ). What the form does not edit is kept. A new trigger
+/// that is a copy of `copy_of` (the editor's *Duplicate*) takes that one's
+/// `origin` and `approved`, so a send from elsewhere stays held in the copy
+/// as in the original (GU-D-6). With `approve`, its send is approved: the
+/// player typed it (`plan/54` §1 row 2).
 ///
 /// # Errors
 ///
-/// The file is not TOML, the name is empty or taken, `was` is not a trigger,
-/// the trigger as saved would be refused (the reason), or its sound is not a
-/// file name ([`super::sound`]).
+/// The file is not TOML, the name is empty or taken, `was` or `copy_of` is
+/// not a trigger, the trigger as saved would be refused (the reason), or its
+/// sound is not a file name ([`super::sound`]).
 pub fn save(
     text: &str,
     was: Option<&str>,
+    copy_of: Option<&str>,
     name: &str,
     fields: Table,
     approve: bool,
@@ -405,12 +409,22 @@ pub fn save(
     }
     change(text, &[name], |table| {
         let triggers = section(table, "trigger")?;
-        let mut own = match was {
-            Some(was) => triggers
+        let mut own = match (was, copy_of) {
+            (Some(was), _) => triggers
                 .remove(was)
                 .and_then(|value| value.as_table().cloned())
                 .ok_or_else(|| format!("there is no trigger `{was}`"))?,
-            None => Table::new(),
+            (None, Some(original)) => {
+                let original = triggers
+                    .get(original)
+                    .and_then(Value::as_table)
+                    .ok_or_else(|| format!("there is no trigger `{original}` to copy"))?;
+                ["origin", "approved"]
+                    .into_iter()
+                    .filter_map(|key| Some((key.to_owned(), original.get(key)?.clone())))
+                    .collect()
+            }
+            (None, None) => Table::new(),
         };
         if triggers.contains_key(name) {
             return Err(format!("there is already a trigger `{name}`"));

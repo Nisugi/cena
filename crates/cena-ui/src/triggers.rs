@@ -230,6 +230,10 @@ pub enum Change {
         was: Option<String>,
         /// What it is now.
         form: Box<Form>,
+        /// For a new trigger made by *Duplicate*, the trigger it copies: the
+        /// copy keeps where that came from and its send's hold, unless the
+        /// form changed the send (GU-D-6).
+        copy_of: Option<String>,
     },
     /// Switch a trigger off, or back on, for one character.
     OffFor {

@@ -79,7 +79,7 @@ fn a_sound_set_or_saved_is_a_file_name_and_a_path_is_refused() {
     let mut fields = toml::Table::new();
     fields.insert("text".into(), "You are stunned".into());
     fields.insert("sound".into(), r"\\host\share\ding.wav".into());
-    let saved = edit::save(&text, Some("stunned"), "stunned", fields, false).unwrap_err();
+    let saved = edit::save(&text, Some("stunned"), None, "stunned", fields, false).unwrap_err();
     assert!(saved.contains("network"), "{saved}");
 }
 

@@ -119,6 +119,11 @@ settings menu's pages do.
    > everyone or the characters ticked; off for each roster character. *+ New*,
    > *Duplicate*, *Save*, *Revert*. A draft is saved only when the file reads it back as
    > it is, so a refused save stays unsaved, and a click elsewhere does not throw it away.
+   > **CORRECTED 2026-10-01** (the crate review, GU-D-6): *Duplicate* made a new trigger
+   > with no `origin`, so a copy of an imported trigger sent its held command unapproved.
+   > A copy is now saved as a copy (`Change::Save`'s `copy_of`, `edit::save`): it keeps
+   > the original's `origin` and `approved`, so its send waits as the original's does,
+   > unless the copy's send is changed, which approves it as any edit does (§1 row 2).
    > Not built: ▶ to hear a sound (the sound plays in the binary, `crate::attention`).
 3. **The live test.** A line and its stream run through the real matcher in the window: the
    line as it would show (painted, squelched, substituted, moved) and what fires; the form's

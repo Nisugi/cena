@@ -152,9 +152,56 @@ fn saved(harness: &Harness<'_, Scene>) -> Option<(Option<String>, Form)> {
         .iter()
         .rev()
         .find_map(|change| match change {
-            Change::Save { was, form } => Some((was.clone(), (**form).clone())),
+            Change::Save { was, form, .. } => Some((was.clone(), (**form).clone())),
             _ => None,
         })
+}
+
+/// *Duplicate* on a trigger from elsewhere whose send is held: the copy is
+/// saved as a copy of it, so the writer keeps its origin and hold, and the
+/// window says the copy's send waits too (GU-D-6).
+#[test]
+fn a_duplicate_is_saved_as_a_copy_and_says_its_send_waits() {
+    let mut harness = harness();
+    harness.get_by_label("webbed").click();
+    harness.run();
+    harness.get_by_label("Duplicate").click();
+    harness.run();
+    assert!(harness.query_by_label("A new trigger").is_some());
+    assert!(
+        harness
+            .query_by_label_contains("A copy of `webbed`, from Wrayth: Nisugi3.xml")
+            .is_some()
+    );
+    harness
+        .state_mut()
+        .editor
+        .draft_form()
+        .expect("a draft")
+        .send = Some("stance defensive".to_owned());
+    harness.run();
+    assert!(
+        harness
+            .query_by_label_contains("The copy sends \"stance defensive\" only once you approve it")
+            .is_some()
+    );
+    harness.get_by_label("Save").click();
+    harness.run();
+    let copy = harness
+        .state()
+        .asked
+        .iter()
+        .rev()
+        .find_map(|change| match change {
+            Change::Save { was, form, copy_of } => {
+                Some((was.clone(), form.name.clone(), copy_of.clone()))
+            }
+            _ => None,
+        });
+    assert_eq!(
+        copy,
+        Some((None, "webbed copy".to_owned(), Some("webbed".to_owned())))
+    );
 }
 
 #[test]

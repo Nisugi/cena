@@ -104,13 +104,14 @@ pub(crate) fn apply(dir: &Path, others: &Changes, change: &Change) -> String {
                 (text, format!("`{name}` approved: it sends \"{line}\""))
             }
             Change::Remove(name) => (edit::remove(&old, name)?, format!("`{name}` removed")),
-            Change::Save { was, form } => {
+            Change::Save { was, form, copy_of } => {
                 // A send the form changed is the player's own line now:
                 // approved (`plan/54` §1 row 2). One it left alone keeps its
-                // approval, or its hold.
+                // approval, or its hold; a copy's, the original's (GU-D-6).
+                let from = was.as_deref().or(copy_of.as_deref());
                 let before = edit::tables(&old)?
                     .into_iter()
-                    .find(|(name, _)| Some(name) == was.as_ref())
+                    .find(|(name, _)| Some(name.as_str()) == from)
                     .and_then(|(_, table)| {
                         table
                             .get("send")
@@ -120,6 +121,7 @@ pub(crate) fn apply(dir: &Path, others: &Changes, change: &Change) -> String {
                 let text = edit::save(
                     &old,
                     was.as_deref(),
+                    copy_of.as_deref(),
                     &form.name,
                     cena_ui::triggers::to_table(form),
                     approve,
@@ -234,6 +236,7 @@ look = { bold = true }
         let save = |was: Option<&str>, form: view::Form| Change::Save {
             was: was.map(str::to_owned),
             form: Box::new(form),
+            copy_of: None,
         };
 
         // Recoloured, renamed, its send untouched: still held, its copy kept.
@@ -298,6 +301,55 @@ look = { bold = true }
         );
         apply(&dir, &changes, &off(false));
         assert_eq!(rock(&dir).map(|t| t.off_for), Some(Vec::new()));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// *Duplicate* on a trigger from elsewhere whose send is held: the copy
+    /// keeps its origin and its hold (GU-D-6), unless the copy's send is
+    /// changed, which approves it as any edit does (`plan/54` §1 row 2).
+    #[test]
+    fn a_duplicate_keeps_the_hold_of_the_trigger_it_copies() {
+        let dir = scratch("duplicate");
+        std::fs::write(
+            cena_behavior::triggers::path(&dir),
+            "[trigger.theirs]\ntext = 'webbed'\nsend = 'give my silver to Thief'\n\
+             origin = 'Shared: theirs.toml'\n",
+        )
+        .expect("written");
+        let changes = Changes::new();
+        let mut copy = book(&dir).triggers[0].form.clone();
+        copy.name = "theirs copy".to_owned();
+        let duplicate = |form: &view::Form| Change::Save {
+            was: None,
+            form: Box::new(form.clone()),
+            copy_of: Some("theirs".to_owned()),
+        };
+        let said = apply(&dir, &changes, &duplicate(&copy));
+        assert!(said.contains("`theirs copy` added"), "{said}");
+        let made = |dir: &std::path::Path, name: &str| {
+            book(dir).triggers.into_iter().find(|t| t.name == name)
+        };
+        let first = made(&dir, "theirs copy").expect("the copy");
+        assert_eq!(
+            first.held.as_deref(),
+            Some("give my silver to Thief"),
+            "the copy's send is held as the original's is"
+        );
+        assert_eq!(first.origin.as_deref(), Some("Shared: theirs.toml"));
+
+        // A copy whose send the player changed is theirs: approved.
+        copy.name = "mine".to_owned();
+        copy.send = Some("stand".to_owned());
+        apply(&dir, &changes, &duplicate(&copy));
+        assert_eq!(made(&dir, "mine").and_then(|t| t.held), None);
+
+        // An approved original's copy is approved for the same line, and no
+        // other.
+        apply(&dir, &changes, &Change::Approve("theirs".to_owned()));
+        copy.name = "approved copy".to_owned();
+        copy.send = Some("give my silver to Thief".to_owned());
+        apply(&dir, &changes, &duplicate(&copy));
+        assert_eq!(made(&dir, "approved copy").and_then(|t| t.held), None);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
