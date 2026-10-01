@@ -166,6 +166,31 @@ there are **six** policies under one holder, not a second behavior racing the fi
 
   A check that fails is a skip, not a failure, and the next tick decides again from scratch.
 
+  > **CORRECTED 2026-09-30, after the author's first hunt.** Step 3 was built as "send, and
+  > take the next prompt", and **the next prompt is not the answer**: the game sends one after
+  > everything it says, asked for or not. A creature walking in between a `fire` and its
+  > reply ended the round trip; the tick decided from a state the reply had not reached and
+  > sent the line again (`fire` three times in 170 ms), and the next step went out inside
+  > roundtime the reply had not yet stated (`raise longbow` 2 ms after `weapon volley`).
+  > `...wait N seconds.` was never acted on either: the hunt's transcript had no line ends,
+  > so a reply was read only when it was the first thing in it.
+  >
+  > Confirm is now eohunter's `send_and_match` (`actions.rb`, `engage.rb:610`, `:701`,
+  > `combat.rb:155-167`, `loot.rb:117`): the driver reads on until a line this command is
+  > known to be answered with, refusals included, and a line the game held back is waited
+  > out and sent again (`crates/cena-behavior/src/hunt/answer.rs`, which tables the answers
+  > and says which lines still go by the prompt).
+  >
+  > The crate review of 2026-10-01 closed three holes in that before it was committed. A
+  > roundtime line answers only in the game's own forms, at the start of the line (Lich's
+  > `spell.rb:36`, `:773`): `contains("Roundtime")` let a player's speech answer an attack.
+  > The driver alone sends a held line again (`crates/cena-behavior/src/hunt/drive/send.rs`);
+  > the machine did too, unaware of it. And a line whose answer did not come in the wait is
+  > **owed** one, so a late `...wait N` is taken as the earlier line's rather than resending
+  > the next, which may have gone through: a missed resend is made good by the next tick, a
+  > double send is two attacks. `tests/hunt_answer_drive.rs` drives both cases through a
+  > scripted game that now speaks unasked (`TranscriptHandle::say`).
+
   **The last check belongs in the session, not the behavior.** A behavior reads its own
   folded copy of the state, which trails the actor's by however many events are still
   queued. The actor already evaluates a `Gate` at the moment it writes (`send_now`'s

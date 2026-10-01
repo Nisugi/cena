@@ -376,7 +376,7 @@ fn a_search_that_fails_on_condition_casts_the_sigil_once_then_tries_again() {
     plan.outcome(&Outcome::NotInCondition);
     assert_eq!(
         plan.next(&state),
-        Step::Cast("incant 9716".to_owned()),
+        Step::Cast("sigil of determination".to_owned()),
         "Sigil of Determination, as Lich casts a sigil"
     );
     assert_eq!(plan.next(&state), Step::Search(41), "the search again");

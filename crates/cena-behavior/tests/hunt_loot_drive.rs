@@ -185,6 +185,38 @@ async fn the_corpse_is_searched_then_the_floor_looted_in_eloots_order() {
     let _ = task.await;
 }
 
+/// The game holds a line back for roundtime the client could not know of
+/// (whole seconds on the wire, Rapid Fire shortening it after): the line is
+/// waited out and sent again, not dropped. The author's hunt of 2026-09-30
+/// left a warg unsearched on `...wait 1 seconds.`
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_line_the_game_held_back_is_sent_again() {
+    let (transcript, stop, task) =
+        set_out(vec![floor("7", "emerald", "uncut emerald")], loot_profile());
+    transcript.answer(
+        "loot #42",
+        b"...wait 1 seconds.\n<prompt time=\"1001\">&gt;</prompt>\n",
+    );
+    transcript.answer(
+        "loot #42",
+        b"You search the giant warg.\nIt had nothing of interest.\n<prompt time=\"1002\">&gt;</prompt>\n",
+    );
+    transcript.answer(
+        "loot room",
+        b"You gather up the emerald.\n<prompt time=\"1003\">&gt;</prompt>\n",
+    );
+    assert!(
+        until_written(&transcript, "loot room").await,
+        "the floor is looted: {:?}",
+        transcript.lines()
+    );
+    let lines = transcript.lines();
+    let searches = lines.iter().filter(|l| *l == "loot #42").count();
+    assert_eq!(searches, 2, "held back once, then sent again: {lines:?}");
+    stop.cancel();
+    let _ = task.await;
+}
+
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_full_bag_sends_the_hunt_to_rest() {
     // A whatsit of no kind is dragged into the default bag; the game says

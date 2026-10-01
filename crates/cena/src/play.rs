@@ -472,6 +472,19 @@ impl Table {
                 {
                     kept.take(&handle);
                 }
+                // Turning the urchin guides on asks the game once whether
+                // they serve this character; the model keeps the answer, and
+                // a trip asks only while it is unknown.
+                if change.page == crate::travel_page::PAGE
+                    && change.key == cena_behavior::travel::settings::USE_URCHINS
+                    && change.to.as_deref().is_some_and(|to| {
+                        cena_behavior::settings::typed(to).as_bool() == Some(true)
+                    })
+                    && let Some(handle) = self.handle_of(&change.character).await
+                {
+                    let (origin, gate) = (cena_session::Origin::Hydra, cena_session::Gate::None);
+                    handle.send_now("urchin status", origin, gate).await;
+                }
                 let problem = pages::send(&self.dir, &map, &change.character, self.gui.as_ref());
                 if problem.is_empty() { said } else { problem }
             }

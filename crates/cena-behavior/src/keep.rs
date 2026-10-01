@@ -131,7 +131,10 @@ pub fn next(
         {
             continue;
         }
-        if cast::ready(state, spell, 1, 0).is_err() || !spirit_allows(state, spell) {
+        if cast::ready(state, spell, 1, 0).is_err()
+            || !spirit_allows(state, spell)
+            || cast::power(spell, None).is_some_and(|power| power.is_err())
+        {
             continue;
         }
         tried.insert(spell, now);

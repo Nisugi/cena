@@ -255,6 +255,12 @@ impl Waggler {
                 continue;
             }
             if let Some((spell, count)) = self.candidate(state, &name) {
+                // A society's power with nothing to send is never waggled
+                // (`crate::cast::power`).
+                if cast::power(spell, None).is_some_and(|power| power.is_err()) {
+                    self.skip_spells.insert(spell);
+                    continue;
+                }
                 {
                     if let Err(why) = cast::ready(state, spell, count, self.profile.reserve_mana) {
                         return match why {

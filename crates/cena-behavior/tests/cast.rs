@@ -1,6 +1,6 @@
 //! The casting step (`plan/37` Stage 3): the lines, the answers, readiness.
 
-use cena_behavior::cast::{Answer, Casting, NotReady, Verb, classify, ready};
+use cena_behavior::cast::{Answer, Casting, NotReady, Unusable, Verb, classify, power, ready};
 use cena_session::{Amount, Frame, GameState, ProgressBar};
 
 fn mana(state: &mut GameState, current: i32, max: i32) {
@@ -179,4 +179,58 @@ fn spirit_keeps_one_back_and_stamina_does_not() {
         Ok(()),
         "its cost exactly is enough"
     );
+}
+
+/// A society's power is sent as Lich's cast proc sends it, never as
+/// `incant`, and never by its display name (the crate review of 2026-10-01,
+/// MO-F-2, BE-F-1).
+#[test]
+fn a_societys_power_is_its_procs_line_with_the_target_where_the_proc_puts_it() {
+    let at = |n: u16, target: Option<&str>| power(n, target);
+    assert_eq!(at(9708, None), Some(Ok("sigil of offense".to_owned())));
+    assert_eq!(
+        at(9708, Some("#1")),
+        Some(Ok("sigil of offense".to_owned())),
+        "a self-cast sigil takes no target"
+    );
+    // The two the loot planner sends as constants.
+    assert_eq!(
+        at(9716, None),
+        Some(Ok("sigil of determination".to_owned()))
+    );
+    assert_eq!(at(9704, None), Some(Ok("sigil of resolve".to_owned())));
+    // Kai's Smite is `smite`, not `kai's smite`.
+    assert_eq!(at(9821, Some("#7")), Some(Ok("smite #7".to_owned())));
+    assert_eq!(at(9821, None), Some(Ok("smite".to_owned())));
+    for (n, verb) in [
+        (9802, "symbol of blessing"),
+        (9804, "symbol of diminishment"),
+        (9807, "symbol of submission"),
+        (9809, "symbol of holiness"),
+        (9811, "symbol of sleep"),
+        (9812, "symbol of transcendence"),
+        (9814, "symbol of sight"),
+        (9822, "symbol of turning"),
+    ] {
+        assert_eq!(at(n, Some("#7")), Some(Ok(format!("{verb} #7"))), "{n}");
+    }
+    assert_eq!(at(9808, Some("#7")), Some(Err(Unusable::Passive)));
+    assert_eq!(at(9803, None), Some(Err(Unusable::Passive)));
+    assert_eq!(at(9920, None), Some(Err(Unusable::Refused)));
+    assert_eq!(at(9725, None), Some(Err(Unusable::NotCast)));
+    assert_eq!(at(515, None), None, "a spell, prepared and cast");
+
+    let state = GameState::default();
+    let cast = |spell: u16, target: Option<&str>| {
+        Casting {
+            spell,
+            target: target.map(str::to_owned),
+            count: None,
+            verb: Verb::Cast,
+        }
+        .lines(&state)
+    };
+    assert_eq!(cast(9807, Some("#7")), ["symbol of submission #7"]);
+    assert!(cast(9808, Some("#7")).is_empty(), "nothing to send");
+    assert!(cast(9920, None).is_empty());
 }

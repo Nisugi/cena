@@ -187,7 +187,7 @@ fn kneel_and_the_sigil_come_first_and_the_stand_after() {
     let mut plan = Planner::new(profile(skin), Memory::default(), &[41]);
     assert_eq!(plan.next(&state), Step::Kneel);
     plan.outcome_in(&Outcome::Kneeled, &state);
-    assert_eq!(plan.next(&state), Step::Cast("incant 9704".to_owned()));
+    assert_eq!(plan.next(&state), Step::Cast("sigil of resolve".to_owned()));
     assert_eq!(
         plan.next(&state),
         Step::Skin {

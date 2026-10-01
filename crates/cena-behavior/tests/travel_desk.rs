@@ -150,8 +150,8 @@ async fn go2_bank_typed_while_playing_walks_there_and_remembers_where_it_stopped
     );
     let said = playing.told();
     assert!(
-        said.contains("[Town, Bank]"),
-        "the route is shown first:\n{said}"
+        !said.contains("[Town, Bank]") && !said.contains("STEP"),
+        "go2 walks, and the route is route2's to show:\n{said}"
     );
     let kept = std::fs::read_to_string(playing.dir.join("travel.json")).unwrap();
     assert!(kept.contains("\"last_room\": 2"), "{kept}");

@@ -431,7 +431,7 @@ struct Driver<'a, N> {
     taken: Option<Taken>,
     /// Why a routine stopped the trip, in its own words.
     halted: Option<String>,
-    /// Facts asked for before the first plan (`preflight`): `urchin_access`.
+    /// Facts asked for before the first plan (`preflight`): the day passes.
     found: HashMap<String, bool>,
     /// What routines have learned on this trip (`routines::Kept`).
     kept: super::routines::Kept,

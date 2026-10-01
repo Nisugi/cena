@@ -55,7 +55,7 @@ use std::sync::OnceLock;
 pub mod expr;
 pub mod extras;
 
-pub use extras::{Cost, Extras, Shape, Span};
+pub use extras::{Cost, Extras, ProcLine, Shape, Span};
 
 const SPELLS_TSV: &str = include_str!("../data/spells.tsv");
 

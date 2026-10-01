@@ -12,11 +12,17 @@
 //!
 //! 1. **Settle** roundtime and cast roundtime, folding events meanwhile.
 //! 2. **Check against the state as it is now.** The machine's guards read
-//!    the folded state at the tick; the session's [`Gate::Act`] reads the
-//!    live model at the moment the bytes go out (`actor/gate.rs`), and
+//!    the folded state at the tick; the session's
+//!    [`Gate::Act`](cena_session::Gate::Act) reads the live model at the
+//!    moment the bytes go out (`actor/gate.rs`), and
 //!    refuses a step whose target has gone, or a character stunned, webbed,
 //!    dead or in roundtime.
-//! 3. **Send**, and take the next prompt as the end of the round trip.
+//! 3. **Send**, and read on until the line's own answer is heard
+//!    (`hunt/answer.rs`). The next prompt is not it: the game sends one
+//!    after everything it says, asked for or not.
+//! 4. **Held back** (`...wait N seconds.`): wait, and send it again. The
+//!    driver alone does, and never on a holding that may be an earlier
+//!    line's (`drive/send.rs`).
 //!
 //! A refusal is a skip: the next tick decides again from scratch.
 //!
@@ -43,6 +49,7 @@ mod fold;
 mod loot;
 mod party;
 mod selling;
+mod send;
 mod walk;
 
 use fold::fold_into;
@@ -52,8 +59,7 @@ use std::time::Duration;
 
 use cena_map::{Map, Origin as Whence, RoomId};
 use cena_session::{
-    AuthorityToken, CommandId, Frame, GameState, Gate, Notice, NoticeKind, Origin, Outcome,
-    Refusal, SessionHandle, Snapshot, State,
+    AuthorityToken, CommandId, GameState, Notice, NoticeKind, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
@@ -75,6 +81,10 @@ const SETTLE_CAP: Duration = Duration::from_secs(15);
 const QUIT_DEADLINE: Duration = Duration::from_secs(10);
 /// The idle beat: how often the loop turns with nothing to do.
 const BEAT: Duration = Duration::from_millis(250);
+/// How often the transcript is read while a line's answer is awaited.
+const ANSWER_BEAT: Duration = Duration::from_millis(20);
+/// How many times a line the game held back is sent again.
+const MAX_RESENDS: u8 = 3;
 /// The most commands one visit's looting sends before it is given up on.
 const LOOT_STEPS: usize = 64;
 /// The most steps one selling round takes before it is given up on.
@@ -204,6 +214,9 @@ pub async fn hunt_in(
         saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
+        said: String::new(),
+        owed: std::collections::VecDeque::new(),
+        settled_at: None,
         line: String::new(),
         down: false,
         membership: group.map(|(boards, place)| Membership::new(boards, place)),
@@ -248,6 +261,16 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// The main window's text since the last loot command was sent, for
     /// reading its reply.
     transcript: String,
+    /// The main window's line being read, to settle what is owed
+    /// (`drive/send.rs`).
+    said: String,
+    /// Lines written whose answer has not been heard, oldest first: the
+    /// next answer-shaped line is theirs, not the line now awaited's
+    /// (`drive/send.rs`).
+    owed: std::collections::VecDeque<send::Owed>,
+    /// Where in the transcript the last line that settled an owed one
+    /// ended, while a line is awaited: what is before it is not that line's.
+    settled_at: Option<usize>,
     /// The line being read, any window, for the interaction monitor.
     line: String,
     /// The connection dropped and the session is reconnecting: the hunt
@@ -421,47 +444,5 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
             }
         }
-    }
-
-    /// Wait out roundtime and cast roundtime, up to the cap.
-    async fn settle(&mut self) -> Result<(), HuntEnd> {
-        let cap = tokio::time::Instant::now() + SETTLE_CAP;
-        while self.state.in_roundtime() == Some(true) || self.state.in_casttime() == Some(true) {
-            if tokio::time::Instant::now() >= cap {
-                return Ok(());
-            }
-            self.hold(BEAT).await?;
-        }
-        Ok(())
-    }
-
-    /// Settle, then send through the gate, then take the prompt.
-    async fn send(&mut self, line: &str, target: Option<i64>) -> Result<(), HuntEnd> {
-        self.settle().await?;
-        let id = (self.next_id)();
-        let outcome = tokio::select! {
-            biased;
-            () = self.cancel.cancelled() => return Err(HuntEnd::Stopped(BehaviorError::Cancelled)),
-            outcome = self.handle.send_gated(
-                id,
-                line,
-                Origin::Behavior(self.token),
-                SEND_DEADLINE,
-                |frame| matches!(frame, Frame::Prompt { .. }),
-                Gate::Act { target },
-            ) => outcome,
-        };
-        if let Some(gone) = BehaviorError::from_outcome(&outcome) {
-            return Err(HuntEnd::Stopped(gone));
-        }
-        if let Outcome::Refused(refusal) = &outcome {
-            if matches!(refusal, Refusal::TargetGone) {
-                self.machine.target_gone();
-            }
-            // A refusal is a skip: the next tick decides again. A beat, so a
-            // refusal that repeats does not spin.
-            self.hold(BEAT).await?;
-        }
-        self.drain().map_err(HuntEnd::Stopped)
     }
 }

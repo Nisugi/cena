@@ -195,14 +195,22 @@ pub(super) struct Follow {
     swapped: bool,
     /// This rest's waggle has run (`rest.waggle`).
     pub(super) rest_waggled: bool,
-    /// What went last, to send again if the game says `...wait`. Every
-    /// line sent is answered (`Hunt::replied`), which takes it.
+    /// What went last, to send again after a `swap`. Every line sent is
+    /// answered (`Hunt::replied`), which takes it.
     pub(super) resend: Option<Resend>,
 }
 
-/// What the last line was, to put back on `...wait N seconds.`: bigshot's
-/// handlers wait the roundtime out and send again (`cmd_cmans`,
-/// `bigshot.lic:5084-5087`, and the others).
+/// What the last line was, to put back after the `swap` an assault the
+/// attack type refuses is answered with (`cmd_assault`,
+/// `bigshot.lic:4648-4651`).
+///
+/// **Not** on `...wait N seconds.`, though bigshot's handlers wait that out
+/// and send again (`cmd_cmans`, `bigshot.lic:5084-5087`, and the others):
+/// the driver does that, for every line it sends, and it alone
+/// (`hunt/drive/send.rs`). This did it too, unaware of the driver, putting
+/// the step back after the driver's last try for four more (the crate
+/// review of 2026-10-01, BE-A-11); and it read a holding that may have been
+/// an earlier line's as this one's (BE-A-3).
 #[derive(Debug)]
 pub(super) enum Resend {
     /// A line queued after a step's first.
@@ -281,35 +289,30 @@ impl Hunt {
         }
     }
 
-    /// `...wait N seconds.`: the line that met it goes again, after the
-    /// roundtime the driver waits out before every line. And an assault the
-    /// attack type refuses: `swap`, then the step again, once (`cmd_assault`,
-    /// `bigshot.lic:4648-4651`).
+    /// An assault the attack type refuses: `swap`, then the step again,
+    /// once (`cmd_assault`, `bigshot.lic:4648-4651`). A line the game held
+    /// back (`...wait N seconds.`) is the driver's to send again, not this
+    /// ([`Resend`]).
     pub(super) fn resend_replied(&mut self, lines: &[&str]) {
-        let waited = lines.iter().any(|line| {
-            line.trim()
-                .strip_prefix("...wait ")
-                .is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_digit()))
-        });
         let refused = lines
             .iter()
             .any(|line| line.contains("can not be used with attack as the attack type"));
         // Once for the step now going, and again for a later one: the flag
-        // goes when a line that is neither the swap nor made to wait is
-        // answered without the refusal. (`refused && !replace(..)` never
+        // goes when a line that is not the swap is answered without the
+        // refusal (a holding never reaches here: the driver takes it out). (`refused && !replace(..)` never
         // reached the replace unless refused, so the first swap of a hunt
         // was its last: the review of 2026-09-29.)
         let swapping = matches!(&self.follow.resend, Some(Resend::Line(line)) if line == "swap");
         let swap = refused && !self.follow.swapped;
         if refused {
             self.follow.swapped = true;
-        } else if !swapping && !waited {
+        } else if !swapping {
             self.follow.swapped = false;
         }
         if swap {
             self.followups.push_back("swap".to_owned());
         }
-        match self.follow.resend.take().filter(|_| waited || swap) {
+        match self.follow.resend.take().filter(|_| swap) {
             Some(Resend::Line(line)) => self.followups.push_front(line),
             Some(Resend::Step(step)) => self.queue.push_front(step),
             None => {}

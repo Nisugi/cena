@@ -50,6 +50,64 @@ impl Verb {
     }
 }
 
+/// The first spell number that is a society's power (9701, 9801, 9901).
+const FIRST_SOCIETY_POWER: u16 = 9700;
+
+/// The line that uses a society's power, at `target` when one is given.
+/// `None` for a spell that is prepared and cast. A power sent as `incant
+/// 9708` is answered "That is not something you can prepare." (the author's
+/// hunt of 2026-09-30).
+///
+/// The line is Lich's own, read off the power's cast proc
+/// ([`ProcLine`](cena_session::spells::ProcLine)), not made from its name:
+/// Kai's Smite (9821) is `smite`, and eight symbols take the target the
+/// proc appends (`symbol of submission #id`; the crate review of 2026-10-01,
+/// MO-F-2). The target goes on only where the proc puts it.
+///
+/// # Errors
+///
+/// [`Unusable`] for a power with nothing to send: Lich's proc sends an empty
+/// line (9803, 9808), refuses (9920), or there is none (9725, a timer).
+#[must_use]
+pub fn power(number: u16, target: Option<&str>) -> Option<Result<String, Unusable>> {
+    use cena_session::spells::ProcLine;
+    if number < FIRST_SOCIETY_POWER {
+        return None;
+    }
+    let spell = cena_session::spells::spell(number)?;
+    Some(match spell.extras.proc_line() {
+        Some(ProcLine::Sends { line, targeted }) => Ok(match target {
+            Some(target) if targeted => format!("{line} {target}"),
+            _ => line,
+        }),
+        Some(ProcLine::Nothing) => Err(Unusable::Passive),
+        Some(ProcLine::Refuses) => Err(Unusable::Refused),
+        None => Err(Unusable::NotCast),
+    })
+}
+
+/// Why a society's power has nothing to send ([`power`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unusable {
+    /// Lich's proc sends an empty line: a power made passive (Kai's Strike,
+    /// Symbol of Thought).
+    Passive,
+    /// Lich's proc refuses to cast it (Sign of Hopelessness).
+    Refused,
+    /// No proc at all: not something cast (Illusion - Demon, a timer).
+    NotCast,
+}
+
+impl std::fmt::Display for Unusable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Passive => "it is passive: nothing is sent to use it",
+            Self::Refused => "Lich refuses to cast it, and so does Hydra",
+            Self::NotCast => "it is not something cast",
+        })
+    }
+}
+
 /// One casting.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Casting {
@@ -64,9 +122,13 @@ pub struct Casting {
 }
 
 impl Casting {
-    /// The lines to send, in order.
+    /// The lines to send, in order. None for a society's power with nothing
+    /// to send ([`power`]); a caller that can say why asks [`power`] first.
     #[must_use]
     pub fn lines(&self, state: &GameState) -> Vec<String> {
+        if let Some(power) = power(self.spell, self.target.as_deref()) {
+            return power.into_iter().collect();
+        }
         let mut out = Vec::new();
         let name = cena_session::spells::spell(self.spell).map(|s| s.name.as_str());
         let other_prepared = state

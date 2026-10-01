@@ -226,8 +226,10 @@ impl Desk {
             );
             return None;
         };
-        handle.say(Notice::table(NoticeKind::Info, table(&self.map, here, &legs)).answering());
+        // The table is `route2`'s; `go2` walks and prints no route (the
+        // author, 2026-09-30).
         if !matches!(command, Command::Go(_)) {
+            handle.say(Notice::table(NoticeKind::Info, table(&self.map, here, &legs)).answering());
             return None;
         }
         traveller.notes.last_room = Some(here.0);

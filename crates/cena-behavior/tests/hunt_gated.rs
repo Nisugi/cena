@@ -283,23 +283,30 @@ fn ambush_with_a_part_aims_there_and_at_the_creature() {
     );
 }
 
+/// A line the game held back is the driver's to send again, and only the
+/// driver's (`hunt/drive/send.rs`, the crate review of 2026-10-01, BE-A-11):
+/// the machine sent it again as well, and on a `...wait` that may have been
+/// an earlier line's (BE-A-3). A holding that reaches the machine is read as
+/// nothing; the next step goes.
 #[test]
-fn a_line_the_game_answers_with_wait_goes_again() {
+fn a_line_the_game_answers_with_wait_is_not_put_back_by_the_machine() {
     let state = kobold(1_000);
     let mut h = hunt(&["kick", "punch"]).unwrap();
     assert_eq!(tick(&mut h, &state), "kick");
     h.replied(["...wait 2 seconds."], Some(1_000));
-    assert_eq!(tick(&mut h, &state), "kick", "the step again, not the next");
-    h.replied(["You kick at a kobold!"], Some(1_002));
-    assert_eq!(tick(&mut h, &state), "punch");
+    assert_eq!(
+        tick(&mut h, &state),
+        "punch",
+        "the next step, not the held one"
+    );
 
     let mut spell = hunt(&["incant 1106", "punch"]).unwrap();
     assert_eq!(ticks(&mut spell, &state, 2), ["prepare 1106", "cast #42"]);
     spell.replied(["...wait 1 second."], Some(1_000));
-    assert_eq!(
+    assert_ne!(
         tick(&mut spell, &state),
         "cast #42",
-        "the queued line again"
+        "not the queued line again"
     );
 }
 

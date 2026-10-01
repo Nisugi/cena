@@ -174,7 +174,7 @@ fn spell_lines(ticks: &[Tick]) -> Vec<(Option<u32>, String, usize)> {
         .iter()
         .filter_map(|tick| {
             let line = tick.line()?;
-            ["incant ", "prep ", "assume "]
+            ["incant ", "prep ", "assume ", "sigil of "]
                 .iter()
                 .any(|verb| line.starts_with(verb))
                 .then(|| (tick.now, line.to_owned(), tick.creatures))
@@ -219,7 +219,10 @@ async fn nothing_is_cast_until_an_effects_list_has_been_seen() {
     // 9708, 9715 and 9711 are in no list the game sent, so they are down and
     // are cast; 515, 506, 605 and 650 are in the Buffs list and are not.
     let cast: Vec<&str> = spells.iter().map(|(_, line, _)| line.as_str()).collect();
-    assert_eq!(cast, ["incant 9708", "incant 9715", "incant 9711"]);
+    assert_eq!(
+        cast,
+        ["sigil of offense", "sigil of major bane", "sigil of focus"]
+    );
 }
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -392,9 +395,9 @@ async fn the_shield_maiden_gets_routine_e_with_its_guards_read_off_real_statuses
             "stance offensive".to_owned(),
             format!("fire #{SHIELD_MAIDEN}"),
             format!("loot #{SHIELD_MAIDEN}"),
-            "incant 9708".to_owned(),
-            "incant 9715".to_owned(),
-            "incant 9711".to_owned(),
+            "sigil of offense".to_owned(),
+            "sigil of major bane".to_owned(),
+            "sigil of focus".to_owned(),
         ]
     );
 }

@@ -278,6 +278,44 @@ async fn urchin_access_is_asked_before_the_plan_and_prices_it() {
     session.cancel();
 }
 
+/// The answer is kept: the same walker's next trip does not ask again. This
+/// asked before every trip, and a hunt's every room is a trip (the author's
+/// hunt of 2026-09-30).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn urchin_access_already_known_is_not_asked_again() {
+    let (source, transcript) = AnsweringSource::logged_in(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let session_cancel = session.cancel_token();
+    let (mut snapshot, events) = session.subscribe();
+    let (_, ready) = session.subscribe();
+    snapshot.state.room.id = Some("1001".into());
+    snapshot.state.character.standing.urchin_access = Some(true);
+    tokio::spawn(session.into_actor().run());
+    transcript.answer("urchin guide 2", &arrival(1002));
+    ready::until_ready(ready).await.unwrap();
+    let map = Map::from_rooms(serde_json::from_str(URCHINS).unwrap()).unwrap();
+    let next = AtomicU64::new(0);
+    let ids = || CommandId(next.fetch_add(1, Ordering::Relaxed));
+    let stop = CancellationToken::new();
+    let mut notes = with(&["use_urchins"]);
+    let travelled = Box::pin(travel(
+        &handle,
+        &stop,
+        ids,
+        AuthorityToken(1),
+        (snapshot, events),
+        &map,
+        RoomId(2),
+        &mut notes,
+        |_| {},
+    ))
+    .await;
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(transcript.lines(), ["urchin guide 2"]);
+    session_cancel.cancel();
+}
+
 /// Voln's symbol, 1 -> 2, where 2 is the Red Forest.
 const SEEKING: &str = r#"[
   {"id":1,"uid":[1001],"exits":[

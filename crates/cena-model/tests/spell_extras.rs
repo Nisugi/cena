@@ -91,3 +91,47 @@ fn every_message_is_kept_with_its_type_not_one_per_type() {
         "the 43 spells whose extra messages the table lost"
     );
 }
+
+/// A society power's line is its cast proc's, not its name (the crate
+/// review of 2026-10-01, MO-F-2): Kai's Smite is `smite`, eight symbols
+/// append the target, two procs send an empty line and one refuses.
+#[test]
+fn a_powers_line_is_read_off_its_cast_proc() {
+    use cena_model::spells::ProcLine;
+    let line = |n: u16| spell(n).and_then(|s| s.extras.proc_line());
+    let sends = |text: &str, targeted| {
+        Some(ProcLine::Sends {
+            line: text.to_owned(),
+            targeted,
+        })
+    };
+    assert_eq!(line(9708), sends("sigil of offense", false));
+    assert_eq!(line(9805), sends("symbol of courage", false));
+    assert_eq!(line(9701), sends("sigil of recognition", false), "`fput`");
+    assert_eq!(line(9911), sends("sign of hypnosis", false), "no comma");
+    assert_eq!(line(9918), sends("sign of wracking", false), "in a loop");
+    assert_eq!(line(9821), sends("smite", true));
+    for (n, name) in [
+        (9802, "symbol of blessing"),
+        (9804, "symbol of diminishment"),
+        (9807, "symbol of submission"),
+        (9809, "symbol of holiness"),
+        (9811, "symbol of sleep"),
+        (9812, "symbol of transcendence"),
+        (9814, "symbol of sight"),
+        (9822, "symbol of turning"),
+    ] {
+        assert_eq!(line(n), sends(name, true), "{n}");
+    }
+    assert_eq!(line(9803), Some(ProcLine::Nothing));
+    assert_eq!(line(9808), Some(ProcLine::Nothing));
+    assert_eq!(line(9920), Some(ProcLine::Refuses));
+    assert_eq!(line(9725), None, "a timer, with no proc");
+    // Every number from 9700 up: none read as something the proc does not say.
+    let unread: Vec<u16> = all()
+        .filter(|s| s.number >= 9700)
+        .filter(|s| matches!(s.extras.proc_line(), Some(ProcLine::Refuses)))
+        .map(|s| s.number)
+        .collect();
+    assert_eq!(unread, [9920]);
+}

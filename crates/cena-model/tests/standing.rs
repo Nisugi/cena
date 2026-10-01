@@ -197,6 +197,60 @@ mod citizenship {
     }
 }
 
+mod urchins {
+    use cena_model::state::character::standing::{Standing, urchin_line, urchin_until};
+
+    #[test]
+    fn access_past_its_date_is_unknown_again() {
+        let standing = Standing {
+            urchin_access: Some(true),
+            urchin_until: Some(1_000),
+            ..Standing::default()
+        };
+        assert_eq!(standing.urchins(Some(999)), Some(true));
+        assert_eq!(standing.urchins(Some(1_000)), None, "to be asked again");
+        assert_eq!(standing.urchins(None), Some(true), "no clock yet");
+        let none = Standing {
+            urchin_access: Some(false),
+            ..Standing::default()
+        };
+        assert_eq!(none.urchins(Some(5_000)), Some(false));
+    }
+
+    #[test]
+    fn access_is_what_the_game_says_it_is() {
+        // The first is the author's own, from the hunt of 2026-09-30.
+        assert_eq!(
+            urchin_line("You will have access to the urchin guides until 1/18/2038 21:14:07 CST."),
+            Some(true)
+        );
+        assert_eq!(
+            urchin_line("You have permanent access to the urchin guides."),
+            Some(true)
+        );
+        assert_eq!(
+            urchin_line("You currently have no access to the urchin guides."),
+            Some(false)
+        );
+        // The date is the game's own time, US Central. This one is the last
+        // second a 32-bit clock can count: the game's "for good".
+        assert_eq!(
+            urchin_until("You will have access to the urchin guides until 1/18/2038 21:14:07 CST."),
+            Some(2_147_483_647)
+        );
+        assert_eq!(
+            urchin_until("You will have access to the urchin guides until 10/1/2026 12:00:00 CDT."),
+            Some(1_790_874_000)
+        );
+        assert_eq!(
+            urchin_until("You have permanent access to the urchin guides."),
+            None
+        );
+        // The line that follows the answer says nothing about access.
+        assert_eq!(urchin_line("You cannot call a street urchin here."), None);
+    }
+}
+
 mod psms {
     use super::{PsmChange, psm_change};
 

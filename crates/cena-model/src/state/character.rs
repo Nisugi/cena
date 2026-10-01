@@ -675,6 +675,13 @@ impl Character {
                 changed |= self.standing.citizenship != town;
                 self.standing.citizenship = town;
             }
+            if let Some(access) = standing::urchin_line(&text) {
+                let until = standing::urchin_until(&text);
+                changed |= self.standing.urchin_access != Some(access)
+                    || self.standing.urchin_until != until;
+                self.standing.urchin_access = Some(access);
+                self.standing.urchin_until = until;
+            }
             // A warcry report states the COMPLETE set, so the lines are
             // gathered and applied once below. Applying them one at a time
             // could not express "you have none".

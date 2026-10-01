@@ -27,8 +27,9 @@ use super::outcome::Outcome;
 use super::plan::Step;
 use super::profile::Skin;
 
-/// Sigil of Resolve, as Lich casts a Sunfist sigil (`sunfist.rs`: 9704).
-const SIGIL_OF_RESOLVE: &str = "incant 9704";
+/// Sigil of Resolve (9704), sent as Lich's cast proc sends it
+/// (`crate::cast::power`; `tests/cast.rs` holds the two to one line).
+const SIGIL_OF_RESOLVE: &str = "sigil of resolve";
 /// Bravery (604), refreshed when down or nearly so (`:5816`).
 const BRAVERY: &str = "incant 604";
 /// The creatures a blunt weapon skins (`:5886`).

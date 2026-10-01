@@ -202,6 +202,9 @@ pub fn lines(
         .or_else(|| profile.alias.get(&alias).copied())
         .ok_or_else(|| format!("no spell or alias {first}"))?;
     let spell = cena_session::spells::spell(number).ok_or_else(|| format!("no spell {number}"))?;
+    if let Some(Err(why)) = cast::power(number, None) {
+        return Err(format!("{} is not sent: {why}", spell.name));
+    }
     let (target, count) = match rest {
         [] => (None, None),
         [n] if n.parse::<u32>().is_ok() => (None, n.parse().ok()),

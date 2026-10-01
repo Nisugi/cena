@@ -30,6 +30,15 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         {
             if text.stream.is_empty() {
                 self.transcript.push_str(&text.content);
+                self.said.push_str(&text.content);
+                // A run carries no line end of its own; without one the
+                // transcript was a single line, and a reply was read only
+                // when it was the first thing in it.
+                if text.ends_line {
+                    self.transcript.push('\n');
+                    let said = std::mem::take(&mut self.said);
+                    self.owed_heard(&said);
+                }
                 let now = self.state.game_time_now();
                 self.machine.heard(&text.content, now);
             }
@@ -64,6 +73,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         self.cursor = snapshot.cursor;
         self.transcript.clear();
         self.line.clear();
+        self.owe_nothing();
         match snapshot.lifecycle {
             State::Ready => self.down = false,
             State::Reconnecting => self.link_lost(),
@@ -85,6 +95,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             return;
         }
         self.down = true;
+        self.owe_nothing();
         self.state.invalidate_for_reconnect();
         self.machine.link_lost();
         self.party_link_lost();

@@ -215,6 +215,12 @@ impl Spell {
     /// The lines, or a skip when the spell is not known or not affordable
     /// (`cmd_spell`'s early returns, Lich's `check_energy`).
     pub(super) fn cast(&self, target: i64, state: &GameState) -> Line {
+        // A society's power with nothing to send (passive, refused, a
+        // timer): bigshot's `cmd_spell` would call Lich's cast, which sends
+        // nothing either (`crate::cast::power`).
+        if cast::power(self.number, None).is_some_and(|power| power.is_err()) {
+            return Line::Skip;
+        }
         match cast::ready(state, self.number, 1, 0) {
             Err(NotReady::NotKnown | NotReady::Mana(..) | NotReady::Spirit | NotReady::Stamina) => {
                 return Line::Skip;

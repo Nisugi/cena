@@ -29,8 +29,17 @@
 //! `plan/12` §4.4's attribution rule is temporal: "a round trip owns the frame
 //! stream from the moment its bytes are written until its terminator". A
 //! source that emitted its prompt on a timer instead would close windows that
-//! no command opened, which is the mis-attribution that section exists to
-//! prevent -- and a test built on it would be testing the timer.
+//! no command opened -- and a test built on it would be testing the timer.
+//!
+//! # And why the game may also speak unasked ([`TranscriptHandle::say`])
+//!
+//! The real game is not keyed to writes: it sends a prompt after everything
+//! it says, asked for or not, so a creature walking in ends in a prompt
+//! exactly as the reply to `fire` does. A prompt that is not the reply is
+//! the game's, not a mis-attribution to design out of the double, and the
+//! hunt's 2026-09-30 defect was a driver that took one for its answer
+//! (`cena-behavior`'s `hunt/answer.rs`). `say` delivers bytes owed to no
+//! write, when the test says so: never on a timer.
 
 use crate::bytes::ByteSource;
 use std::io;
@@ -95,6 +104,9 @@ pub struct Transcript {
     /// command with nothing scripted for it still gets the source's one
     /// reply, so every test written before this reads as it did.
     scripted: Vec<(String, Vec<u8>)>,
+    /// Bytes the game says unasked ([`TranscriptHandle::say`]), owed to the
+    /// reader whatever the hold: the hold is on replies, and these are none.
+    unasked: Vec<u8>,
 }
 
 /// A handle to one [`AnsweringSource`]'s transcript and its hold switch.
@@ -181,6 +193,16 @@ impl TranscriptHandle {
         self.with(|t| t.scripted.push((command.to_owned(), reply.to_vec())));
     }
 
+    /// Say `bytes` unasked, as the game does when a creature walks in: owed
+    /// to no write, and delivered at the reader's next read whether or not
+    /// replies are held. A late reply is said this way too: a command's
+    /// scripted answer can be only what came first, and the rest said when
+    /// the test chooses.
+    pub fn say(&self, bytes: &[u8]) {
+        self.with(|t| t.unasked.extend_from_slice(bytes));
+        self.wake.notify_waiters();
+    }
+
     /// Hang up: the next read that runs out of bytes returns `Ok(0)`.
     ///
     /// Wakes a parked reader, because a `read` already waiting must learn the
@@ -249,14 +271,20 @@ impl ByteSource for AnsweringSource {
             // is not missed. `Notify::notified()` registers on creation.
             let woken = self.transcript.wake.notified();
             let released = self.transcript.with(|t| {
-                if !t.hold_replies {
-                    return t.owed.drain(..).collect::<Vec<_>>();
+                let mut released = if t.hold_replies {
+                    // Held -- but `release_one` may have granted a budget,
+                    // which delivers exactly that many from the front of
+                    // the queue.
+                    let take = t.release_budget.min(t.owed.len());
+                    t.release_budget -= take;
+                    t.owed.drain(..take).collect::<Vec<_>>()
+                } else {
+                    t.owed.drain(..).collect::<Vec<_>>()
+                };
+                if !t.unasked.is_empty() {
+                    released.push(std::mem::take(&mut t.unasked));
                 }
-                // Held -- but `release_one` may have granted a budget, which
-                // delivers exactly that many from the front of the queue.
-                let take = t.release_budget.min(t.owed.len());
-                t.release_budget -= take;
-                t.owed.drain(..take).collect::<Vec<_>>()
+                released
             });
             for reply in released {
                 self.pending.extend_from_slice(&reply);

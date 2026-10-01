@@ -123,11 +123,18 @@ impl Hunt {
             if up || recent || locked || cooling(state, id, now) || self.short_of_favor(state, id) {
                 continue;
             }
+            // A society's power is not prepared: it is its own verb, as
+            // Lich's cast proc sends it (`sigil of offense`). `incant 9708`
+            // is answered "That is not something you can prepare." (the hunt
+            // of 2026-09-30). A sign kept up is self-cast: no target.
+            let line = match id.parse().ok().and_then(|n| crate::cast::power(n, None)) {
+                Some(Ok(line)) => line,
+                // Passive, refused or not cast: nothing to keep up.
+                Some(Err(_)) => continue,
+                None => format!("incant {sign}"),
+            };
             self.signs_cast.insert(id.to_owned(), now);
-            return Some(Said::Send {
-                line: format!("incant {sign}"),
-                target: None,
-            });
+            return Some(Said::Send { line, target: None });
         }
         None
     }

@@ -7,25 +7,6 @@
 //! fact needs asked is asked once, before the first plan.
 
 use cena_map::{Map, RoomId};
-use cena_session::ChunkLine;
-
-/// What `urchin status` said (`go2.lic:975-987`): access until a date or for
-/// good is access; the game does not say "until" of a day that has passed.
-/// `None`: it said none of the three, and nothing is learned.
-pub(super) fn urchin_access(answer: &[ChunkLine]) -> Option<bool> {
-    answer.iter().find_map(|line| {
-        let text = line.text();
-        if text.contains("You will have access to the urchin guides")
-            || text.contains("permanent access to the urchin guides")
-        {
-            Some(true)
-        } else if text.contains("You currently have no access to the urchin guides") {
-            Some(false)
-        } else {
-            None
-        }
-    })
-}
 
 /// The silver a walk asks for: each room's `silver-cost:<to>:<silver>` tag
 /// for the room that follows it (`go2.lic:958-973`). `path` begins where the
@@ -60,24 +41,6 @@ mod tests {
     use cena_map::Room;
 
     use super::*;
-
-    #[test]
-    fn access_is_what_the_game_says_it_is() {
-        let said = |text: &str| urchin_access(&[ChunkLine::plain(text)]);
-        assert_eq!(
-            said("You will have access to the urchin guides until 10/1/2026 12:00:00 CDT."),
-            Some(true)
-        );
-        assert_eq!(
-            said("You have permanent access to the urchin guides."),
-            Some(true)
-        );
-        assert_eq!(
-            said("You currently have no access to the urchin guides."),
-            Some(false)
-        );
-        assert_eq!(said("What?"), None);
-    }
 
     #[test]
     fn a_walk_costs_what_its_own_exits_ask_and_no_others() {

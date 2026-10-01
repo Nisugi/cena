@@ -29,7 +29,7 @@
 use cena_map::{RoomId, Target, Uid};
 use cena_session::{CommandId, Notice, NoticeKind};
 
-use super::super::preflight::{silver_for, urchin_access, withdraw_command};
+use super::super::preflight::{silver_for, withdraw_command};
 use super::super::routines::day_pass;
 use super::super::settings::{
     DAY_PASS_SACK, GET_RETURN_TRIP_SILVERS, GET_SILVERS, GIGAS_MIN_NUMBER, USE_DAY_PASS,
@@ -48,11 +48,17 @@ fn is_on(cx: &Cx<'_>, setting: &str) -> bool {
 impl<N: FnMut() -> CommandId> Driver<'_, N> {
     /// Before the first plan. `goal` is where the trip is going.
     pub(super) async fn preflight(&mut self, cx: &mut Cx<'_>, goal: RoomId) -> Result<(), Ended> {
-        if is_on(cx, USE_URCHINS) {
-            let answer = self.put(cx.trip, "urchin status").await?;
-            if let Some(access) = urchin_access(&answer) {
-                self.found.insert("urchin_access".to_owned(), access);
-            }
+        // Asked once, and only while nobody has said: the model reads the
+        // answer and keeps it (`Standing::urchin_access`), so a hunt's walks
+        // do not ask at every room (the author, 2026-09-30).
+        // Unknown also once the date the game gave has passed.
+        let urchins = self
+            .state
+            .character
+            .standing
+            .urchins(self.state.game_time_now());
+        if is_on(cx, USE_URCHINS) && urchins.is_none() {
+            self.put(cx.trip, "urchin status").await?;
         }
         self.day_passes(cx).await?;
         // Silver is priced from a room; an unplaced walker is the walk's to

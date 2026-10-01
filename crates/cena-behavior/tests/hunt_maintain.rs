@@ -137,7 +137,7 @@ fn check_favor_casts_a_symbol_only_with_the_favor_for_it() {
     let mut enough = keeping("\"9805\"", true).unwrap();
     assert_eq!(
         sends_against(&mut enough, &with_favor(Some(i64::from(cost)))).as_deref(),
-        Some("incant 9805")
+        Some("symbol of courage")
     );
     let mut unknown = keeping("\"9805\"", true).unwrap();
     assert_eq!(
@@ -148,6 +148,6 @@ fn check_favor_casts_a_symbol_only_with_the_favor_for_it() {
     let mut unchecked = keeping("\"9805\"", false).unwrap();
     assert_eq!(
         sends_against(&mut unchecked, &with_favor(None)).as_deref(),
-        Some("incant 9805")
+        Some("symbol of courage")
     );
 }

@@ -40,10 +40,10 @@ const SEARCH_TRIES: u8 = 3;
 /// How many times an item is dragged before it is given up on
 /// (`eloot.lic:4059`, `5.times`).
 const DRAG_TRIES: u8 = 5;
-/// Sigil of Determination, cast as Lich casts a Sunfist sigil
-/// (`spell.rb`: `incant <num>`; `sunfist.rs`: 9716), when a corpse is
-/// *not in any condition* to be searched (`eloot.lic:5679-5685`).
-const SIGIL_OF_DETERMINATION: &str = "incant 9716";
+/// Sigil of Determination (9716), sent as Lich's cast proc sends it
+/// (`crate::cast::power`; `tests/cast.rs` holds the two to one line), when
+/// a corpse is *not in any condition* to be searched (`eloot.lic:5679-5685`).
+const SIGIL_OF_DETERMINATION: &str = "sigil of determination";
 /// The sigil's name in the effects list.
 const SIGIL_NAME: &str = "Sigil of Determination";
 

@@ -30,7 +30,8 @@
 //! | `known_spells`, `affordable_spells` | [`knows`](super::knows): Lich's `known?` and `affordable?` | filled |
 //! | `society`, `society_rank`, `citizenship` | `character.standing` | filled |
 //! | `worn`, `worn_nouns` | the inventory snapshot: `worn` on the `player` | filled |
-//! | `urchin_access`, `day_pass:…` | pre-flight asks the game (`drive::preflight`), and the driver adds them | filled, by the driver |
+//! | `urchin_access` | `character.standing`, for a profile with `use_urchins` on; pre-flight asks once while it is unknown | filled |
+//! | `day_pass:…` | pre-flight asks the game (`drive::preflight`), and the driver adds them | filled, by the driver |
 //! | `premium_account`, `platinum`, `hunting`, `mounted`, `own_disk_here`, `leading_group` | nothing says yet | **not yet** |
 //!
 //! "Not yet" is safe and is not free: an exit priced on a fact that is still
@@ -89,10 +90,17 @@ pub fn walker_from(state: &GameState, notes: &TravelNotes, now_server: u32) -> W
     .into_iter()
     .find(|(_, reported)| *reported == Some(true))
     .map(|(name, _)| name.to_owned());
+    // The urchins are a fact only for a profile that uses them: with the
+    // setting off their exits stay shut, whatever the game once said. Past
+    // the date the game gave, it is unknown again.
+    let urchins = super::settings::on(&notes.settings, super::settings::USE_URCHINS)
+        .then(|| state.character.standing.urchins(Some(now_server)))
+        .flatten();
     let flags = [
         ("stunned", status.stunned()),
         ("hidden", status.hidden()),
         ("invisible", status.invisible()),
+        ("urchin_access", urchins),
     ]
     .into_iter()
     .filter_map(|(name, reported)| Some((name.to_owned(), reported?)))

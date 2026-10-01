@@ -58,6 +58,15 @@ pub struct Standing {
     pub society_rank: Option<u8>,
     /// The citizenship town. `Some(None)` is "stated: none".
     pub citizenship: Option<Option<String>>,
+    /// Whether the urchin guides serve this character, once `urchin status`
+    /// has said ([`urchin_line`]). Kept, so travel asks only while this is
+    /// unknown.
+    #[serde(default)]
+    pub urchin_access: Option<bool>,
+    /// When that access ends, by the game's clock, when the game gave a
+    /// date ([`urchin_until`]). Read through [`Self::urchins`].
+    #[serde(default)]
+    pub urchin_until: Option<u32>,
     /// The warcries known, in [`Warcry::ALL`] order.
     ///
     /// **A set, not a count.** Lich writes presence under one key spelling and
@@ -78,6 +87,19 @@ pub struct Standing {
 }
 
 impl Standing {
+    /// Whether the urchin guides serve this character at game second `now`.
+    /// `None`: nobody has said, or the date the game gave has passed, and
+    /// it is to be asked again.
+    #[must_use]
+    pub fn urchins(&self, now: Option<u32>) -> Option<bool> {
+        let lapsed = self.urchin_access == Some(true)
+            && self
+                .urchin_until
+                .zip(now)
+                .is_some_and(|(until, now)| now >= until);
+        self.urchin_access.filter(|_| !lapsed)
+    }
+
     /// Apply one society line's meaning.
     ///
     /// Returns whether anything changed, so a caller can mark a group dirty
@@ -314,6 +336,47 @@ pub fn citizenship_line(line: &str) -> Option<Option<String>> {
     let rest = line.strip_prefix("You currently have ")?;
     let town = rest.split_once(" citizenship in ")?.1.strip_suffix('.')?;
     Some(Some(town.to_owned()))
+}
+
+/// Read `urchin status`'s answer (`go2.lic:975-987`): access until a date or
+/// for good is access; the game does not say "until" of a day that has
+/// passed. `None`: not one of the three lines.
+#[must_use]
+pub fn urchin_line(line: &str) -> Option<bool> {
+    if line.starts_with("You will have access to the urchin guides")
+        || line.starts_with("You have permanent access to the urchin guides")
+    {
+        Some(true)
+    } else if line.starts_with("You currently have no access to the urchin guides") {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+/// The date in `You will have access to the urchin guides until 1/18/2038
+/// 21:14:07 CST.`, as the game's clock counts: seconds since 1970. The game
+/// writes its own time, US Central: `CST` is six hours behind, `CDT` five.
+/// `None`: not that line, or a date that does not read.
+#[must_use]
+pub fn urchin_until(line: &str) -> Option<u32> {
+    let rest = line.strip_prefix("You will have access to the urchin guides until ")?;
+    let mut words = rest.trim_end_matches('.').split_whitespace();
+    let mut date = words.next()?.split('/').map(str::parse::<i64>);
+    let (month, day, year) = (date.next()?.ok()?, date.next()?.ok()?, date.next()?.ok()?);
+    let mut time = words.next()?.split(':').map(str::parse::<i64>);
+    let (hour, minute, second) = (time.next()?.ok()?, time.next()?.ok()?, time.next()?.ok()?);
+    let behind = if words.next() == Some("CDT") { 5 } else { 6 };
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return None;
+    }
+    // Days since 1970-01-01 of a civil date (Howard Hinnant's algorithm).
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = year.div_euclid(400);
+    let of_era = year.rem_euclid(400);
+    let of_year = (153 * ((month + 9) % 12) + 2) / 5 + day - 1;
+    let days = era * 146_097 + of_era * 365 + of_era / 4 - of_era / 100 + of_year - 719_468;
+    u32::try_from(days * 86_400 + (hour + behind) * 3_600 + minute * 60 + second).ok()
 }
 
 /// Read one `AFFILIATIONS` line from `profile`.

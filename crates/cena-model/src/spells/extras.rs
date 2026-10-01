@@ -91,6 +91,76 @@ impl Extras {
     pub fn shape(&self, cast: CastType) -> Option<&Shape> {
         self.shapes.iter().find(|s| s.cast == cast)
     }
+
+    /// What the cast proc sends the game, read off it; `None` for a spell
+    /// with no proc. See [`ProcLine`].
+    #[must_use]
+    pub fn proc_line(&self) -> Option<ProcLine> {
+        self.cast_proc.as_deref().map(ProcLine::read)
+    }
+}
+
+/// What a `<cast-proc>` sends the game: the first string it hands to
+/// `fput`, `put`, `multifput` or `dothistimeout`, which is how every society
+/// power's proc is written (`awk -F'\t' '$1>=9700 {print $7}'
+/// data/spell_extras.tsv`). Lich runs the proc as Ruby; Hydra reads only the
+/// line, so a proc's loops and waits (9918's `sign of wracking` until mana is
+/// full) are not carried, only what it says.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProcLine {
+    /// This line. `targeted`: the proc appends the target to it
+    /// (`"symbol of submission#{target}"`, `"smite#{target}"`), as
+    /// ` #<id>` for a game object and ` <words>` otherwise.
+    Sends {
+        /// The line, without the target.
+        line: String,
+        /// The proc appends `#{target}`.
+        targeted: bool,
+    },
+    /// It sends an empty line: `fput ""`, Kai's Strike (9808) and Symbol of
+    /// Thought (9803), powers the Order of Voln made passive.
+    Nothing,
+    /// It sends nothing at all: 9920 (Sign of Hopelessness) is an `echo`
+    /// asking what is wrong with whoever casts it.
+    Refuses,
+}
+
+impl ProcLine {
+    /// Read a proc as written.
+    #[must_use]
+    pub fn read(proc: &str) -> Self {
+        let Some(quoted) = first_sent(proc) else {
+            return Self::Refuses;
+        };
+        let targeted = quoted.contains("#{target}");
+        let line = quoted.replace("#{target}", "").trim().to_owned();
+        if line.is_empty() {
+            Self::Nothing
+        } else {
+            Self::Sends { line, targeted }
+        }
+    }
+}
+
+/// The string literal handed to the first `fput`, `put`, `multifput` or
+/// `dothistimeout` in `proc`, quotes off.
+fn first_sent(proc: &str) -> Option<&str> {
+    const SENDS: [&str; 4] = ["dothistimeout", "multifput", "fput", "put"];
+    let word_start = |at: usize| {
+        proc[..at]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !(c.is_ascii_alphanumeric() || c == '_'))
+    };
+    proc.char_indices().find_map(|(at, _)| {
+        let verb = SENDS
+            .iter()
+            .find(|verb| proc[at..].starts_with(*verb) && word_start(at))?;
+        let rest = proc[at + verb.len()..].trim_start_matches([' ', '(']);
+        let quote = rest.chars().next().filter(|c| *c == '"' || *c == '\'')?;
+        let body = &rest[1..];
+        body.find(quote).map(|end| &body[..end])
+    })
 }
 
 /// Every spell's extras, by number.
