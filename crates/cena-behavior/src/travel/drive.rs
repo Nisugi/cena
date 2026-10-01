@@ -34,9 +34,11 @@
 //!
 //! # A command from an older connection is a disconnection
 //!
-//! `Outcome::Interrupted` and `Sent::Interrupted` have one producer each:
-//! the actor's stale-generation discard (`cena-session`, `actor/io.rs`), a
-//! command stamped for a connection that is no longer the one open. That is
+//! `Outcome::Interrupted` and `Sent::Interrupted` come from the actor's
+//! stale-generation discard (`cena-session`, `actor/io.rs`), a command
+//! stamped for a connection that is no longer the one open; `Sent::Interrupted`
+//! also from the supervisor, for a line sent between connections
+//! (`supervisor/core.rs`, the crate review of 2026-10-01, SE-A-7). That is
 //! the connection changing under the walk, and it ends the walk as
 //! [`BehaviorError::Disconnected`] -- **not** `Cancelled`, which is the
 //! player's stop. The two differ in what follows: a stop sends its one

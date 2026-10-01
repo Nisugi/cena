@@ -504,8 +504,10 @@ impl SessionHandle {
     ///
     /// So it is bounded by `ACTOR_REPLY_DEADLINE`, which is generous by design:
     /// it is not a game timeout, it is a backstop for "nobody is home". The
-    /// supervisor now answers `Dead` during its waits itself (review finding
-    /// 6), so the backstop is for an actor stalled in a write.
+    /// supervisor now answers during its waits itself (review finding 6),
+    /// [`Sent::Interrupted`] since another connection is coming (the crate
+    /// review of 2026-10-01, SE-A-7), so the backstop is for an actor
+    /// stalled in a write.
     ///
     /// # Errors
     ///

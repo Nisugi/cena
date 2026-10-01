@@ -335,7 +335,8 @@ pub enum Sent {
     Refused(Refusal),
     /// The session is gone, or the write failed.
     Dead,
-    /// From a previous connection (`plan/12` §5.2).
+    /// From a previous connection (`plan/12` §5.2): stamped for one since
+    /// replaced, or sent while a supervised session is between connections.
     Interrupted,
 }
 

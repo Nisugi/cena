@@ -524,7 +524,9 @@ async fn a_command_during_an_outage_is_answered_at_once() {
 
     let start = tokio::time::Instant::now();
     let sent = handle.send_now("sigil", Origin::Manual, Gate::None).await;
-    assert_eq!(sent, Sent::Dead);
+    // Another connection is coming: `Interrupted`, which travel and the
+    // hunt wait out, not `Dead`, which ends them (SE-A-7).
+    assert_eq!(sent, Sent::Interrupted);
     assert!(
         start.elapsed() < Duration::from_millis(100),
         "send_now answered after {:?}",

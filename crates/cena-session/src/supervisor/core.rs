@@ -201,8 +201,13 @@ impl SessionCore {
             Inbox::Command(envelope) => {
                 let _ = envelope.reply.send(Outcome::Disconnected);
             }
+            // `Interrupted`, not `Dead`: the line was stamped for a
+            // connection that is gone and another is coming, which is what
+            // `Interrupted` says; `Dead` told travel, and so the hunt, the
+            // session was over, and a blip ended a hunt (the crate review
+            // of 2026-10-01, SE-A-7).
             Inbox::SendNow { reply, .. } => {
-                let _ = reply.send(Sent::Dead);
+                let _ = reply.send(Sent::Interrupted);
             }
             // **The one that logs the character out.** The caller has
             // already been told `Unsent`; this makes that true.
