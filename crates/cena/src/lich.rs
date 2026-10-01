@@ -300,14 +300,21 @@ fn switch(seat: &Seat) -> Result<bool, String> {
 
 /// Keep the character's Lich `on`, or off. A settings file that cannot be
 /// read is never overwritten (`settings_store`).
+///
+/// Under the file's lock, as every writer of it is (`store::changing`; the
+/// crate review of 2026-10-01, SE-C-1).
 fn keep_switch(seat: &Seat, on: bool) -> Result<(), String> {
-    let mut file = cena_session::settings_store::load(&seat.dir, &seat.instance, &seat.name)
-        .map_err(|e| e.to_string())?;
-    file.set_section(SECTION, &Switch { on })
-        .map_err(|e| e.to_string())?;
-    cena_session::settings_store::save(&seat.dir, &file)
-        .map(drop)
-        .map_err(|e| e.to_string())
+    let path = cena_session::settings_store::settings_path(&seat.dir, &seat.instance, &seat.name)
+        .unwrap_or_default();
+    cena_session::store::changing(&path, || {
+        let mut file = cena_session::settings_store::load(&seat.dir, &seat.instance, &seat.name)
+            .map_err(|e| e.to_string())?;
+        file.set_section(SECTION, &Switch { on })
+            .map_err(|e| e.to_string())?;
+        cena_session::settings_store::save(&seat.dir, &file)
+            .map(drop)
+            .map_err(|e| e.to_string())
+    })
 }
 
 /// Where Lich is, if that has been said.

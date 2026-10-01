@@ -413,12 +413,19 @@ fn load_level(dir: &Path, instance: &str, name: &str) -> Result<Level, String> {
 
 /// Keep `level` in the character's settings file. A file that cannot be read
 /// is never overwritten (`settings_store`): the level still holds for this run.
+///
+/// Read, changed and written under the file's lock (`store::changing`; the
+/// crate review of 2026-10-01, SE-C-1): the session drops the level at a
+/// moment the player did not choose, perhaps while a page is being changed.
 fn save_level(dir: &Path, instance: &str, name: &str, level: Level) -> Result<PathBuf, String> {
-    let mut file =
-        cena_session::settings_store::load(dir, instance, name).map_err(|e| e.to_string())?;
-    file.set_section(level::SECTION, &level::Settings { level })
-        .map_err(|e| e.to_string())?;
-    cena_session::settings_store::save(dir, &file).map_err(|e| e.to_string())
+    let path = cena_session::settings_store::settings_path(dir, instance, name).unwrap_or_default();
+    cena_session::store::changing(&path, || {
+        let mut file =
+            cena_session::settings_store::load(dir, instance, name).map_err(|e| e.to_string())?;
+        file.set_section(level::SECTION, &level::Settings { level })
+            .map_err(|e| e.to_string())?;
+        cena_session::settings_store::save(dir, &file).map_err(|e| e.to_string())
+    })
 }
 
 /// The kept token, or a new one, kept.
