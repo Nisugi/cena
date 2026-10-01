@@ -12,7 +12,8 @@
 //! under `reference/lich-5/lib/common/gui/`).
 //!
 //! A password typed here goes to the binary in a [`Password`], which never
-//! prints, and leaves the form once asked for. An account logged in is held
+//! prints, and leaves the form once asked for; its field keeps no undo
+//! history, so nothing brings it back once it has left. An account logged in is held
 //! here with its password, so a character it lists can be played without
 //! typing the password again; *Log out* lets go of both. The binary keeps a
 //! password in the keyring only when its box was ticked, and only once the
@@ -213,9 +214,9 @@ impl Launch {
             if offered.is_none() {
                 let typed = self.typed.entry(name.clone()).or_default();
                 ui.horizontal(|ui| {
-                    ui.add(
+                    password_field(
+                        ui,
                         egui::TextEdit::singleline(&mut typed.password)
-                            .password(true)
                             .hint_text("Password")
                             .desired_width((width.0 - 70.0).max(60.0)),
                     )
@@ -274,7 +275,7 @@ impl Launch {
                     .labelled_by(label.id);
                 ui.end_row();
                 let label = ui.label("Password");
-                ui.add(egui::TextEdit::singleline(&mut new.typed.password).password(true))
+                password_field(ui, egui::TextEdit::singleline(&mut new.typed.password))
                     .labelled_by(label.id);
                 ui.end_row();
                 let label = ui.label("Game");
@@ -421,9 +422,54 @@ fn kept(ui: &mut egui::Ui, roster: &[RosterCard], asked: &mut Option<HubAction>)
     }
 }
 
+/// A password field, masked, that keeps **no undo history**: egui's field
+/// keeps every stable text it held, so once *Log in* or *Log out* had emptied
+/// it, Ctrl+Z put the password back (the crate review of 2026-10-01, GU-A-2).
+fn password_field(ui: &mut egui::Ui, edit: egui::TextEdit<'_>) -> egui::Response {
+    let response = ui.add(edit.password(true));
+    if let Some(mut state) = egui::text_edit::TextEditState::load(ui.ctx(), response.id) {
+        state.clear_undoer();
+        state.store(ui.ctx(), response.id);
+    }
+    response
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The crate review of 2026-10-01, GU-A-2: a password field kept its
+    /// undo history, so after *Log out* emptied it, Ctrl+Z put the password
+    /// back. A password field keeps none.
+    #[test]
+    fn a_password_cleared_is_not_brought_back_by_undo() {
+        use egui_kittest::kittest::Queryable as _;
+        let mut harness = egui_kittest::Harness::new_ui_state(
+            |ui, text: &mut String| {
+                password_field(ui, egui::TextEdit::singleline(text));
+            },
+            String::new(),
+        );
+        harness
+            .get_by_role(egui::accesskit::Role::PasswordInput)
+            .click();
+        harness.run();
+        harness
+            .get_by_role(egui::accesskit::Role::PasswordInput)
+            .type_text("hunter2");
+        harness.run();
+        // egui keeps an undo point once the text has been still a second.
+        for _ in 0..180 {
+            harness.step();
+        }
+        assert_eq!(harness.state(), "hunter2");
+        // Log out: the form lets go of it.
+        harness.state_mut().clear();
+        harness.run();
+        harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
+        harness.run();
+        assert_eq!(harness.state(), "", "undo brought the password back");
+    }
 
     /// On the table is by game and name: the same name on another game is
     /// another character, whether on the Not launched tab or in an
