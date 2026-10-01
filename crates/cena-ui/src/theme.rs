@@ -32,6 +32,10 @@ pub type Rgb = [u8; 3];
 #[must_use]
 pub fn parse_hex(text: &str) -> Option<Rgb> {
     let digits = text.trim().strip_prefix('#')?;
+    // Hex digits only, before anything is cut by bytes (UI-4).
+    if !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
     let expanded: String = match digits.len() {
         3 => digits.chars().flat_map(|c| [c, c]).collect(),
         6 | 8 => digits[..6].to_owned(),
@@ -696,6 +700,16 @@ mod tests {
         assert_eq!(parse_hex("#12345"), None);
         assert_eq!(parse_hex("not a colour"), None);
         assert_eq!(hex([0x4a, 0x7a, 0xb3]), "#4a7ab3");
+    }
+
+    /// The crate review of 2026-10-01, UI-4: eight bytes with a character of
+    /// two in them cut a character in half, and a theme file holding one
+    /// crashed Hydra at every start. Anything not a hex digit is refused.
+    #[test]
+    fn a_colour_with_other_characters_is_refused_not_a_crash() {
+        assert_eq!(parse_hex("#12345é1"), None);
+        assert_eq!(parse_hex("#ééé"), None);
+        assert_eq!(parse_hex("#ad0d0dzz"), None);
     }
 
     #[test]
