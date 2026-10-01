@@ -13,7 +13,8 @@
 //! and only a connection that says it first is taken: until Lich connects,
 //! anything on this machine could reach the port, and what comes through it
 //! goes to the game. It is not the game's key, which Hydra has already
-//! given. **Lich never holds a credential.**
+//! given. **Lich never holds a credential**, nor does its environment,
+//! which is Hydra's less any password ([`crate::child`]).
 //!
 //! From then on Lich takes the port as its game:
 //!
@@ -47,7 +48,7 @@ use cena_session::{Notice, NoticeKind};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -95,7 +96,8 @@ pub struct Launch {
     pub lich: PathBuf,
     /// More of Lich's own flags, after Hydra's: a test's `--home`.
     pub args: Vec<OsString>,
-    /// Lich's environment beyond Hydra's: a test keeps Lich off the network.
+    /// Lich's environment beyond Hydra's (less any password,
+    /// [`crate::child`]): a test keeps Lich off the network.
     pub env: Vec<(OsString, OsString)>,
 }
 
@@ -313,7 +315,7 @@ async fn relay(
 }
 
 fn spawn(launch: &Launch, port: u16) -> std::io::Result<Child> {
-    let mut command = Command::new(&launch.ruby);
+    let mut command = crate::child::command(&launch.ruby);
     command
         .arg("-e")
         .arg(STORMFRONT)

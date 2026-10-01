@@ -24,8 +24,11 @@
 //!   player, over the character's script door.
 //! - [`lich`]: the player's own Lich for a character, with Hydra keeping the
 //!   game's connection (`plan/51`), over the character's Lich door.
+//! - [`child`]: how each of those processes is started: never handed a
+//!   password from Hydra's environment.
 
 pub mod characters;
+pub mod child;
 pub mod gemstone;
 pub mod happenings;
 pub mod http;

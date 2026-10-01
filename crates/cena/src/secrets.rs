@@ -10,7 +10,8 @@
 //!    the account in lowercase. `VellumFE`'s scheme
 //!    (`reference/VellumFE/src/config/profiles.rs`, `keyring_entry`).
 //! 2. **An environment variable the user set**, [`env_name`]: for headless
-//!    runs on a machine with no keyring.
+//!    runs on a machine with no keyring. No process Hydra starts for a
+//!    player's scripts or Lich is handed it ([`cena_agent::child`]).
 //! 3. **A prompt that does not echo**, only when a person is at a terminal.
 //!    It replaced a prompt that printed the password as it was typed.
 //! 4. **Otherwise a refusal that names the account**, never a silent skip
@@ -61,7 +62,7 @@ pub(crate) fn env_name(account: &str) -> String {
             }
         })
         .collect();
-    format!("CENA_PASSWORD_{tail}")
+    format!("{}{tail}", cena_agent::child::PASSWORD_PREFIX)
 }
 
 /// The ladder's order, with every rung passed in -- so it can be tested

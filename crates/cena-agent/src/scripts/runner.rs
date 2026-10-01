@@ -319,13 +319,14 @@ pub struct Start<'a> {
 
 /// Start a runner. It lives until killed or dropped; its standard error is
 /// piped for whoever started it to keep, and it reads and writes nothing
-/// else of Hydra's.
+/// else of Hydra's. Its environment is Hydra's less any password
+/// ([`crate::child`]), and what it is told here.
 ///
 /// # Errors
 ///
 /// The process could not be started.
 pub fn start(start: &Start<'_>) -> std::io::Result<tokio::process::Child> {
-    tokio::process::Command::new(start.ruby)
+    crate::child::command(start.ruby)
         .arg(start.dir.join(ENTRY))
         .env("HYDRA_URL", start.url)
         .env("HYDRA_TOKEN", start.token)

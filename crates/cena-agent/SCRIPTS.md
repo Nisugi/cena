@@ -25,6 +25,9 @@ Hydra starts the runner and hands it, in its environment:
 | `HYDRA_SYMBOL` | the character's command symbol, `;` unless changed |
 | `HYDRA_WINDOWS` | `1` when the runner may open windows for its scripts, as Lich's do (a Ruby runner: the gtk3 gem, when the player has it); `0` when it may not |
 
+The rest of its environment is Hydra's, **less every `CENA_PASSWORD_*` variable**: a runner,
+the checker and the relayed Lich are never handed a password (`cena_agent::child`).
+
 MCP's streamable HTTP, **without a session**: each request is a `tools/call` on its own, answered
 as JSON; no `initialize` is needed, and a restart of either side needs no handshake again. Send
 `Accept: application/json, text/event-stream`. Every tool answers JSON in its first text block.

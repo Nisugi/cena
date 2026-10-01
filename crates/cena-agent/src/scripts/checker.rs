@@ -84,7 +84,7 @@ pub async fn check(
     scripts: &[PathBuf],
 ) -> Result<Vec<Checked>, String> {
     std::fs::create_dir_all(data).map_err(|e| format!("{}: {e}", data.display()))?;
-    let output = tokio::process::Command::new(ruby)
+    let output = crate::child::command(ruby)
         .arg(dir.join(CHECKER))
         .args(scripts)
         .env("HYDRA_DATA", data)
