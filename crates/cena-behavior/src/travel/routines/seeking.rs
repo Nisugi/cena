@@ -25,11 +25,25 @@
 //!   names are off by scanning the server buffer, which a solver is not shown.
 //!   A walker with room names off never sees a name, and the exit is given up
 //!   after twenty tries.
+//! - **An offer is read from its own vision on** ([`Next::Ask`], the crate
+//!   review of 2026-10-01, BE-D-9). Upstream waits for `Your vision is
+//!   pulled away` (`seeking_engine.rb:24-26`); read up to the first prompt, a
+//!   stranger's prompt ended the answer before the vision, and the vision
+//!   came in the next offer's answer, so a destination was confirmed one
+//!   offer late and the walker taken somewhere it did not choose. The answer
+//!   now starts at this offer's vision, so an earlier one's name is never
+//!   read for it.
 
 use cena_map::{Action, Step};
 use cena_session::ChunkLine;
 
-use super::{Next, Seen, Solver};
+use super::{Answer, Next, Seen, Solver};
+
+/// What answers the symbol: the vision's first line.
+const VISION: Answer = Answer {
+    name: "a vision",
+    test: |line| line.starts_with("Your vision is pulled away"),
+};
 
 /// Upstream's `20.times`.
 const MAX_OFFERS: u32 = 20;
@@ -73,7 +87,7 @@ impl Seeking {
         }
         self.asked += 1;
         self.at = At::Offered(false);
-        Next::Put("symbol of seeking".to_owned())
+        Next::Ask("symbol of seeking".to_owned(), VISION)
     }
 
     fn offered(&mut self, seen: &Seen<'_>, waited: bool) -> Next {
@@ -183,7 +197,7 @@ mod tests {
     }
 
     fn symbol() -> Next {
-        Next::Put("symbol of seeking".into())
+        Next::Ask("symbol of seeking".into(), VISION)
     }
 
     fn remembers() -> Next {
@@ -275,7 +289,7 @@ mod tests {
         let mut scene = Scene::at(3600, 24715);
         loop {
             match scene.ask(&mut voln) {
-                Next::Put(command) => {
+                Next::Ask(command, _) => {
                     assert_eq!(command, "symbol of seeking");
                     sent += 1;
                     scene = vision(&format!("[Somewhere, {sent}]"));

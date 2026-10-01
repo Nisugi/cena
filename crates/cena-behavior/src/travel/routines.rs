@@ -66,6 +66,7 @@ mod vaalorn_door;
 mod workshop_pillars;
 
 use cena_map::{Errand, Map, Puzzle, RoomId, Routine, Step, Walker};
+use cena_session::command::answer::Answers;
 use cena_session::{ChunkLine, GameState};
 
 /// Turns of any routine's own loop: the walker's stop, not an estimate.
@@ -82,8 +83,8 @@ pub(super) struct Seen<'a> {
     /// The model, for what the walker's facts leave out: ids, hands, the
     /// room's title.
     pub state: &'a GameState,
-    /// The lines that answered the last [`Next::Put`] or ended the last
-    /// [`Next::Await`]. Empty after anything else.
+    /// The lines that answered the last [`Next::Put`] or [`Next::Ask`], or
+    /// ended the last [`Next::Await`]. Empty after anything else.
     pub answer: &'a [ChunkLine],
     /// Whether the last [`Next::Go`], [`Next::Steps`], [`Next::WalkTo`] or
     /// [`Next::Await`] did what it was for. `true` before the first.
@@ -113,6 +114,14 @@ impl Seen<'_> {
 pub(super) enum Next {
     /// Send this and show me the game's answer. Roundtime is waited out.
     Put(String),
+    /// Send this and show me **its own** answer: the lines from the first
+    /// that this function accepts to the prompt after it, which the session
+    /// waits for past prompts the game sent for something else, and keeps
+    /// from the next line when it comes late (`cena_session::command::
+    /// answer`). Empty when nothing answered within the wait. Roundtime is
+    /// waited out. For a line whose answer has a shape; [`Next::Put`] for one
+    /// whose answer has none.
+    Ask(String, Answer),
     /// A move: send this and arrive somewhere else, with every remedy a
     /// plain exit has.
     Go(String),
@@ -138,6 +147,22 @@ pub(super) enum Next {
     /// This exit cannot be crossed by this walker today.
     Failed,
 }
+
+/// What answers a [`Next::Ask`], named: two compare as their names do, since
+/// two function pointers compare as nothing reliable.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Answer {
+    pub name: &'static str,
+    pub test: Answers,
+}
+
+impl PartialEq for Answer {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for Answer {}
 
 /// One routine, part-way through.
 pub(super) trait Solver {

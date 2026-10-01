@@ -354,6 +354,36 @@ async fn seeking_reads_the_visions_room_name_off_the_wire() {
     session.cancel();
 }
 
+/// The crate review of 2026-10-01, BE-D-9: a stranger's prompt came before
+/// the vision and ended the symbol's answer, the vision landed in the next
+/// offer's, and the walker was taken one offer late. The offer is read from
+/// its own vision on, whatever prompts came first.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn seeking_waits_past_a_strangers_prompt_for_its_own_vision() {
+    let (walk, transcript, session) = set_out(SEEKING, 2, TravelNotes::default());
+    transcript.answer(
+        "symbol of seeking",
+        b"Bob just arrived.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    // What a second offer would show, if one were made.
+    transcript.answer("symbol of seeking", &vision("[Icemule Trace, South Gate]"));
+    let mut fog = b"Your surroundings blur into a white fog.\n".to_vec();
+    fog.extend(arrival(1002));
+    transcript.answer("symbol of seeking confirm", &fog);
+    // A bracketed line that is not a vision, and then the first offer's own.
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    transcript.say(b"[Announcement: the gates close at dusk.]\n<prompt time=\"3\">&gt;</prompt>\n");
+    tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+    transcript.say(&vision("[Red Forest, Path]"));
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert_eq!(
+        transcript.lines(),
+        ["symbol of seeking", "symbol of seeking confirm"]
+    );
+    session.cancel();
+}
+
 /// 1 -> 2 -> 3, plainly.
 const ROAD: &str = r#"[
   {"id":1,"uid":[1001],"exits":[{"to":2,"kind":"cardinal","cmd":"north","cost":1}]},

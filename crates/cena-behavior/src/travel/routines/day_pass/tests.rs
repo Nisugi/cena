@@ -56,13 +56,21 @@ fn put(command: &str) -> Next {
     Next::Put(command.to_owned())
 }
 
+/// A line answered by its own line ([`Next::Ask`]).
+fn asks(command: &str, answer: Answer) -> Next {
+    Next::Ask(command.to_owned(), answer)
+}
+
 fn steps(action: Action) -> Next {
     Next::Steps(vec![step(action)])
 }
 
 /// Up to the first pass being looked at.
 fn opened(pass: &mut DayPass, buy: Option<&str>, before: i64, ids: &[&str]) {
-    assert_eq!(scene(buy, before).ask(pass), put("look in my cloak"));
+    assert_eq!(
+        scene(buy, before).ask(pass),
+        asks("look in my cloak", LOOKED_IN)
+    );
     let mut looked = scene(buy, before);
     looked.answer = vec![sack_showing(ids)];
     assert_eq!(looked.ask(pass), steps(Action::EmptyHands));
@@ -72,7 +80,10 @@ fn opened(pass: &mut DayPass, buy: Option<&str>, before: i64, ids: &[&str]) {
 fn a_valid_pass_in_the_sack_is_raised_and_put_back() {
     let mut pass = DayPass::new("wl,imt");
     opened(&mut pass, None, 3_600, &["77"]);
-    assert_eq!(scene(None, 3_600).ask(&mut pass), put("look #77"));
+    assert_eq!(
+        scene(None, 3_600).ask(&mut pass),
+        asks("look #77", DESCRIBED)
+    );
     assert_eq!(
         scene(None, 3_600)
             .answered(&[CALLIGRAPHY, EXPIRY])
@@ -89,12 +100,18 @@ fn a_valid_pass_in_the_sack_is_raised_and_put_back() {
 fn an_expired_pass_is_dropped_and_the_next_one_used() {
     let mut pass = DayPass::new("imt,wl");
     opened(&mut pass, None, 3_600, &["5", "6", "7"]);
-    assert_eq!(scene(None, 3_600).ask(&mut pass), put("look #5"));
+    assert_eq!(
+        scene(None, 3_600).ask(&mut pass),
+        asks("look #5", DESCRIBED)
+    );
     assert_eq!(
         scene(None, 3_600).answered(&[STAMPED]).ask(&mut pass),
         put("_drag #5 drop")
     );
-    assert_eq!(scene(None, 3_600).ask(&mut pass), put("look #6"));
+    assert_eq!(
+        scene(None, 3_600).ask(&mut pass),
+        asks("look #6", DESCRIBED)
+    );
     // Not stamped, but eleven seconds past what it says.
     assert_eq!(
         scene(None, -11)
@@ -102,7 +119,10 @@ fn an_expired_pass_is_dropped_and_the_next_one_used() {
             .ask(&mut pass),
         put("_drag #6 drop")
     );
-    assert_eq!(scene(None, 3_600).ask(&mut pass), put("look #7"));
+    assert_eq!(
+        scene(None, 3_600).ask(&mut pass),
+        asks("look #7", DESCRIBED)
+    );
     assert_eq!(
         scene(None, 3_600)
             .answered(&[CALLIGRAPHY, EXPIRY])
@@ -115,7 +135,7 @@ fn an_expired_pass_is_dropped_and_the_next_one_used() {
 fn a_pass_inside_the_margin_is_neither_dropped_nor_used() {
     let mut pass = DayPass::new("wl,imt");
     opened(&mut pass, None, 5, &["7"]);
-    assert_eq!(scene(None, 5).ask(&mut pass), put("look #7"));
+    assert_eq!(scene(None, 5).ask(&mut pass), asks("look #7", DESCRIBED));
     assert_eq!(
         scene(None, 5)
             .answered(&[CALLIGRAPHY, EXPIRY])
@@ -129,7 +149,10 @@ fn a_pass_inside_the_margin_is_neither_dropped_nor_used() {
 fn a_pass_for_other_towns_is_left_alone() {
     let mut pass = DayPass::new("wl,sol");
     opened(&mut pass, Some("wl,imt"), 3_600, &["7"]);
-    assert_eq!(scene(None, 3_600).ask(&mut pass), put("look #7"));
+    assert_eq!(
+        scene(None, 3_600).ask(&mut pass),
+        asks("look #7", DESCRIBED)
+    );
     // The profile buys another route, not this one.
     assert_eq!(
         scene(Some("wl,imt"), 3_600)
@@ -166,6 +189,66 @@ fn handed(buy: &str) -> Scene {
     scene
 }
 
+/// To the paying asking: the sack looked in, no pass, the clerk's price.
+fn at_the_paying_asking() -> DayPass {
+    let mut pass = DayPass::new("wl,imt");
+    opened(&mut pass, Some("Yes"), 0, &[]);
+    assert_eq!(
+        scene(Some("Yes"), 0).ask(&mut pass),
+        Next::Go("south".into())
+    );
+    assert_eq!(
+        scene(Some("Yes"), 0).ask(&mut pass),
+        asks("ask clerk for icemule", CLERK)
+    );
+    assert_eq!(
+        scene(Some("Yes"), 0)
+            .answered(&["The clerk says to you, \"That will be 5000.\""])
+            .ask(&mut pass),
+        asks("ask clerk for icemule", CLERK)
+    );
+    pass
+}
+
+/// The crate review of 2026-10-01, BE-D-1: the paying asking unanswered
+/// (a stranger's prompt ended its window) was taken as done, and the replan
+/// bought a second pass. Unanswered with nothing in the hands is a failure,
+/// which bans the exit.
+#[test]
+fn an_unanswered_paying_asking_with_empty_hands_fails() {
+    let mut pass = at_the_paying_asking();
+    assert_eq!(
+        scene(Some("Yes"), 0).ask(&mut pass),
+        steps(Action::FillHands)
+    );
+    assert_eq!(scene(Some("Yes"), 0).ask(&mut pass), Next::Failed);
+}
+
+/// ... and a pass in a hand, emptied before the asking, is the purchase
+/// whether or not the clerk's line was heard.
+#[test]
+fn an_unanswered_paying_asking_with_a_pass_in_hand_takes_it() {
+    let mut pass = at_the_paying_asking();
+    let mut holding = scene(Some("Yes"), 0);
+    holding.state.left_hand = Hand::read("Chronomage day pass", Some(&pass_link("88")));
+    assert_eq!(holding.ask(&mut pass), asks("look #88", DESCRIBED));
+}
+
+/// BE-D-2: a pass's answer starts at its own description, so the lines are
+/// read from there; and what answers a look is a pass's description.
+#[test]
+fn a_look_is_answered_by_a_description_and_a_stranger_is_not_one() {
+    assert!((DESCRIBED.test)(STAMPED));
+    assert!((DESCRIBED.test)(
+        "Bold calligraphy states simply that this pass is good between the towns of \
+         Wehnimer's Landing and Icemule Trace, commencing at once."
+    ));
+    assert!(!(DESCRIBED.test)("Bob just arrived."));
+    assert!(!(CLERK.test)("Bob just arrived."));
+    assert!((LOOKED_IN.test)("In the cloak you see a rock."));
+    assert!(!(LOOKED_IN.test)("Bob just arrived."));
+}
+
 #[test]
 fn none_and_buying_asks_twice_and_raises_the_new_pass() {
     let mut pass = DayPass::new("wl,imt");
@@ -179,15 +262,15 @@ fn none_and_buying_asks_twice_and_raises_the_new_pass() {
     assert_eq!(hidden.ask(&mut pass), put("unhide"));
     assert_eq!(
         scene(Some("Yes"), 0).ask(&mut pass),
-        put("ask clerk for icemule")
+        asks("ask clerk for icemule", CLERK)
     );
     assert_eq!(
         scene(Some("Yes"), 0)
             .answered(&["The clerk says to you, \"That will be 5000.\""])
             .ask(&mut pass),
-        put("ask clerk for icemule")
+        asks("ask clerk for icemule", CLERK)
     );
-    assert_eq!(handed("Yes").ask(&mut pass), put("look #88"));
+    assert_eq!(handed("Yes").ask(&mut pass), asks("look #88", DESCRIBED));
     assert_eq!(
         scene(Some("Yes"), 0).ask(&mut pass),
         Next::Go("north".into())
@@ -216,8 +299,8 @@ fn short_of_silver(pass: &mut DayPass, silvers: Option<&str>) -> Next {
     };
     opened(pass, Some("true"), 0, &[]);
     assert_eq!(poor().ask(pass), Next::Go("south".into()));
-    assert_eq!(poor().ask(pass), put("ask clerk for solhaven"));
-    assert_eq!(poor().ask(pass), put("ask clerk for solhaven"));
+    assert_eq!(poor().ask(pass), asks("ask clerk for solhaven", CLERK));
+    assert_eq!(poor().ask(pass), asks("ask clerk for solhaven", CLERK));
     poor().ask(pass)
 }
 
@@ -247,7 +330,7 @@ fn short_of_silver_walks_to_the_bank_once_and_only_once() {
         assert_eq!(ask(&mut pass), Next::Go(dir.into()));
     }
     // Still short: no second trip.
-    assert_eq!(ask(&mut pass), put("ask clerk for solhaven"));
+    assert_eq!(ask(&mut pass), asks("ask clerk for solhaven", CLERK));
     assert_eq!(ask(&mut pass), steps(Action::FillHands));
     assert_eq!(ask(&mut pass), Next::Failed);
 }
@@ -258,7 +341,7 @@ fn after_the_bank_a_quoted_price_is_asked_again_and_the_pass_taken() {
     let mut next = short_of_silver(&mut pass, Some("yes"));
     let mut moves = 0;
     while let Next::Go(_) | Next::Put(_) = next {
-        if next == put("ask clerk for solhaven") {
+        if next == asks("ask clerk for solhaven", CLERK) {
             break;
         }
         moves += 1;
@@ -270,9 +353,9 @@ fn after_the_bank_a_quoted_price_is_asked_again_and_the_pass_taken() {
         scene(Some("true"), 0)
             .answered(&["The clerk says to you, \"5000.\""])
             .ask(&mut pass),
-        put("ask clerk for solhaven")
+        asks("ask clerk for solhaven", CLERK)
     );
-    assert_eq!(handed("true").ask(&mut pass), put("look #88"));
+    assert_eq!(handed("true").ask(&mut pass), asks("look #88", DESCRIBED));
 }
 
 #[test]
@@ -298,7 +381,10 @@ fn a_failed_step_on_the_way_to_the_bank_ends_it() {
 #[test]
 fn a_shut_sack_is_opened_and_shut_again() {
     let mut pass = DayPass::new("wl,imt");
-    assert_eq!(scene(None, 0).ask(&mut pass), put("look in my cloak"));
+    assert_eq!(
+        scene(None, 0).ask(&mut pass),
+        asks("look in my cloak", LOOKED_IN)
+    );
     assert_eq!(
         scene(None, 0).answered(&["That is closed."]).ask(&mut pass),
         put("open my cloak")
@@ -307,7 +393,7 @@ fn a_shut_sack_is_opened_and_shut_again() {
         scene(None, 0)
             .answered(&["You open the cloak."])
             .ask(&mut pass),
-        put("look in my cloak")
+        asks("look in my cloak", LOOKED_IN)
     );
     // Still said to be shut: it is not opened twice.
     assert_eq!(
@@ -337,11 +423,17 @@ fn the_sack_is_sent_by_id_when_the_inventory_names_it() {
         .state
         .inventory_snapshot
         .apply_snapshot("r", &items, &[], None);
-    assert_eq!(scene.ask(&mut DayPass::new("wl,imt")), put("look in #3"));
+    assert_eq!(
+        scene.ask(&mut DayPass::new("wl,imt")),
+        asks("look in #3", LOOKED_IN)
+    );
     // By the end of the name, in any case, when no noun matches.
     let settings = &mut scene.walker.settings;
     settings.insert("day_pass_sack".into(), "grey cloak".into());
-    assert_eq!(scene.ask(&mut DayPass::new("wl,imt")), put("look in #4"));
+    assert_eq!(
+        scene.ask(&mut DayPass::new("wl,imt")),
+        asks("look in #4", LOOKED_IN)
+    );
 }
 
 #[test]
@@ -373,9 +465,17 @@ fn each_route_has_its_clerk_its_step_and_what_to_ask_for() {
             scene(Some(route), 0).ask(&mut pass),
             Next::Go(step_in.into())
         );
-        assert_eq!(scene(Some(route), 0).ask(&mut pass), put(ask), "{route}");
-        assert_eq!(scene(Some(route), 0).ask(&mut pass), put(ask), "{route}");
-        assert_eq!(handed(route).ask(&mut pass), put("look #88"));
+        assert_eq!(
+            scene(Some(route), 0).ask(&mut pass),
+            asks(ask, CLERK),
+            "{route}"
+        );
+        assert_eq!(
+            scene(Some(route), 0).ask(&mut pass),
+            asks(ask, CLERK),
+            "{route}"
+        );
+        assert_eq!(handed(route).ask(&mut pass), asks("look #88", DESCRIBED));
         assert_eq!(
             scene(Some(route), 0).ask(&mut pass),
             Next::Go(step_back.into())

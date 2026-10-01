@@ -10,6 +10,7 @@
 use std::time::Duration;
 
 use cena_map::{Action, RoomId, Routine, Step};
+use cena_session::command::answer::Answers;
 use cena_session::{ChunkLine, CommandId, MoveFeedback, movement};
 use tokio::time::Instant;
 
@@ -77,6 +78,10 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                     answer = self.put(cx.trip, &command).await?;
                     shown_after_put = Some(answer.len());
                 }
+                Next::Ask(command, answers) => {
+                    answer = self.put_with(cx.trip, &command, Some(answers.test)).await?;
+                    shown_after_put = Some(answer.len());
+                }
                 Next::Go(command) => {
                     let step = Step {
                         action: Action::Move(command),
@@ -122,8 +127,19 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
         trip: &mut Trip,
         command: &str,
     ) -> Result<Vec<ChunkLine>, Ended> {
+        self.put_with(trip, command, None).await
+    }
+
+    /// [`Self::put`]; with `answers`, the answer is the line's own
+    /// (`Next::Ask`).
+    async fn put_with(
+        &mut self,
+        trip: &mut Trip,
+        command: &str,
+        answers: Option<Answers>,
+    ) -> Result<Vec<ChunkLine>, Ended> {
         for _ in 0..MAX_WAITS {
-            self.exchange(trip, command).await?;
+            self.exchange(trip, command, answers).await?;
             let wait = self
                 .answer
                 .iter()

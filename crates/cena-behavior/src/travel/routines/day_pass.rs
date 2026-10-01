@@ -40,11 +40,50 @@
 //!   ways of matching, in order), and as `my <sack>` when it does not --
 //!   upstream would raise on a sack it cannot find.
 //! - Every list is bounded: [`MAX_PASSES`] passes looked at, one bank trip.
+//! - **Each look and each asking is answered by its own line** ([`Next::Ask`],
+//!   the crate review of 2026-10-01). A reply read up to the first prompt was
+//!   whatever came first: a stranger walking in ended the paying `ask`'s
+//!   window, the routine took it as done and the replan bought a second pass
+//!   (BE-D-1); one late `look #pass` put an expired pass's text in the next
+//!   pass's answer, and the valid one was dropped (BE-D-2); a late `look in`
+//!   read as an empty sack (BE-D-3). Upstream waits for the clerk's lines as
+//!   these do (`day_pass_wl_imt.rb`). A paying asking nobody answered is
+//!   decided by the hands, which were emptied before it: a pass in one is the
+//!   purchase, and none is a failure, which bans the exit rather than buy again.
 
 use cena_map::{Action, Step};
 use cena_session::{ChunkLine, GameState, LinkKind};
 
-use super::{Next, Seen, Solver};
+use super::{Answer, Next, Seen, Solver};
+
+/// What answers `look #<pass>`: the first line of a day pass's description.
+const DESCRIBED: Answer = Answer {
+    name: "a day pass described",
+    test: |line| {
+        line.starts_with("Bold calligraphy states simply")
+            || line.starts_with("Bold red block letters spelling out")
+    },
+};
+
+/// What answers `look in <sack>`: its contents, its emptiness, or its lid.
+const LOOKED_IN: Answer = Answer {
+    name: "a container looked in",
+    test: |line| {
+        line.starts_with("In the ")
+            || line.starts_with("There is nothing in")
+            || line.starts_with("That is closed")
+    },
+};
+
+/// What answers asking the clerk: a price, the pass, or too little silver.
+const CLERK: Answer = Answer {
+    name: "the clerk",
+    test: |line| {
+        line.contains("says to you")
+            || line.contains("quickly hands you")
+            || line.contains("don't have enough")
+    },
+};
 
 /// Passes looked at in one sack: the walker's stop, not an estimate.
 const MAX_PASSES: usize = 20;
@@ -397,7 +436,7 @@ impl DayPass {
     fn look_at(&mut self, index: usize, seen: &Seen<'_>) -> Next {
         if let Some(id) = self.passes.get(index) {
             self.at = At::Read(index);
-            return Next::Put(format!("look #{id}"));
+            return Next::Ask(format!("look #{id}"), DESCRIBED);
         }
         if let Some(id) = &self.pass {
             self.at = At::Got;
@@ -442,22 +481,24 @@ impl DayPass {
             return self.end(false);
         };
         self.at = At::Asked(asked + 1);
-        Next::Put(format!("ask {} for {}", from.clerk, to.ask_for))
+        Next::Ask(format!("ask {} for {}", from.clerk, to.ask_for), CLERK)
     }
 
     /// The clerk's answer to the second asking, or a later one.
     fn asked(&mut self, asked: u32, seen: &Seen<'_>) -> Next {
-        if seen.answered("quickly hands you") {
-            let held = [&seen.state.right_hand, &seen.state.left_hand]
-                .into_iter()
-                .find(|hand| hand.noun() == Some("pass"))
-                .and_then(|hand| hand.id());
+        let held = [&seen.state.right_hand, &seen.state.left_hand]
+            .into_iter()
+            .find(|hand| hand.noun() == Some("pass"))
+            .and_then(|hand| hand.id());
+        // The hands were emptied before the asking, so a pass in one is the
+        // purchase, whether or not the clerk's line was heard.
+        if seen.answered("quickly hands you") || held.is_some() {
             let Some(id) = held else {
                 return self.end(true);
             };
             self.pass = Some(id.to_owned());
             self.at = At::LookedAtNew;
-            return Next::Put(format!("look #{id}"));
+            return Next::Ask(format!("look #{id}"), DESCRIBED);
         }
         if seen.answered("don't have enough") {
             let fetch = crate::travel::settings::on(
@@ -474,7 +515,8 @@ impl DayPass {
         if seen.answered("says to you") && asked < 2 {
             return self.ask(asked);
         }
-        self.end(true)
+        // Nobody answered the asking: not done, or the replan buys again.
+        self.end(!seen.answer.is_empty())
     }
 
     /// The next move of a walk, or `None` at its end.
@@ -528,7 +570,7 @@ impl DayPass {
         self.sack =
             sack_in(seen.state, name).map_or_else(|| format!("my {name}"), |id| format!("#{id}"));
         self.at = At::LookedIn(false);
-        Next::Put(format!("look in {}", self.sack))
+        Next::Ask(format!("look in {}", self.sack), LOOKED_IN)
     }
 }
 
@@ -574,7 +616,7 @@ impl Solver for DayPass {
             At::Opened => {
                 self.opened_sack = seen.answered("You open");
                 self.at = At::LookedIn(true);
-                Next::Put(format!("look in {}", self.sack))
+                Next::Ask(format!("look in {}", self.sack), LOOKED_IN)
             }
             At::Emptied => self.look_at(0, seen),
             At::Read(index) => self.read(index, seen),
