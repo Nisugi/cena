@@ -11,14 +11,15 @@ use std::time::Duration;
 
 use cena_map::{Action, RoomId, Routine, Step};
 use cena_session::command::answer::Answers;
-use cena_session::{ChunkLine, CommandId, MoveFeedback, movement};
+use cena_session::{ChunkLine, CommandId, Frame, Gate, MoveFeedback, Origin, Outcome, movement};
 use tokio::time::Instant;
 
 use super::super::Trip;
 use super::super::itinerary::destination;
 use super::super::mover::wait_ms;
 use super::super::routines::{Next, Seen, Solver, solver_for};
-use super::{Cx, Driver, Ended, Turn};
+use super::{Cx, DEED_DEADLINE, Driver, Ended, Turn};
+use crate::BehaviorError;
 
 /// How many things one routine may ask for: the driver's stop, above any
 /// solver's own. The longest upstream loop is the Confluence's, unbounded.
@@ -119,6 +120,62 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             }
         }
         Ok(false)
+    }
+
+    /// Send one command of a deed and wait for the prompt that answers it;
+    /// with `answers`, for its own answer and the prompt after that
+    /// (`cena_session::command::answer`), and [`Self::answer`] then starts at
+    /// that line: what came before it was not its answer, and a late answer
+    /// to an earlier line is not either. Nothing heard is no answer.
+    async fn exchange(
+        &mut self,
+        trip: &mut Trip,
+        line: &str,
+        answers: Option<Answers>,
+    ) -> Result<(), Ended> {
+        self.answer.clear();
+        let (id, origin) = ((self.next_id)(), Origin::Behavior(self.token));
+        let outcome = tokio::select! {
+            biased;
+            () = self.cancel.cancelled() => return Err(Ended::Stopped(BehaviorError::Cancelled)),
+            outcome = async {
+                match answers {
+                    Some(answers) => {
+                        self.handle
+                            .send_answered(id, line, origin, DEED_DEADLINE, answers, Gate::None)
+                            .await
+                    }
+                    None => {
+                        self.handle
+                            .send_and_await(id, line, origin, DEED_DEADLINE, |frame| {
+                                matches!(frame, Frame::Prompt { .. })
+                            })
+                            .await
+                    }
+                }
+            } => outcome,
+        };
+        // An older connection's command is not a stop (module docs).
+        if let Some(gone) = BehaviorError::from_outcome(&outcome) {
+            return Err(Ended::Stopped(gone));
+        }
+        self.drain(trip).map_err(Ended::Stopped)?;
+        if answers.is_some() {
+            // The last line that reads as the answer: a late answer to an
+            // earlier line, read the same, came before it.
+            let from = match &outcome {
+                Outcome::Answered(answered) => self
+                    .answer
+                    .iter()
+                    .rposition(|line| line.text().trim() == answered),
+                _ => None,
+            };
+            match from {
+                Some(from) => drop(self.answer.drain(..from)),
+                None => self.answer.clear(),
+            }
+        }
+        Ok(())
     }
 
     /// `fput`: send, take the answer, and send again if it was roundtime.

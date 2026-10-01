@@ -52,11 +52,10 @@ use std::time::Duration;
 use cena_map::{
     Located, Map, Origin as Whence, RoomId, Sighting, Uid, Walker, title_from_subtitle,
 };
-use cena_session::command::answer::Answers;
 use cena_session::group::{self, GroupEvent};
 use cena_session::{
     AuthorityToken, ChunkLine, CommandId, Event, Frame, GameState, Gate, Notice, NoticeKind,
-    Origin, Outcome, Sent, SessionHandle, Snapshot, State,
+    Origin, Sent, SessionHandle, Snapshot, State,
 };
 use tokio::sync::broadcast::{error::RecvError, error::TryRecvError};
 use tokio::time::Instant;
@@ -724,62 +723,6 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
             Sent::Dead => Err(Ended::Stopped(BehaviorError::Dead)),
             Sent::Interrupted => Err(Ended::Stopped(BehaviorError::Disconnected)),
         }
-    }
-
-    /// Send one command of a deed and wait for the prompt that answers it;
-    /// with `answers`, for its own answer and the prompt after that
-    /// (`cena_session::command::answer`), and [`Self::answer`] then starts at
-    /// that line: what came before it was not its answer, and a late answer
-    /// to an earlier line is not either. Nothing heard is no answer.
-    async fn exchange(
-        &mut self,
-        trip: &mut Trip,
-        line: &str,
-        answers: Option<Answers>,
-    ) -> Result<(), Ended> {
-        self.answer.clear();
-        let (id, origin) = ((self.next_id)(), Origin::Behavior(self.token));
-        let outcome = tokio::select! {
-            biased;
-            () = self.cancel.cancelled() => return Err(Ended::Stopped(BehaviorError::Cancelled)),
-            outcome = async {
-                match answers {
-                    Some(answers) => {
-                        self.handle
-                            .send_answered(id, line, origin, DEED_DEADLINE, answers, Gate::None)
-                            .await
-                    }
-                    None => {
-                        self.handle
-                            .send_and_await(id, line, origin, DEED_DEADLINE, |frame| {
-                                matches!(frame, Frame::Prompt { .. })
-                            })
-                            .await
-                    }
-                }
-            } => outcome,
-        };
-        // An older connection's command is not a stop (module docs).
-        if let Some(gone) = BehaviorError::from_outcome(&outcome) {
-            return Err(Ended::Stopped(gone));
-        }
-        self.drain(trip).map_err(Ended::Stopped)?;
-        if answers.is_some() {
-            // The last line that reads as the answer: a late answer to an
-            // earlier line, read the same, came before it.
-            let from = match &outcome {
-                Outcome::Answered(answered) => self
-                    .answer
-                    .iter()
-                    .rposition(|line| line.text().trim() == answered),
-                _ => None,
-            };
-            match from {
-                Some(from) => drop(self.answer.drain(..from)),
-                None => self.answer.clear(),
-            }
-        }
-        Ok(())
     }
 
     /// The author's exception to "cleanup cannot send": one command to put
