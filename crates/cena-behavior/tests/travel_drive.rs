@@ -536,3 +536,35 @@ async fn with_no_key_nothing_is_unlocked() {
     assert_eq!(transcript.lines(), ["get my heavy key", "east", "north"]);
     session.cancel();
 }
+
+/// Another player saying the game's refusal is not the game refusing
+/// (BE-C-1, MO-A-4): `You may not pass.` banned a good exit, and the walk
+/// failed with nowhere to go; `You must be standing` sent a `stand`. Said,
+/// both are passed over: the move is waited on and tried again as for any
+/// move with no answer.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn another_players_refusal_is_not_the_games() {
+    let stop = CancellationToken::new();
+    let (walk, transcript, session) = set_out(&stop, ROOMS);
+    let pukk = |words: &str| {
+        format!(
+            "<preset id='speech'><a exist=\"-10007833\" noun=\"Pukk\">Pukk</a> says</preset>, \"{words}\"\n<prompt time=\"2\">&gt;</prompt>\n"
+        )
+    };
+    let said = pukk("You may not pass.") + &pukk("You must be standing to do that.");
+    transcript.answer("north", said.as_bytes());
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("store right", SWORD_GONE);
+    transcript.answer("climb rope", &arrival(1003));
+    transcript.answer("get #11", SWORD_BACK);
+
+    let travelled = walk.await.expect("the walk must not panic").unwrap();
+    assert_eq!(travelled.wrong_for_the_map, [], "no exit banned");
+    assert_eq!(travelled.ended, Ended::Arrived);
+    assert!(
+        !transcript.lines().iter().any(|line| line == "stand"),
+        "{:?}",
+        transcript.lines()
+    );
+    session.cancel();
+}

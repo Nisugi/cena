@@ -283,6 +283,25 @@ async fn a_missing_target_with_a_question_mark_is_skipped() {
     assert!(game.said().iter().any(|s| s.contains("skipping 'sack?'")));
 }
 
+/// Another player saying `That is closed.` while the look is out is not the
+/// backpack's answer (BE-F-5): the backpack was skipped as closed.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn another_players_words_are_not_the_looks_answer() {
+    let mut game = logged_in().await.unwrap();
+    let mut reply = b"<preset id='speech'><a exist=\"-10007833\" noun=\"Pukk\">Pukk</a> says</preset>, \"That is closed.\"\n".to_vec();
+    reply.extend(look(BACKPACK));
+    game.transcript.answer("look in backpack", &reply);
+    let ended = game
+        .foreach("foreach name=*feather in backpack; get item", nobody())
+        .await
+        .unwrap();
+    assert_eq!(ended, Ok(()));
+    assert_eq!(
+        game.transcript.lines(),
+        ["look in backpack", "get #2376084", "get #2376082"]
+    );
+}
+
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn an_empty_container_is_said_and_passed() {
     let mut game = logged_in().await.unwrap();
