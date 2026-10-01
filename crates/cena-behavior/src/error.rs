@@ -78,11 +78,13 @@ impl BehaviorError {
     #[must_use]
     pub fn from_outcome(outcome: &Outcome) -> Option<BehaviorError> {
         match outcome {
-            // `Handled` is the desk's answer to a typed line, which a
-            // behavior's round trip never goes through; an answer if it did.
-            Outcome::Confirmed(_) | Outcome::Timeout | Outcome::Refused(_) | Outcome::Handled => {
-                None
-            }
+            // `Handled` and `Sent` answer a typed line, which a behavior's
+            // round trip never goes through; an answer if it did.
+            Outcome::Confirmed(_)
+            | Outcome::Timeout
+            | Outcome::Refused(_)
+            | Outcome::Handled
+            | Outcome::Sent => None,
             Outcome::Dead => Some(BehaviorError::Dead),
             // §5.1: no automation runs while a session has no transport.
             Outcome::Interrupted | Outcome::Disconnected => Some(BehaviorError::Disconnected),

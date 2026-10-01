@@ -545,6 +545,8 @@ fn answer(outcome: &crate::Outcome) -> (Work, &'static str) {
         Outcome::Dead => (Work::Unknown, "session_ended"),
         Outcome::Interrupted => (Work::Unknown, "interrupted"),
         Outcome::Handled => (Work::Unknown, "handled"),
+        // Only a typed line is answered so; an agent's is a round trip.
+        Outcome::Sent => (Work::Unknown, "sent"),
     }
 }
 

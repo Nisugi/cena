@@ -100,7 +100,7 @@ use tokio_util::sync::CancellationToken;
 
 mod bounds;
 mod combat;
-mod ending;
+pub(crate) mod ending;
 mod event;
 mod gate;
 mod handle;

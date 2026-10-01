@@ -391,6 +391,10 @@ fn outcome_receipt(outcome: &Outcome) -> (ReceiptStatus, &'static str) {
             ReceiptStatus::Sent,
             "Bytes sent and subsequent server output observed; action completion is not established",
         ),
+        Outcome::Sent => (
+            ReceiptStatus::Sent,
+            "Bytes sent; action completion is not established",
+        ),
         Outcome::Refused(_) => (
             ReceiptStatus::Refused,
             "Native session refused the command before sending",

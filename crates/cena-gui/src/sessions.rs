@@ -588,7 +588,7 @@ const SEND_DEADLINE: std::time::Duration = std::time::Duration::from_secs(10);
 /// `None` when it went, or Hydra ran it.
 fn unsent(outcome: &Outcome) -> Option<String> {
     match outcome {
-        Outcome::Handled | Outcome::Confirmed(_) => None,
+        Outcome::Handled | Outcome::Confirmed(_) | Outcome::Sent => None,
         Outcome::Refused(why) => Some(format!("Not sent: the session refused it ({why:?}).")),
         Outcome::Timeout => Some(
             "No answer yet; the command may have reached the game. Do not send it again blindly."

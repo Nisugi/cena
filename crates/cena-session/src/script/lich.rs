@@ -389,6 +389,8 @@ mod tests {
         fn for_the_game(&mut self) -> Option<String> {
             match self.inbox.try_recv().ok()? {
                 Inbox::Command(envelope) => Some(envelope.line),
+                // A typed line is written at once.
+                Inbox::SendNow { line, .. } => Some(line),
                 _ => None,
             }
         }

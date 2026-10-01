@@ -247,8 +247,13 @@
 //! exit. A second claimant is refused with
 //! [`AuthorityHeld`](cena_session::AuthorityHeld), not queued: silent queueing
 //! is how an attack fires four seconds after the fight ended. Manual input
-//! ([`Origin::Manual`](cena_session::Origin::Manual)) is not a claimant. It
-//! goes to the head of the queue, runs its round trip, and the holder
+//! ([`Origin::Manual`](cena_session::Origin::Manual)) is not a claimant. What
+//! a person types is written at once
+//! ([`send_typed_at`](cena_session::SessionHandle::send_typed_at), answered
+//! [`Outcome::Sent`](cena_session::Outcome::Sent)), never behind an open
+//! window, so a held key sends as fast as it repeats; Hydra's own manual
+//! lines (`;multi`'s, a relayed `;to`) go to the head of the queue and run
+//! their round trip. Either way the holder
 //! continues, so answering a whisper never aborts a hunt (`plan/12` §4.1, the
 //! correction everything else rests on). Only an explicit stop preempts,
 //! cooperatively for [`PREEMPT_GRACE`](cena_session::PREEMPT_GRACE) and then
@@ -331,7 +336,7 @@
 //! [`WebServer`](cena_web::WebServer) is one loopback listener inside the
 //! binary that serves the bundled assets, carries snapshots and deltas to a
 //! browser over a `WebSocket` through one bounded pump per session, and
-//! carries commands back into the session's queue as manual input. A pairing
+//! carries commands back into the session as typed input. A pairing
 //! token, held in memory for this process only, is required before any state
 //! is sent. One listener serves a **hub** page -- a card per character, start,
 //! quit, reconnect, and the merged streams -- and a page per character,

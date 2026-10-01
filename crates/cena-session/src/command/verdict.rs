@@ -115,7 +115,8 @@ pub enum Origin {
     Lich,
     /// Hydra asked the game itself, to settle what the model could not work
     /// out: `health`, when the nerves' rank is confused (`plan/55` §4a,
-    /// `cena_model`'s `character/nerves.rs`). Nothing else sends as Hydra.
+    /// `cena_model`'s `character/nerves.rs`), and `urchin status`, once, when
+    /// the player turns the urchin guides on in the settings.
     ///
     /// It queues as [`Self::Trigger`] does: after the login, never preempting
     /// a behavior, and never counting as the player being there.
@@ -264,6 +265,14 @@ pub enum Outcome {
     /// A behavior's round trip never can: behaviors send through
     /// `send_and_await`, which does not consult the desk.
     Handled,
+    /// The line was written to the game, and nobody waited for its answer.
+    ///
+    /// What a typed line is answered
+    /// ([`SessionHandle::send_typed_at`](super::SessionHandle::send_typed_at)):
+    /// a person's line goes out at once, not behind the window of the line
+    /// before, so there is no window of its own to close and no frame to
+    /// carry. **Not "the game ran it"**, as [`Sent::Ok`] is not.
+    Sent,
 }
 
 /// What a [`SessionHandle::send_now`](super::SessionHandle::send_now) did.

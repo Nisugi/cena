@@ -471,7 +471,7 @@ pub(super) const QUIT_EOF_DEADLINE: std::time::Duration = std::time::Duration::f
 /// dependency and one line of trimming is not worth acquiring one (Rule -1).
 /// The `<c>` prefix is Lich's client-command wrapper, kept because a frontend
 /// porting Lich's input path may pass it through.
-pub(super) fn is_exit_intent(line: &str) -> bool {
+pub(crate) fn is_exit_intent(line: &str) -> bool {
     let line = line.trim();
     let line = line.strip_prefix("<c>").unwrap_or(line).trim();
     line.eq_ignore_ascii_case("quit") || line.eq_ignore_ascii_case("exit")

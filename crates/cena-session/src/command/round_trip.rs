@@ -176,9 +176,14 @@ impl SessionHandle {
 
     /// The player's own line, typed at a frontend: asked of a script
     /// runner's input hooks first (`crate::script`, Lich's `UpstreamHook`),
-    /// then sent as [`Self::send_manual_at`] sends it. A line the hooks
+    /// then Hydra's command line, then Lich or the game. A line the hooks
     /// swallow is [`Outcome::Handled`]; one they have not answered by
     /// [`HOOK_DEADLINE`](crate::script::HOOK_DEADLINE) goes as typed.
+    ///
+    /// **A line for the game is written at once** and answered
+    /// [`Outcome::Sent`]: it does not wait behind the window of the line
+    /// typed before it, so a held key sends as fast as it repeats (see
+    /// `manual_at`, and `tests/typed_at_once.rs`).
     ///
     /// Hydra's own lines on the manual path -- `;multi`'s, a relayed `;to`,
     /// the sorter's look -- go by `send_manual_at`, past the hooks, as a
@@ -290,6 +295,29 @@ impl SessionHandle {
                 }
                 None => {}
             }
+        }
+        // **What a person typed is written at once**, as `VellumFE` and Lich
+        // write it, not queued behind the window of the line before. Queued,
+        // each waited for the last one's prompt, so a held key sent one
+        // command a round trip: MEASURED in the author's log of 2026-09-30,
+        // 92 `look`s taking 12.7 s to go out, each stamped the millisecond
+        // the reply before it arrived (the author: *"entirely
+        // unacceptable"*). The game keeps its own type-ahead limit, and says
+        // so when it is passed. Nothing waits on a typed line's answer: a
+        // frontend shows what the game sends, whenever it comes, and the
+        // prompt is booked to this line, not to a behavior's open window
+        // (`actor/owed.rs`). A typed `quit` keeps the queue's path, whose
+        // answer says the connection is ending.
+        if typed && !crate::actor::ending::is_exit_intent(line) {
+            return match self
+                .send_at(generation, line, Origin::Manual, Gate::None)
+                .await
+            {
+                super::Sent::Ok { .. } => Outcome::Sent,
+                super::Sent::Refused(why) => Outcome::Refused(why),
+                super::Sent::Dead => Outcome::Dead,
+                super::Sent::Interrupted => Outcome::Disconnected,
+            };
         }
         let (reply, answer) = oneshot::channel();
         let envelope = Envelope {

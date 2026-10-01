@@ -218,7 +218,7 @@ async fn relay_on(told: &SessionHandle, relay: &Relay, running: &[Running]) {
 /// Why a relayed line may not have gone, or `None` when it did.
 fn unsent(outcome: &Outcome) -> Option<&'static str> {
     match outcome {
-        Outcome::Handled | Outcome::Confirmed(_) => None,
+        Outcome::Handled | Outcome::Confirmed(_) | Outcome::Sent => None,
         Outcome::Refused(_) => Some("not sent; the session refused it."),
         Outcome::Timeout => Some("no answer yet; it may have reached the game."),
         Outcome::Interrupted | Outcome::Dead | Outcome::Disconnected => {
