@@ -227,7 +227,7 @@ pub const fn help(topic: Topic) -> &'static [&'static str] {
 const LOOT_HELP: &[&str] = &[
     "loot                                   skin and search the dead here, take what the floor holds",
     "loot skin                              only skin the dead here",
-    "loot box                               empty the open box in hand, then keep it or throw it out",
+    "loot box                               empty the open box in hand, then keep it or throw it out (in the pool's bin when none is here)",
     "loot ground                            the same for each box on the ground; a locked one stays there",
     "loot sell                              the selling round: the pool, the shops, the bank, and back",
     "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them; the bank after a drop-off",

@@ -3,7 +3,7 @@
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
 ahead and work on the loot plan"*). **Steps 1, 2 and 3 BUILT the same day** on branch
 `loot-complete` (§5a, §5b, §5c); **step 4 BUILT 2026-10-01** in three parts (§5d, §5e,
-§5f), and **steps 5a and 5b** the same day (§5g, §5h). The author: *"let's plan out the rest of it.
+§5f), and **step 5** the same day in three more (§5g, §5h, §5i). The author: *"let's plan out the rest of it.
 Hydra's loot should have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
@@ -168,8 +168,7 @@ the author's answers set (§7), with the bounty trips dropped (§6).
    pool, full bags during a return, the worker by the room's tag, scarabs and the gem
    shop's odd nouns, the ingot, plinite; and step 1's leftovers, `loot pool` banking the
    boxes' silver and `loot box` taking an empty box to a bin. Scripted-game tests of
-   `loot sell`, `loot pool` and `loot box`. In three parts: **5a BUILT** (§5g), **5b
-   BUILT** (§5h).
+   `loot sell`, `loot pool` and `loot box`. BUILT, in three parts (§5g, §5h, §5i).
 6. **Selling by choice**: `loot sell type <types>`, `loot sell shop <shops>`, `loot sell
    item <names>` (eloot's three `--` forms, in Hydra's words).
 7. **The coin hand**, coin bag and gambling kit: found, used after a loot, drained at the
@@ -550,6 +549,36 @@ gem shop's odd nouns, and the scripted tests of `loot sell` and `loot box`.
   `look in` never lists put back in the pack, and a chest holding an emerald the pack
   refuses kept in hand and said (`tests/loot_rounds.rs`). Each rule was broken by hand
   against its tests: 17 mutations, 17 caught.
+
+## 5i. Step 5c, BUILT 2026-10-01: `loot box` to a bin, and the round run whole
+
+- **`loot box` takes an emptied box to a bin** (`save_trash_box`, `eloot.lic:7786-7791`,
+  `:7809`): when `trash` says there is no receptacle here, it walks to the nearest pool's
+  room, throws the box out there, and walks back; with no pool on the map, or no
+  receptacle there either, it drops the box where it is. `loot ground` drops it in place,
+  as eloot's does (`box_loot_ground`, `:5202-5204`). eloot's `go2('locksmith pool')`
+  would go to Mist Harbor's pool for a profile that sells there; Hydra takes the nearest,
+  a box's bin not being worth the island.
+- **A reliquary is never thrown out** (`save_trash_box`, `:7781`): kept whatever the
+  profile sells, at the pool and by `loot box`. It had been kept only by a profile that
+  sells boxes.
+- **The gem shop's odd ones** (`check_items`, `:6523-6526`): a scarab when the profile
+  sells scarabs, and a crystallized thorn the object data calls a gem, both go to the gem
+  shop, as they already did; now pinned (`tests/town_shops.rs`). The thorn's shop is
+  eloot's thorn-and-berry rule, not the object data's: broken, the test fails. Clothing
+  both shops buy was already offered at the pawnshop too.
+- **Step 1's leftovers** (§5a) are done: `loot pool` banks (§5g) and `loot box` walks to
+  a bin (here). A missing loot profile is still refused, where eloot has its defaults; it
+  was not in this step.
+- **The round run whole over a scripted game**, §5a's *not yet*: `loot sell` sells an
+  emerald at the gem shop item by item (the backpack holds a diamond the profile keeps,
+  so it is not sold whole), banks, comes home, and says what it came to; `loot box`
+  empties a chest and takes it to the pool's bin and back, and banks for coins that will
+  not fit and gathers the rest; with `loot pool` and the pool's returns (§5g, §5h), all in
+  `tests/loot_rounds.rs`.
+- *Tests:* the reliquary (`tests/town_pool.rs`), the gem shop's odd ones
+  (`tests/town_shops.rs`), and the three scripted runs above. Each rule was broken by
+  hand against its tests: 5 mutations, 5 caught.
 
 ## 6. Not ported, and why
 

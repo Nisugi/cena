@@ -150,7 +150,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             Emptied::ThingsLeft => {
                 Ok("stopped: the box holds what no bag will take, so it is kept in hand.")
             }
-            Emptied::Out => self.keep_or_toss(profile, &id).await,
+            Emptied::Out => self.keep_or_toss(profile, &id, true).await,
         }
     }
 
@@ -195,7 +195,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             }
             match self.empty_box(profile, id).await? {
                 Emptied::Out => {
-                    self.keep_or_toss(profile, id).await?;
+                    self.keep_or_toss(profile, id, false).await?;
                     emptied += 1;
                 }
                 Emptied::Locked => {
@@ -241,11 +241,16 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
     }
 
     /// The emptied box `id` in hand kept, when it is one the profile sells
-    /// empty, else thrown out (`save_trash_box`, `eloot.lic:7773`).
+    /// empty or a reliquary, else thrown out (`save_trash_box`,
+    /// `eloot.lic:7773-7810`). With no receptacle here, `to_a_bin` takes it
+    /// to the one in the nearest pool's room and comes back, as eloot's `loot
+    /// box` does (`:7786-7791`, `:7809`); without, or with none there either,
+    /// it is dropped where it is.
     async fn keep_or_toss(
         &mut self,
         profile: &LootProfile,
         id: &str,
+        to_a_bin: bool,
     ) -> Result<&'static str, HuntEnd> {
         let held = |this: &Self| this.state.right_hand.holds(id) || this.state.left_hand.holds(id);
         if town::keeps_box(&Town::for_profile(profile), &self.state, id) {
@@ -255,20 +260,54 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             }
             return Ok("the box is emptied and kept.");
         }
-        // Thrown out, asked twice when the game wants to be sure, dropped
-        // where there is nothing to throw it in.
-        for line in [
-            format!("trash #{id}"),
-            format!("trash #{id}"),
-            format!("drop #{id}"),
-        ] {
-            if !held(self) {
-                break;
-            }
-            self.send(&line, None).await?;
+        let back = self.locate();
+        let mut went = None;
+        if !self.trash(id).await?
+            && to_a_bin
+            && held(self)
+            && let Some(bin) = back.and_then(|from| self.nearest_pool(from))
+        {
+            self.walk(bin).await?;
+            went = back;
+            self.trash(id).await?;
+        }
+        if held(self) {
+            self.send(&format!("drop #{id}"), None).await?;
             self.hold(BEAT).await?;
         }
+        if let Some(back) = went {
+            self.walk(back).await?;
+        }
         Ok("the box is emptied.")
+    }
+
+    /// `trash #id`, sent again when the game asks to be sure; `false` when
+    /// there is no receptacle here (*You do not notice a trash receptacle*).
+    async fn trash(&mut self, id: &str) -> Result<bool, HuntEnd> {
+        for _ in 0..2 {
+            if !(self.state.right_hand.holds(id) || self.state.left_hand.holds(id)) {
+                break;
+            }
+            self.transcript.clear();
+            self.send(&format!("trash #{id}"), None).await?;
+            self.hold(BEAT).await?;
+            if self
+                .transcript
+                .lines()
+                .any(|line| town::classify(line) == Some(town::Reply::NoTrash))
+            {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// The nearest pool's room from `from`, by what this walker would pay:
+    /// every pool has a receptacle.
+    fn nearest_pool(&self, from: cena_map::RoomId) -> Option<cena_map::RoomId> {
+        let now = self.state.game_time_now().unwrap_or(0);
+        let walker = crate::travel::walker_from(&self.state, &self.notes, now);
+        town::route::shop_room(self.map, &walker, from, town::Shop::Pool.tag(), false)
     }
 
     /// Empty the box in hand with the loot planner (`box_loot`), and say

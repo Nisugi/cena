@@ -141,7 +141,7 @@
 //! |---|---|
 //! | `loot` | skin and search the dead here, take what the floor holds |
 //! | `loot skin` | only skin the dead here, whatever `skin.enable` says |
-//! | `loot box` | empty the open box in hand, then keep it or throw it out |
+//! | `loot box` | empty the open box in hand, then keep it or throw it out, in the pool's bin when there is none here; a reliquary is always kept |
 //! | `loot ground` | the same for each box on the ground, the hands put away first and given back after; a locked box is left where it lay |
 //! | `loot sell` | the selling round: the locksmith pool, the shops, the bank, and back |
 //! | `loot pool` | the locksmith pool alone: give it the boxes carried, collect what is ready, then bank, keeping the silver carried before |

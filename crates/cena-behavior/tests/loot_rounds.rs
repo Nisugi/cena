@@ -12,21 +12,24 @@ use std::sync::Arc;
 
 use cena_behavior::hunt::{Ending, FullBags, HuntEnd};
 use cena_behavior::loot::Errand;
-use cena_session::GameState;
+use cena_session::{Frame, GameState};
 use drive_support::arrival;
-use errand_support::{at, ended, in_order, inside, reply, set_out_knowing};
+use errand_support::{at, ended, in_order, inside, link, reply, set_out_knowing};
 
-/// Home (1), the pool east of it (2), whose worker the map names, and the
-/// bank west of it (3).
+/// Home (1), the pool east of it (2), whose worker the map names, the bank
+/// west of it (3) and the gem shop north (4).
 const TOWN: &str = r#"[
   {"id":1,"uid":[1001],"exits":[
     {"to":2,"kind":"cardinal","cmd":"east","cost":1},
-    {"to":3,"kind":"cardinal","cmd":"west","cost":1}]},
+    {"to":3,"kind":"cardinal","cmd":"west","cost":1},
+    {"to":4,"kind":"cardinal","cmd":"north","cost":1}]},
   {"id":2,"uid":[1002],"tags":["locksmith pool"],
    "meta":["boxpool:npc:grimy halfling scoundrel"],"exits":[
     {"to":1,"kind":"cardinal","cmd":"west","cost":1}]},
   {"id":3,"uid":[1003],"tags":["bank"],"exits":[
-    {"to":1,"kind":"cardinal","cmd":"east","cost":1}]}
+    {"to":1,"kind":"cardinal","cmd":"east","cost":1}]},
+  {"id":4,"uid":[1004],"tags":["gemshop"],"exits":[
+    {"to":1,"kind":"cardinal","cmd":"south","cost":1}]}
 ]"#;
 
 /// A profile that tips the pool 300 a box.
@@ -219,5 +222,220 @@ async fn a_returned_chest_no_bag_will_empty_stays_in_hand_and_is_said() {
         said.iter()
             .any(|(_, text)| text.contains("a box from the pool is still in hand")),
         "{said:?}"
+    );
+}
+
+/// A profile that sells gems, but never a diamond.
+const SELLS_GEMS: &str =
+    "take = [\"gem\"]\n\n[town]\nsell_loot_types = [\"gem\"]\nsell_exclude = [\"diamond\"]\n";
+
+/// `loot sell` (`;eloot sell`, `Sell.sell`, `eloot.lic:7812-7847`): the
+/// emerald sold at the gem shop item by item -- the backpack holds a
+/// diamond the profile keeps, so it is not sold whole -- then the bank, then
+/// home, and what it came to said.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn loot_sell_sells_at_the_gem_shop_banks_and_comes_home() {
+    let (transcript, task, mut told) = set_out_knowing(
+        Errand::Sell,
+        Vec::new(),
+        (TOWN, SELLS_GEMS),
+        &Arc::default(),
+        &FullBags::default(),
+        |state| {
+            inside(
+                state,
+                "902",
+                &[
+                    ("61", "emerald", "uncut emerald"),
+                    ("62", "diamond", "uncut diamond"),
+                ],
+            );
+        },
+    );
+    transcript.answer("north", &arrival(1004));
+    transcript.answer(
+        "get #61",
+        &reply("You remove an uncut emerald from in your backpack.\n<right exist=\"61\" noun=\"emerald\">uncut emerald</right>"),
+    );
+    transcript.answer(
+        "sell #61",
+        &reply("Arnalto takes the uncut emerald, gives it a careful examination and hands you 900 silver for it.\n<right>Empty</right>"),
+    );
+    transcript.answer("south", &arrival(1001));
+    transcript.answer("west", &arrival(1003));
+    transcript.answer(
+        "deposit all",
+        &reply("You deposit 900 silvers into your account."),
+    );
+    transcript.answer("east", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Sell))),
+        "{lines:?}"
+    );
+    assert!(
+        in_order(
+            &lines,
+            &[
+                "north",
+                "get #61",
+                "sell #61",
+                "south",
+                "west",
+                "deposit all",
+                "east",
+            ]
+        ),
+        "{lines:?}"
+    );
+    assert_eq!(
+        at(&lines, "get #62"),
+        None,
+        "the diamond is kept: {lines:?}"
+    );
+    assert_eq!(at(&lines, "sell #902"), None, "not sold whole: {lines:?}");
+    let said = drive_support::told_so_far(&mut told);
+    assert!(
+        said.iter()
+            .any(|(_, text)| text.contains("the round came to") && text.contains("900")),
+        "{said:?}"
+    );
+}
+
+/// The chest `6` in the right hand, holding `inside`.
+fn a_chest_in_hand(state: &mut GameState) {
+    state.apply(&Frame::RightHand {
+        item: "iron chest".to_owned(),
+        link: Some(link("6", "chest", "iron chest")),
+    });
+    inside(state, "902", &[]);
+}
+
+/// The chest's `look in`: these things in it.
+fn chest_holds(line: &str) -> Vec<u8> {
+    reply(&format!(
+        "<inv id='6'>In the <a exist=\"6\" noun=\"chest\">iron chest</a>:</inv>\n<inv id='6'> {line}</inv>"
+    ))
+}
+
+/// The chest listed empty, as the game lists it.
+const CHEST_EMPTY: &str = "<clearContainer id=\"6\"/>\n<inv id='6'>In the <a exist=\"6\" noun=\"chest\">iron chest</a>:</inv>\n<inv id='6'> nothing</inv>";
+
+/// `loot box` with no receptacle here takes the emptied chest to the one in
+/// the pool's room and comes back (`save_trash_box`, `eloot.lic:7786-7791`).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn loot_box_takes_the_box_to_a_bin_and_comes_back() {
+    let (transcript, task, _) = set_out_knowing(
+        Errand::Box,
+        Vec::new(),
+        (TOWN, RETURNS),
+        &Arc::default(),
+        &FullBags::default(),
+        a_chest_in_hand,
+    );
+    transcript.answer(
+        "look in #6",
+        &chest_holds("an <a exist=\"61\" noun=\"emerald\">uncut emerald</a>"),
+    );
+    transcript.answer(
+        "loot #61",
+        &reply(&format!(
+            "You put an uncut emerald in your backpack.\n{CHEST_EMPTY}"
+        )),
+    );
+    transcript.answer(
+        "trash #6",
+        &reply("You do not notice a trash receptacle here."),
+    );
+    transcript.answer("east", &arrival(1002));
+    transcript.answer(
+        "trash #6",
+        &reply("You drop an iron chest in the barrel.\n<right>Empty</right>"),
+    );
+    transcript.answer("west", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Box))),
+        "{lines:?}"
+    );
+    assert!(
+        in_order(
+            &lines,
+            &[
+                "open #6",
+                "look in #6",
+                "loot #61",
+                "trash #6",
+                "east",
+                "trash #6",
+                "west",
+            ]
+        ),
+        "{lines:?}"
+    );
+    assert_eq!(at(&lines, "drop #6"), None, "{lines:?}");
+}
+
+/// `loot box` whose coins will not all fit goes to the bank and back, and
+/// gathers the rest (`box_loot`, `eloot.lic:5109-5115`).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn loot_box_banks_for_coins_that_will_not_fit_and_gathers_the_rest() {
+    let (transcript, task, _) = set_out_knowing(
+        Errand::Box,
+        Vec::new(),
+        (TOWN, RETURNS),
+        &Arc::default(),
+        &FullBags::default(),
+        a_chest_in_hand,
+    );
+    let coins = "some <a exist=\"63\" noun=\"coins\">900 silver coins</a>";
+    transcript.answer("look in #6", &chest_holds(coins));
+    transcript.answer(
+        "get coins from #6",
+        &reply("You cannot hold any more silvers."),
+    );
+    transcript.answer("west", &arrival(1003));
+    transcript.answer(
+        "deposit all",
+        &reply("You deposit 5,000 silvers into your account."),
+    );
+    transcript.answer("east", &arrival(1001));
+    transcript.answer("look in #6", &chest_holds(coins));
+    transcript.answer(
+        "get coins from #6",
+        &reply(&format!(
+            "You gather the remaining 900 coins from inside your iron chest.\n{CHEST_EMPTY}"
+        )),
+    );
+    transcript.answer(
+        "trash #6",
+        &reply("You drop an iron chest in the barrel.\n<right>Empty</right>"),
+    );
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Box))),
+        "{lines:?}"
+    );
+    assert!(
+        in_order(
+            &lines,
+            &[
+                "look in #6",
+                "get coins from #6",
+                "west",
+                "deposit all",
+                "east",
+                "look in #6",
+                "get coins from #6",
+                "trash #6",
+            ]
+        ),
+        "{lines:?}"
     );
 }

@@ -573,3 +573,37 @@ fn loot_pool_keeps_a_box_no_bag_would_empty_in_hand() {
     assert_eq!(seller.next(&state, &at_pool), Step::Walk(HOME));
     assert_eq!(seller.stuck(), Some("6"));
 }
+
+/// A reliquary back from the pool is kept, whatever the profile sells: eloot
+/// never throws one out (`save_trash_box`, `eloot.lic:7781`).
+#[test]
+fn a_returned_reliquary_is_kept_whatever_the_profile_sells() {
+    let mut state = setup(&[], &[]);
+    with_worker(&mut state);
+    let town = Town {
+        always_check_pool: true,
+        ..pool_town()
+    };
+    let mut seller = Seller::new(town, &state, HOME).expect("a round");
+    seller.next(&state, &at_pool);
+    seller.next(&state, &at_pool);
+    let reliquary = ("6", "reliquary", "filigreed rolaren reliquary");
+    hand(&mut state, true, Some(reliquary));
+    seller.outcome(
+        &[returned(reliquary.0, reliquary.1, reliquary.2)],
+        &[],
+        &state,
+    );
+    assert_eq!(
+        seller.next(&state, &at_pool),
+        Step::EmptyBox("6".to_owned())
+    );
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &at_pool),
+        Step::Stow {
+            item: "6".to_owned(),
+            bag: "902".to_owned()
+        }
+    );
+}

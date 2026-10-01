@@ -5,8 +5,8 @@
 //! given to the pool's worker with the profile's standard tip, the quote
 //! confirmed. Then the worker is asked for what is ready, box after box until
 //! nothing is: each returned box is emptied by the loot planner (the driver's
-//! `EmptyBox`), then kept when it is a valuable empty box the profile sells,
-//! else trashed, else dropped. A box the worker calls already open is emptied
+//! `EmptyBox`), then kept when it is a reliquary or a valuable empty box the
+//! profile sells, else trashed, else dropped. A box the worker calls already open is emptied
 //! on the spot, and a plinite it hands back is plucked and what came of it put
 //! away (`box_loot`, `:5138-5140`).
 //!
@@ -468,13 +468,13 @@ impl Pool {
             self.doing = Doing::Idle;
             return;
         }
-        // Locked, never looked into, coins still in it after the bank, or a
-        // valuable box the profile sells: back in the bag. Else out it goes,
-        // known empty.
+        // Locked, never looked into, coins still in it after the bank, a
+        // reliquary, or a valuable box the profile sells: back in the bag.
+        // Else out it goes, known empty.
         self.doing = if replies.contains(&Reply::BoxLocked)
             || replies.contains(&Reply::BoxUnseen)
             || coins_left
-            || (self.keep_valuable && is_valuable(state, &id))
+            || kept(state, &id, self.keep_valuable)
         {
             Doing::Back { id, bag }
         } else {
@@ -561,11 +561,11 @@ fn returned(state: &GameState) -> Option<(String, bool)> {
 }
 
 /// Whether the emptied box `id`, in a hand, is kept rather than thrown out:
-/// one of gold, mithril or silver, or a reliquary, when the profile sells
-/// boxes (`save_trash_box`, `eloot.lic:7773`).
+/// a reliquary always, and one of gold, mithril or silver when the profile
+/// sells boxes (`save_trash_box`, `eloot.lic:7777-7784`).
 #[must_use]
 pub fn keeps_box(town: &Town, state: &GameState, id: &str) -> bool {
-    town.sells("box") && is_valuable(state, id)
+    kept(state, id, town.sells("box"))
 }
 
 /// A box in either hand, by id.
@@ -581,13 +581,16 @@ pub fn box_in_hand(state: &GameState) -> Option<String> {
         .and_then(|hand| hand.id().map(str::to_owned))
 }
 
-/// A box of gold, mithril or silver, by its name in hand.
-fn is_valuable(state: &GameState, id: &str) -> bool {
+/// [`keeps_box`], by the box's name in hand: a reliquary whatever the
+/// profile sells, which eloot never throws out; a box of gold, mithril or
+/// silver when `sells_boxes`.
+fn kept(state: &GameState, id: &str, sells_boxes: bool) -> bool {
     [&state.right_hand, &state.left_hand]
         .into_iter()
         .find(|hand| hand.holds(id))
         .and_then(|hand| hand.name())
         .is_some_and(|name| {
-            name.split(' ').any(|word| VALUABLE.contains(&word)) || name.contains("reliquary")
+            name.contains("reliquary")
+                || (sells_boxes && name.split(' ').any(|word| VALUABLE.contains(&word)))
         })
 }
