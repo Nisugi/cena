@@ -56,6 +56,20 @@ impl Shop {
     }
 }
 
+/// The shops a round visits, in its order: the enum's, but a round that
+/// sells in Mist Harbor (`fwi`) gives its gold rings first, before the
+/// town and its Chronomage are left for the island (`town/route.rs`).
+pub(super) fn in_order(
+    shops: std::collections::BTreeSet<Shop>,
+    fwi: bool,
+) -> std::collections::VecDeque<Shop> {
+    let mut shops: Vec<Shop> = shops.into_iter().collect();
+    if fwi {
+        shops.sort_by_key(|shop| *shop != Shop::Chronomage);
+    }
+    shops.into()
+}
+
 /// How a lot leaves the character.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum How {

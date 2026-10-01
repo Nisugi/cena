@@ -32,6 +32,19 @@ const ROOMS: &str = r#"[
 
 const PROFILE: &str = "take = [\"gem\", \"magic\"]\n\n[town]\nsell_keep_silver = 500\n";
 
+/// Room 1 between a town's bank, north, and Mist Harbor's, south.
+const TWO_BANKS: &str = r#"[
+  {"id":1,"uid":[1001],"location":"Wehnimer's Landing","exits":[
+    {"to":2,"kind":"cardinal","cmd":"north","cost":1},
+    {"to":3,"kind":"cardinal","cmd":"south","cost":1}]},
+  {"id":2,"uid":[1002],"tags":["bank"],"location":"Wehnimer's Landing","exits":[
+    {"to":1,"kind":"cardinal","cmd":"south","cost":1}]},
+  {"id":3,"uid":[1003],"tags":["bank"],"location":"Mist Harbor","exits":[
+    {"to":1,"kind":"cardinal","cmd":"north","cost":1}]}
+]"#;
+
+const SELLS_IN_FWI: &str = "take = [\"gem\"]\n\n[town]\nsell_fwi = true\n";
+
 /// A dead warg in the room, as the wire states it.
 #[expect(
     clippy::default_trait_access,
@@ -71,6 +84,20 @@ fn corpse(state: &mut GameState, id: i64) {
 fn set_out(
     errand: Errand,
     floor: Vec<RoomItem>,
+) -> (
+    cena_platform::TranscriptHandle,
+    tokio::task::JoinHandle<Option<HuntEnd>>,
+    tokio::sync::broadcast::Receiver<cena_session::Event>,
+) {
+    set_out_in(errand, floor, ROOMS, PROFILE)
+}
+
+/// [`set_out`], on this map and by this loot profile.
+fn set_out_in(
+    errand: Errand,
+    floor: Vec<RoomItem>,
+    rooms: &'static str,
+    profile: &'static str,
 ) -> (
     cena_platform::TranscriptHandle,
     tokio::task::JoinHandle<Option<HuntEnd>>,
@@ -134,11 +161,11 @@ fn set_out(
     let stop = CancellationToken::new();
     let task = tokio::spawn(async move {
         ready::until_ready(ready).await.ok()?;
-        let rooms: Vec<Room> = serde_json::from_str(ROOMS).ok()?;
+        let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-        let machine = Hunt::loot_only(LootProfile::parse(PROFILE).ok()?, errand);
+        let machine = Hunt::loot_only(LootProfile::parse(profile).ok()?, errand);
         handle.claim(AuthorityToken(1)).await.ok()?;
         let heartbeat = Heartbeat::default();
         let end = Box::pin(hunt(
@@ -265,4 +292,26 @@ async fn loot_deposit_walks_to_the_bank_keeps_the_silver_and_comes_back() {
                 && text.contains("Bank: deposited 12,340.")),
         "{said:?}"
     );
+}
+
+/// The author's round: *"I do sell in fwi"* (`plan/61` section 7 item 5). With
+/// `sell_fwi`, the bank is Mist Harbor's though the town's is as near.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_profile_that_sells_in_mist_harbor_banks_there() {
+    let (transcript, task, _) = set_out_in(Errand::Deposit, Vec::new(), TWO_BANKS, SELLS_IN_FWI);
+    transcript.answer("south", &arrival(1003));
+    transcript.answer("north", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Deposit))),
+        "{lines:?}"
+    );
+    let order: Vec<Option<usize>> = ["south", "deposit all", "north"]
+        .iter()
+        .map(|line| at(&lines, line))
+        .collect();
+    assert!(order.iter().all(Option::is_some), "{lines:?}");
+    assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{lines:?}");
 }

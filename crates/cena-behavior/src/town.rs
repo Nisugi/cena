@@ -15,13 +15,16 @@
 //! Stage 4a built the gem shop and the pawnshop; 4b the furrier, the
 //! collectibles counter, the Chronomage and the bank; 4c the locksmith pool.
 //! [`goods`] reads what the bags hold and which shop takes it, and
-//! [`breakdown`] adds up what the round came to.
+//! [`breakdown`] adds up what the round came to. [`route`] says where each
+//! shop is: Mist Harbor's when the profile sells there, and none where the
+//! Hinterwilds has none.
 
 pub mod breakdown;
 pub mod goods;
 pub mod plan;
 mod pool;
 pub mod reply;
+pub mod route;
 pub mod settings;
 mod step;
 

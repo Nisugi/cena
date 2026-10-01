@@ -1,8 +1,8 @@
 # 61. Loot, complete: every command and feature of eloot
 
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
-ahead and work on the loot plan"*). **Steps 1 and 2 BUILT the same day** on branch
-`loot-complete` (§5a, §5b). The author: *"let's plan out the rest of it. Hydra's loot should
+ahead and work on the loot plan"*). **Steps 1, 2 and 3 BUILT the same day** on branch
+`loot-complete` (§5a, §5b, §5c). The author: *"let's plan out the rest of it. Hydra's loot should
 have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
@@ -152,33 +152,33 @@ its sending half here.
 ## 5. Steps
 
 Ordered so that each leaves something usable, the author's own profile first (the town
-locksmith, incremental tipping and hoarding are off in it, `plan/31` §4).
+locksmith, incremental tipping and hoarding are off in it, `plan/31` §4). In the order
+the author's answers set (§7), with the bounty trips dropped (§6).
 
-1. **The standalone commands over what is built.** `loot`, `loot skin`, `loot sell`,
-   `loot pool [deposit|return]`, `loot deposit`, `loot box`, the errand machine and
-   endings, `stop`, the agent's operations, the help and the reference page. The first
-   scripted-game tests of the selling driver. `loot show|set|unset`.
-2. **The breakdown** after every round, in a hunt or not, and `loot last`.
-3. **The dead keys of the loot**: overflow containers, the `autoclose` list, `loot_keep`,
+1. **The standalone commands over what is built.** BUILT (§5a).
+2. **The breakdown** after every round, and `loot last`. BUILT (§5b).
+3. **Places the author sells in**: Mist Harbor by `sell_fwi`, and the shops the
+   Hinterwilds lacks. BUILT (§5c).
+4. **The dead keys of the loot**: overflow containers, the `autoclose` list, `loot_keep`,
    `critter_exclude`, `keep_closed`, the group's disks, phasing with 704; `loot ground`;
-   `loot reset unskinnable`.
-4. **The round's missing pieces that every profile meets**: the bounty checks at the
-   furrier and gem shop with the region, *lighten your load*, a full pool, full bags
-   during a return, the worker by the room's tag, scarabs and the gem shop's odd nouns,
-   the ingot, plinite.
-5. **Selling by choice**: `loot sell type <types>`, `loot sell shop <shops>`, `loot sell
+   `loot reset unskinnable`; and `track_full_sacks`, `log_unlootables`, `favor_left`
+   (§7 item 4).
+5. **The round's missing pieces that every profile meets**: *lighten your load*, a full
+   pool, full bags during a return, the worker by the room's tag, scarabs and the gem
+   shop's odd nouns, the ingot, plinite; and step 1's leftovers, `loot pool` banking the
+   boxes' silver and `loot box` taking an empty box to a bin. Scripted-game tests of
+   `loot sell`, `loot pool` and `loot box`.
+6. **Selling by choice**: `loot sell type <types>`, `loot sell shop <shops>`, `loot sell
    item <names>` (eloot's three `--` forms, in Hydra's words).
-6. **The coin hand**, coin bag and gambling kit: found, used after a loot, drained at the
+7. **The coin hand**, coin bag and gambling kit: found, used after a loot, drained at the
    bank; `sell_share_silvers`.
-7. **The town locksmith** with its priority, the gem-bounty override and `case` boxes;
-   **incremental tipping**.
-8. **Places**: FWI and the trinket, the Hinterwilds, Pinefar's banker, the free-to-play
-   ladder.
-9. **The rest of the shops**: consignment and `alchemy_mode`, `break_rocks`,
-   `dump_herbs_junk`, cursed items (315, the gauntlet), the sell buffs, blood bands,
-   `between`.
+8. **The town locksmith** with its priority and `case` boxes; **incremental tipping**;
+   Pinefar's banker; the free-to-play ladder.
+9. **The rest of the shops**: consignment, `break_rocks`, `dump_herbs_junk`, cursed items
+   (315, the gauntlet), the sell buffs, blood bands, and `between` as the player's own
+   rules (§7 item 3). `alchemy_mode` later (§7 item 7).
 10. **The hoard**, after `plan/59`'s lockers: the jars' inventory in the model, deposit,
-    raid, the bounty's gems, `loot hoard list|deposit|reset|raid`, `loot bounty`.
+    raid, `loot hoard list|deposit|reset|raid`, `loot bounty`.
 
 Each step: the profile keys it makes live, the importer's note for them removed, tests
 against a scripted game, `plan/31`'s record and the reference page updated in the same
@@ -238,7 +238,59 @@ commit. A branch, `loot-complete`.
   last` as a word; and over a scripted game the bank trip says *deposited 12,340* from
   the game's own line (`tests/loot_errand.rs`).
 
+## 5c. Step 3, BUILT 2026-09-30
+
+The author's own round (§7 item 5: *"I do sell in fwi has hinterwilds doesn't have
+pawnshop to sell at"*).
+
+- **Where a shop is** (`cena-behavior/src/town/route.rs`, `shop_room`): the nearest room
+  tagged for it by what this walker would pay, as before, with eloot's two rules over it.
+  - **`sell_fwi`** (`ELoot.go2`, `eloot.lic:3300-3309`): a shop the Isle of Four Winds
+    has is the island's, wherever the round begins; one it lacks is the nearest anywhere.
+    The walk there and back is travel's own, by the trinket its settings name
+    (`travel/routines/trinket.rs`), and the round ends where it began.
+  - **The Chronomage** (`go_sell`, `:7106-7110`): none on the island, so gold rings are
+    given before the town is left, **first in the round** when it sells on the island
+    (`goods::in_order`), and not at all from the island. eloot gives them only when no
+    box sent it to the island's pool first; Hydra always gives them first.
+  - **The Hinterwilds** (`shop_unavailable_in_town?`, `:3236-3253`): when the nearest
+    town is Coldriver Village (the game's room 7503205) and the round does not sell on
+    the island, the pawnshop, the collectibles counter, consignment and the Chronomage
+    are passed by, never walked to in another town.
+- **The setting** is typed and shown: `town.sell_fwi`, *Sell in Mist Harbor*, on the
+  *Selling* page (`town/settings.rs`); it was imported from eloot's file and read by
+  nothing.
+- **No way to the island** (no trinket named on *Travel*): the round says so once and
+  sells where it stands, the Hinterwilds' rule included (`route::reaches_fwi`,
+  `hunt/drive/selling.rs`). eloot stops with *set your FWI trinket in go2 setup*.
+- *Tests:* the routing over a small map of a town, the island and the Hinterwilds
+  (`route.rs`: the island's shop over the town's, the Chronomage, the four shops the
+  Hinterwilds lacks); and over a scripted game a profile that sells in Mist Harbor banks
+  at the island's bank though the town's is as near (`tests/loot_errand.rs`).
+- **Not ported** (the author, the same day: *"I don't think we want the go sell in
+  another town for a bounty thing"*): `fwi_return` before a bounty's skins and gems are
+  sold in its own town (`:3274`), and the note carried back to a bank off the island
+  after it (`deposit_note`, `:3342`). See §6.
+
 ## 6. Not ported, and why
+
+- **Going to the bounty's town to sell** (the author, 2026-09-30: *"I don't think we
+  want the go sell in another town for a bounty thing"*): `check_bounty_furrier` and
+  `check_bounty_gems`' walk to the bounty town's furrier and gem shop (`:6319-6489`),
+  the `Region` module that says whether that town is in reach (`:2530-2593`),
+  `fwi_return` (`:3274`) and `deposit_note` (`:3342`). The round sells where its own
+  rules send it, **and sells a bounty's gems and skins like anything else**: nothing is
+  held back for a bounty. The author, asked: *"sell them like anything else. that's what
+  the between scripts and the gem hoarding is for. Not here to feed them, here to give
+  them the tools they need to fish."* A player who wants a bounty's gems kept writes
+  that as a `between` rule (step 9) or hoards them (step 10); the round itself has no
+  bounty logic. So eloot's furrier check that keeps bundles whole for a skin bounty is
+  not built either, nor `locksmith_when_gem_bounty`, which sends boxes to the town
+  locksmith rather than the pool while a gem bounty is open (`:7690`; Claude's reading of
+  the same rule, put to the author); the hoard's own `gem_horde_turnin` stays with the
+  hoard. §3's table rows for the bounty checks and the region, and
+  §4's *Routing is the map's* bullet where it speaks of a region's edge, are superseded
+  by this.
 
 - `debug`, `debug file`, the `DebugLogger` (`:268-376`): Hydra's wire log and player log
   already hold what it writes.
@@ -277,7 +329,7 @@ The steps as answered: 1 the commands; 2 the breakdown; **3 FWI (`sell_fwi`, the
 home, notes carried back) and the Hinterwilds' missing shops**; 4 the dead keys with the
 three of item 4; 5 the round's missing pieces; 6 selling by choice; 7 the coin hand; 8
 the town locksmith, incremental tipping, Pinefar, free-to-play; 9 the rest of the shops
-and `between`; 10 the hoard. §5's numbering is the proposal's; this order governs.
+and `between`; 10 the hoard. §5 is numbered in this order.
 
 The questions as asked:
 

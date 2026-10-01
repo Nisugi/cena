@@ -53,6 +53,9 @@ pub struct Town {
     /// Scrolls kept for these spells (`sell_keep_scrolls`): `215` keeps a
     /// scroll holding 215 that is not vibrant, `215v` one that is.
     pub keep_scrolls: Vec<String>,
+    /// Sell on the Isle of Four Winds, wherever the round begins
+    /// (`sell_fwi`, `town/route.rs`).
+    pub fwi: bool,
     /// Boxes on the character's disk go to the pool too: the loot
     /// profile's `use_disk`, set by the driver.
     pub disk: bool,
@@ -78,6 +81,7 @@ impl Default for Town {
             charm: String::new(),
             pawn_recheck: false,
             keep_scrolls: Vec::new(),
+            fwi: false,
             disk: false,
         }
     }
@@ -148,6 +152,7 @@ impl Town {
             charm: text(table, "charm_name"),
             pawn_recheck: flag(table, "sell_pawn_recheck"),
             keep_scrolls: list(table, "sell_keep_scrolls"),
+            fwi: flag(table, "sell_fwi"),
             disk: flag(table, "use_disk"),
         }
     }
@@ -186,6 +191,7 @@ impl Town {
             ("charm_name", Some(Value::String(self.charm.clone()))),
             ("sell_pawn_recheck", Some(Value::Boolean(self.pawn_recheck))),
             ("sell_keep_scrolls", Some(list(&self.keep_scrolls))),
+            ("sell_fwi", Some(Value::Boolean(self.fwi))),
         ];
         entries
             .into_iter()
@@ -347,6 +353,12 @@ pub const TABLE: &[crate::settings::Key] = {
             help: "Scrolls kept for these spells: 215 keeps one that is not vibrant, 215v one that is.",
             kind: KeyKind::Words,
         },
+        Key {
+            name: "town.sell_fwi",
+            label: "Sell in Mist Harbor",
+            help: "Sell on the Isle of Four Winds wherever the round begins, there and back by the trinket Travel's settings name.",
+            kind: KeyKind::Toggle,
+        },
     ]
 };
 
@@ -374,6 +386,7 @@ mod tests {
             charm: "silver charm".to_owned(),
             pawn_recheck: true,
             keep_scrolls: vec!["215v".to_owned()],
+            fwi: true,
             disk: false,
         }
     }

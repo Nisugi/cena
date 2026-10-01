@@ -180,10 +180,11 @@ impl Seller {
             })
             .filter_map(|hand| hand.id().map(str::to_owned))
             .collect();
+        let shops = goods::in_order(shops, town.fwi);
         Some(Seller {
             town,
             home,
-            shops: shops.into_iter().collect(),
+            shops,
             shop: None,
             sacks: VecDeque::new(),
             sack: None,

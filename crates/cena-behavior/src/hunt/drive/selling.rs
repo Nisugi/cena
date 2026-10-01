@@ -5,7 +5,7 @@ use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::{BEAT, Driver, HuntEnd, SELL_STEPS};
 use crate::town::{self, Round, Seller, Step as Errand, Town};
-use crate::travel::{TravelNotes, destination, walker_from};
+use crate::travel::{TravelNotes, walker_from};
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
     /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
@@ -28,6 +28,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         };
         self.know_stow_list().await?;
         let town = Town::for_profile(&profile);
+        let fwi = town.fwi && self.reaches_fwi(home);
         let Some(mut seller) = Seller::for_round(town, &self.state, home, round) else {
             return Ok(false);
         };
@@ -40,9 +41,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 let walker = walker_from(&self.state, &self.notes, now);
                 let (map, state) = (self.map, &self.state);
                 let nearest = |tag: &str| {
-                    here.and_then(|from| {
-                        destination(map, &walker, from, tag, &std::collections::BTreeMap::new())
-                    })
+                    here.and_then(|from| town::route::shop_room(map, &walker, from, tag, fwi))
                 };
                 seller.next(state, &nearest)
             };
@@ -116,6 +115,21 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.handle.say(Notice::table(NoticeKind::Info, came_to));
         }
         Ok(true)
+    }
+
+    /// Whether a round that sells in Mist Harbor can get there from `home`
+    /// (`town/route.rs`); said when it cannot, and the round sells here.
+    fn reaches_fwi(&self, home: cena_map::RoomId) -> bool {
+        let now = self.state.game_time_now().unwrap_or(0);
+        let walker = walker_from(&self.state, &self.notes, now);
+        let reaches = town::route::reaches_fwi(self.map, &walker, home);
+        if !reaches {
+            self.handle.say(Notice::line(
+                NoticeKind::Warn,
+                "Loot: the profile sells in Mist Harbor, but there is no way there from here: name the trinket on Travel's settings page. Selling here this round.",
+            ));
+        }
+        reaches
     }
 
     /// Ask for the stow list when it has not been read: the round reads the
