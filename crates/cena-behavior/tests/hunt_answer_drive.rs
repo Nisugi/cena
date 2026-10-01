@@ -252,3 +252,25 @@ async fn a_late_holding_is_the_earlier_lines_and_the_next_is_not_sent_again() {
     stop.cancel();
     let _ = task.await;
 }
+
+/// Another player's words in an attack's window are not the game's
+/// (BE-A-8): `"I tried my bow but it has no effect"` ended the hunt, as an
+/// attack that cannot hurt what is here.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn another_players_no_effect_does_not_end_the_hunt() {
+    let said: &[u8] = b"<preset id='speech'><a exist=\"-10007833\" noun=\"Pukk\">Pukk</a> says</preset>, \"I tried my bow but it has no effect.\"\n<prompt time=\"1001\">&gt;</prompt>\n";
+    let (transcript, stop, task) = set_out(&[said]);
+    assert!(
+        until_attacks(&transcript, 1).await,
+        "hunting: {:?}",
+        transcript.lines()
+    );
+    pass(5_000).await;
+    assert!(
+        !task.is_finished(),
+        "still hunting: {:?}",
+        transcript.lines()
+    );
+    stop.cancel();
+    let _ = task.await;
+}

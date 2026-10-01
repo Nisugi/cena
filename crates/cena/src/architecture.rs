@@ -131,7 +131,12 @@
 //!    is routed elsewhere, or carries the author's written decision to drop it
 //!    (`plan/05` Rule 2.2a). An unknown tag is recorded into the state
 //!    ([`UnknownTag`](cena_session::UnknownTag)) so that it reaches a display,
-//!    not merely survives.
+//!    not merely survives. **A line a person said is never the game's
+//!    answer:** it is shown, logged and read as a message, but kept out of the
+//!    prompt-bounded chunk every automation reader takes, so no Lich pattern
+//!    of unanchored prose matches another player's words
+//!    ([`ChunkLine::is_spoken`](cena_session::ChunkLine::is_spoken); the hunt's
+//!    transcript, built from frames, applies the same test).
 //! 4. **Consumers.** The session's own first: the round trip waiting for its
 //!    answer, the combat recorder, the player log, and the line itself,
 //!    finished once, answered by `;sorter` and the character's triggers, and

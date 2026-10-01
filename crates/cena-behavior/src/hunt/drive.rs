@@ -214,7 +214,7 @@ pub async fn hunt_in(
         saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
-        said: String::new(),
+        said: fold::Reading::default(),
         owed: std::collections::VecDeque::new(),
         settled_at: None,
         line: String::new(),
@@ -262,8 +262,8 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// reading its reply.
     transcript: String,
     /// The main window's line being read, to settle what is owed
-    /// (`drive/send.rs`).
-    said: String,
+    /// (`drive/send.rs`), unless a person said it (`drive/fold.rs`).
+    said: fold::Reading,
     /// Lines written whose answer has not been heard, oldest first: the
     /// next answer-shaped line is theirs, not the line now awaited's
     /// (`drive/send.rs`).
