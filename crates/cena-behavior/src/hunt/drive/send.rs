@@ -69,7 +69,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     /// (`...wait N seconds.`) is waited out and sent again, up to
     /// [`MAX_RESENDS`] times; every holding is taken out of the transcript,
     /// since none is the line's answer, and nobody else sends it again.
+    /// Nothing is sent while the connection is away, and a connection lost
+    /// while the line is out is waited out, not the end of the hunt.
     pub(super) async fn send(&mut self, line: &str, target: Option<i64>) -> Result<(), HuntEnd> {
+        self.back().await?;
         for attempt in 0..=MAX_RESENDS {
             self.settle().await?;
             let mark = self.transcript.len();
@@ -87,8 +90,17 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                     Gate::Act { target },
                 ) => outcome,
             };
-            if let Some(gone) = BehaviorError::from_outcome(&outcome) {
-                return Err(HuntEnd::Stopped(gone));
+            match BehaviorError::from_outcome(&outcome) {
+                // The connection went while the line was out: waited out,
+                // as a walk waits it out (`drive/walk.rs`), and the next
+                // tick decides again once the session is back (the crate
+                // review of 2026-10-01, BE-A-7).
+                Some(BehaviorError::Disconnected) => {
+                    self.link_lost();
+                    return Ok(());
+                }
+                Some(gone) => return Err(HuntEnd::Stopped(gone)),
+                None => {}
             }
             if let Outcome::Refused(refusal) = &outcome {
                 if matches!(refusal, Refusal::TargetGone) {
@@ -97,10 +109,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 // A refusal is a skip: the next tick decides again. A beat, so
                 // a refusal that repeats does not spin.
                 self.hold(BEAT).await?;
-                return self.drain().map_err(HuntEnd::Stopped);
+                return self.drain().await;
             }
             let written = Instant::now();
-            self.drain().map_err(HuntEnd::Stopped)?;
+            self.drain().await?;
             let pause = match self.answered(line, mark).await? {
                 Read::Answered(None) => {
                     self.unheard(line, mark, written);

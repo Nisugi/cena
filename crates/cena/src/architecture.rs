@@ -285,8 +285,9 @@
 //! lines each, and a trait over it would leave every signature different; the
 //! rule of three has not been met (`plan/05` §-1). A wedged behavior is
 //! detectable: it beats a [`Heartbeat`](cena_behavior::Heartbeat) each time
-//! round its loop, and [`watch`](cena_behavior::watch) beside it preempts it
-//! when the beats stop for
+//! round its loop (the hunt also at every event it folds, since one of its
+//! turns can be a whole walk), and [`watch`](cena_behavior::watch) beside it
+//! preempts it when the beats stop for
 //! [`BEHAVIOR_WATCHDOG`](cena_behavior::BEHAVIOR_WATCHDOG). A behavior that
 //! ends because the session decided -- stopped, refused, disconnected -- ends
 //! with a [`BehaviorError`](cena_behavior::BehaviorError).

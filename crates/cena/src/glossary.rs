@@ -177,7 +177,7 @@
 //! |---|---|---|
 //! | **Behavior** | curated Rust automation that a user configures with data and never programs. A pure state machine and a thin driver ([`Trip::tick`] and [`travel()`]); there is no `Behavior` trait | script |
 //! | **Driver** | a behavior's async half: claims the authority, sends what the machine asks for, and races every await against the stop token | |
-//! | **Watchdog** | a behavior beats a [`Heartbeat`] each time round its loop, and [`watch`] preempts it when the beats stop for [`BEHAVIOR_WATCHDOG`] | |
+//! | **Watchdog** | a behavior beats a [`Heartbeat`] each time round its loop (the hunt also at every event it folds), and [`watch`] preempts it when the beats stop for [`BEHAVIOR_WATCHDOG`] | |
 //! | **Sync** | the character sync once a login is Ready, asking the game only for what the character store says is stale: [`sync()`] | |
 //! | **Trip** | one journey on the map, as a machine: [`Trip`] | |
 //! | **Desk** | one behavior's handler for its Hydra commands, one per session: [`travel::Desk`], [`hunt::Desk`] | |

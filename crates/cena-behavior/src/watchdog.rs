@@ -30,7 +30,9 @@ use tokio_util::sync::CancellationToken;
 /// loop it bounds turns about four times a second -- eohunter's engine sleeps
 /// 0.25 s between ticks (`runner.rb:36`) -- so thirty seconds is over a
 /// hundred missed turns, and far longer than any one await a behavior makes
-/// (every one of them has its own deadline, §5.5).
+/// (every one of them has its own deadline, §5.5). One turn of the hunt can
+/// be longer than this (a walk, a selling round), so the hunt beats at every
+/// event it folds too (the crate review of 2026-10-01, BE-A-4).
 pub const BEHAVIOR_WATCHDOG: Duration = Duration::from_secs(30);
 
 /// When a behavior last turned its loop. Cloned into the watchdog.

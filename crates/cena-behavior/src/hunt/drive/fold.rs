@@ -6,9 +6,12 @@
 //! Moved down out of `drive.rs`, which had passed its cap (`plan/05` Rule 4.4:
 //! a split parent's growth goes into its submodules).
 
-use cena_session::{ChunkLine, CommandId, Event, Frame, GameState, Notice, NoticeKind, State};
+use std::time::Duration;
 
-use super::Driver;
+use cena_session::{ChunkLine, CommandId, Event, Frame, GameState, Notice, NoticeKind, State};
+use tokio::sync::broadcast::error::{RecvError, TryRecvError};
+
+use super::{BEAT, Driver, HuntEnd};
 use crate::error::BehaviorError;
 use crate::travel::TravelNotes;
 
@@ -29,7 +32,57 @@ impl Reading {
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+    /// Fold what has come, and take the state afresh if any was lost: a lag
+    /// seen here was caught up only at the next turn, and an errand decided
+    /// from a state with holes until then (the crate review of 2026-10-01,
+    /// BE-A-10).
+    pub(super) async fn drain(&mut self) -> Result<(), HuntEnd> {
+        loop {
+            match self.events.try_recv() {
+                Ok(event) => self.fold(&event).map_err(HuntEnd::Stopped)?,
+                Err(TryRecvError::Lagged(_)) => {}
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
+            }
+        }
+        self.caught_up().await.map_err(HuntEnd::Stopped)
+    }
+
+    /// Fold events for up to `for_`, or until stopped.
+    pub(super) async fn hold(&mut self, for_: Duration) -> Result<(), HuntEnd> {
+        let deadline = tokio::time::Instant::now() + for_;
+        loop {
+            let event = tokio::select! {
+                biased;
+                () = self.cancel.cancelled() => return Err(HuntEnd::Stopped(BehaviorError::Cancelled)),
+                event = self.events.recv() => event,
+                () = tokio::time::sleep_until(deadline) => return Ok(()),
+            };
+            match event {
+                Ok(event) => self.fold(&event).map_err(HuntEnd::Stopped)?,
+                Err(RecvError::Lagged(_)) => self.caught_up().await.map_err(HuntEnd::Stopped)?,
+                Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
+            }
+        }
+    }
+
+    /// Wait while the connection is away, before a send or a walk inside a
+    /// turn: an errand's next step waits for the session to be back rather
+    /// than run its steps against a connection that is not there. Waiting
+    /// out a reconnect is progress, so it beats.
+    pub(super) async fn back(&mut self) -> Result<(), HuntEnd> {
+        while self.down {
+            self.heartbeat.beat();
+            self.hold(BEAT).await?;
+        }
+        Ok(())
+    }
+
     pub(super) fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
+        // Every event folded is progress, inside a turn too: a walk, a
+        // selling round or a heal is one turn, and may run past the
+        // watchdog's limit (the crate review of 2026-10-01, BE-A-4).
+        self.heartbeat.beat();
         match event {
             Event::StateChanged(State::Reconnecting) => self.link_lost(),
             Event::StateChanged(State::Ready) if self.down => {
@@ -58,8 +111,6 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 if game {
                     self.transcript.push_str(&text.content);
                     self.said.text.push_str(&text.content);
-                    let now = self.state.game_time_now();
-                    self.machine.heard(&text.content, now);
                 }
                 // A run carries no line end of its own; without one the
                 // transcript was a single line, and a reply was read only
@@ -69,6 +120,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                         self.transcript.push('\n');
                         let said = std::mem::take(&mut self.said.text);
                         self.owed_heard(&said);
+                        // The whole line: a run ends at every link, so a
+                        // creature's name and its swing were never in one run
+                        // (the crate review of 2026-10-01, BE-A-1).
+                        let now = self.state.game_time_now();
+                        self.machine.heard(&said, now);
                     }
                     self.said.clear();
                 }

@@ -41,8 +41,10 @@
 //!
 //! Every await is raced against the stop token. A stopped hunt sends
 //! nothing more. The watchdog is the caller's ([`crate::watch`]): this loop
-//! beats the [`Heartbeat`] once a turn, and a turn that never comes round is
-//! what the watchdog preempts.
+//! beats the [`Heartbeat`] each turn, and at every event it folds, inside a
+//! turn too, since one turn may be a whole walk, selling round or heal
+//! (the crate review of 2026-10-01, BE-A-4). A hunt that neither turns nor
+//! hears anything is what the watchdog preempts.
 
 mod errands;
 mod fold;
@@ -61,7 +63,6 @@ use cena_map::{Map, Origin as Whence, RoomId};
 use cena_session::{
     AuthorityToken, CommandId, GameState, Notice, NoticeKind, SessionHandle, Snapshot, State,
 };
-use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
 use self::party::{Membership, Seen};
@@ -221,8 +222,9 @@ pub async fn hunt_in(
         down: false,
         membership: group.map(|(boards, place)| Membership::new(boards, place)),
         reports,
+        heartbeat,
     };
-    let end = driver.run(heartbeat).await;
+    let end = driver.run().await;
     driver.leave_party(end).await;
     let text = match end {
         HuntEnd::Finished(ending) => format!("Hunt: over: {ending}."),
@@ -280,17 +282,16 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     membership: Option<Membership>,
     /// Where it says what it is doing each turn (`hunt/report.rs`).
     reports: &'a Reports,
+    /// Beaten at each turn and each event folded (`drive/fold.rs`).
+    heartbeat: &'a Heartbeat,
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
-    async fn run(&mut self, heartbeat: &Heartbeat) -> HuntEnd {
+    async fn run(&mut self) -> HuntEnd {
         loop {
-            heartbeat.beat();
-            if let Err(gone) = self.drain() {
-                return HuntEnd::Stopped(gone);
-            }
-            if let Err(gone) = self.caught_up().await {
-                return HuntEnd::Stopped(gone);
+            self.heartbeat.beat();
+            if let Err(end) = self.drain().await {
+                return end;
             }
             if self.down {
                 if let Err(end) = self.hold(BEAT).await {
@@ -415,34 +416,5 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.last_room = here;
         }
         here
-    }
-
-    fn drain(&mut self) -> Result<(), BehaviorError> {
-        loop {
-            match self.events.try_recv() {
-                Ok(event) => self.fold(&event)?,
-                Err(TryRecvError::Lagged(_)) => {}
-                Err(TryRecvError::Empty) => return Ok(()),
-                Err(TryRecvError::Closed) => return Err(BehaviorError::Dead),
-            }
-        }
-    }
-
-    /// Fold events for up to `for_`, or until stopped.
-    async fn hold(&mut self, for_: Duration) -> Result<(), HuntEnd> {
-        let deadline = tokio::time::Instant::now() + for_;
-        loop {
-            let event = tokio::select! {
-                biased;
-                () = self.cancel.cancelled() => return Err(HuntEnd::Stopped(BehaviorError::Cancelled)),
-                event = self.events.recv() => event,
-                () = tokio::time::sleep_until(deadline) => return Ok(()),
-            };
-            match event {
-                Ok(event) => self.fold(&event).map_err(HuntEnd::Stopped)?,
-                Err(RecvError::Lagged(_)) => self.caught_up().await.map_err(HuntEnd::Stopped)?,
-                Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
-            }
-        }
     }
 }

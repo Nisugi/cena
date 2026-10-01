@@ -16,6 +16,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     /// Walk to `to` with travel's driver under this authority, folding this
     /// hunt's own stream meanwhile.
     pub(super) async fn walk(&mut self, to: RoomId) -> Result<(), HuntEnd> {
+        self.back().await?;
         let snapshot = Snapshot {
             session: self.session,
             state: self.state.clone(),
@@ -58,6 +59,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             let events = &mut self.events;
             let state = &mut self.state;
             let dropped = &mut dropped;
+            let heartbeat = self.heartbeat;
             loop {
                 let event = tokio::select! {
                     biased;
@@ -66,6 +68,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 };
                 match event {
                     Ok(event) => {
+                        // A walk is one turn of the hunt, and may be a long
+                        // one: each step heard is progress (BE-A-4).
+                        heartbeat.beat();
                         if matches!(event, Event::StateChanged(State::Reconnecting)) {
                             *dropped = true;
                         }
@@ -80,6 +85,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                             walk_cancel.cancel();
                         }
                     }
+                    // Marked `behind`, and caught up as the walk returns.
                     Err(RecvError::Lagged(_)) => {}
                     Err(RecvError::Closed) => return Err(HuntEnd::Stopped(BehaviorError::Dead)),
                 }
@@ -87,6 +93,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         };
         self.notes = notes;
         (self.wrote)(&self.notes);
+        // A lag in the walk is caught up before anything after it in this
+        // turn decides, an errand's next step included (BE-A-10).
+        self.caught_up().await.map_err(HuntEnd::Stopped)?;
         if let Some(room) = travelled.last_room {
             self.last_room = Some(room);
         }

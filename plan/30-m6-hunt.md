@@ -449,6 +449,11 @@ engine, so it is cut into sub-milestones that each finish with something the aut
    >   and a watcher beside it preempts it after `BEHAVIOR_WATCHDOG` (30 s) of silence.
    >   Preempt and the watchdog get their first real caller in M6b, the hunt's Stop; travel's
    >   stop stays cooperative because its take-back needs the authority.
+   >   **CORRECTED 2026-10-01** (crate review BE-A-4): the hunt beat once a turn, and one
+   >   turn can be a whole walk, selling round or heal, so a 31-second walk to rest was
+   >   preempted as wedged. The hunt now beats at every event it folds as well, a walk's
+   >   included, and while it waits out a reconnect; only a hunt that neither turns nor
+   >   hears anything for 30 s is preempted.
    > - Every piece has a test that a named mutation turns red.
 3. **Acting primitives.**
    - the stance setter and `in_casttime`;
