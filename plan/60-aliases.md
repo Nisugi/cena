@@ -178,6 +178,10 @@ on a branch).
 
 ## 6. For the author
 
+**ANSWERED 2026-09-30**, the same day: 1 *"keep it"*; 2 *"sure append"*; 3 *"we can
+try"*; 6 *"allow"*. Item 4 was asked again in plain words (a key bound to `zap kobold`
+expanding as typing does); item 5 waits on the author, taken as *later* until then.
+
 1. **Lich's `;e "\?"` quoting**: keep it (a line starting with Lich's symbol and an exec
    word, `"\?"` becoming a Ruby string literal), or drop it and let `\?` be plain text
    everywhere? Recommendation: keep; it is the help's first example.
