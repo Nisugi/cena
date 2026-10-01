@@ -14,10 +14,18 @@
 //! Lich's patterns match the raw XML -- `Your <a exist="..." noun="(?<noun>
 //! [^"]+)">` -- to recover the id and noun its parser had already read.
 //! Here each pattern matches the line's plain text and the id and noun come
-//! from the line's objects (`ledger/text.rs`): the weapon is the first
+//! from the line's objects (`ledger/text.rs`): an item is the first
 //! unbolded object, a creature the first bolded one (bold is the wire's
 //! mark for a creature). The weapon reaction's command is the `<d cmd=>`
 //! link's own. So nothing is re-parsed (`plan/12` §3a).
+//!
+//! **The weapon is the object right after `your`, or the line is not one.**
+//! Lich's weapon patterns carry the weapon's link in that place, which is
+//! the half of them a player's words cannot supply. The plain text alone
+//! matched `Bob says, "Your sword tears free from your hands and floats
+//! away."`, and the first unbolded object then was Bob (the crate review of
+//! 2026-10-01, MO-B-4). Spoken lines no longer reach here at all
+//! (`ChunkLine::is_spoken`); the anchor is Lich's, kept with it.
 //!
 //! # Queued, and drained by whoever acts
 //!
@@ -319,22 +327,24 @@ pub fn read(line: &ChunkLine) -> Option<Incident> {
     let p = patterns();
     let text = line.text();
     let t = text.as_str();
-    let disarmed = |how| Incident::Disarmed {
-        how,
-        weapon: item(line),
+    let disarmed = |how| {
+        weapon(line).map(|weapon| Incident::Disarmed {
+            how,
+            weapon: Some(weapon),
+        })
     };
     if p.knocked.is_match(t)
         || p.wrenched.is_match(t)
         || p.protrusion.is_match(t)
         || p.swing_protrusion.is_match(t)
     {
-        return Some(disarmed(Disarm::Knocked));
+        return disarmed(Disarm::Knocked);
     }
     if p.floats.is_match(t) {
-        return Some(disarmed(Disarm::Telekinetic));
+        return disarmed(Disarm::Telekinetic);
     }
     if p.webbing.is_match(t) {
-        return Some(disarmed(Disarm::Webbed));
+        return disarmed(Disarm::Webbed);
     }
     if p.sanctum.is_match(t) {
         // The last object on the line is what the weapon became.
@@ -383,6 +393,27 @@ pub fn read(line: &ChunkLine) -> Option<Incident> {
     bless_and_marks(line, t, p)
 }
 
+/// The weapon a weapon line names: the object whose link comes right after
+/// `your`, where Lich's patterns put `<a exist=... noun=...>`
+/// (`combat/defs/messages.rb:90-95`, `:133`). `None` when no object follows
+/// `your`: that line is not the game's, whatever its words (MO-B-4).
+fn weapon(line: &ChunkLine) -> Option<ItemRef> {
+    line.runs.runs.windows(2).find_map(|pair| {
+        if !pair[0].text.to_ascii_lowercase().ends_with("your ") {
+            return None;
+        }
+        let object = pair[1].object()?;
+        let LinkKind::Exist { id, noun } = &object.kind else {
+            return None;
+        };
+        Some(ItemRef {
+            id: id.clone(),
+            noun: noun.clone(),
+            text: object.text.clone(),
+        })
+    })
+}
+
 /// The `bless`, `archery`, `marks` and `reaction` families.
 fn bless_and_marks(line: &ChunkLine, t: &str, p: &Patterns) -> Option<Incident> {
     if p.shrugs.is_match(t) {
@@ -392,7 +423,7 @@ fn bless_and_marks(line: &ChunkLine, t: &str, p: &Patterns) -> Option<Incident> 
         return Some(Incident::ArcaneReflex(false));
     }
     if p.normal.is_match(t) {
-        return Some(Incident::BlessExpired(item(line)));
+        return weapon(line).map(|weapon| Incident::BlessExpired(Some(weapon)));
     }
     if let Some(caps) = p.sticks.captures(t) {
         return Some(Incident::ArrowStuck {

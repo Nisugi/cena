@@ -86,6 +86,43 @@ fn a_weapon_knocked_away_names_the_weapon() {
     ));
 }
 
+/// Lich's weapon lines need the weapon's own link right after `Your`
+/// (`combat/defs/messages.rb:94`, `:133`), and so do these (MO-B-4): words
+/// with no weapon there disarm nothing, and the object elsewhere on the line
+/// (a speaker, a creature's prize) is never taken for the weapon.
+#[test]
+fn a_weapon_line_needs_the_weapon_after_your() {
+    for parts in [
+        vec![Part::Text(
+            "Your sword tears free from your hands and floats away.",
+        )],
+        vec![
+            Part::Item("-5", "Bob", "Bob"),
+            Part::Text(" mutters, Your sword tears free from your hands and floats away."),
+        ],
+        vec![
+            Part::Text("The webbing entangles your sword, rendering it useless, says "),
+            Part::Item("-5", "Bob", "Bob"),
+        ],
+        vec![
+            Part::Item("-5", "Bob", "Bob"),
+            Part::Text(": Your blade returns to normal."),
+        ],
+    ] {
+        let got = read(&line(&parts));
+        assert_eq!(got, None, "{parts:?}", parts = parts.len());
+    }
+    let got = read(&line(&[
+        Part::Text("Your "),
+        Part::Item("123", "sword", "vultite sword"),
+        Part::Text(" tears free from your hands and floats away!"),
+    ]));
+    assert!(
+        matches!(&got, Some(Incident::Disarmed { how: Disarm::Telekinetic, weapon: Some(w) }) if w.noun == "sword"),
+        "{got:?}"
+    );
+}
+
 #[test]
 fn hazards_holds_and_charges() {
     for (text, want) in [
