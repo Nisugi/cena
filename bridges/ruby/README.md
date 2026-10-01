@@ -25,7 +25,7 @@ player's Ruby, one runner per character. Lich's engine needs Ruby 4.0.
 | `gemstone.rb` | `Lich::Util` and its commands, those that read the game's markup saying so; and the game's own classes, loaded once `XMLData` is made as Lich's game loader loads them: `Stats`, `Skills`, `Spells`, `Society`, `Experience`, `Resources`, `Currency`, the PSMs, `Effects`, `Wounds`, `Scars`, `Injured`, over `infomon.rb`; and Lich's `CharacterStatus` from `games.rb`, which the runner does not load |
 | `builtins.rb` | Lich scripts Hydra has built in (`go2`), started by name as Lich's are, as an exec script named after them that waits on Hydra's run |
 | `hooks.rb` | a script's display and input hooks, kept by Lich's own registries, told to Hydra as they come and go, and asked about each line the player is shown or types |
-| `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script and then to the display hooks, the player's commands to Lich's command table or `Script.start`, the player's typing to the input hooks |
+| `listener.rb` | `listen` in a loop: the copy's changes, game lines to every script and then to the display hooks, the player's commands to Lich's command table or `Script.start`, the player's typing to the input hooks; ten unanswered in a row and Hydra is taken to be gone, and the runner ends |
 
 ## `lich/`: Lich's engine, unchanged
 

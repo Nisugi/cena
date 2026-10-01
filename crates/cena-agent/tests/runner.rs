@@ -694,3 +694,47 @@ async fn a_scripts_window_opens_when_gtk_is_there() {
     running.end().await;
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A runner whose Hydra is gone -- crashed, killed, or listening on another
+/// port since it restarted -- ends, rather than asking once a second for
+/// ever with its scripts running and every line they send lost.
+#[tokio::test(flavor = "current_thread")]
+async fn a_runner_with_no_hydra_ends() {
+    use cena_agent::scripts::runner::{Start, start, unpack};
+    let ruby = find_ruby().expect("no Ruby: the runner needs Ruby 4.0");
+    let dir = temp_dir("orphan");
+    let (runner, data, scripts) = (dir.join("runner"), dir.join("data"), dir.join("scripts"));
+    unpack(&runner).unwrap();
+    for folder in [&data, &scripts] {
+        std::fs::create_dir_all(folder).unwrap();
+    }
+    // A port nothing listens on: every call is refused.
+    let gone = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let url = format!("http://{}/mcp", gone.local_addr().unwrap());
+    drop(gone);
+    let mut child = start(&Start {
+        ruby: &ruby,
+        dir: &runner,
+        url: &url,
+        token: "nobody",
+        character: "Nisugi",
+        game: "GS3",
+        scripts: &scripts,
+        data: &data,
+        symbol: ';',
+        windows: false,
+    })
+    .unwrap();
+    let mut stderr = child.stderr.take().unwrap();
+    let said = tokio::spawn(async move {
+        let mut said = String::new();
+        let _ = tokio::io::AsyncReadExt::read_to_string(&mut stderr, &mut said).await;
+        said
+    });
+    let ended = tokio::time::timeout(Duration::from_mins(1), child.wait()).await;
+    let _ = child.kill().await;
+    let said = said.await.unwrap_or_default();
+    assert!(ended.is_ok(), "the runner went on asking: {said}");
+    assert!(said.contains("Hydra is gone"), "{said}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

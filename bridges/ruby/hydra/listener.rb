@@ -18,22 +18,36 @@ module Hydra
     # How long to wait before asking again after Hydra did not answer.
     RETRY = 1
 
+    # How many `listen`s in a row Hydra may leave unanswered before the
+    # runner takes it that Hydra is gone -- crashed, killed, or listening on
+    # another port since it restarted, which this runner never learns -- and
+    # ends, its scripts with it. A token Hydra no longer holds is refused
+    # every time, and ends it the same way.
+    GIVE_UP = 10
+
     def initialize(connection, copy)
       @connection = connection
       @copy = copy
       @since = 0
     end
 
-    # Listen until Hydra says nothing more will come.
+    # Listen until Hydra says nothing more will come, or is gone.
     def run
+      unanswered = 0
       loop do
         heard = begin
           @connection.call('listen', { since: @since, timeout_ms: WAIT_MS }, wait: (WAIT_MS / 1000) + 10)
         rescue Unanswered => e
           $stderr.puts "[hydra] listen: #{e.message}"
+          unanswered += 1
+          if unanswered >= GIVE_UP
+            $stderr.puts "[hydra] Hydra is gone: #{GIVE_UP} listens in a row unanswered. The runner ends."
+            return
+          end
           sleep RETRY
           next
         end
+        unanswered = 0
         heard['events'].each { |event| handle(event) }
         Hooks.answer_shown
         @since = heard['next']
