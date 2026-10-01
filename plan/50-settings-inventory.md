@@ -63,7 +63,8 @@ database, the certificate pin, and the logs.
 - `--character <Name>` (repeatable), `--headless`, `--web`
 - `--web-login` (`cena/src/connector.rs:223`)
 - `--hunt-setup` and `--pages-attend` (both only with `--web`)
-- `--first <cmd>` (`cena/src/travel.rs:59`)
+- ~~`--first <cmd>`~~ removed 2026-10-01: a test argument from the first live run, sent again on every
+  start from the hub (`plan/crate-review-2026-10-01.md`, BI-A-1)
 - `--record` / `--no-record`
 
 There is no argument parser: each reader scans for its own word, so a mistyped flag is

@@ -1,31 +1,15 @@
 //! The terminal's view of one session: Hydra's own lines, each tagged with
-//! its character, and the one manual send the binary makes itself.
+//! its character.
 //!
 //! It was `run.rs`, which also held M1's walkthroughs and measurement probes
 //! (`--demo`, `--capture`, `--psm`, `--typeahead`). Those were retired at M6
 //! (author, 2026-09-24: *"get rid of any test behaviors"*, and of the probes,
-//! *"delete them"*); git keeps them.
+//! *"delete them"*); git keeps them. The last of that era, `--first <cmd>`,
+//! went the same way on 2026-10-01 (author: *"it was part of a test from a
+//! long time ago"*).
 
-use cena_session::{CommandId, Event, Origin, SessionHandle};
-use std::time::Duration;
+use cena_session::Event;
 use tokio::sync::broadcast;
-
-/// Send one manual command and await its round trip.
-///
-/// Wrapped in a function so the `Origin::Manual` is stated once: the whole
-/// point of §4 is that a typed command and a behavior's command differ in
-/// their *origin*, not in their path.
-pub(crate) async fn send_manual(handle: &SessionHandle, line: &str) -> cena_session::Outcome {
-    handle
-        .send_and_await(
-            CommandId(9000),
-            line,
-            Origin::Manual,
-            Duration::from_secs(30),
-            cena_session::queue::any_frame,
-        )
-        .await
-}
 
 /// Print what crosses the wire, both directions, in order.
 ///

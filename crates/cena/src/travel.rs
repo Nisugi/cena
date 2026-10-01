@@ -46,29 +46,8 @@ use cena_session::{Notice, NoticeKind, SessionHandle, SessionObserver};
 /// ```
 pub(crate) const MAP_ENV: &str = "CENA_MAP";
 
-/// `--first south`: a command to send, as the player, before anything else --
-/// so one run can be "log in, move south, then walk to the bank" (author,
-/// 2026-09-21). The first one wins.
-pub(crate) fn first_command<I, S>(args: I) -> Option<String>
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<str>,
-{
-    let mut args = args.into_iter();
-    while let Some(arg) = args.next() {
-        let arg = arg.as_ref();
-        if arg == "--first" {
-            return args.next().map(|command| command.as_ref().to_owned());
-        }
-        if let Some(command) = arg.strip_prefix("--first=") {
-            return Some(command.to_owned());
-        }
-    }
-    None
-}
-
-/// What `main` does once the session is up: send `--first`, then put travel
-/// on the command line so `;go2` works.
+/// What `main` does once the session is up: put travel on the command line
+/// so `.go2` works.
 ///
 /// Here and not in `main` because `main` is at clippy's line limit, and the
 /// rule is to move code down.
@@ -79,11 +58,6 @@ pub(crate) async fn after_login(
     map: &crate::map_context::ConfiguredMap,
     party: &crate::hunt::Party,
 ) {
-    if let Some(first) = first_command(std::env::args().skip(1)) {
-        eprintln!("[travel] first: {first}");
-        let outcome = crate::watch::send_manual(handle, &first).await;
-        eprintln!("[travel] first: {outcome:?}");
-    }
     match observer.subscribe().await {
         Ok((snapshot, _)) => open_travel(handle, observer, &snapshot.state, commands, map, party),
         Err(e) => eprintln!("[travel] could not read the session to open travel: {e:?}"),
@@ -278,25 +252,5 @@ fn load_map(
             handle.say(Notice::line(NoticeKind::Error, format!("Travel: {error}")));
             None
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn the_first_command_is_read_from_the_arguments() {
-        assert_eq!(
-            first_command(["--first", "south", "--web"]),
-            Some("south".to_owned())
-        );
-        assert_eq!(
-            first_command(["--first=go gate"]),
-            Some("go gate".to_owned())
-        );
-        assert_eq!(first_command(["--web"]), None);
-        // A flag with nothing after it is not a command.
-        assert_eq!(first_command(["--first"]), None);
     }
 }
