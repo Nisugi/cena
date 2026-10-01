@@ -35,19 +35,18 @@ const SILENCED: &str = "A pall of silence settles over you.";
 const REACTION: &str = "You could use this opportunity to <d cmd='WEAPON TACKLE #77'>tackle</d>!";
 const IDLE: &str = "YOU HAVE BEEN IDLE TOO LONG. PLEASE RESPOND.";
 
-/// One wire line, through the parser, as the chunk holds it.
+/// One wire line, through the parser, as the main window keeps it.
+///
+/// The window's line and not the chunk's: a line a person said is kept out
+/// of the chunk (`ChunkLine::is_spoken`), and the triggers read every line.
 fn chunk_line(wire: &str) -> ChunkLine {
     let mut parser = Parser::new();
     let mut state = GameState::default();
     for frame in parser.push_bytes(format!("{wire}\n").as_bytes()) {
         state.apply(&frame);
     }
-    state
-        .open_chunk()
-        .lines()
-        .first()
-        .cloned()
-        .unwrap_or_default()
+    let runs = state.stream("").first().cloned().unwrap_or_default();
+    ChunkLine { runs }
 }
 
 /// The same line as the session publishes it, on the main stream.

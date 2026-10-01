@@ -128,26 +128,59 @@ impl ChunkLine {
         self.runs.objects()
     }
 
-    /// Whether someone SAID this line: it carries a `speech` or `whisper`
-    /// preset (`message.rs`).
+    /// Whether a person SAID this line: it opens inside a `speech` or
+    /// `whisper` preset (`message.rs`), so it is never the game's answer.
     ///
     /// For the classifiers whose Lich patterns are unanchored prose. Lich
     /// cannot ask this -- it sees a string -- so `Bob says, "Something stirs
     /// in the shadows."` trips its `HIDING` union. The preset is the markup
     /// saying who is talking, and it is already typed here.
+    ///
+    /// **Opens with, not carries.** A player's line, and the character's own,
+    /// begins inside the preset, the speaker with it: `<preset
+    /// id='speech'><a ...>Pukk</a> says</preset>`, `<preset id='speech'>You
+    /// say</preset>`, `<preset id='speech'>Speaking to <a>Pukk</a>, ...`. An
+    /// NPC answering a question stands BEFORE the preset, bolded, and the
+    /// preset holds only the verb: `The <pushBold/><a ...>meddler</a><popBold/>
+    /// <preset id="speech">replies</preset>, "Here you are," ...` (MEASURED:
+    /// every line of `E:\Gemstone\dev\lich-5\logs` where text precedes the
+    /// preset, ten, is the meddler's or `She`'s). That reply is the game's
+    /// answer to `ask`, and a reader must keep it. A player cannot write
+    /// before their own name, so the opening is the part speech cannot forge.
+    ///
+    /// **Not in the chunk.** A spoken line is kept out of the prompt-bounded
+    /// chunk every automation reader takes (`streams.rs`, `route_text`), so
+    /// no reader has to ask this again (the crate review of 2026-10-01,
+    /// pattern 2).
     #[must_use]
     pub fn is_spoken(&self) -> bool {
-        self.runs.runs.iter().any(|run| {
-            run.style
-                .preset
-                .as_deref()
-                .and_then(super::message::Channel::parse)
-                .is_some()
-        })
+        self.runs
+            .runs
+            .iter()
+            .find(|run| !run.text.trim().is_empty())
+            .is_some_and(|run| Self::is_speech(&run.style))
+    }
+
+    /// Whether a run in this style is inside a `speech` or `whisper` preset.
+    ///
+    /// The run-level half of [`Self::is_spoken`], for a reader that sees a
+    /// line one frame at a time (the hunt's transcript): a line is spoken
+    /// when its first run with text is.
+    #[must_use]
+    pub fn is_speech(style: &Style) -> bool {
+        style
+            .preset
+            .as_deref()
+            .and_then(super::message::Channel::parse)
+            .is_some()
     }
 }
 
 /// Lines accumulated since the last prompt.
+///
+/// **The game's lines, not a person's.** A main-window line someone said
+/// ([`ChunkLine::is_spoken`]) is shown and logged but never pushed here, so
+/// no reader of a chunk takes speech for the game's answer.
 ///
 /// **Bounded.** Lich caps its buffer at 200 lines and drops the oldest on
 /// overflow (`combat/tracker.rb` `DEFAULT_SETTINGS[:buffer_size]`, and the
@@ -385,11 +418,9 @@ impl super::GameState {
         if let Some(event) = super::containers::classify_text(line, text) {
             self.containers.apply(&event);
         }
-        // Speech and whispers, which the markup already types -- the preset
-        // names the channel and the link names the speaker.
-        if let Some(message) = super::message::classify(line) {
-            self.messages.push(message);
-        }
+        // Speech and whispers are read as they arrive (`streams.rs`), and a
+        // line a person said is not in the chunk at all.
+        //
         // A creature coming out of hiding. A reveal puts it back on the
         // roster, which is what makes it targetable -- `GameObj.new_npc` plus
         // the target-id unshift in `overwatch.rb:111-120`.

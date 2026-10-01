@@ -180,75 +180,102 @@ impl GameState {
                 // rebuilt per classifier, the `remove(0)` shift) were not
                 // inherent and are gone.
                 let chunk_line = super::chunks::ChunkLine { runs: line.clone() };
-                // **Hiding is read HERE, not when the chunk closes**, because
-                // it records the room and the room can change first. A `<nav>`
-                // arrives on its own frame while the chunk stays open until
-                // the prompt, so a creature that hides and is then walked away
-                // from would be recorded in the room we walked TO -- found by
-                // a test that expected the departure room and got the arrival
-                // one.
-                //
-                // Every other classifier is happy at close_chunk, because none
-                // of them reads state that a later frame in the same chunk can
-                // move.
-                //
-                // **And a reveal clears it, here too.** Lich's
-                // `push_revealed_targets` resets `@@hidden_targets = nil` first
-                // (`overwatch.rb:84`), whatever else it does. The reveal was
-                // handled only at `close_chunk`, and only to register the
-                // creature, so a room stayed "has hiders" after the thing
-                // hiding in it had come out (review). It is cleared at
-                // ARRIVAL, not at the prompt, for the reason hiding is: in wire
-                // order, a reveal then a fresh hide must leave a hider, and
-                // the prompt would see both at once and could not tell.
-                let rendered = chunk_line.text();
-                match super::overwatch::classify_text(&chunk_line, &rendered) {
-                    Some(super::overwatch::Sighting::Hid) => {
-                        let room = self.room.id.clone();
-                        self.overwatch.hid_in(room);
-                    }
-                    Some(super::overwatch::Sighting::Revealed { .. }) => self.overwatch.clear(),
-                    None => {}
+                // Speech and whispers, which the markup already types -- the
+                // preset names the channel and the link names the speaker.
+                if let Some(message) = super::message::classify(&chunk_line) {
+                    self.messages.push(message);
                 }
-                // **Group lines are read here too, for the same reason:
-                // order.** `<indicator id='IconJOINED' visible='n'/>` empties
-                // the group the moment its frame arrives (`group.rb:603-605`),
-                // and a join line read later, at the prompt, would undo that
-                // though the wire sent it FIRST. Found by the test for the
-                // indicator, which failed exactly so.
-                // With the character's own id, so a link that is you reads as
-                // you (`Group::apply`).
-                if let Some(event) = super::group::classify_text(&chunk_line, &rendered) {
-                    let me = self.character.exist_id();
-                    self.group.apply(&event, me.as_deref());
+                // **A line a person said is not the game's, so it is not in
+                // the chunk** (the crate review of 2026-10-01, pattern 2).
+                // Every reader that drives automation takes its lines from the
+                // chunk -- the bounty, incidents, the loot ledger, a
+                // creature's ending, travel's and `;foreach`'s answers -- and
+                // their patterns are Lich's, unanchored prose that `Bob says,
+                // "Your sword tears free from your hands..."` matches. One
+                // rule here rather than a test in each of them
+                // (`ChunkLine::is_spoken` says what counts as said).
+                if !chunk_line.is_spoken() {
+                    self.read_arrival(chunk_line);
                 }
-                // A kill with no corpse, a portal, a boss's phase: here for
-                // order, so a later `room objs` still outranks it (`prose.rs`).
-                self.creatures.read_prose(&chunk_line, &rendered);
-                self.chunk.push_line(chunk_line);
             }
             if text.stream == super::known_spells::STREAM {
                 self.known_spells.read_line(&line);
             }
             self.list_line(&text.stream, &line);
-            let buffer = self.streams.entry(text.stream.clone()).or_default();
-            // **Bounded.** Found by review: every completed line was retained
-            // forever, including ordinary main-window output, and nothing ever
-            // dropped one -- `clearStream` empties a NAMED stream on the
-            // game's say-so, and the prompt closes the analysis chunk without
-            // touching this. A probe measured 2,000 lines retained from 2,000,
-            // so a session left running accumulates text, styles and links
-            // without limit.
-            //
-            // Oldest dropped first, which is the same rule and the same
-            // reasoning as `chunks.rs`'s cap: the recent lines are the ones a
-            // reader or a renderer wants, and a scrollback that forgets its
-            // beginning is a scrollback rather than a leak.
-            if buffer.push(line, MAX_STREAM_LINES) {
-                self.tally.dropped = self.tally.dropped.saturating_add(1);
-            }
-            self.tally.seen = self.tally.seen.saturating_add(1);
+            self.keep_line(&text.stream, line);
         }
+    }
+
+    /// A main-window line the game said, as it arrives: the readers that
+    /// must keep wire order, then the chunk.
+    fn read_arrival(&mut self, chunk_line: super::chunks::ChunkLine) {
+        // **Hiding is read HERE, not when the chunk closes**, because
+        // it records the room and the room can change first. A `<nav>`
+        // arrives on its own frame while the chunk stays open until
+        // the prompt, so a creature that hides and is then walked away
+        // from would be recorded in the room we walked TO -- found by
+        // a test that expected the departure room and got the arrival
+        // one.
+        //
+        // Every other classifier is happy at close_chunk, because none
+        // of them reads state that a later frame in the same chunk can
+        // move.
+        //
+        // **And a reveal clears it, here too.** Lich's
+        // `push_revealed_targets` resets `@@hidden_targets = nil` first
+        // (`overwatch.rb:84`), whatever else it does. The reveal was
+        // handled only at `close_chunk`, and only to register the
+        // creature, so a room stayed "has hiders" after the thing
+        // hiding in it had come out (review). It is cleared at
+        // ARRIVAL, not at the prompt, for the reason hiding is: in wire
+        // order, a reveal then a fresh hide must leave a hider, and
+        // the prompt would see both at once and could not tell.
+        let rendered = chunk_line.text();
+        match super::overwatch::classify_text(&chunk_line, &rendered) {
+            Some(super::overwatch::Sighting::Hid) => {
+                let room = self.room.id.clone();
+                self.overwatch.hid_in(room);
+            }
+            Some(super::overwatch::Sighting::Revealed { .. }) => self.overwatch.clear(),
+            None => {}
+        }
+        // **Group lines are read here too, for the same reason:
+        // order.** `<indicator id='IconJOINED' visible='n'/>` empties
+        // the group the moment its frame arrives (`group.rb:603-605`),
+        // and a join line read later, at the prompt, would undo that
+        // though the wire sent it FIRST. Found by the test for the
+        // indicator, which failed exactly so.
+        // With the character's own id, so a link that is you reads as
+        // you (`Group::apply`).
+        if let Some(event) = super::group::classify_text(&chunk_line, &rendered) {
+            let me = self.character.exist_id();
+            self.group.apply(&event, me.as_deref());
+        }
+        // A kill with no corpse, a portal, a boss's phase: here for
+        // order, so a later `room objs` still outranks it (`prose.rs`).
+        self.creatures.read_prose(&chunk_line, &rendered);
+        self.chunk.push_line(chunk_line);
+    }
+
+    /// Keep a completed line in its stream's scrollback.
+    fn keep_line(&mut self, stream: &str, line: Runs) {
+        let buffer = self.streams.entry(stream.to_owned()).or_default();
+        // **Bounded.** Found by review: every completed line was retained
+        // forever, including ordinary main-window output, and nothing ever
+        // dropped one -- `clearStream` empties a NAMED stream on the
+        // game's say-so, and the prompt closes the analysis chunk without
+        // touching this. A probe measured 2,000 lines retained from 2,000,
+        // so a session left running accumulates text, styles and links
+        // without limit.
+        //
+        // Oldest dropped first, which is the same rule and the same
+        // reasoning as `chunks.rs`'s cap: the recent lines are the ones a
+        // reader or a renderer wants, and a scrollback that forgets its
+        // beginning is a scrollback rather than a leak.
+        if buffer.push(line, MAX_STREAM_LINES) {
+            self.tally.dropped = self.tally.dropped.saturating_add(1);
+        }
+        self.tally.seen = self.tally.seen.saturating_add(1);
     }
 
     /// `<clearStream id=>`: drop one stream's buffer.
