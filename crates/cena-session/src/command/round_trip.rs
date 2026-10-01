@@ -6,17 +6,19 @@
 //! transport -- the handle, the envelope, the inbox -- stays there; this is
 //! the one path a command takes through it and back.
 
+use super::answer::Answers;
 use super::handle::{Envelope, Inbox, SessionHandle};
 use super::verdict::{CommandId, Gate, Origin, Outcome, Refusal};
 use crate::lifecycle::Generation;
 use tokio::sync::oneshot;
 
-/// How a round trip goes out, beyond what it says: quietly, and past which
-/// gate.
+/// How a round trip goes out, beyond what it says: quietly, past which gate,
+/// and answered by what.
 #[derive(Clone, Copy)]
 struct How {
     quiet: bool,
     gate: Gate,
+    answers: Option<Answers>,
 }
 
 /// Where a line on the manual path came from.
@@ -37,6 +39,7 @@ impl Default for How {
         Self {
             quiet: false,
             gate: Gate::None,
+            answers: None,
         }
     }
 }
@@ -92,7 +95,44 @@ impl SessionHandle {
             origin,
             deadline,
             matcher,
-            How { quiet: false, gate },
+            How {
+                gate,
+                ..How::default()
+            },
+        )
+        .await
+    }
+
+    /// [`Self::send_gated`], **ended by the line's own answer**: the window
+    /// stays open past prompts the game sent for something else, until one
+    /// of its own lines `answers` the line or refuses it, and closes at the
+    /// prompt after that as [`Outcome::Answered`] (`super::answer`). Nothing
+    /// heard within [`WAIT`](super::answer::WAIT) is [`Outcome::Timeout`],
+    /// and the line is owed its answer: a late one is not taken as the next
+    /// line's.
+    ///
+    /// For a line whose answer has a shape; a line whose answer has none
+    /// goes by [`Self::send_gated`], ended by the first prompt.
+    pub async fn send_answered(
+        &self,
+        id: CommandId,
+        line: &str,
+        origin: Origin,
+        deadline: std::time::Duration,
+        answers: Answers,
+        gate: Gate,
+    ) -> Outcome {
+        self.round_trip(
+            id,
+            line,
+            origin,
+            deadline,
+            crate::queue::any_frame,
+            How {
+                gate,
+                answers: Some(answers),
+                ..How::default()
+            },
         )
         .await
     }
@@ -123,7 +163,7 @@ impl SessionHandle {
             matcher,
             How {
                 quiet: true,
-                gate: Gate::None,
+                ..How::default()
             },
         )
         .await
@@ -136,7 +176,11 @@ impl SessionHandle {
         origin: Origin,
         deadline: std::time::Duration,
         matcher: crate::queue::Matcher,
-        How { quiet, gate }: How,
+        How {
+            quiet,
+            gate,
+            answers,
+        }: How,
     ) -> Outcome {
         if origin == Origin::Manual {
             self.attendance.mark();
@@ -149,6 +193,7 @@ impl SessionHandle {
             reply,
             generation: self.generation.get(),
             matcher,
+            answers,
             quiet,
             gate,
             revocable: None,
@@ -180,6 +225,7 @@ impl SessionHandle {
             // prompt answers it; the prompt alone closes the window
             // unanswered (`queue.rs`, `close_window`).
             matcher: crate::queue::any_frame,
+            answers: None,
             quiet: false,
             gate: Gate::None,
             revocable: Some(revocable),
@@ -360,6 +406,7 @@ impl SessionHandle {
             reply,
             generation,
             matcher: crate::queue::any_frame,
+            answers: None,
             quiet: false,
             gate: Gate::None,
             revocable: None,

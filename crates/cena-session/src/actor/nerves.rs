@@ -43,6 +43,7 @@ impl<S: ByteSource> SessionActor<S> {
             generation: self.generation,
             // The report ends at its prompt, like any report.
             matcher: crate::queue::any_frame,
+            answers: None,
             quiet: false,
             gate: Gate::None,
             revocable: None,

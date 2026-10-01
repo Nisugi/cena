@@ -40,10 +40,12 @@
 //! `Outcome::Timeout` means "no match within the window", never "the command
 //! did not happen" (§4.4).
 
+use crate::command::answer::{self, Answers};
 use crate::command::{CommandId, Envelope, Origin, Outcome};
 use crate::lifecycle::Generation;
 use std::collections::VecDeque;
 use tokio::sync::oneshot;
+use tokio::time::Instant;
 
 /// The single token that says who may run a *sequence*.
 ///
@@ -73,6 +75,23 @@ pub struct InFlight {
     /// frame until the prompt, so last-wins returned whatever happened to
     /// arrive nearest the terminator.
     pub matched: Option<Box<cena_protocol::Frame>>,
+    /// What answers the line, when the caller named it
+    /// ([`crate::command::answer`]): the window then closes at the prompt
+    /// after its answer, not at the first prompt. `None`: the first prompt
+    /// closes it, and `matcher` picks the frame.
+    pub answers: Option<Answers>,
+    /// The game's line that answered it, once one has.
+    pub answer: Option<String>,
+    /// When it goes unanswered: [`answer::WAIT`] after it was written.
+    pub until: Instant,
+}
+
+/// A line whose window closed before its answer came, still owed it
+/// ([`answer::OWED_FOR`]).
+#[derive(Debug)]
+struct Owed {
+    answers: Answers,
+    until: Instant,
 }
 
 /// A predicate deciding whether a frame answers a command.
@@ -115,7 +134,13 @@ pub struct CommandQueue {
     /// Commands dropped because their caller stopped waiting. See
     /// [`Self::abandoned`].
     abandoned: u64,
+    /// Lines whose windows closed unanswered, oldest first: the next line
+    /// that answers the oldest is its, not the open window's.
+    owed: VecDeque<Owed>,
 }
+
+/// The most lines owed an answer at once; the oldest goes first.
+const MOST_OWED: usize = 4;
 
 impl CommandQueue {
     /// An empty queue with no authority granted.
@@ -222,7 +247,12 @@ impl CommandQueue {
             .as_ref()
             .is_some_and(|flight| flight.reply.is_closed())
         {
-            self.in_flight = None;
+            // Its answer may still come, and is not the next line's.
+            if let Some(flight) = self.in_flight.take()
+                && let (Some(answers), None) = (flight.answers, flight.answer)
+            {
+                self.owe(answers);
+            }
             self.abandoned += 1;
         }
         if self.in_flight.is_some() {
@@ -281,13 +311,15 @@ impl CommandQueue {
         self.abandoned
     }
 
-    /// Open a window for a command whose bytes have just gone out.
+    /// Open a window for a command whose bytes have just gone out; `answers`
+    /// is what answers it, if the caller named that ([`InFlight::answers`]).
     pub fn open_window(
         &mut self,
         id: CommandId,
         generation: Generation,
         reply: oneshot::Sender<Outcome>,
         matcher: Matcher,
+        answers: Option<Answers>,
     ) {
         self.in_flight = Some(InFlight {
             id,
@@ -295,6 +327,66 @@ impl CommandQueue {
             reply,
             matcher,
             matched: None,
+            answers,
+            answer: None,
+            until: Instant::now() + answer::WAIT,
+        });
+    }
+
+    /// One of the game's own lines in the main window, finished, its markup
+    /// removed (never a line a person said): the answer to the oldest line
+    /// still owed one if it settles it, else the open window's if it answers
+    /// that. First answer wins.
+    pub fn hear(&mut self, line: &str) {
+        let now = Instant::now();
+        while self.owed.front().is_some_and(|owed| owed.until <= now) {
+            self.owed.pop_front();
+        }
+        if self
+            .owed
+            .front()
+            .is_some_and(|owed| answer::answered_by(owed.answers, line))
+        {
+            self.owed.pop_front();
+            return;
+        }
+        if let Some(flight) = self.in_flight.as_mut()
+            && flight.answer.is_none()
+            && flight
+                .answers
+                .is_some_and(|answers| answer::answered_by(answers, line))
+        {
+            flight.answer = Some(line.trim().to_owned());
+        }
+    }
+
+    /// When the open window goes unanswered, if it waits for an answer.
+    #[must_use]
+    pub fn window_deadline(&self) -> Option<Instant> {
+        self.in_flight
+            .as_ref()
+            .filter(|flight| flight.answers.is_some())
+            .map(|flight| flight.until)
+    }
+
+    /// The open window's [`answer::WAIT`] has passed: it closes with what it
+    /// heard, or unanswered and owed its answer.
+    pub fn expire_window(&mut self) {
+        if self
+            .window_deadline()
+            .is_some_and(|until| until <= Instant::now())
+        {
+            self.resolve();
+        }
+    }
+
+    fn owe(&mut self, answers: Answers) {
+        if self.owed.len() == MOST_OWED {
+            self.owed.pop_front();
+        }
+        self.owed.push_back(Owed {
+            answers,
+            until: Instant::now() + answer::OWED_FOR,
         });
     }
 
@@ -325,13 +417,34 @@ impl CommandQueue {
     /// A window with a matched frame resolves [`Outcome::Confirmed`]; one with
     /// none resolves [`Outcome::Timeout`], which §4.4 defines as "no match
     /// within the window" and explicitly **not** "the command did not happen".
+    ///
+    /// **A window waiting for its answer stays open** past a prompt that came
+    /// before it (`crate::command::answer`): the prompt after the answer is
+    /// the one that closes it, as [`Outcome::Answered`].
     pub fn close_window(&mut self) {
+        if self
+            .in_flight
+            .as_ref()
+            .is_some_and(|flight| flight.answers.is_some() && flight.answer.is_none())
+        {
+            return;
+        }
+        self.resolve();
+    }
+
+    /// Close the open window and answer its waiter with what it got.
+    fn resolve(&mut self) {
         let Some(flight) = self.in_flight.take() else {
             return;
         };
-        let outcome = match flight.matched {
-            Some(frame) => Outcome::Confirmed(frame),
-            None => Outcome::Timeout,
+        let outcome = match (flight.answers, flight.answer, flight.matched) {
+            (Some(_), Some(line), _) => Outcome::Answered(line),
+            (Some(answers), None, _) => {
+                self.owe(answers);
+                Outcome::Timeout
+            }
+            (None, _, Some(frame)) => Outcome::Confirmed(frame),
+            (None, _, None) => Outcome::Timeout,
         };
         // A dropped receiver means the caller stopped waiting -- e.g. its own
         // `send_and_await` deadline fired first. That is not an error here:
@@ -367,6 +480,8 @@ impl CommandQueue {
     /// `shutdown`, before the actor returns, rather than whenever the actor's
     /// memory happens to be released. That is what criterion 6 is about.
     pub fn answer_all_waiters(&mut self, outcome: &Outcome) {
+        // Nothing owed an answer gets one from a connection that is gone.
+        self.owed.clear();
         if let Some(flight) = self.in_flight.take() {
             let _ = flight.reply.send(outcome.clone());
         }

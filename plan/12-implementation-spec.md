@@ -356,6 +356,21 @@ commands** — it releases resources only. Otherwise "stop" becomes "send more".
 downstream buffer — then sends, then reads. Everything arriving after the send and before the
 terminator is attributed to that command. There is no identity, only ordering.
 
+> **AMENDED 2026-10-01 (the crate review; the author's choice, "answer by content, in the
+> session").** The game sends a prompt after *everything* it says, asked for or not (the
+> author: *"A prompt is it's way of saying 'over'"*), so the next prompt after a line is
+> often a creature's, not the reply's. The author's hunt of 2026-09-30 sent `fire` three
+> times in 170 ms because a golem leaving drew the prompt that closed each window.
+>
+> So a line may **name what answers it** (`SessionHandle::send_answered`, an
+> `Answers` predicate over the game's own main-window lines, never a line a person said;
+> a refusal answers any line). Its window stays open past other prompts, closes at the
+> prompt after its answer as `Outcome::Answered(line)`, or after `answer::WAIT` (3 s) as
+> `Timeout`, and the line is then **owed** its answer for `answer::OWED_FOR`: a late one
+> is not taken as the next line's. A line whose answer has no shape still closes at the
+> first prompt, as below. `crates/cena-session/src/command/answer.rs` is the rule;
+> `crates/cena-session/tests/answered.rs` the proof.
+
 **Cena's rule:**
 
 A round-trip owns the frame stream from the moment its bytes are written until its

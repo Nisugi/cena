@@ -515,6 +515,7 @@ impl<S: ByteSource> SessionActor<S> {
                 envelope.generation,
                 envelope.reply,
                 envelope.matcher,
+                envelope.answers,
             );
             if envelope.quiet {
                 // With the player's Lich showing the text, its copy of the
@@ -647,6 +648,16 @@ impl<S: ByteSource> SessionActor<S> {
             // A completed line goes to the player log and to every viewer.
             // **The model's line, not a second assembly of it** (`line.rs`).
             let line = self.finished_line(&frame, lines_before);
+            // The game's own line in the main window, heard by a line that
+            // named its answer (`command/answer.rs`), unless an instant
+            // action's reply is ahead of the window's, as for the frames.
+            if let Some(line) = &line
+                && line.stream.is_empty()
+                && !spoken(line)
+                && (!self.queue.window_is_open() || self.owed.window_is_answered_next())
+            {
+                self.queue.hear(&line.text());
+            }
             if let (Some(log), Some(line)) = (&mut self.player_log, &line) {
                 log.line(&line.stream, &line.text());
             }
@@ -741,4 +752,14 @@ impl<S: ByteSource> SessionActor<S> {
             }
         }
     }
+}
+
+/// Whether a person said `line`: it opens inside a speech or whisper preset
+/// (`ChunkLine::is_spoken`'s rule). Never an answer to a line Hydra sent.
+fn spoken(line: &cena_model::line::Line) -> bool {
+    line.runs
+        .runs
+        .iter()
+        .find(|run| !run.text.trim().is_empty())
+        .is_some_and(|run| cena_model::ChunkLine::is_speech(&run.style))
 }

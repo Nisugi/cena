@@ -202,6 +202,11 @@ pub enum Refusal {
 pub enum Outcome {
     /// The window closed with a match. Carries the frame that matched.
     Confirmed(Box<Frame>),
+    /// The line's own answer came, and the prompt after it
+    /// ([`SessionHandle::send_answered`](super::SessionHandle::send_answered)).
+    /// Carries the game's line that answered it, markup removed: its own
+    /// answer or a refusal ([`super::answer`]).
+    Answered(String),
     /// No match within the window.
     ///
     /// **Never "the command did not happen"** (`plan/12` §4.4). A slow line

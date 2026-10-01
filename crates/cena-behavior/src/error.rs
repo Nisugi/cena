@@ -81,6 +81,7 @@ impl BehaviorError {
             // `Handled` and `Sent` answer a typed line, which a behavior's
             // round trip never goes through; an answer if it did.
             Outcome::Confirmed(_)
+            | Outcome::Answered(_)
             | Outcome::Timeout
             | Outcome::Refused(_)
             | Outcome::Handled

@@ -387,7 +387,7 @@ fn outcome_receipt(outcome: &Outcome) -> (ReceiptStatus, &'static str) {
             ReceiptStatus::Handled,
             "Handled by Hydra; nothing was sent to the game",
         ),
-        Outcome::Confirmed(_) => (
+        Outcome::Confirmed(_) | Outcome::Answered(_) => (
             ReceiptStatus::Sent,
             "Bytes sent and subsequent server output observed; action completion is not established",
         ),

@@ -531,7 +531,7 @@ fn answered(outcome: &crate::Outcome) -> Ended {
 fn answer(outcome: &crate::Outcome) -> (Work, &'static str) {
     use crate::{Outcome, Refusal};
     match outcome {
-        Outcome::Confirmed(_) => (Work::Completed, "answered"),
+        Outcome::Confirmed(_) | Outcome::Answered(_) => (Work::Completed, "answered"),
         Outcome::Timeout => (Work::Unknown, "no_answer"),
         Outcome::Refused(Refusal::Roundtime) => (Work::NoOpportunity, "roundtime"),
         Outcome::Refused(Refusal::Casttime) => (Work::NoOpportunity, "cast_roundtime"),

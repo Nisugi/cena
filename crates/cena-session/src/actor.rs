@@ -447,6 +447,7 @@ impl<S: ByteSource> SessionActor<S> {
                 reason = failed;
                 break;
             }
+            let window_due = self.queue.window_deadline();
             tokio::select! {
                 // `biased` -- see the module docs. Order is a property of this
                 // source, not of the scheduler's coin flip, and cancellation
@@ -506,6 +507,11 @@ impl<S: ByteSource> SessionActor<S> {
                     },
                     None => senders_gone = true,
                 },
+
+                // Only while a window waits for its line's answer.
+                () = tokio::time::sleep_until(window_due.unwrap_or_else(tokio::time::Instant::now)), if window_due.is_some() => {
+                    self.queue.expire_window();
+                }
 
                 // Only while lines are held for a script's display hooks.
                 () = hooked::wake(self.events.hooks(), self.held.due()), if self.held.is_waiting() => {

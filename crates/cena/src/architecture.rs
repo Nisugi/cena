@@ -237,7 +237,12 @@
 //! call with no public send-then-wait pair, so the race cannot be written. A
 //! round trip owns the frame stream from its bytes going out until the next
 //! prompt frame, or its timeout: the game carries no command ids, so
-//! attribution is temporal (`plan/12` §4.4). The answer is a typed
+//! attribution is temporal (`plan/12` §4.4). A line whose answer has a shape
+//! names it instead
+//! ([`send_answered`](cena_session::SessionHandle::send_answered)), and its
+//! window ends at the prompt after that answer, since the game prompts after
+//! everything it says; a late answer stays its line's, owed, not the next
+//! line's ([`answer`](cena_session::command::answer)). The answer is a typed
 //! [`Outcome`](cena_session::Outcome), and `Timeout` means "no match within
 //! the window", never "it did not happen". Instant actions go by
 //! [`send_now`](cena_session::SessionHandle::send_now), with a

@@ -65,6 +65,10 @@ pub struct Envelope {
     /// matcher"). Supplied by the caller, because only the caller knows what
     /// it asked for.
     pub matcher: crate::queue::Matcher,
+    /// What answers the line, if the caller named it
+    /// ([`SessionHandle::send_answered`]): its window then ends at the prompt
+    /// after its answer, not at the first prompt (`super::answer`).
+    pub answers: Option<super::answer::Answers>,
     /// Whether the command's report is kept out of the story
     /// ([`SessionHandle::send_quietly`]).
     pub quiet: bool,
