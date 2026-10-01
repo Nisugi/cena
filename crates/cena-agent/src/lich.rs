@@ -532,13 +532,17 @@ async fn finish(child: Child, stdin: ChildStdin) {
 }
 
 /// Wait [`STOP_DEADLINE`] for Lich to exit, its standard input closed, and
-/// kill it if it has not.
+/// kill it if it has not; then wait as long again, and no longer. On Windows
+/// a killed Ruby that had stopped reading was seen to take more than ten
+/// seconds to be reported gone, and a stop that waits on it for ever is the
+/// wedge [`feed`] exists to prevent.
 async fn reap(mut child: Child) {
     if tokio::time::timeout(STOP_DEADLINE, child.wait())
         .await
         .is_err()
     {
-        let _ = child.kill().await;
+        let _ = child.start_kill();
+        let _ = tokio::time::timeout(STOP_DEADLINE, child.wait()).await;
     }
 }
 

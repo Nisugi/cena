@@ -243,37 +243,28 @@ async fn a_second_lich_for_a_character_is_refused() {
 
 /// A Lich that stops reading, its game and its standard input, as one whose
 /// script's hook never returns, is still stopped when asked: the relay's
-/// writes to it never hold up its stop. The game's answer to its `look`, 64
-/// MB, is more than the port's buffers hold, so a write to it waits for
-/// ever: against the relay before AG-B-1's fix this hung.
+/// writes to it never hold up its stop. What the player types for it, 3 MB,
+/// is more than its standard input's pipe holds, so a write to it waits for
+/// ever: against the relay before AG-B-1's fix this hung. (The game's side
+/// is the same writer, `feed`, tested on its own in `lich.rs`: flooding it
+/// through the scripted game here runs the session's actor for a minute
+/// without yielding, which starves the relay and proves nothing.)
 #[tokio::test(flavor = "multi_thread")]
 async fn a_lich_that_stops_reading_is_still_stopped() {
     let ruby = find_ruby().expect("Ruby, which CI installs");
     let mut launch = standin(ruby);
     launch.env.push(("STANDIN_STALL".into(), "1".into()));
-    let line = format!("{}\n", "a".repeat(1023));
-    let mut flood = line.repeat(64 * 1024).into_bytes();
-    flood.extend_from_slice(b"<prompt time=\"2\">&gt;</prompt>\n");
-    let mut character = Character::start(launch, &[("look", &flood)]);
+    let mut character = Character::start(launch, &[]);
+    // It has acted, and reads nothing more.
     assert_eq!(character.sent("look").await, Some(Origin::Lich));
-    // The answer reaches the relay, and its write to Lich stops.
-    tokio::time::sleep(Duration::from_secs(20)).await;
-    // Typed for Lich, which reads none of it.
-    for _ in 0..3 {
-        character.types(";put look").await;
+    let long = format!("say {}", "x".repeat(100_000));
+    for _ in 0..30 {
+        assert_eq!(character.types(&long).await, Outcome::Handled);
     }
-    character.stop.cancel();
-    let ended = tokio::time::timeout(Duration::from_secs(30), character.relay)
+    let ended = tokio::time::timeout(Duration::from_secs(30), character.stop())
         .await
-        .expect("the relay ends once stopped")
-        .unwrap();
-    // On a machine fast enough to hand it the whole answer first, the relay
-    // has already let it go as fallen behind. Either way it ended: a relay
-    // stuck in a write sees neither.
-    assert!(
-        matches!(ended, Ended::Stopped | Ended::FellBehind),
-        "{ended:?}"
-    );
+        .expect("the relay ends once stopped");
+    assert_eq!(ended, Some(Ended::Stopped));
 }
 
 /// The player's own Lich, offline. Run it with the checkout's folder:
