@@ -100,8 +100,10 @@ pub struct Profile {
     /// (`flee.count`), lowercase. Hydra's own; bigshot has no such setting.
     /// Its nearest is the `untargetable` list it learns from the game
     /// refusing `target`, which it uses the same two ways
-    /// (`bigshot.lic:8583`, `:8624-8634`). Not `invalid_targets`, which
-    /// is [`Flee::uncounted`].
+    /// (`bigshot.lic:8583`, `:8624-8634`); the hunt keeps that list too,
+    /// by creature id and for one hunt (`hunt/replies.rs`,
+    /// `Reply::Untargetable`). Not `invalid_targets`, which is
+    /// [`Flee::uncounted`].
     pub never_attack: Vec<String>,
     /// When to leave the room.
     pub flee: Flee,

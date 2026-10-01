@@ -78,8 +78,9 @@ impl Hunt {
 
     /// The creatures here the hunt could fight: alive, not known to be
     /// unhostile, nobody's familiar, companion or summons
-    /// ([`CreatureInstance::ally`]), and not on the never-attack list. What
-    /// the flee count counts, whether or not the target list names them.
+    /// ([`CreatureInstance::ally`]), not one the game refused to let it
+    /// target, and not on the never-attack list. What the flee count
+    /// counts, whether or not the target list names them.
     pub(super) fn could_fight<'a>(
         &'a self,
         state: &'a GameState,
@@ -89,6 +90,7 @@ impl Hunt {
                 && creature.hostile() != Some(false)
                 && creature.ally().is_none()
                 && !self.boon_ignored(creature.id)
+                && !self.heard.untargetable.contains(&creature.id)
                 && !listed(&self.profile.never_attack, creature)
         })
     }

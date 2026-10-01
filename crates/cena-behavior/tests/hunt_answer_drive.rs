@@ -127,6 +127,20 @@ fn set_out(
     CancellationToken,
     tokio::task::JoinHandle<Option<HuntEnd>>,
 ) {
+    let scripted: Vec<(&str, &[u8])> = answers.iter().map(|answer| ("attack", *answer)).collect();
+    set_out_scripted(&scripted, true)
+}
+
+/// [`set_out`], with any command's answers scripted, and the kobold
+/// already targeted or not.
+fn set_out_scripted(
+    answers: &[(&str, &[u8])],
+    targeted: bool,
+) -> (
+    TranscriptHandle,
+    CancellationToken,
+    tokio::task::JoinHandle<Option<HuntEnd>>,
+) {
     let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
@@ -143,12 +157,14 @@ fn set_out(
     for frame in kobold_frames() {
         state.apply(&frame);
     }
-    state.targeting.read("#42", None);
+    if targeted {
+        state.targeting.read("#42", None);
+    }
     tokio::spawn(session.into_actor().run());
 
     transcript.answer("look", KOBOLD_ROOM);
-    for answer in answers {
-        transcript.answer("attack", answer);
+    for (command, answer) in answers {
+        transcript.answer(command, answer);
     }
     let stop = CancellationToken::new();
     let hunt_stop = stop.clone();
@@ -269,6 +285,45 @@ async fn another_players_no_effect_does_not_end_the_hunt() {
     assert!(
         !task.is_finished(),
         "still hunting: {:?}",
+        transcript.lines()
+    );
+    stop.cancel();
+    let _ = task.await;
+}
+
+/// The crate review of 2026-10-01, BE-A-5: a creature the game will not let
+/// the hunt target (`You can't target that.`) is not targeted again, as
+/// bigshot keeps it off its list (`bigshot.lic:8779-8783`). Before, the hunt
+/// sent `target #42` once a round trip for as long as it stood there.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_creature_the_game_will_not_let_it_target_is_not_targeted_again() {
+    const REFUSED: &[u8] = b"You can't target that.\n<prompt time=\"1001\">&gt;</prompt>\n";
+    let answers: Vec<(&str, &[u8])> = (0..20).map(|_| ("target #42", REFUSED)).collect();
+    let (transcript, stop, task) = set_out_scripted(&answers, false);
+    let targets = || {
+        transcript
+            .lines()
+            .into_iter()
+            .filter(|line| line == "target #42")
+            .count()
+    };
+    for _ in 0..2_000 {
+        if targets() >= 1 {
+            break;
+        }
+        pass(10).await;
+    }
+    assert_eq!(targets(), 1, "targeted once: {:?}", transcript.lines());
+    pass(5_000).await;
+    assert!(
+        !task.is_finished(),
+        "still hunting: {:?}",
+        transcript.lines()
+    );
+    assert_eq!(
+        targets(),
+        1,
+        "the refused creature is not targeted again: {:?}",
         transcript.lines()
     );
     stop.cancel();

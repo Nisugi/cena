@@ -17,6 +17,7 @@
 //! | [`Reply::Unwilling`] | `bigshot.lic:5537` | wait, and try again |
 //! | [`Reply::Rooted`] | `bigshot.lic:5534-5536` | wait, and try again |
 //! | [`Reply::NoMana`] | `spell.rb:29,36` | rest for mana |
+//! | [`Reply::Untargetable`] | `bigshot.lic:8779-8783` | never choose that creature again this hunt |
 //!
 //! bigshot rests on an attack with no effect (`$bigshot_should_rest`);
 //! here it ends the hunt, because a rest does not bless an arrow and the
@@ -57,6 +58,10 @@ pub enum Reply {
     /// The part aimed at cannot be hit: `You cannot aim that high!`, `does
     /// not have a head!`, `is already missing that!` (`bigshot.lic:6560`).
     BadAim,
+    /// The game will not let the hunt target this creature: `You can't
+    /// target`, and the two `discern ... the origin` lines
+    /// (`bigshot.lic:8779-8783`).
+    Untargetable,
 }
 
 /// Read one line. `None`: nothing the hunt acts on.
@@ -72,6 +77,12 @@ pub fn read(line: &str) -> Option<Reply> {
         || starts("Cast at what?")
     {
         return Some(Reply::NoTarget);
+    }
+    if starts("You can't target")
+        || starts("You discern that you are the origin")
+        || starts("You are unable to discern the origin")
+    {
+        return Some(Reply::Untargetable);
     }
     if starts("You can't make that dextrous of a move!")
         || starts("You are too injured to make that dextrous of a movement")
@@ -132,6 +143,12 @@ pub(super) struct Heard {
     pub(super) ending: Option<Ending>,
     /// The game said a `flee.messages` phrase: leave at the next tick.
     pub(super) flee_said: bool,
+    /// Creatures the game would not let the hunt target, by id: never
+    /// chosen again this hunt. An id lasts the creature's life (the author:
+    /// stable unless the server reboots). bigshot remembers the *name*
+    /// across hunts (`CharSettings['untargetable']`); that is the author's
+    /// call, and not made here.
+    pub(super) untargetable: BTreeSet<i64>,
 }
 
 impl Hunt {
@@ -177,6 +194,14 @@ impl Hunt {
                 Reply::NoMana => self.must_rest = Some(Why::Mana),
                 Reply::Recovered => self.recovered(),
                 Reply::BadAim => self.aiming.refused(),
+                Reply::Untargetable => {
+                    if let Some(id) = self.target {
+                        self.notes
+                            .push(format!("#{id} cannot be targeted: leaving it be."));
+                        self.heard.untargetable.insert(id);
+                    }
+                    self.target_gone();
+                }
                 Reply::Boosted => {
                     self.boosts.0 += 1;
                     self.fried_kills = 0;
