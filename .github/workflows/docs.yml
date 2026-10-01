@@ -34,6 +34,10 @@ jobs:
       # No version: rust-toolchain.toml pins it (see ci.yml).
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # ALSA's headers, as ci.yml installs them: the trigger desk's sound
+      # (`rodio`) links them, and without them the docs build fails before
+      # rustdoc runs (the crate review of 2026-10-01, AR-1).
+      - run: sudo apt-get update && sudo apt-get install -y pkg-config libasound2-dev
 
       # The same invocation as ci.yml's doc step. Public items only; the
       # binary crate is mostly crate-private, so its page is thin by design.

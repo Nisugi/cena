@@ -43,6 +43,7 @@ pub(crate) use names::NUM_LOCK;
 pub(crate) use names::types;
 pub(crate) use names::winit_name;
 use names::{CAPTURED, NUMPAD, known};
+pub(crate) use names::{capturable, captured_chord, numpad_caught, numpad_chord};
 pub use page::KeyRow;
 
 /// The keybinds file, in the data folder.
@@ -407,45 +408,6 @@ pub(crate) fn path(data: &Path) -> PathBuf {
 /// of its game and its name: `None` for a game Hydra does not know.
 pub(crate) fn character_path(data: &Path, game: &str, name: &str) -> Option<PathBuf> {
     cena_session::store::character_path(data, cena_session::instance(game)?, name, ".keys.toml")
-}
-
-/// The chord a numpad press is, its key named as winit names it; `None` for
-/// a release, or a key with no code.
-pub(crate) fn numpad_chord(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
-    if !event.pressed {
-        return None;
-    }
-    let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
-        return None;
-    };
-    Some(Chord::of(&format!("{code:?}"), event.modifiers))
-}
-
-/// The chord of a numpad press the fork caught, to be done as the window
-/// with the keyboard binds it; `None` for one let through to be typed.
-pub(crate) fn numpad_caught(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
-    if !event.consumed {
-        return None;
-    }
-    numpad_chord(event)
-}
-
-/// Every key egui has no name for that a binding may use: what the fork
-/// catches while the Keys page waits for a key, so it can take one.
-pub(crate) fn capturable() -> HashSet<winit::keyboard::KeyCode> {
-    CAPTURED.iter().map(|(_, code)| *code).collect()
-}
-
-/// The chord a press the fork's key capture caught is; `None` for a
-/// release, or a key with no code.
-pub(crate) fn captured_chord(event: &eframe::CapturedKeyEvent) -> Option<Chord> {
-    if !event.pressed {
-        return None;
-    }
-    let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
-        return None;
-    };
-    Some(Chord::of(&format!("{code:?}"), event.modifiers))
 }
 
 pub(crate) mod binding;

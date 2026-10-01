@@ -3,8 +3,12 @@
 //! keys egui has no name for, which the fork catches for Hydra. Moved out of
 //! `keys.rs` at its cap.
 
+use std::collections::HashSet;
+
 use egui::Key;
 use winit::keyboard::KeyCode;
+
+use super::Chord;
 
 /// The keys that type, by winit name.
 pub(super) const TYPING: &[&str] = &[
@@ -165,4 +169,43 @@ pub(crate) fn winit_name(key: Key) -> Option<String> {
 /// typed a `c` as well (the review of 2026-09-29).
 pub(crate) fn types(key: &str) -> bool {
     TYPING.contains(&key)
+}
+
+/// The chord a numpad press is, its key named as winit names it; `None` for
+/// a release, or a key with no code.
+pub(crate) fn numpad_chord(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
+    if !event.pressed {
+        return None;
+    }
+    let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
+        return None;
+    };
+    Some(Chord::of(&format!("{code:?}"), event.modifiers))
+}
+
+/// The chord of a numpad press the fork caught, to be done as the window
+/// with the keyboard binds it; `None` for one let through to be typed.
+pub(crate) fn numpad_caught(event: &eframe::NumpadKeyEvent) -> Option<Chord> {
+    if !event.consumed {
+        return None;
+    }
+    numpad_chord(event)
+}
+
+/// Every key egui has no name for that a binding may use: what the fork
+/// catches while the Keys page waits for a key, so it can take one.
+pub(crate) fn capturable() -> HashSet<winit::keyboard::KeyCode> {
+    CAPTURED.iter().map(|(_, code)| *code).collect()
+}
+
+/// The chord a press the fork's key capture caught is; `None` for a
+/// release, or a key with no code.
+pub(crate) fn captured_chord(event: &eframe::CapturedKeyEvent) -> Option<Chord> {
+    if !event.pressed {
+        return None;
+    }
+    let winit::keyboard::PhysicalKey::Code(code) = event.physical_key else {
+        return None;
+    };
+    Some(Chord::of(&format!("{code:?}"), event.modifiers))
 }

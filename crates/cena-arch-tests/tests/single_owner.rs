@@ -194,6 +194,15 @@ const HANDLE_OWNER: (&str, &str) = ("crates/cena-session/src/actor/handle.rs", "
 /// a needle miss.
 const HANDLE_HOLDERS: &[(&str, &str, &str)] = &[
     (
+        "crates/cena-behavior/src/hunt/desk/finish.rs",
+        "Finish",
+        "A hunt-desk run's ending, done when it drops (the crate review of \
+     2026-10-01, BI-C-1): it lets the session's authority go and clears the \
+     hunt panel on every exit, a panic included, so it holds a clone of the \
+     run's own handle. It lives exactly as long as the run's task, which \
+     already holds that handle, so it cannot outlive or drift from it.",
+    ),
+    (
         "crates/cena/src/hunt/party.rs",
         "Seat",
         "One character's hunt desk and session, kept in the session table's Party \

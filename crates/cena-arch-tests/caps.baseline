@@ -282,6 +282,11 @@ crates/cena-model/src/spells.rs 700
 # fields: looting (drive/loot.rs), healing, stocking and waggling
 # (drive/errands.rs), and the selling round (drive/selling.rs). 396 lines left.
 crates/cena-behavior/src/hunt/drive.rs 450
+# NEW SPLIT PARENT, 2026-09-30, capped 2026-10-01 (the crate review found it
+# uncapped). crates/cena/src/play.rs is the binary's play wiring; a roster
+# that does not read is said once, in play/offer.rs. 782 lines when capped:
+# 782 + 50, clamped to the default.
+crates/cena/src/play.rs 800
 # NEW SPLIT PARENT, 2026-10-01. crates/cena-behavior/src/hunt/desk.rs is the
 # hunt desk; a run's ending moved into desk/finish.rs, a guard that lets go
 # on every exit, a panic included (crate review BI-C-1), and needs the desk's
