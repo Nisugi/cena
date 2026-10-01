@@ -25,6 +25,8 @@
 //! as travel's do. A line this module does not know answers `None`, which
 //! means *not hunt's*, and never *the game's*.
 
+use crate::loot::Errand;
+
 /// One thing asked about hunt profiles.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
@@ -79,6 +81,9 @@ pub enum Command {
         /// eherbs' `fill` rather than `stock`.
         fill: bool,
     },
+    /// `;loot` and its words: one part of looting or selling, by itself
+    /// (`plan/61` step 1).
+    Loot(Errand),
     /// `;sc <spell|alias> [target] [count]`: one spell, as set up.
     Sc(Vec<String>),
     /// `;sc alias|verb|stance|set ...`: change the spellcaster profile.
@@ -142,6 +147,8 @@ pub enum Topic {
     Waggle,
     /// `sc help`, or `sc` alone.
     Sc,
+    /// `loot help`.
+    Loot,
 }
 
 /// A character's own profile, changed from the game line.
@@ -151,6 +158,8 @@ pub enum Of {
     Heal,
     /// The waggle profile (`waggle.rs`).
     Waggle,
+    /// The loot profile, its `[skin]` and `[town]` with it (`loot/profile.rs`).
+    Loot,
 }
 
 impl Of {
@@ -160,6 +169,7 @@ impl Of {
         match self {
             Self::Heal => "heal",
             Self::Waggle => "waggle",
+            Self::Loot => "loot",
         }
     }
 }
@@ -205,7 +215,63 @@ pub const fn help(topic: Topic) -> &'static [&'static str] {
         Topic::Heal => HEAL_HELP,
         Topic::Waggle => WAGGLE_HELP,
         Topic::Sc => SC_HELP,
+        Topic::Loot => LOOT_HELP,
     }
+}
+
+const LOOT_HELP: &[&str] = &[
+    "loot                                   skin and search the dead here, take what the floor holds",
+    "loot skin                              only skin the dead here",
+    "loot box                               empty the open box in hand, then keep it or throw it out",
+    "loot sell                              the selling round: the pool, the shops, the bank, and back",
+    "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them",
+    "loot deposit                           the bank alone, keeping the silver the profile says",
+    "loot show                              the loot settings, skinning and selling with them",
+    "loot set <setting> <value>             change one: loot set town.sell_keep_silver 5000",
+    "loot unset <setting>                   back to its default",
+    "loot summary | recent | boxes | creatures | cap   reports on what was recorded",
+    "A hunt loots and sells by the same settings. `stop` or `hunt stop` stops one under way.",
+];
+
+/// The words after `loot` that are the ledger's reports, and not this
+/// module's (`crates/cena/src/loot.rs`).
+const LOOT_REPORTS: &[&str] = &["summary", "recent", "boxes", "creatures", "cap", "lootcap"];
+
+/// `loot` and what follows; `None` for a report's word.
+fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
+    if let Some(settings) = settings_words(Of::Loot, line, words) {
+        return Some(settings);
+    }
+    let lower: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
+    let lower: Vec<&str> = lower.iter().map(String::as_str).collect();
+    let errand = match lower.as_slice() {
+        [] => Errand::Room,
+        [word, ..] if LOOT_REPORTS.contains(word) => return None,
+        ["skin"] => Errand::Skin,
+        ["box"] => Errand::Box,
+        ["sell"] => Errand::Sell,
+        ["deposit"] => Errand::Deposit,
+        ["pool"] => Errand::Pool {
+            drop: true,
+            collect: true,
+        },
+        ["pool", "deposit"] => Errand::Pool {
+            drop: true,
+            collect: false,
+        },
+        // eloot's three words for it (`eloot.lic:8018`).
+        ["pool", "return" | "check" | "loot"] => Errand::Pool {
+            drop: false,
+            collect: true,
+        },
+        _ => {
+            return Some(Err(
+                "loot, loot skin, loot box, loot sell, loot pool [deposit|return], loot deposit; `loot help` says more."
+                    .to_owned(),
+            ));
+        }
+    };
+    Some(Ok(Command::Loot(errand)))
 }
 
 const HUNT_HELP: &[&str] = &[
@@ -261,6 +327,9 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let first = words.next()?;
     if first.eq_ignore_ascii_case("heal") {
         return Some(heal_words(line, words));
+    }
+    if first.eq_ignore_ascii_case("loot") {
+        return loot_words(line, &words.collect::<Vec<_>>());
     }
     if first.eq_ignore_ascii_case("sc") {
         let rest: Vec<String> = words.map(str::to_owned).collect();
@@ -405,6 +474,7 @@ fn settings_words(of: Of, line: &str, words: &[&str]) -> Option<Result<Command, 
     let topic = match of {
         Of::Heal => Topic::Heal,
         Of::Waggle => Topic::Waggle,
+        Of::Loot => Topic::Loot,
     };
     Some(match (first.as_str(), words) {
         ("help", [_]) => Ok(Command::Help(topic)),
@@ -632,6 +702,51 @@ mod tests {
             Some(Ok(Command::Stock { fill: false }))
         );
         assert_eq!(parse("heal fill"), Some(Ok(Command::Stock { fill: true })));
+    }
+
+    /// `loot` alone loots the room (the author, `plan/61` §7 item 1); the
+    /// reports' words are left to the reports.
+    #[test]
+    fn loot_and_its_words() {
+        use crate::loot::Errand;
+        let loot = |line| parse(line).and_then(Result::ok);
+        assert_eq!(loot("loot"), Some(Command::Loot(Errand::Room)));
+        assert_eq!(loot("LOOT Skin"), Some(Command::Loot(Errand::Skin)));
+        assert_eq!(loot("loot box"), Some(Command::Loot(Errand::Box)));
+        assert_eq!(loot("loot sell"), Some(Command::Loot(Errand::Sell)));
+        assert_eq!(loot("loot deposit"), Some(Command::Loot(Errand::Deposit)));
+        for (line, drop, collect) in [
+            ("loot pool", true, true),
+            ("loot pool deposit", true, false),
+            ("loot pool return", false, true),
+            ("loot pool check", false, true),
+        ] {
+            assert_eq!(
+                loot(line),
+                Some(Command::Loot(Errand::Pool { drop, collect })),
+                "{line}"
+            );
+        }
+        for report in [
+            "loot summary",
+            "loot recent 5 gem",
+            "loot boxes",
+            "loot cap last",
+        ] {
+            assert_eq!(parse(report), None, "{report}");
+        }
+        assert!(matches!(parse("loot everything"), Some(Err(_))));
+        assert_eq!(parse("loot help"), Some(Ok(Command::Help(Topic::Loot))));
+        assert_eq!(
+            parse("loot set town.sell_keep_silver 5000"),
+            Some(Ok(Command::Settings(
+                Of::Loot,
+                Setting::Set {
+                    key: "town.sell_keep_silver".to_owned(),
+                    value: "5000".to_owned(),
+                }
+            )))
+        );
     }
 
     #[test]

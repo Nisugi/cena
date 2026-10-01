@@ -14,6 +14,37 @@ use crate::heal::HealProfile;
 use crate::keep::{self, KeepProfile};
 use crate::waggle::WaggleProfile;
 
+impl super::desk::Desk {
+    /// `;loot` and its words: the errand started by the character's loot
+    /// profile; said and refused when there is none.
+    pub(super) fn loot_errand(
+        self: &std::sync::Arc<Self>,
+        handle: &cena_session::SessionHandle,
+        joined: (cena_session::Snapshot, impl Into<crate::travel::Heard>),
+        errand: crate::loot::Errand,
+    ) -> Option<crate::operation::Underway<super::drive::HuntEnd>> {
+        use cena_session::{Notice, NoticeKind};
+        let character = &joined.0.state.character;
+        let Some(profile) = self.loot_profile(
+            handle,
+            character.instance.as_deref(),
+            character.name.as_deref(),
+        ) else {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                "Loot: no loot profile to go by. `hunt import-loot <eloot yaml>` brings yours in; `loot set take [\"gem\", \"box\"]` starts one.",
+            ).answering());
+            return None;
+        };
+        Some(self.start(
+            ("loot", "loot"),
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            Hunt::loot_only(profile, errand),
+        ))
+    }
+}
+
 impl Hunt {
     /// `;heal`: a machine that heals once by `profile` and ends, with no
     /// hunt around it. `spellcast` and `ranged` are eherbs' flags.
@@ -31,6 +62,15 @@ impl Hunt {
     pub fn stock_only(profile: HealProfile, fill: bool) -> Self {
         let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
         machine.stock_only = Some((false, fill));
+        machine
+    }
+
+    /// `;loot` and its words: a machine that runs one loot errand by
+    /// `profile` and ends (`plan/61` step 1).
+    #[must_use]
+    pub fn loot_only(profile: crate::loot::LootProfile, errand: crate::loot::Errand) -> Self {
+        let mut machine = Self::new(Profile::default(), 0).with_loot(profile);
+        machine.loot_only = Some((errand, false));
         machine
     }
 
@@ -119,6 +159,14 @@ impl Hunt {
                 Said::Done(Ending::Stocked)
             } else {
                 Said::Stock(fill)
+            });
+        }
+        if let Some((errand, asked)) = self.loot_only {
+            self.loot_only = Some((errand, true));
+            return Some(if asked {
+                Said::Done(Ending::Looted(errand))
+            } else {
+                Said::Errand(errand)
             });
         }
         if let Some(asked) = self.heal_only {

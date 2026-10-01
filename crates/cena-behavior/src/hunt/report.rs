@@ -147,6 +147,15 @@ pub(super) fn doing(said: &Said) -> String {
         Said::Sell => "selling".to_owned(),
         Said::Heal => "healing".to_owned(),
         Said::Stock(_) => "stocking herbs".to_owned(),
+        Said::Errand(errand) => match errand {
+            crate::loot::Errand::Room => "looting",
+            crate::loot::Errand::Skin => "skinning",
+            crate::loot::Errand::Box => "emptying a box",
+            crate::loot::Errand::Sell => "selling",
+            crate::loot::Errand::Pool { .. } => "at the locksmith pool",
+            crate::loot::Errand::Deposit => "at the bank",
+        }
+        .to_owned(),
         Said::Waggle(people) => format!("casting on {}", people.join(", ")),
         Said::Nothing => "watching".to_owned(),
     }

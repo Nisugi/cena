@@ -37,7 +37,7 @@ use super::goods::{self, How, Lot, Onward, Shop};
 use super::pool::{self, Pool};
 use super::reply::Reply;
 use super::settings::Town;
-pub use super::step::Step;
+pub use super::step::{Round, Step};
 
 /// Over this encumbrance, the bank comes before the next shop.
 const HEAVY: u32 = 80;
@@ -119,6 +119,8 @@ pub struct Seller {
     last: Option<Step>,
     /// How many times running [`Seller::next`] has answered `last`.
     same: u8,
+    /// Which part of the round this is.
+    round: Round,
 }
 
 impl Seller {
@@ -126,25 +128,45 @@ impl Seller {
     /// nothing to sell and no note to deposit, or the stow list is not known.
     #[must_use]
     pub fn new(town: Town, state: &GameState, home: RoomId) -> Option<Self> {
+        Self::for_round(town, state, home, Round::All)
+    }
+
+    /// [`Self::new`], for one part of the round. The pool alone goes even
+    /// with no box to give when it is to collect; the bank alone always goes.
+    #[must_use]
+    pub fn for_round(town: Town, state: &GameState, home: RoomId, round: Round) -> Option<Self> {
         if !state.containers.stow_checked() {
             return None;
         }
         let mut shops = BTreeSet::new();
-        for (item, types, _) in goods::goods(&town, state) {
-            if let Some(shop) = goods::shop_for(&town, &item, &types) {
-                shops.insert(shop);
+        let mut note = false;
+        match round {
+            Round::All => {
+                for (item, types, _) in goods::goods(&town, state) {
+                    if let Some(shop) = goods::shop_for(&town, &item, &types) {
+                        shops.insert(shop);
+                    }
+                    // Clothing both shops buy is offered at the pawnshop too.
+                    if types.is("clothing") {
+                        shops.insert(Shop::Pawnshop);
+                    }
+                }
+                if town.pool && !pool::boxes(&town, state).is_empty() {
+                    shops.insert(Shop::Pool);
+                }
+                note = goods::note_in_bag(state);
+                if shops.is_empty() && !note {
+                    return None;
+                }
             }
-            // Clothing both shops buy is offered at the pawnshop too.
-            if types.is("clothing") {
-                shops.insert(Shop::Pawnshop);
+            Round::Pool { drop, collect } => {
+                if !collect && (!drop || pool::boxes(&town, state).is_empty()) {
+                    return None;
+                }
+                shops.insert(Shop::Pool);
             }
-        }
-        if town.pool && !pool::boxes(&town, state).is_empty() {
-            shops.insert(Shop::Pool);
-        }
-        let note = goods::note_in_bag(state);
-        if shops.is_empty() && !note {
-            return None;
+            // The bank is the round's last stop whenever it earned.
+            Round::Bank => note = true,
         }
         // A box in hand goes to the pool; anything else comes back.
         let restore = [&state.right_hand, &state.left_hand]
@@ -177,6 +199,7 @@ impl Seller {
             going_home: false,
             last: None,
             same: 0,
+            round,
         })
     }
 
@@ -269,7 +292,10 @@ impl Seller {
         if shop == Shop::Pool {
             if self.pool.is_none() {
                 // No worker in the room: the pool is passed by.
-                self.pool = Pool::new(&self.town, state);
+                self.pool = Pool::new(&self.town, state).map(|pool| match self.round {
+                    Round::Pool { drop, collect } => pool.only(drop, collect),
+                    Round::All | Round::Bank => pool,
+                });
             }
             if let Some(step) = self.pool.as_mut().and_then(|pool| pool.next(state)) {
                 return step;

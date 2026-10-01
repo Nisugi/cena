@@ -138,6 +138,7 @@ impl HuntEnd {
             Ending::Stocked => (Work::Completed, "stocked"),
             Ending::Waggled => (Work::Completed, "waggled"),
             Ending::Sent => (Work::Completed, "sent"),
+            Ending::Looted(_) => (Work::Completed, "looted"),
             Ending::Rested(_) => (Work::Completed, "rested"),
             Ending::Cleared => (Work::Completed, "cleared"),
             Ending::Bounty => (Work::Completed, "bounty"),

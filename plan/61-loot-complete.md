@@ -1,7 +1,9 @@
 # 61. Loot, complete: every command and feature of eloot
 
-**Status: PROPOSED 2026-09-30.** The author: *"let's plan out the rest of it. Hydra's loot
-should have all the features and commands of eloot."* Questions for the author in §7.
+**Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
+ahead and work on the loot plan"*). **Step 1 BUILT the same day** on branch
+`loot-complete` (§5a). The author: *"let's plan out the rest of it. Hydra's loot should
+have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
 rest. This plan is the rest of the script. It was written from two surveys made the same
@@ -181,6 +183,40 @@ locksmith, incremental tipping and hoarding are off in it, `plan/31` §4).
 Each step: the profile keys it makes live, the importer's note for them removed, tests
 against a scripted game, `plan/31`'s record and the reference page updated in the same
 commit. A branch, `loot-complete`.
+
+## 5a. Step 1, BUILT 2026-09-30
+
+- **The errands** (`cena-behavior/src/loot.rs`, `Errand`): `Room`, `Skin`, `Box`, `Sell`,
+  `Pool { drop, collect }`, `Deposit`. Each is a one-shot machine (`Hunt::loot_only`,
+  `hunt/errands.rs`) the hunt desk starts as it starts `heal stock`: claimed, echoed as
+  `loot>`, stopped by `stop`, ended `Ending::Looted`. Refused, and said, when the
+  character has no loot profile.
+- **The words** (`hunt/command.rs`, `loot_words`): `loot`, `loot skin`, `loot box`, `loot
+  sell`, `loot pool`, `loot pool deposit`, `loot pool return` (`check`, `loot`), `loot
+  deposit`; `loot help`; `loot show`, `loot set <setting> <value>`, `loot unset
+  <setting>` over the loot profile's file, `skin.` and `town.` keys with it. The reports'
+  five words are left to the reports, which no longer take bare `loot`
+  (`crates/cena/src/loot.rs`).
+- **The planners' new modes**: skinning alone, whatever `skin.enable` says
+  (`loot/plan/alone.rs`); the round as the pool alone, with or without the drop-off and
+  the collecting, or the bank alone (`town::Round`, `Seller::for_round`, `Pool::only`).
+- **The driver** (`hunt/drive/loot.rs`, `loot_errand`): the dead here found from the
+  state; the box in hand emptied, then kept when the profile sells such boxes, else
+  `trash` and, still held, `drop`; the selling round asks for the stow list when it has
+  not been read, and says how each errand went.
+- **An agent** at `behaviors` may start each (`crates/cena/src/perform.rs`); `;help`,
+  `loot help` and the reference page (`crates/cena/src/command_reference.rs`) list them.
+- *Tests:* the words (`hunt/command.rs`); three over a scripted game
+  (`tests/loot_errand.rs`): `loot` searches the dead, loots the room and ends; `loot
+  skin` skins and searches nothing; `loot deposit` walks to the bank, deposits, withdraws
+  the kept silver and walks back, **the first run of the selling round's driver against a
+  scripted game**. Not yet over a scripted game: `loot sell`, `loot pool`, `loot box`.
+- **Left for step 5**, as differences from eloot: `loot pool` does not bank afterwards
+  (eloot deposits the box silver, `eloot.lic:7641`); `loot box` does not walk to a bin
+  (`save_trash_box`, `:7773`); a missing loot profile is refused, where eloot has defaults.
+- **Found, not this plan's**: on `main` at `75095f2a` two split parents are over their
+  caps and `ratchet.rs` is red for them: `cena-behavior/src/hunt/drive.rs` (467 of 450,
+  since `4eb41db3`) and `cena-gui/src/keys.rs` (459 of 450, since `1d114e2d`).
 
 ## 6. Not ported, and why
 

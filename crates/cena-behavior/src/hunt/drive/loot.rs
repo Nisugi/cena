@@ -4,8 +4,10 @@
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::{BEAT, Driver, HuntEnd, LOOT_STEPS};
-use crate::loot::{Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify};
-use crate::town::Town;
+use cena_session::containers::StowSlot;
+
+use crate::loot::{Errand, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify};
+use crate::town::{self, Round, Town};
 use crate::travel::TravelNotes;
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
@@ -20,6 +22,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         let memory = std::mem::take(&mut self.memory);
         let planner = Planner::new(profile, memory, corpses);
         self.run_loot(planner, true).await?;
+        self.keep_unskinnable();
+        Ok(())
+    }
+
+    /// Hand what this run learned unskinnable to whoever writes the profile,
+    /// once each.
+    fn keep_unskinnable(&mut self) {
         let fresh: Vec<String> = self
             .memory
             .unskinnable
@@ -30,7 +39,94 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.saved_unskinnable.extend(fresh.iter().cloned());
             (self.learned)(&fresh);
         }
+    }
+
+    /// One part of looting or selling by itself (`plan/61` step 1), as
+    /// eloot's commands run them, and how it went, said.
+    pub(super) async fn loot_errand(&mut self, errand: Errand) -> Result<(), HuntEnd> {
+        let Some(profile) = self.machine.loot_profile().cloned() else {
+            return Ok(());
+        };
+        let corpses: Vec<i64> = self
+            .state
+            .creatures()
+            .in_room()
+            .filter(|creature| creature.corpse())
+            .map(|creature| creature.id)
+            .collect();
+        let text = match errand {
+            Errand::Room | Errand::Skin => {
+                let memory = std::mem::take(&mut self.memory);
+                let planner = if errand == Errand::Skin {
+                    Planner::for_skinning(profile, memory, &corpses)
+                } else {
+                    Planner::new(profile, memory, &corpses)
+                };
+                let planner = self.run_loot(planner, false).await?;
+                self.keep_unskinnable();
+                match planner.ended() {
+                    Some(Left::Nothing) => "done.",
+                    Some(Left::BagsFull) => "stopped: every bag that would take it is full.",
+                    Some(Left::BoxInHand) => "stopped: a box is in hand that no bag will take.",
+                    None => "gave up after too many steps.",
+                }
+            }
+            Errand::Box => self.box_errand(&profile).await?,
+            Errand::Sell | Errand::Pool { .. } | Errand::Deposit => {
+                let (round, done, nothing) = match errand {
+                    Errand::Pool { drop, collect } => (
+                        Round::Pool { drop, collect },
+                        "the pool is done.",
+                        "no boxes to take to the pool.",
+                    ),
+                    Errand::Deposit => (Round::Bank, "deposited.", "the bank was not reached."),
+                    _ => (Round::All, "the selling round is done.", "nothing to sell."),
+                };
+                if self.sell_round(round).await? {
+                    done
+                } else {
+                    nothing
+                }
+            }
+        };
+        self.handle
+            .say(Notice::line(NoticeKind::Info, format!("Loot: {text}")));
         Ok(())
+    }
+
+    /// `loot box`: the open box in hand emptied, then kept when it is one
+    /// the profile sells empty, else thrown out (`box_loot` and
+    /// `save_trash_box`, `eloot.lic:5086`, `:7773`).
+    async fn box_errand(&mut self, profile: &LootProfile) -> Result<&'static str, HuntEnd> {
+        let Some(id) = town::box_in_hand(&self.state) else {
+            return Ok("there is no box in hand.");
+        };
+        if self.empty_box(profile, &id).await? {
+            return Ok("the box is locked.");
+        }
+        let held =
+            |this: &Self| this.state.right_hand.holds(&id) || this.state.left_hand.holds(&id);
+        if town::keeps_box(&Town::for_profile(profile), &self.state, &id) {
+            let bag = self.state.containers.stow(StowSlot::Default);
+            if let Some(bag) = bag.map(|bag| bag.id.clone()) {
+                self.send(&format!("_drag #{id} #{bag}"), None).await?;
+            }
+            return Ok("the box is emptied and kept.");
+        }
+        // Thrown out, asked twice when the game wants to be sure, dropped
+        // where there is nothing to throw it in.
+        for line in [
+            format!("trash #{id}"),
+            format!("trash #{id}"),
+            format!("drop #{id}"),
+        ] {
+            if !held(self) {
+                break;
+            }
+            self.send(&line, None).await?;
+            self.hold(BEAT).await?;
+        }
+        Ok("the box is emptied.")
     }
 
     /// Empty the box in hand with the loot planner (`box_loot`), for the

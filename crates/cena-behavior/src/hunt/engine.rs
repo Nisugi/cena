@@ -153,6 +153,8 @@ pub struct Hunt {
     pub(super) heal_only: Option<bool>,
     /// `;heal stock` / `;heal fill`: no hunt, one round; `fill` beside it.
     pub(super) stock_only: Option<(bool, bool)>,
+    /// `;loot` and its words: no hunt, one errand; `true` once asked for.
+    pub(super) loot_only: Option<(crate::loot::Errand, bool)>,
     /// `;keep`: no hunt, the listed spells kept up until stopped, with when
     /// each was last sent.
     pub(super) keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
@@ -257,6 +259,7 @@ impl Hunt {
             heal: None,
             heal_only: None,
             stock_only: None,
+            loot_only: None,
             keep_only: None,
             waggle_only: None,
             send_only: None,

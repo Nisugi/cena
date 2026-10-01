@@ -18,6 +18,9 @@
 //! The driver that sends what the planner says, inside the hunt's authority
 //! as a walk runs, is the hunt's: `hunt/drive/loot.rs` (`plan/31` §4, Stage
 //! 2).
+//!
+//! A player starts each part by itself too, with no hunt around it
+//! ([`Errand`], `plan/61` step 1): eloot's own commands.
 
 pub mod import;
 pub mod outcome;
@@ -31,3 +34,41 @@ pub use outcome::{Outcome, classify};
 pub use plan::{Left, Memory, Planner, Step};
 pub use profile::{LootProfile, Skin, path, remember_unskinnable};
 pub use worth::{Verdict, is_special, stow_slot, verdict};
+
+/// One part of looting or selling run by itself, as eloot's commands run
+/// them (`eloot.lic:7933-8105`, `plan/61` §2): a one-shot errand on the hunt
+/// desk, as `heal stock` is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Errand {
+    /// `loot`: skin, search the dead here, take what the floor holds.
+    Room,
+    /// `loot skin`: skin the dead here, whatever `skin.enable` says.
+    Skin,
+    /// `loot box`: empty the open box in hand, then keep it or throw it out.
+    Box,
+    /// `loot sell`: the whole selling round, and back.
+    Sell,
+    /// `loot pool`: the locksmith pool alone; `drop` gives it the boxes
+    /// carried, `collect` asks for what is ready and empties each.
+    Pool {
+        /// Give the worker the boxes carried.
+        drop: bool,
+        /// Ask for the boxes that are ready.
+        collect: bool,
+    },
+    /// `loot deposit`: the bank alone, the profile's silver kept back.
+    Deposit,
+}
+
+impl std::fmt::Display for Errand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Room => "looted",
+            Self::Skin => "skinned",
+            Self::Box => "the box is emptied",
+            Self::Sell => "sold",
+            Self::Pool { .. } => "the pool is done",
+            Self::Deposit => "deposited",
+        })
+    }
+}

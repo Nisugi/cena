@@ -202,6 +202,7 @@ impl Desk {
             Command::Stock { fill } => {
                 self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }
+            Command::Loot(errand) => self.loot_errand(handle, joined, errand),
             Command::Run(name) => {
                 let character = &joined.0.state.character;
                 let loaded = chain::load(
@@ -226,20 +227,7 @@ impl Desk {
                 if self.refuses_map(&loaded.profile, say) {
                     return None;
                 }
-                for (place, step) in loaded.profile.held_steps() {
-                    say(
-                        NoticeKind::Warn,
-                        format!("{place} is held and will be skipped: `{}`", step.send),
-                    );
-                }
-                for sequence in loaded.profile.unwritten_sequences() {
-                    say(
-                        NoticeKind::Warn,
-                        format!(
-                            "sequence {sequence} has no steps and will be skipped; `hunt set <profile> sequences.{sequence}.steps [...]` writes them."
-                        ),
-                    );
-                }
+                said_skipped(&loaded.profile, say);
                 say(NoticeKind::Info, format!("hunting on {name}."));
                 let seed = joined.0.state.game_time_now().map_or(1, u64::from);
                 let machine = Hunt::new(loaded.profile, seed);
@@ -305,7 +293,7 @@ impl Desk {
 
     /// Start a run that is not a hunt, named `what` for its reports and
     /// `word`, as the player starts it, for the echo of its commands.
-    fn start(
+    pub(super) fn start(
         self: &Arc<Self>,
         (word, what): (&'static str, &str),
         handle: SessionHandle,
@@ -399,7 +387,7 @@ impl Desk {
     /// The character's loot profile (`plan/31` §6), when one has been
     /// imported and reads. Said either way, since it changes what a corpse
     /// gets.
-    fn loot_profile(
+    pub(super) fn loot_profile(
         &self,
         handle: &SessionHandle,
         instance: Option<&str>,
@@ -777,6 +765,25 @@ fn unskinnable(handle: &SessionHandle, file: Option<&std::path::Path>, names: &[
                 names.join(", ")
             ),
         ),
+    }
+}
+
+/// Say what of `profile` the hunt will skip: each held step, and each
+/// sequence with no steps written.
+fn said_skipped(profile: &super::profile::Profile, say: impl Fn(NoticeKind, String)) {
+    for (place, step) in profile.held_steps() {
+        say(
+            NoticeKind::Warn,
+            format!("{place} is held and will be skipped: `{}`", step.send),
+        );
+    }
+    for sequence in profile.unwritten_sequences() {
+        say(
+            NoticeKind::Warn,
+            format!(
+                "sequence {sequence} has no steps and will be skipped; `hunt set <profile> sequences.{sequence}.steps [...]` writes them."
+            ),
+        );
     }
 }
 

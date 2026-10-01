@@ -30,6 +30,7 @@ use super::skin::Skinning;
 use super::worth::{Verdict, is_special, lootable_by_verb, stow_slot, verdict};
 use crate::stance::{self, Want};
 
+mod alone;
 mod boxed;
 mod hands;
 use boxed::Boxed;
@@ -189,6 +190,8 @@ pub struct Planner {
     bags_full: bool,
     /// A box in hand being emptied, instead of corpses and a floor.
     boxed: Option<Boxed>,
+    /// Skin and stop: no search, no floor (`loot skin`).
+    only_skin: bool,
 }
 
 impl Planner {
@@ -217,6 +220,7 @@ impl Planner {
             last: None,
             bags_full: false,
             boxed: None,
+            only_skin: false,
         }
     }
 
@@ -273,6 +277,9 @@ impl Planner {
         }
         if let Some(step) = self.skin(state) {
             return step;
+        }
+        if self.only_skin {
+            return Step::Done(Left::Nothing);
         }
         if let Some(corpse) = self.corpses.front().copied() {
             let key = corpse.to_string();

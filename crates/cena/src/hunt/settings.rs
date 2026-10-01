@@ -28,6 +28,7 @@ pub(super) fn help(topic: Topic, say: Say<'_>) {
         Topic::Heal => "Heal",
         Topic::Waggle => "Waggle",
         Topic::Sc => "Sc",
+        Topic::Loot => "Loot",
     };
     for line in help_for(topic) {
         say(NoticeKind::Info, format!("{label}: {line}"));
@@ -286,12 +287,14 @@ fn loot_canonical(text: &str) -> Result<String, String> {
 }
 
 fn of_profile(of: Of) -> Profile {
-    let id = match of {
-        Of::Heal => "heal",
-        Of::Waggle => "waggle",
-    };
-    let [heal, waggle, ..] = profiles();
-    if id == heal.id { heal } else { waggle }
+    // The loot profile's own page: its file holds `[skin]` and `[town]` too,
+    // which `loot set skin.enable on` and `loot set town.<setting>` reach.
+    let [heal, waggle, _, _, loot, ..] = profiles();
+    match of {
+        Of::Heal => heal,
+        Of::Waggle => waggle,
+        Of::Loot => loot,
+    }
 }
 
 /// Set `key` in the profile at `path` to `value`, or put it back to its

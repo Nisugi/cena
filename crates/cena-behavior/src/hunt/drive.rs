@@ -45,8 +45,6 @@ mod party;
 mod selling;
 mod walk;
 
-use fold::fold_into;
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -58,6 +56,7 @@ use cena_session::{
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 use tokio_util::sync::CancellationToken;
 
+use self::fold::fold_into;
 use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
 use super::report::{self, Reports, Status};
@@ -348,6 +347,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Said::Heal => self.heal().await,
                 Said::Stock(fill) => self.stock(fill).await,
                 Said::Waggle(targets) => self.waggle(&targets).await,
+                Said::Errand(errand) => self.loot_errand(errand).await,
                 Said::Done(Ending::Trouble) => {
                     // The dead man's switch: out of the game, saved first.
                     self.handle.quit(QUIT_DEADLINE).await;

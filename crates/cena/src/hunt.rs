@@ -114,6 +114,7 @@ pub(crate) fn open(
             | Command::Stop
             | Command::Heal { .. }
             | Command::Stock { .. }
+            | Command::Loot(_)
             | Command::Keep
             | Command::Waggle(_)
             | Command::Sc(_) => {
@@ -255,6 +256,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         | Command::Stop
         | Command::Heal { .. }
         | Command::Stock { .. }
+        | Command::Loot(_)
         | Command::Keep
         | Command::Waggle(_)
         | Command::Sc(_)

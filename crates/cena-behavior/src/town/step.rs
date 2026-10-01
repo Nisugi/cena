@@ -5,6 +5,25 @@ use cena_map::RoomId;
 #[cfg(doc)]
 use super::reply::Reply;
 
+/// How much of the round is run: all of it, at a hunt's rest and for
+/// `loot sell`, or one stop of it by itself (`plan/61` step 1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Round {
+    /// Every shop the bags call for, then the bank.
+    #[default]
+    All,
+    /// The locksmith pool alone (`;eloot pool`), whatever `sell_locksmith_pool`
+    /// says: the player asked.
+    Pool {
+        /// Give the worker the boxes carried.
+        drop: bool,
+        /// Ask for the boxes that are ready.
+        collect: bool,
+    },
+    /// The bank alone (`;eloot deposit`).
+    Bank,
+}
+
 /// One command for the driver to send, or the end.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Step {

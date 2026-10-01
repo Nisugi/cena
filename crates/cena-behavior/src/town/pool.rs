@@ -153,6 +153,18 @@ impl Pool {
         })
     }
 
+    /// Only part of the visit (`;eloot pool deposit`, `pool return`,
+    /// `eloot.lic:8011-8032`): without `drop` nothing is given to the worker,
+    /// without `collect` nothing is asked back.
+    pub(super) fn only(mut self, drop: bool, collect: bool) -> Self {
+        if !drop {
+            self.boxes.clear();
+            self.stop_dropping = true;
+        }
+        self.returns_over = !collect;
+        self
+    }
+
     /// The next step; `None` when the visit is over.
     pub(super) fn next(&mut self, state: &GameState) -> Option<Step> {
         match self.doing.clone() {
@@ -331,8 +343,17 @@ fn holds(state: &GameState, id: &str) -> bool {
     state.right_hand.holds(id) || state.left_hand.holds(id)
 }
 
+/// Whether the emptied box `id`, in a hand, is kept rather than thrown out:
+/// one of gold, mithril or silver, or a reliquary, when the profile sells
+/// boxes (`save_trash_box`, `eloot.lic:7773`).
+#[must_use]
+pub fn keeps_box(town: &Town, state: &GameState, id: &str) -> bool {
+    town.sells("box") && is_valuable(state, id)
+}
+
 /// A box in either hand, by id.
-fn box_in_hand(state: &GameState) -> Option<String> {
+#[must_use]
+pub fn box_in_hand(state: &GameState) -> Option<String> {
     [&state.right_hand, &state.left_hand]
         .into_iter()
         .find(|hand| {

@@ -4,7 +4,7 @@
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::{BEAT, Driver, HuntEnd, SELL_STEPS};
-use crate::town::{self, Seller, Step as Errand, Town};
+use crate::town::{self, Round, Seller, Step as Errand, Town};
 use crate::travel::{TravelNotes, destination, walker_from};
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
@@ -14,15 +14,22 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     /// fold of the stream, plus the few replies that are not facts. Ends
     /// back at the resting room, or wherever the round gave up.
     pub(super) async fn sell(&mut self) -> Result<(), HuntEnd> {
+        self.sell_round(Round::All).await.map(|_| ())
+    }
+
+    /// [`Self::sell`], for all of the round or one stop of it; `false` when
+    /// there was nothing for it to do.
+    pub(super) async fn sell_round(&mut self, round: Round) -> Result<bool, HuntEnd> {
         let Some(profile) = self.machine.loot_profile().cloned() else {
-            return Ok(());
+            return Ok(false);
         };
         let Some(home) = self.locate() else {
-            return Ok(());
+            return Ok(false);
         };
+        self.know_stow_list().await?;
         let town = Town::for_profile(&profile);
-        let Some(mut seller) = Seller::new(town, &self.state, home) else {
-            return Ok(());
+        let Some(mut seller) = Seller::for_round(town, &self.state, home, round) else {
+            return Ok(false);
         };
         // Facts queued before the round are not the round's.
         let _ = self.state.take_loot();
@@ -110,6 +117,16 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                     seller.skipped().len()
                 ),
             ));
+        }
+        Ok(true)
+    }
+
+    /// Ask for the stow list when it has not been read: the round reads the
+    /// bags by it.
+    async fn know_stow_list(&mut self) -> Result<(), HuntEnd> {
+        if !self.state.containers.stow_checked() {
+            self.send("stow list", None).await?;
+            self.hold(BEAT).await?;
         }
         Ok(())
     }

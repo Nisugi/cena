@@ -412,10 +412,10 @@
 //! | [`watch`](crate::watch) | the terminal's view: Hydra's own lines, tagged by character, and no game text |
 //! | [`interrupt`](crate::interrupt) | Ctrl-C as an orderly quit from every phase; a second one exits at once |
 //! | [`ask`](crate::ask) | asking the person at the keyboard for what a login needs |
-//! | [`hunt`](crate::hunt) | `;hunt`: a hunt on a profile, its settings, a group led, stopped; the profile chain read for the menu |
+//! | [`hunt`](crate::hunt) | `;hunt`: a hunt on a profile, its settings, a group led, stopped; the profile chain read for the menu. And the errands its desk runs with no hunt: `;heal`, `;waggle`, `;keep`, `;sc`, and `;loot` with its words ([`Errand`](cena_behavior::loot::Errand), `plan/61`) |
 //! | [`perform`](crate::perform) | what an agent may run at the `behaviors` level, the author's allowlist, and how each is started |
 //! | [`batch`](crate::batch) | `;multi` and `;foreach`: a command many times, or once for each thing |
-//! | [`loot`](crate::loot), [`combat`](crate::combat) | the ledger's and the combat recorder's reports |
+//! | [`loot`](crate::loot), [`combat`](crate::combat) | the ledger's and the combat recorder's reports (`loot summary` and its kin; `loot` alone is the hunt desk's) |
 //! | [`sorter`](crate::sorter) | `;sorter`: a container's contents one line per category, kept per character |
 //! | [`doll`](crate::doll) | `;doll`: the injury doll's import |
 //! | [`attention`](crate::attention) | a trigger's sound and notification, played once per occurrence across characters |

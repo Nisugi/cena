@@ -26,7 +26,7 @@ use crate::commands::Commands;
 use period::{date_label, time_label};
 
 /// The words `;loot` knows.
-const USAGE: &str = "loot [summary [today|month|<hours>]] | loot recent [<n>] [<type>] | \
+const USAGE: &str = "loot summary [today|month|<hours>] | loot recent [<n>] [<type>] | \
                      loot boxes [<n>] | loot creatures [<n>] [today|<hours>] | \
                      loot cap [last|<YYYY-MM>]";
 
@@ -78,7 +78,7 @@ pub(crate) enum Month {
 }
 
 /// Parse a command line, without its symbol. `None` when the word is not
-/// `loot`; `Some(Err)` when it is and the rest is not understood.
+/// `loot`, or is `loot` alone (the behavior's, `plan/61`); `Some(Err)` when not understood.
 pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
     let mut words = line.split_whitespace();
     if !words.next()?.eq_ignore_ascii_case("loot") {
@@ -102,9 +102,9 @@ pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
     let count = |word: Option<&&str>, default: usize| -> Option<usize> {
         word.map_or(Some(default), |w| w.parse().ok().filter(|n| *n > 0))
     };
-    let command = match rest.first().map(|w| w.to_ascii_lowercase()).as_deref() {
-        None | Some("summary") => span(rest.get(1)).map(Command::Summary),
-        Some("recent") => {
+    let command = match rest.first()?.to_ascii_lowercase().as_str() {
+        "summary" => span(rest.get(1)).map(Command::Summary),
+        "recent" => {
             // `recent 5 gem`, `recent gem`, `recent 5`: a count is digits.
             let (limit, kind) = match rest.get(1) {
                 Some(w) if w.chars().all(|c| c.is_ascii_digit()) => {
@@ -122,10 +122,10 @@ pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
                 },
             )
         }
-        Some("boxes") => count(rest.get(1), 10)
+        "boxes" => count(rest.get(1), 10)
             .map(Command::Boxes)
             .ok_or_else(|| usage("a count must be a positive number")),
-        Some("creatures") => {
+        "creatures" => {
             let (limit, when) = match rest.get(1) {
                 Some(w) if w.chars().all(|c| c.is_ascii_digit()) && rest.get(2).is_some() => {
                     (count(Some(w), 10), rest.get(2))
@@ -138,7 +138,7 @@ pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
                 (_, Err(e)) => Err(e),
             }
         }
-        Some("cap" | "lootcap") => match rest.get(1).map(|w| w.to_ascii_lowercase()) {
+        "cap" | "lootcap" => match rest.get(1).map(|w| w.to_ascii_lowercase()) {
             None => Ok(Command::Cap(Month::This)),
             Some(w) if matches!(w.as_str(), "last" | "previous" | "prev") => {
                 Ok(Command::Cap(Month::Last))
@@ -150,7 +150,7 @@ pub(crate) fn parse(line: &str) -> Option<Result<Command, String>> {
                 .map(|(y, m)| Command::Cap(Month::Named(y, m)))
                 .ok_or_else(|| usage(&format!("`{w}` is not a month; say `last` or `YYYY-MM`"))),
         },
-        Some(other) => Err(usage(&format!("`{other}` is not a report"))),
+        other => Err(usage(&format!("`{other}` is not a report"))),
     };
     Some(command)
 }
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     fn the_words_parse() {
-        assert_eq!(parsed("loot"), Command::Summary(Span::Hours(24)));
+        assert_eq!(parsed("loot summary"), Command::Summary(Span::Hours(24)));
         assert_eq!(parsed("loot summary today"), Command::Summary(Span::Today));
         assert_eq!(parsed("loot summary 6"), Command::Summary(Span::Hours(6)));
         assert_eq!(

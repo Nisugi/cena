@@ -24,6 +24,7 @@ pub mod settings;
 mod step;
 
 pub use goods::{Shop, is_gold_ring};
-pub use plan::{Seller, Step};
+pub use plan::{Round, Seller, Step};
+pub use pool::{box_in_hand, keeps_box};
 pub use reply::{Reply, classify};
 pub use settings::Town;
