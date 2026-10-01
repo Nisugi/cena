@@ -153,16 +153,41 @@ impl Profile {
         self.stated
     }
 
-    /// Read one chunk's lines.
+    /// Read one chunk's lines, as the profile of the character named `name`.
     ///
-    /// Returns whether they were a profile. Recognised by its `PERSONAL
-    /// INFORMATION` header rather than assumed, because this runs on every
-    /// chunk -- the same rule `blocks::InfoReport::read` follows.
-    pub fn read_lines(&mut self, lines: &[String]) -> bool {
-        if !lines
+    /// Returns whether they were **this character's** profile. Recognised by
+    /// its `PERSONAL INFORMATION` header rather than assumed, because this
+    /// runs on every chunk -- the same rule `blocks::InfoReport::read` follows.
+    ///
+    /// # Only the character's own
+    ///
+    /// `profile Bob` prints Bob's profile in the same shape, and reading it
+    /// would give this character Bob's society, rank, citizenship and age
+    /// (MO-C-3). So the `Name:` line under `PERSONAL INFORMATION` must name
+    /// `name` as one of its words, as Lich requires
+    /// (`reference/lich-5/lib/gemstone/infomon/parser.rb:585-589`, which
+    /// leaves the profile state when it does not). With no `Name:` line, or
+    /// the character's own name not yet known, nothing is read either: Lich's
+    /// `include?(Char.name)` is false for both, and a profile nobody can
+    /// prove is ours teaches nothing. A refused profile leaves what was read
+    /// before untouched.
+    pub fn read_lines(&mut self, lines: &[String], name: Option<&str>) -> bool {
+        let Some(at) = lines
             .iter()
-            .any(|l| Section::of(l) == Some(Section::Personal))
-        {
+            .position(|l| Section::of(l) == Some(Section::Personal))
+        else {
+            return false;
+        };
+        let named = lines[at + 1..]
+            .iter()
+            .take_while(|l| Section::of(l).is_none())
+            .find_map(|l| l.trim().strip_prefix("Name:"));
+        let ours = named.zip(name).is_some_and(|(named, name)| {
+            named
+                .split_whitespace()
+                .any(|word| word.eq_ignore_ascii_case(name))
+        });
+        if !ours {
             return false;
         }
         // Whole-list replacement, like the `Spells` stream: `profile` prints
@@ -252,6 +277,15 @@ impl super::Character {
         // see `standing::profile_affiliation`.
         for line in self.profile.affiliations.clone() {
             match standing::profile_affiliation(&line) {
+                // `Member of the Order of Voln` carries no rank, which is
+                // "not on this line", not "no rank": a rank the `society`
+                // report already gave for this same society is kept (MO-C-4;
+                // erasing it turned off wracking and the society way home).
+                Some(standing::Affiliation::Society(standing::SocietyEvent::Report {
+                    society: Some(society),
+                    rank: None,
+                    master: false,
+                })) if self.standing.society == Some(Some(society)) => {}
                 Some(standing::Affiliation::Society(event)) => {
                     standing_changed |= self.standing.apply_society(event);
                 }

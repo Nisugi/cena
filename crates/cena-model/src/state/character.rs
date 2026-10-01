@@ -603,7 +603,7 @@ impl Character {
         // `profile`'s own output, which arrives in the main window like every
         // other report (`profile.rs` records the capture that corrected this).
         let lines: Vec<String> = chunk.lines().iter().map(|l| l.runs.plain()).collect();
-        if self.profile.read_lines(&lines) {
+        if self.profile.read_lines(&lines, self.name.as_deref()) {
             self.absorb_profile();
         }
         if self.consume_standing(chunk) {
