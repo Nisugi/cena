@@ -201,19 +201,21 @@ struct File {
 
 impl Library {
     /// The library kept in `dir`, the layouts folder: empty when there is
-    /// none yet, or it cannot be read.
+    /// none yet, or it cannot be read. One that cannot be read is said, and
+    /// kept beside as `.unread` when the next preset is saved, never written
+    /// over (the crate review of 2026-10-01, GU-B-1).
     pub(crate) fn load(dir: Option<PathBuf>) -> Self {
-        let presets = dir
+        let text = dir
             .as_deref()
-            .and_then(|dir| std::fs::read_to_string(dir.join(FILE)).ok())
-            .and_then(|text| serde_json::from_str::<File>(&text).ok())
-            .filter(|file| file.version == VERSION)
-            .map(|file| file.presets)
-            .unwrap_or_default();
+            .and_then(|dir| std::fs::read_to_string(dir.join(FILE)).ok());
+        let presets = text.as_deref().and_then(read);
+        let unsaved = (text.is_some() && presets.is_none()).then(|| {
+            format!("{FILE} could not be read; it is kept beside as .unread when a preset is saved")
+        });
         Self {
             dir,
-            presets,
-            unsaved: None,
+            presets: presets.unwrap_or_default(),
+            unsaved,
         }
     }
 
@@ -249,12 +251,22 @@ impl Library {
     }
 }
 
+/// The presets a library file holds, when it reads as this build's.
+fn read(text: &str) -> Option<Vec<Preset>> {
+    serde_json::from_str::<File>(text)
+        .ok()
+        .filter(|file| file.version == VERSION)
+        .map(|file| file.presets)
+}
+
 fn write(dir: &Path, presets: &[Preset]) -> std::io::Result<()> {
     let file = File {
         version: VERSION,
         presets: presets.to_vec(),
     };
-    cena_session::store::save_json(dir, &dir.join(FILE), &file)
+    let path = dir.join(FILE);
+    super::kept::keep_unread(&path, |text| read(text).is_some())?;
+    cena_session::store::save_json(dir, &path, &file)
 }
 
 #[cfg(test)]

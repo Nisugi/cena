@@ -41,21 +41,23 @@ impl Layout {
         character: &str,
     ) -> std::io::Result<()> {
         let path = file(dir, instance, character);
-        keep_unread(&path)?;
+        keep_unread(&path, |text| {
+            serde_json::from_str::<Layout>(text).is_ok_and(|kept| kept.version == VERSION)
+        })?;
         cena_session::store::save_json(dir, &path, self)
     }
 }
 
-/// The layout at `path` moved beside itself when it is there and does not
-/// read as this build's.
-fn keep_unread(path: &Path) -> std::io::Result<()> {
+/// The file at `path` moved beside itself when it is there and does not
+/// read as this build's: the layout's, and the preset library's (the crate
+/// review of 2026-10-01, GU-B-1).
+pub(super) fn keep_unread(path: &Path, reads: impl Fn(&str) -> bool) -> std::io::Result<()> {
     let text = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(why) if why.kind() == std::io::ErrorKind::NotFound => return Ok(()),
         Err(why) => return Err(why),
     };
-    let reads = serde_json::from_str::<Layout>(&text).is_ok_and(|kept| kept.version == VERSION);
-    if reads {
+    if reads(&text) {
         return Ok(());
     }
     let aside = unread(path);

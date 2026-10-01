@@ -156,6 +156,29 @@ fn the_library_is_kept_in_its_file() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// The crate review of 2026-10-01, GU-B-1: a library that cannot be read
+/// was loaded empty, and the next preset saved wrote over it with that one
+/// alone. It is kept beside as `.unread`, and the player is told.
+#[test]
+fn an_unreadable_library_is_kept_not_written_over() {
+    let dir = std::env::temp_dir().join(format!("cena-presets-unread-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("made");
+    let file = dir.join(FILE);
+    std::fs::write(&file, "{ \"version\": 1, \"presets\": [ broken").expect("written");
+    let mut library = Library::load(Some(dir.clone()));
+    assert!(library.presets().is_empty());
+    assert!(library.unsaved.is_some(), "the player is told");
+    let Some(vitals) = Preset::hydras().into_iter().next() else {
+        panic!("Hydra's presets");
+    };
+    library.keep(vitals);
+    let kept = std::fs::read_to_string(crate::layout::kept::unread(&file)).expect("kept beside");
+    assert!(kept.contains("broken"), "{kept}");
+    assert_eq!(Library::load(Some(dir.clone())).presets().len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// A character named Presets keeps its layout beside the library, not over
 /// it: both are read back whole.
 #[test]
