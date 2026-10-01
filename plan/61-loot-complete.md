@@ -162,7 +162,7 @@ the author's answers set (§7), with the bounty trips dropped (§6).
 4. **The dead keys of the loot**: overflow containers, the `autoclose` list, `loot_keep`,
    `critter_exclude`, `keep_closed`, the group's disks, phasing with 704; `loot ground`;
    `loot reset unskinnable`; and `track_full_sacks`, `log_unlootables`, `favor_left`
-   (§7 item 4). 4a and 4b BUILT (§5d, §5e); 4c next.
+   (§7 item 4). BUILT, in three parts (§5d, §5e, §5f).
 5. **The round's missing pieces that every profile meets**: *lighten your load*, a full
    pool, full bags during a return, the worker by the room's tag, scarabs and the gem
    shop's odd nouns, the ingot, plinite; and step 1's leftovers, `loot pool` banking the
@@ -367,6 +367,65 @@ Step 4 is built in three commits: 4a here, 4b the bags (overflow, `keep_closed`,
   two clears were broken together: in these tests either one alone leaves the bags free,
   so neither alone is pinned; the one before matters to a box emptied during the round,
   the one after to a bag that box filled.
+
+## 5f. Step 4c, BUILT 2026-10-01: the hands, phasing and `loot ground`
+
+- **A hand freed** (`cena-behavior/src/loot/plan/hands.rs`): before `loot room`, a thing
+  taken one by one or the skinner wielded, one hand must be free and fit to use, a hand
+  being unfit with a wound or a scar of rank 3 on its arm or hand (`free_hand`,
+  `eloot.lic:3816-3837`). With neither free, the left is freed when the profile favors
+  it (`favor_left`) and it is fit, or when the right is not; else the right. An armament
+  is stored where the player set it to go, as a trip stores it (`travel/hands.rs`; eloot
+  stores a readied weapon, `stow_ready_list`, `:4175-4190`); anything else, or an
+  armament that would not store, is dragged into its bag. The step that wanted the hand
+  waits, and is sent once the hand is free or after three tries. The hand holding a box
+  being emptied is never the one freed. Before, Hydra looted with whatever hands it had,
+  and with both full every `loot room` and `loot #id` was refused.
+- **Given back** (`return_hands`, `:3923-3944`): before the visit ends, what was put
+  away goes back, an armament as a trip takes it back (`remove` when worn, else `get`),
+  anything else dragged into the hand it came out of.
+- **Neither hand fit** ends the visit, `Left::NoHand`, and the hunt rests for it as *too
+  injured* (`Why::Injured`). eloot's own branch for it cannot be reached: a right hand
+  that is not fit is always *damaged*, so eloot frees the left and loots anyway.
+- **A creature that hands its loot over** (`search`, `:5709-5765`): a tumbleweed, plant,
+  shrub, creeper, vine or bush puts it in the left hand, freed first whatever the profile
+  says; a skayl, glacei, caedera, golem or elemental in a free one. What lands in that
+  hand is dragged to its bag after the search. Before, it stayed in hand.
+- **Phasing** (`loot/plan/phase.rs`; `box_phase`, `:2975-2984`): with `phase_boxes`
+  (eloot's `loot_phase`, carried and never read until now), a box confirmed in a bag is
+  phased, `prepare 704` then `cast at #box`, cast again while armour hinders it (five
+  times at most), when Phase is in the spell list and its cost can be paid
+  (`cast::ready`). Never a box of enruned or mithril, nor one put on a disk, which eloot
+  does not phase either (`single_drag`, `:4002`).
+- **Unphased at the pool** (`town/pool.rs`; `box_unphase`, `:2986-2996`): each box in
+  hand is looked at before the worker takes it; one that is *shifting* is dropped, which
+  it will not be, and comes back whole, found in the hand again by whatever id it has
+  then. **Claude's call, for the author:** this is done only when the profile phases
+  boxes. eloot looks at every box, which is a `look` per box for every profile.
+- **`loot ground`** (`box_loot_ground`, `:5144-5219`): the hands put away as a trip puts
+  them away; each box on the ground taken up, emptied by the box planner, and kept or
+  thrown out as `loot box` does; a locked box put back where it lay; someone's disk left,
+  whatever its noun. The hands are given back at the end. eloot opens a box where it lies
+  before taking it up; Hydra takes it up and lets the planner open it, so a locked box
+  costs a `drop` more and an open one nothing.
+- **Found building it**: eloot's line for a locked box, *It appears to be locked.*
+  (`:5151`, `:7270`), was not read as locked (`loot/outcome.rs`), so the box planner took
+  a locked box for an empty one, and `loot box` would have thrown it out.
+- The importer carries `favor_left`, which it had put under `[town]` where nothing read
+  it; the *Loot* page shows *Free the left hand first*. `loot ground` is in `loot help`,
+  the reference page and an agent's operations.
+- `loot/plan.rs` passed its cap of 600 with this; the planner's words, `Step` and
+  `Left`, moved down to `loot/plan/step.rs`.
+- *Tests:* the planner (the right stored and given back; `favor_left` freeing the left
+  and dragging it back; a right arm too hurt to use; neither hand fit; a free hand
+  freeing nothing; the box's hand never freed; a bramble handing its loot to the left; an
+  ordinary corpse searched with full hands; a box phased, and cast again when hindered;
+  none phased on a disk, of mithril, or without the spell; the importer,
+  `tests/loot_hands.rs`); the pool (a phased box unphased and given by its new id, a
+  whole one looked at once, `tests/town_pool.rs`); the two new lines
+  (`tests/loot_outcome.rs`); over a scripted game, `loot ground`
+  (`tests/loot_errand.rs`). Each rule was broken by hand against its tests: 15
+  mutations, 15 caught.
 
 ## 6. Not ported, and why
 

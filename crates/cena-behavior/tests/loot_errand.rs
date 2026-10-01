@@ -129,24 +129,25 @@ fn set_out_in(
         body: Runs { runs: Vec::new() },
     });
     // Skinning is done with what the right hand holds, when the profile
-    // names no weapon.
-    state.apply(&if errand == Errand::Skin {
-        Frame::RightHand {
-            item: "dagger".to_owned(),
-            link: Some(Link {
-                kind: LinkKind::Exist {
-                    id: "11".to_owned(),
-                    noun: "dagger".to_owned(),
-                },
-                text: "dagger".to_owned(),
-                coord: None,
-            }),
-        }
-    } else {
-        Frame::RightHand {
+    // names no weapon; the ground is looted with the sword put away.
+    let holding = |noun: &str, name: &str| Frame::RightHand {
+        item: name.to_owned(),
+        link: Some(Link {
+            kind: LinkKind::Exist {
+                id: "11".to_owned(),
+                noun: noun.to_owned(),
+            },
+            text: name.to_owned(),
+            coord: None,
+        }),
+    };
+    state.apply(&match errand {
+        Errand::Skin => holding("dagger", "dagger"),
+        Errand::Ground => holding("broadsword", "steel broadsword"),
+        _ => Frame::RightHand {
             item: "Empty".to_owned(),
             link: None,
-        }
+        },
     });
     state.apply(&Frame::LeftHand {
         item: "Empty".to_owned(),
@@ -374,20 +375,97 @@ const WONT_FIT: &[u8] =
 /// A whatsit to drag into the backpack, and a leaf nobody wants: the floor
 /// goes item by item, not by `loot room`.
 fn whatsit_and_leaf() -> Vec<RoomItem> {
-    [
+    floor(&[
         ("3", "whatsit", "peculiar glowing whatsit"),
         ("4", "acantha", "acantha leaf"),
+    ])
+}
+
+/// These `(id, noun, name)` on the floor.
+fn floor(things: &[(&str, &str, &str)]) -> Vec<RoomItem> {
+    things
+        .iter()
+        .map(|(id, noun, text)| RoomItem {
+            id: (*id).to_owned(),
+            noun: (*noun).to_owned(),
+            text: (*text).to_owned(),
+            before: None,
+            after: None,
+            status: None,
+        })
+        .collect()
+}
+
+/// `loot ground` (`box_loot_ground`, `eloot.lic:5144-5219`): the sword put
+/// away, each box on the ground taken up, emptied and thrown out, a locked
+/// one put back where it lay, someone's disk let be, and the sword taken
+/// back.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn loot_ground_empties_the_boxes_there_and_leaves_a_locked_one() {
+    let boxes = floor(&[
+        ("50", "coffer", "battered iron coffer"),
+        ("51", "strongbox", "dented steel strongbox"),
+        ("77", "coffer", "rusty iron Duffield coffer"),
+    ]);
+    let (transcript, task, mut told) = set_out(Errand::Ground, boxes);
+    let reply = |text: &str, hand: &str| {
+        format!("{text}\n{hand}\n<prompt time=\"1001\">&gt;</prompt>\n").into_bytes()
+    };
+    let empty = "<right>Empty</right>";
+    transcript.answer(
+        "store right",
+        &reply("You put away your broadsword.", empty),
+    );
+    transcript.answer(
+        "get #50",
+        &reply(
+            "You pick up a battered iron coffer.",
+            "<right exist=\"50\" noun=\"coffer\">battered iron coffer</right>",
+        ),
+    );
+    transcript.answer("trash #50", &reply("You toss the coffer away.", empty));
+    transcript.answer(
+        "get #51",
+        &reply(
+            "You pick up a dented steel strongbox.",
+            "<right exist=\"51\" noun=\"strongbox\">dented steel strongbox</right>",
+        ),
+    );
+    transcript.answer("open #51", &reply("It appears to be locked.", ""));
+    transcript.answer(
+        "drop #51",
+        &reply("You drop a dented steel strongbox.", empty),
+    );
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Ground))),
+        "{lines:?}"
+    );
+    let order: Vec<Option<usize>> = [
+        "store right",
+        "get #50",
+        "open #50",
+        "look in #50",
+        "trash #50",
+        "get #51",
+        "open #51",
+        "drop #51",
+        "get #11",
     ]
-    .into_iter()
-    .map(|(id, noun, text)| RoomItem {
-        id: id.to_owned(),
-        noun: noun.to_owned(),
-        text: text.to_owned(),
-        before: None,
-        after: None,
-        status: None,
-    })
-    .collect()
+    .iter()
+    .map(|line| at(&lines, line))
+    .collect();
+    assert!(order.iter().all(Option::is_some), "{lines:?}");
+    assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{lines:?}");
+    assert_eq!(at(&lines, "get #77"), None, "Duffield's disk: {lines:?}");
+    let said = drive_support::told_so_far(&mut told);
+    assert!(
+        said.iter()
+            .any(|(_, text)| text.contains("1 emptied, 1 locked and left there")),
+        "{said:?}"
+    );
 }
 
 /// The bags known full, as the desk holds them between runs.

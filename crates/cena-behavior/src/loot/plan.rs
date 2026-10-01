@@ -35,8 +35,13 @@ mod bags;
 mod boxed;
 mod hands;
 mod learn;
+mod phase;
+mod step;
 pub(crate) use bags::{disks, named_bags};
 use boxed::Boxed;
+use hands::{PutAway, Side};
+use phase::Phasing;
+pub use step::{Left, Step};
 
 /// How many times a corpse is searched before it is given up on
 /// (`eloot.lic:5670`, `3.times`).
@@ -67,78 +72,6 @@ pub struct Memory {
     pub checked_bags: BTreeSet<String>,
     /// Creatures the game said cannot be skinned, by name.
     pub unskinnable: BTreeSet<String>,
-}
-
-/// One command for the driver to send, or the end.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Step {
-    /// A stance command (`loot_defensive`).
-    Stance(String),
-    /// Ask the game for a fact the planner needs: `stow list`.
-    Ask(&'static str),
-    /// Cast a spell: the sigil, after a failed search.
-    Cast(String),
-    /// `loot #id` on a corpse.
-    Search(i64),
-    /// `open #bag`: a critter's bag, or a bag that is shut.
-    Open(String),
-    /// `close #bag`: a bag opened this visit, when the profile keeps them
-    /// closed.
-    Close(String),
-    /// `look in #bag`: a critter's bag, to learn what it holds.
-    LookIn(String),
-    /// `loot room`: everything left on the floor is wanted.
-    LootRoom,
-    /// `loot #id` on one thing the game stows itself.
-    LootItem(String),
-    /// Drag one thing into one bag.
-    Drag {
-        /// The item's id.
-        item: String,
-        /// The bag's id.
-        bag: String,
-    },
-    /// `get #id`: the skinning weapon into a hand (`skin.rs`).
-    Wield(String),
-    /// `kneel`, before skinning.
-    Kneel,
-    /// `stand`, after skinning knelt.
-    Stand,
-    /// `skin #corpse <hand>`: the hand holding the skinner.
-    Skin {
-        /// The corpse's id.
-        corpse: i64,
-        /// `left` or `right`.
-        hand: &'static str,
-    },
-    /// `stow gem #id`: a gem that broke out of a corpse into the left hand.
-    StowGem(String),
-    /// `describe <noun>`: a creature whose form decides whether it skins.
-    Describe(String),
-    /// `get coins from #box`: a box's coins, by hand.
-    Coins(String),
-    /// `point <charm> at #box`: a box's coins, by the profile's charm.
-    Charm {
-        /// The charm, by name.
-        charm: String,
-        /// The box's id.
-        box_: String,
-    },
-    /// Nothing more to do here.
-    Done(Left),
-}
-
-/// How the looting ended.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Left {
-    /// Everything wanted is stowed.
-    Nothing,
-    /// Something wanted could go in no bag: a reason to rest (author:
-    /// *"too much loot"*).
-    BagsFull,
-    /// A box stayed in hand that no bag would take: a reason to rest
-    /// (author: *"we don't want to drop it, so we head in to rest"*).
-    BoxInHand,
 }
 
 /// Where a critter's bag is in being emptied (`bag_loot`, `eloot.lic:4980`).
@@ -204,6 +137,18 @@ pub struct Planner {
     boxed: Option<Boxed>,
     /// Skin and stop: no search, no floor (`loot skin`).
     only_skin: bool,
+    /// A step waiting for a hand to be freed for it (`hands.rs`).
+    pending: Option<Step>,
+    /// Tries at freeing a hand for the pending step.
+    free_tries: u8,
+    /// What was put away to free a hand, to give back at the end.
+    put_away: Vec<PutAway>,
+    /// The hand a creature's loot lands in, and the creature.
+    catch: Option<(Side, i64)>,
+    /// A box being dragged into a bag, to phase once it is in (`phase.rs`).
+    into_box: Option<String>,
+    /// A box being phased.
+    phasing: Option<Phasing>,
 }
 
 impl Planner {
@@ -239,6 +184,12 @@ impl Planner {
             bags_full: false,
             boxed: None,
             only_skin: false,
+            pending: None,
+            free_tries: 0,
+            put_away: Vec::new(),
+            catch: None,
+            into_box: None,
+            phasing: None,
         }
     }
 
@@ -270,14 +221,21 @@ impl Planner {
         &self.memory
     }
 
-    /// The next command. Before the visit ends, the bags it opened are
-    /// closed again when the profile keeps them closed.
+    /// The next command. A hand is freed first for a step that needs one;
+    /// before the visit ends, what was put away is given back, and the bags
+    /// it opened are closed again when the profile keeps them closed.
     pub fn next(&mut self, state: &GameState) -> Step {
-        let mut step = self.decide(state);
-        if matches!(step, Step::Done(_))
-            && let Some(bag) = self.reclose(state)
-        {
-            step = Step::Close(bag);
+        let step = match self.pending.take() {
+            Some(step) => step,
+            None => self.decide(state),
+        };
+        let mut step = self.with_hand(state, step);
+        if matches!(step, Step::Done(_)) {
+            if let Some(back) = self.give_back(state) {
+                step = back;
+            } else if let Some(bag) = self.reclose(state) {
+                step = Step::Close(bag);
+            }
         }
         self.last = Some(step.clone());
         step
@@ -295,6 +253,12 @@ impl Planner {
             if !sigil_up(state) {
                 return Step::Cast(SIGIL_OF_DETERMINATION.to_owned());
             }
+        }
+        if let Some(step) = self.phase_step(state) {
+            return step;
+        }
+        if let Some(step) = self.stow_caught(state) {
+            return step;
         }
         if let Some(step) = self.box_step(state) {
             return step;
@@ -457,6 +421,9 @@ impl Planner {
             self.into = Some(bag);
             return Some(Step::LootItem(item.id.clone()));
         }
+        if types.is("box") {
+            self.may_phase(&item.id, &item.text, bags::is_disk(state, &bag));
+        }
         Some(Step::Drag {
             item: item.id.clone(),
             bag,
@@ -573,6 +540,8 @@ impl Planner {
             (Step::Drag { bag, .. }, Outcome::WontFit) => {
                 self.memory.full.insert(bag);
             }
+            (Step::Drag { item, .. }, Outcome::Stored) => self.stored(&item),
+            (Step::Cast(_), Outcome::Hindered) => self.hindered(),
             // `loot #id` names the item; the bag is the one it was bound for.
             (Step::LootItem(_), Outcome::WontFit) => {
                 if let Some(bag) = self.into.take() {

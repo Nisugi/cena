@@ -351,13 +351,15 @@ impl Hunt {
         self.loot.as_ref()
     }
 
-    /// The planner finished: how it left things. Bags full or a box in hand
-    /// is a reason to rest, taken up by the next tick.
+    /// The planner finished: how it left things. Bags full, a box in hand or
+    /// no hand fit to loot with is a reason to rest, taken up by the next
+    /// tick.
     pub fn loot_ended(&mut self, left: Left) {
         self.must_rest = match left {
             Left::Nothing => None,
             Left::BagsFull => Some(Why::Loaded),
             Left::BoxInHand => Some(Why::BoxInHand),
+            Left::NoHand => Some(Why::Injured),
         };
     }
 

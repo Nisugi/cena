@@ -47,6 +47,10 @@ enum Doing {
     Idle,
     /// A box in the right hand, offered; `confirm` once the quote came.
     Tipping { id: String, confirm: bool },
+    /// A box in the right hand looked at first, when the profile phases
+    /// boxes: a phased one, `shifting`, is dropped and comes back to the
+    /// hand whole (`box_unphase`, `eloot.lic:2986-2996`).
+    Unphasing { id: String, shifting: bool },
     /// A box going back to its bag.
     Back { id: String, bag: String },
     /// `ask #worker for return` sent.
@@ -61,7 +65,7 @@ enum Doing {
 #[derive(Clone, Debug)]
 #[expect(
     clippy::struct_excessive_bools,
-    reason = "two profile switches and two facts about the visit, each read in one place"
+    reason = "three profile switches and two facts about the visit, each read in one place"
 )]
 pub(super) struct Pool {
     worker: String,
@@ -72,6 +76,10 @@ pub(super) struct Pool {
     percent: bool,
     /// Keep an emptied box of gold, mithril or silver.
     keep_valuable: bool,
+    /// Look at each box before it is given, to unphase a phased one.
+    unphase: bool,
+    /// Boxes looked at and whole, by id.
+    whole: Vec<String>,
     /// The pool is full or the silver ran out: no more drop-offs.
     stop_dropping: bool,
     /// The worker has nothing more ready.
@@ -144,6 +152,8 @@ impl Pool {
             tip: town.pool_tip,
             percent: town.pool_tip_percent,
             keep_valuable: town.sells("box"),
+            unphase: town.phase_boxes,
+            whole: Vec::new(),
             stop_dropping: false,
             returns_over: false,
             default_bag: state
@@ -174,6 +184,11 @@ impl Pool {
                 amount: self.tip,
                 percent: self.percent,
                 confirm,
+            }),
+            Doing::Unphasing { id, shifting } => Some(if shifting {
+                Step::Drop(id)
+            } else {
+                Step::LookAt(id)
             }),
             Doing::Back { id, bag } => {
                 if holds(state, &id) {
@@ -207,7 +222,14 @@ impl Pool {
             && let Some((id, _)) = self.boxes.front().cloned()
         {
             if state.right_hand.holds(&id) {
-                self.doing = Doing::Tipping { id, confirm: false };
+                self.doing = if self.unphase && !self.whole.contains(&id) {
+                    Doing::Unphasing {
+                        id,
+                        shifting: false,
+                    }
+                } else {
+                    Doing::Tipping { id, confirm: false }
+                };
                 return self.next(state);
             }
             if state.left_hand.holds(&id) {
@@ -254,6 +276,26 @@ impl Pool {
             }
             (Step::Tip { .. }, Doing::Tipping { id, confirm }) => {
                 self.tipped(id, confirm, facts, replies, state);
+            }
+            (Step::LookAt(_), Doing::Unphasing { id, .. }) => {
+                if replies.contains(&Reply::Shifting) {
+                    self.doing = Doing::Unphasing { id, shifting: true };
+                } else {
+                    self.whole.push(id);
+                    self.doing = Doing::Idle;
+                }
+            }
+            (Step::Drop(_), Doing::Unphasing { id, .. }) => {
+                // Back in hand whole, perhaps by another id: eloot finds the
+                // box in hand again (`box_unphase`, `eloot.lic:2993-2995`).
+                let now = box_in_hand(state).unwrap_or(id.clone());
+                for (held, _) in &mut self.boxes {
+                    if *held == id {
+                        held.clone_from(&now);
+                    }
+                }
+                self.whole.push(now);
+                self.doing = Doing::Idle;
             }
             (Step::AskReturn(_), Doing::Asking) => {
                 let back = facts

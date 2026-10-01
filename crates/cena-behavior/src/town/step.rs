@@ -82,8 +82,12 @@ pub enum Step {
     EmptyBox(String),
     /// `trash #id`: an emptied box into the room's receptacle.
     Trash(String),
-    /// `drop #id`: an emptied box, where there is no receptacle.
+    /// `drop #id`: an emptied box, where there is no receptacle; or a phased
+    /// box, which will not drop but comes back to the hand whole.
     Drop(String),
+    /// `look at #id`: a box, before the pool's worker takes it, to see
+    /// whether it is phased (`box_unphase`, `eloot.lic:2986-2996`).
+    LookAt(String),
     /// Put one thing in one bag.
     Stow {
         /// The item's id.

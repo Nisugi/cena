@@ -65,6 +65,9 @@ pub struct Town {
     /// The loot profile's `keep_closed`: the bags opened to sell from are
     /// closed again after the round.
     pub keep_closed: bool,
+    /// The loot profile's `loot_phase`: a box is looked at before the
+    /// pool's worker takes it, and unphased when it is phased.
+    pub phase_boxes: bool,
 }
 
 impl Default for Town {
@@ -91,6 +94,7 @@ impl Default for Town {
             disk: false,
             overflow: Vec::new(),
             keep_closed: false,
+            phase_boxes: false,
         }
     }
 }
@@ -164,6 +168,7 @@ impl Town {
             disk: flag(table, "use_disk"),
             overflow: Vec::new(),
             keep_closed: false,
+            phase_boxes: false,
         }
     }
 
@@ -217,6 +222,7 @@ impl Town {
         town.disk |= profile.disk;
         town.overflow.clone_from(&profile.overflow);
         town.keep_closed = profile.keep_closed;
+        town.phase_boxes = profile.phase_boxes;
         town
     }
 
@@ -402,6 +408,7 @@ mod tests {
             disk: false,
             overflow: Vec::new(),
             keep_closed: false,
+            phase_boxes: false,
         }
     }
 

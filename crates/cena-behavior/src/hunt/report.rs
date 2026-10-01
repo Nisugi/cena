@@ -169,6 +169,7 @@ pub(super) fn doing(said: &Said) -> String {
             crate::loot::Errand::Room => "looting",
             crate::loot::Errand::Skin => "skinning",
             crate::loot::Errand::Box => "emptying a box",
+            crate::loot::Errand::Ground => "emptying the boxes on the ground",
             crate::loot::Errand::Sell => "selling",
             crate::loot::Errand::Pool { .. } => "at the locksmith pool",
             crate::loot::Errand::Deposit => "at the bank",

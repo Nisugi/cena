@@ -118,6 +118,64 @@ fn a_full_pool_sends_the_box_back_and_a_locked_return_is_kept() {
     );
 }
 
+/// With boxes phased, each is looked at before it is given: a phased one,
+/// *shifting*, is dropped, comes back to the hand whole, perhaps by another
+/// id, and is given by that one (`box_unphase`, `eloot.lic:2986-2996`).
+#[test]
+fn a_phased_box_is_unphased_before_the_worker_takes_it() {
+    let mut state = setup(&[], &[("5", "coffer", "iron coffer")]);
+    with_worker(&mut state);
+    let town = Town {
+        phase_boxes: true,
+        ..pool_town()
+    };
+    let mut seller = Seller::new(town, &state, HOME).expect("a round");
+    seller.next(&state, &at_pool);
+    assert_eq!(seller.next(&state, &at_pool), Step::Fetch("5".to_owned()));
+    hand(&mut state, true, Some(("5", "coffer", "iron coffer")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &at_pool), Step::LookAt("5".to_owned()));
+    seller.outcome(&[], &[Reply::Shifting], &state);
+    assert_eq!(seller.next(&state, &at_pool), Step::Drop("5".to_owned()));
+    hand(&mut state, true, Some(("7", "coffer", "iron coffer")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &at_pool),
+        Step::Tip {
+            to: "88".to_owned(),
+            amount: 300,
+            percent: false,
+            confirm: false,
+        },
+        "the box whole, by its new id, and looked at once"
+    );
+}
+
+#[test]
+fn a_whole_box_is_looked_at_once_and_given() {
+    let mut state = setup(&[], &[("5", "coffer", "iron coffer")]);
+    with_worker(&mut state);
+    let town = Town {
+        phase_boxes: true,
+        ..pool_town()
+    };
+    let mut seller = Seller::new(town, &state, HOME).expect("a round");
+    seller.next(&state, &at_pool);
+    seller.next(&state, &at_pool);
+    hand(&mut state, true, Some(("5", "coffer", "iron coffer")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &at_pool), Step::LookAt("5".to_owned()));
+    seller.outcome(&[], &[], &state);
+    assert!(matches!(
+        seller.next(&state, &at_pool),
+        Step::Tip { confirm: false, .. }
+    ));
+    assert_eq!(
+        cena_behavior::town::classify("You see a shifting iron coffer."),
+        Some(Reply::Shifting)
+    );
+}
+
 #[test]
 fn no_worker_in_the_room_passes_the_pool_by() {
     let state = setup(&[], &[("5", "coffer", "iron coffer")]);

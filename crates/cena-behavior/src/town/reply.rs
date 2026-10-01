@@ -58,6 +58,9 @@ pub enum Reply {
     /// `bundle remove` took the bundle apart: *Those were the last two*,
     /// one skin in each hand (`furrier`, `eloot.lic:6905`).
     LastTwo,
+    /// A box looked at is *shifting*: phased, to be unphased before the
+    /// pool's worker takes it (`box_unphase`, `eloot.lic:2988`).
+    Shifting,
 }
 
 /// Read one reply line. `None` when it says nothing this planner acts on.
@@ -131,6 +134,9 @@ pub fn classify(line: &str) -> Option<Reply> {
     }
     if has("Those were the last two") {
         return Some(Reply::LastTwo);
+    }
+    if text.to_ascii_lowercase().contains("shifting") {
+        return Some(Reply::Shifting);
     }
     None
 }

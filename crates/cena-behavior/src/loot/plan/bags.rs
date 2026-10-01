@@ -177,7 +177,7 @@ pub(crate) fn named_bags(state: &GameState, names: &[String]) -> Vec<String> {
 }
 
 /// Whether `id` is a disk in the room.
-fn is_disk(state: &GameState, id: &str) -> bool {
+pub(super) fn is_disk(state: &GameState, id: &str) -> bool {
     state.room.disks().any(|disk| disk.id == id)
 }
 

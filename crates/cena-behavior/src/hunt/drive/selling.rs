@@ -206,5 +206,6 @@ fn line_for(step: &Errand) -> Option<String> {
         Errand::AskReturn(to) => format!("ask #{to} for return"),
         Errand::Trash(id) => format!("trash #{id}"),
         Errand::Drop(id) => format!("drop #{id}"),
+        Errand::LookAt(id) => format!("look at #{id}"),
     })
 }

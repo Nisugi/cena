@@ -228,6 +228,7 @@ const LOOT_HELP: &[&str] = &[
     "loot                                   skin and search the dead here, take what the floor holds",
     "loot skin                              only skin the dead here",
     "loot box                               empty the open box in hand, then keep it or throw it out",
+    "loot ground                            the same for each box on the ground; a locked one stays there",
     "loot sell                              the selling round: the pool, the shops, the bank, and back",
     "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them",
     "loot deposit                           the bank alone, keeping the silver the profile says",
@@ -262,6 +263,7 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
         }
         ["skin"] => Errand::Skin,
         ["box"] => Errand::Box,
+        ["ground"] => Errand::Ground,
         ["sell"] => Errand::Sell,
         ["deposit"] => Errand::Deposit,
         ["pool"] => Errand::Pool {
@@ -279,7 +281,7 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
         },
         _ => {
             return Some(Err(
-                "loot, loot skin, loot box, loot sell, loot pool [deposit|return], loot deposit, loot last; `loot help` says more."
+                "loot, loot skin, loot box, loot ground, loot sell, loot pool [deposit|return], loot deposit, loot last; `loot help` says more."
                     .to_owned(),
             ));
         }
@@ -726,6 +728,7 @@ mod tests {
         assert_eq!(loot("loot"), Some(Command::Loot(Errand::Room)));
         assert_eq!(loot("LOOT Skin"), Some(Command::Loot(Errand::Skin)));
         assert_eq!(loot("loot box"), Some(Command::Loot(Errand::Box)));
+        assert_eq!(loot("loot ground"), Some(Command::Loot(Errand::Ground)));
         assert_eq!(loot("loot sell"), Some(Command::Loot(Errand::Sell)));
         assert_eq!(loot("loot deposit"), Some(Command::Loot(Errand::Deposit)));
         for (line, drop, collect) in [

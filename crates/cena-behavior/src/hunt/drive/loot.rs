@@ -10,7 +10,10 @@ use crate::loot::{
     Errand, Learned, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify,
 };
 use crate::town::{self, Round, Town};
-use crate::travel::TravelNotes;
+use crate::travel::{TravelNotes, hands};
+
+/// How many boxes `loot ground` takes up in one go.
+const GROUND_BOXES: usize = 20;
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     /// Loot with the planner (`plan/31` Stage 2): each step sent through the
@@ -77,6 +80,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             .map(|creature| creature.id)
             .collect();
         self.recall_full(&profile);
+        let ground: String;
         let text = match errand {
             Errand::Room | Errand::Skin => {
                 let memory = std::mem::take(&mut self.memory);
@@ -91,10 +95,15 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                     Some(Left::Nothing) => "done.",
                     Some(Left::BagsFull) => "stopped: every bag that would take it is full.",
                     Some(Left::BoxInHand) => "stopped: a box is in hand that no bag will take.",
+                    Some(Left::NoHand) => "stopped: neither hand is fit to loot with.",
                     None => "gave up after too many steps.",
                 }
             }
             Errand::Box => self.box_errand(&profile).await?,
+            Errand::Ground => {
+                ground = self.ground_errand(&profile).await?;
+                &ground
+            }
             Errand::Sell | Errand::Pool { .. } | Errand::Deposit => {
                 let (round, done, nothing) = match errand {
                     Errand::Pool { drop, collect } => (
@@ -128,9 +137,77 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         if self.empty_box(profile, &id).await? {
             return Ok("the box is locked.");
         }
-        let held =
-            |this: &Self| this.state.right_hand.holds(&id) || this.state.left_hand.holds(&id);
-        if town::keeps_box(&Town::for_profile(profile), &self.state, &id) {
+        self.keep_or_toss(profile, &id).await
+    }
+
+    /// `loot ground` (`box_loot_ground`, `eloot.lic:5144-5219`): the hands
+    /// put away as a trip puts them away, then each box on the ground taken
+    /// up, emptied, and kept or thrown out as `loot box` does; one that is
+    /// locked is put back where it lay. The hands are given back at the end.
+    async fn ground_errand(&mut self, profile: &LootProfile) -> Result<String, HuntEnd> {
+        let boxes: Vec<String> = self
+            .state
+            .room
+            .objects
+            .iter()
+            .filter(|item| {
+                cena_session::Disk::read(item).is_none()
+                    && cena_session::gameobj::classify(&item.noun, &item.text).is("box")
+            })
+            .map(|item| item.id.clone())
+            .take(GROUND_BOXES)
+            .collect();
+        if boxes.is_empty() {
+            return Ok("there is no box on the ground.".to_owned());
+        }
+        let held = |this: &Self, id: &str| {
+            this.state.right_hand.holds(id) || this.state.left_hand.holds(id)
+        };
+        let stored = hands::store_commands(&self.state);
+        for (_, line) in &stored {
+            self.send(line, None).await?;
+        }
+        let (mut emptied, mut locked, mut missed) = (0_usize, 0_usize, 0_usize);
+        for id in &boxes {
+            self.send(&format!("get #{id}"), None).await?;
+            self.hold(BEAT).await?;
+            if !held(self, id) {
+                missed += 1;
+                continue;
+            }
+            if self.empty_box(profile, id).await? {
+                locked += 1;
+                self.send(&format!("drop #{id}"), None).await?;
+                continue;
+            }
+            self.keep_or_toss(profile, id).await?;
+            emptied += 1;
+        }
+        for (item, _) in &stored {
+            if !held(self, &item.id) {
+                let line = hands::take_back(&self.state, item);
+                self.send(&line, None).await?;
+            }
+        }
+        let mut parts = vec![format!("{emptied} emptied")];
+        if locked > 0 {
+            parts.push(format!("{locked} locked and left there"));
+        }
+        if missed > 0 {
+            parts.push(format!("{missed} could not be taken up"));
+        }
+        Ok(format!("boxes on the ground: {}.", parts.join(", ")))
+    }
+
+    /// The emptied box `id` in hand kept, when it is one the profile sells
+    /// empty, else thrown out (`save_trash_box`, `eloot.lic:7773`).
+    async fn keep_or_toss(
+        &mut self,
+        profile: &LootProfile,
+        id: &str,
+    ) -> Result<&'static str, HuntEnd> {
+        let held = |this: &Self| this.state.right_hand.holds(id) || this.state.left_hand.holds(id);
+        if town::keeps_box(&Town::for_profile(profile), &self.state, id) {
             let bag = self.state.containers.stow(StowSlot::Default);
             if let Some(bag) = bag.map(|bag| bag.id.clone()) {
                 self.send(&format!("_drag #{id} #{bag}"), None).await?;
@@ -195,7 +272,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                     }
                     break;
                 }
-                Step::Stance(line) | Step::Cast(line) => (line.clone(), None),
+                Step::Stance(line) | Step::Cast(line) | Step::Hand(line) => (line.clone(), None),
                 Step::Ask(what) => ((*what).to_owned(), None),
                 Step::Search(id) => (format!("loot #{id}"), None),
                 Step::LootRoom => ("loot room".to_owned(), None),

@@ -71,6 +71,11 @@ impl Boxed {
 }
 
 impl Planner {
+    /// The box being emptied, by id.
+    pub(super) fn boxed_id(&self) -> Option<&str> {
+        self.boxed.as_ref().map(|boxed| boxed.id.as_str())
+    }
+
     /// The box's next step; `None` when the planner is not emptying a box.
     pub(super) fn box_step(&mut self, state: &GameState) -> Option<Step> {
         let boxed = self.boxed.as_mut()?;

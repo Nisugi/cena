@@ -66,7 +66,6 @@ const TOWN_PREFIXES: &[&str] = &[
     "appraisal_container",
     "charm_name",
     "coin_hand_name",
-    "favor_left",
     "gambling_toss_min",
     "between",
     "trash_dump_types",
@@ -125,6 +124,7 @@ pub fn import(yaml_text: &str) -> Result<Import, String> {
     profile.phase_boxes = flag("loot_phase", &mut source);
     profile.remember_unlootable = flag("log_unlootables", &mut source);
     profile.keep_closed = flag("keep_closed", &mut source);
+    profile.favor_left = flag("favor_left", &mut source);
     // On unless the file says otherwise, as eloot's is (`eloot.lic:508`).
     profile.track_full = source
         .remove("track_full_sacks")

@@ -40,7 +40,8 @@ use tokio_util::sync::CancellationToken;
 /// What an agent is told it may run.
 pub(crate) const ALLOWED: &str = "go2 <place>, go2 stop, hunt <profile>, hunt <profile> quick, \
 hunt <profile> bounty, hunt stop, heal (spellcast, ranged, blood), heal stock, heal fill, keep, \
-waggle [names], loot, loot skin, loot box, loot sell, loot pool [deposit|return], loot deposit";
+waggle [names], loot, loot skin, loot box, loot ground, loot sell, loot pool [deposit|return], \
+loot deposit";
 
 /// The authority travel's walks claim (`travel.rs`).
 pub(crate) const TRAVEL_TOKEN: AuthorityToken = AuthorityToken(2);

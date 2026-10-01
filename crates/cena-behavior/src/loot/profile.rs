@@ -92,6 +92,9 @@ pub struct LootProfile {
     /// runs (`track_full_sacks`, on by default as eloot's is); off, each
     /// visit tries every bag again.
     pub track_full: bool,
+    /// With both hands full, the left hand's thing is put away to loot
+    /// with, not the right's, when the left is fit to use (`favor_left`).
+    pub favor_left: bool,
     /// Skinning, when the profile turns it on (`skin_enable` and the
     /// `skin_*` keys; `plan/31` §5).
     #[serde(default, skip_serializing_if = "Skin::is_off")]
@@ -124,6 +127,7 @@ impl Default for LootProfile {
             autoclose: Vec::new(),
             keep_closed: false,
             track_full: true,
+            favor_left: false,
             skin: Skin::default(),
             town: toml::Table::new(),
         }
@@ -360,6 +364,12 @@ pub const TABLE: &[crate::settings::Key] = {
             name: "track_full",
             label: "Remember full bags",
             help: "A bag found full is skipped until a selling round, across rooms and runs. Off: each visit tries every bag again.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "favor_left",
+            label: "Free the left hand first",
+            help: "With both hands full, put away what the left holds to loot with, and give it back after. A hand too hurt to use is never the one looted with.",
             kind: KeyKind::Toggle,
         },
     ]

@@ -93,6 +93,13 @@ fn every_phrase_eloot_acts_on_has_an_outcome() {
             "You put a small emerald in your leather sack.",
             Outcome::Stored,
         ),
+        // A box (`box_loot_ground`, `eloot.lic:5151`), and armour on a cast
+        // (`box_phase`, `:2982`).
+        ("It appears to be locked.", Outcome::Locked),
+        (
+            "[Spell Hindrance for Phase is 45% with current armor worn.]",
+            Outcome::Hindered,
+        ),
     ];
     for (line, expect) in cases {
         assert_eq!(classify(line), Some(expect), "{line}");

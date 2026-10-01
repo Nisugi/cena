@@ -49,6 +49,9 @@ pub enum Errand {
     Skin,
     /// `loot box`: empty the open box in hand, then keep it or throw it out.
     Box,
+    /// `loot ground`: each box on the ground taken up, emptied, then kept
+    /// or thrown out; a locked one put back where it lay.
+    Ground,
     /// `loot sell`: the whole selling round, and back.
     Sell,
     /// `loot pool`: the locksmith pool alone; `drop` gives it the boxes
@@ -69,6 +72,7 @@ impl std::fmt::Display for Errand {
             Self::Room => "looted",
             Self::Skin => "skinned",
             Self::Box => "the box is emptied",
+            Self::Ground => "the boxes on the ground are emptied",
             Self::Sell => "sold",
             Self::Pool { .. } => "the pool is done",
             Self::Deposit => "deposited",
