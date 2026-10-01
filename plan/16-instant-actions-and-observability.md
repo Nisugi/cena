@@ -1021,7 +1021,9 @@ StringProc every few rooms means the queue drains regularly without any delay lo
 > - **If it still trips at the right size, the time between batches is raised by 50 ms** until
 >   it does not.
 >
-> Built in `plan/24`'s walker, which had sent one move per room until then.
+> **BUILT 2026-10-01** in the walker (`crates/cena-behavior/src/travel/pace.rs`), which had sent
+> one move per room until then; the typeahead is go2's own setting, on the *Travel* page, and a
+> refusal's number is kept there.
 
 **UNVERIFIED:** whether a refused *movement* behaves like a refused `look` -- refused cleanly with
 the path intact -- or whether the server's movement handling differs. Worth one deliberate test

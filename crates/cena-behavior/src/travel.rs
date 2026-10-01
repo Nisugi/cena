@@ -59,6 +59,7 @@ mod itinerary;
 mod kept;
 mod knows;
 mod mover;
+mod pace;
 mod preflight;
 mod recovery;
 mod replies;
@@ -87,6 +88,7 @@ pub use facts::{TravelNotes, walker_from};
 pub use hands::{Stored, cast_commands, store_commands, take_back};
 pub use heard::Heard;
 pub use itinerary::{Leg, PLACES, Shut, ShutWhy, described, destination, itinerary, places, table};
+pub use pace::{DEFAULT_TYPEAHEAD, GAP_MS, GAP_STEP_MS, SETTLE_MS};
 pub use recovery::{MAX_REMEDIES, MAX_ROLLS};
 pub use standing::{MAX_STANDS, STAND_TIMEOUT_MS};
 pub use steps::{
@@ -110,6 +112,10 @@ pub const ORPHAN_MS: u64 = 1500;
 pub enum Said {
     /// Send this, and tick again.
     Send(String),
+    /// Send these together, plain moves sent ahead of the walker
+    /// (`travel/pace.rs`); then let this many milliseconds pass, folding what
+    /// comes, and tick again.
+    SendAll(Vec<String>, u64),
     /// Do this to completion, and tick again.
     Do(Deed),
     /// The next exit is crossed by a named routine (`cena_map::Routine`):
@@ -202,6 +208,14 @@ pub struct Trip {
     in_aside: bool,
     /// xorshift64. Seeded, so a replay takes the same turns in a maze.
     random: u64,
+    /// How plain moves go ahead of the walker, once the walker is known.
+    pace: Option<pace::Pace>,
+    /// Plain moves sent ahead and not yet landed.
+    batch: Option<pace::Batch>,
+    /// After a batched move was refused, nothing until the walker has been
+    /// still in `settled_at` this long.
+    settle_until: u64,
+    settled_at: RoomId,
 }
 
 impl Trip {
@@ -242,6 +256,10 @@ impl Trip {
             in_aside: false,
             // xorshift has one bad seed.
             random: seed.max(1),
+            pace: None,
+            batch: None,
+            settle_until: 0,
+            settled_at: RoomId(0),
         }
     }
 
@@ -428,6 +446,9 @@ impl Trip {
             }
             return self.replan(map, walker, here, now.ms);
         }
+        if let Some(said) = self.batch_tick(map, walker, here, (&feedback, &lines), now.ms) {
+            return said;
+        }
         // At the goal -- but a crossing under way is finished first: the door
         // behind the walker is still to be closed and locked, the hands still
         // to be filled.
@@ -547,6 +568,9 @@ impl Trip {
             && let Err(why) = self.plan(map, walker, here)
         {
             return self.fail(why);
+        }
+        if let Some(said) = self.send_ahead(map, walker, here, ms) {
+            return said;
         }
         // The room the next exit leaves. It is `here` unless the path passes
         // through a room that exists only in the map (an urchin hub): that

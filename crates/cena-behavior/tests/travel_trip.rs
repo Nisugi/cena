@@ -67,6 +67,14 @@ fn walk(
                 here = RoomId(*to);
                 sent.push(command);
             }
+            Said::SendAll(commands, _) => {
+                for command in commands {
+                    let (expected, to) = landings.next()?;
+                    assert_eq!(&command, expected, "after {sent:?}");
+                    here = RoomId(*to);
+                    sent.push(command);
+                }
+            }
             ended @ (Said::Arrived | Said::Failed(_)) => return Some((sent, ended)),
             Said::Hold | Said::Do(_) | Said::Routine(_) | Said::Aside(_) => return None,
         }

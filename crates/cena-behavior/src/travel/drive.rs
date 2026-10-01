@@ -495,7 +495,14 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 ms: u64::try_from(self.began.elapsed().as_millis()).unwrap_or(u64::MAX),
             };
             let walker = self.walker(notes);
-            match trip.tick(map, &walker, now) {
+            let said = trip.tick(map, &walker, now);
+            if let Some(typeahead) = trip.typeahead_learned() {
+                notes
+                    .settings
+                    .insert(super::settings::TYPEAHEAD.to_owned(), typeahead.to_string());
+                wrote(notes);
+            }
+            match said {
                 Said::Arrived => return Ok(Turn::Arrived),
                 Said::Failed(why) => return Err(Ended::Failed(why)),
                 Said::Aside(worked) => return Ok(Turn::Aside(worked)),
@@ -511,6 +518,18 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
                 // A move causes no roundtime, and is verified by the room it
                 // lands in: the trip's own timeout is the deadline.
                 Said::Send(line) => self.send_for(trip, &line).await,
+                // Plain moves sent ahead, then the gap before the next batch,
+                // folding what lands (`travel/pace.rs`).
+                Said::SendAll(lines, gap) => {
+                    for line in &lines {
+                        self.send(line).await?;
+                    }
+                    let until = Instant::now() + Duration::from_millis(gap);
+                    while Instant::now() < until {
+                        self.hold_for(trip, until - Instant::now()).await?;
+                    }
+                    Ok(())
+                }
                 Said::Do(Deed::Remember(name, value)) => {
                     notes.memories.insert(name, value);
                     wrote(notes);
@@ -688,11 +707,16 @@ impl<N: FnMut() -> CommandId> Driver<'_, N> {
 
     /// Wait for the game's next word, or a beat, whichever is first.
     async fn hold(&mut self, trip: &mut Trip) -> Result<(), Ended> {
+        self.hold_for(trip, BEAT).await
+    }
+
+    /// Wait for the game's next word, or `most`, whichever is first.
+    async fn hold_for(&mut self, trip: &mut Trip, most: Duration) -> Result<(), Ended> {
         let event = tokio::select! {
             biased;
             () = self.cancel.cancelled() => return Err(Ended::Stopped(BehaviorError::Cancelled)),
             event = self.events.recv() => event,
-            () = tokio::time::sleep(BEAT) => return Ok(()),
+            () = tokio::time::sleep(most) => return Ok(()),
         };
         match event {
             Ok(event) => self.fold(trip, &event).map_err(Ended::Stopped),

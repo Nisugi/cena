@@ -48,6 +48,9 @@ pub const USE_GIGAS_HWTRAVEL: &str = "use_gigas_hwtravel";
 pub const GIGAS_MIN_NUMBER: &str = "gigas_min_number";
 /// The trinket that takes the walker to Mist Harbor.
 pub const FWI_TRINKET: &str = "fwi_trinket";
+/// go2's own `typeahead`: how many moves the game holds beyond the one it is
+/// doing, so how many plain moves go ahead of the walker (`travel/pace.rs`).
+pub const TYPEAHEAD: &str = "typeahead";
 
 /// Every setting travel's code reads, in the menu's order.
 pub const TABLE: &[Key] = &[
@@ -105,6 +108,14 @@ pub const TABLE: &[Key] = &[
         help: "The trinket that takes the walker to Mist Harbor, by its name.",
         kind: KeyKind::Text,
     },
+    Key {
+        name: TYPEAHEAD,
+        label: "Moves sent ahead",
+        help: "How many moves the game holds beyond the one it is doing (go2's typeahead): \
+               plain moves go 1 + this at a time, a batch every 150 ms. Set from the game's \
+               own refusal when it says otherwise; 2 when unset, 0 for one move at a time.",
+        kind: KeyKind::Whole { min: 0, max: 5 },
+    },
 ];
 
 #[cfg(test)]
@@ -128,6 +139,7 @@ mod tests {
                 GET_RETURN_TRIP_SILVERS,
                 GET_SILVERS,
                 GIGAS_MIN_NUMBER,
+                TYPEAHEAD,
                 USE_DAY_PASS,
                 USE_GIGAS_HWTRAVEL,
                 USE_URCHINS,
