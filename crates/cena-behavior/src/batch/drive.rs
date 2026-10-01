@@ -281,14 +281,17 @@ impl<'a> Driver<'a> {
                 Err(RecvError::Closed) => return Err(BehaviorError::Dead.into()),
             }
         };
-        if ran == Ran::Unknown {
+        if ran != Ran::Done {
             let symbol = self
                 .handle
                 .command_symbol()
                 .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
-            return Err(Halt::Failed(format!(
-                "I do not know {symbol}{command}, so the rest was not sent."
-            )));
+            let why = if ran == Ran::Unknown {
+                format!("I do not know {symbol}{command}")
+            } else {
+                format!("{symbol}{command} is only for you to type")
+            };
+            return Err(Halt::Failed(format!("{why}, so the rest was not sent.")));
         }
         if self.handle.claim(self.token).await.is_err() {
             return Err(BehaviorError::AuthorityHeld.into());

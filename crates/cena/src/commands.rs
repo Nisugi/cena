@@ -22,9 +22,29 @@
 //! [`Starter`], and hands back the task it started ([`Took::Started`]);
 //! [`Commands::route`] gives that to whoever asked. Typed at the prompt, the
 //! task is let go and runs on its own, as it always did.
+//!
+//! # Who may give which command
+//!
+//! A line reaches this command line from the player's typing, and also from
+//! a trigger's send (`plan/45` Stage 5), a script's `put` (`plan/46`) and
+//! the player's Lich (`plan/51`), each told apart by its [`Origin`]. The
+//! author's design lets those run Hydra's commands as the player would
+//! (`.go2`, `.hunt`, `.multi`, `.sorter`, `.sc`, a script by name), and
+//! they still do. **One table refuses the rest**, [`PLAYERS_OWN`]: the
+//! commands that decide what may act on the character -- `agent` (its level
+//! and approvals), `trigger` (approving and changing a send), `lich` (start
+//! it), and the relay's `to` and `all` (another character's typing) -- run
+//! only for [`Origin::Manual`], the player's own typing. Anything else that
+//! names one is refused and said (the crate review of 2026-10-01: BI-D-1,
+//! BI-D-2, BI-B-2). Before, a trigger whose send held another player's
+//! words, or any Lich script, could raise the agent to `takeover`.
+//!
+//! A `.multi` or `.foreach` runs each of its own Hydra commands with the
+//! origin of the line that started it, so a batch is no way round the
+//! table: `.multi 1;look;.all stand` from a trigger stops at the `.all`.
 
 use cena_session::command::claimant::{Claimed, Desk, Runner};
-use cena_session::{Notice, NoticeKind, SessionHandle};
+use cena_session::{Notice, NoticeKind, Origin, SessionHandle};
 use std::sync::{Arc, OnceLock};
 
 /// A family of commands: `Some` when the line was its own, `None` when the
@@ -34,6 +54,38 @@ pub(crate) type Handler = Arc<dyn Fn(&str) -> Option<Claimed> + Send + Sync>;
 /// A family whose commands may start something that goes on: `Some` when
 /// the line was its own, with the task when it started one.
 pub(crate) type Starter = Arc<dyn Fn(&str) -> Option<Took> + Send + Sync>;
+
+/// `;multi` and `;foreach`: a [`Starter`] told who sent the line, since the
+/// commands a batch runs are run as that sender's.
+pub(crate) type Batch = Arc<dyn Fn(&str, Origin) -> Option<Took> + Send + Sync>;
+
+/// The words only the player's own typing may give: the commands that decide
+/// what may act on the character. See the module docs.
+pub(crate) const PLAYERS_OWN: &[&str] = &["agent", "trigger", "triggers", "lich", "to", "all"];
+
+/// The word of `line` (without its symbol) when it is one of [`PLAYERS_OWN`]
+/// and `origin` is not the player's typing.
+pub(crate) fn refused(line: &str, origin: Origin) -> Option<&'static str> {
+    if origin == Origin::Manual {
+        return None;
+    }
+    let word = line.split_whitespace().next()?;
+    PLAYERS_OWN
+        .iter()
+        .copied()
+        .find(|own| word.eq_ignore_ascii_case(own))
+}
+
+/// Who sent a line, as the player is told it.
+fn sender(origin: Origin) -> &'static str {
+    match origin {
+        Origin::Trigger => "a trigger",
+        Origin::Script => "a script",
+        Origin::Lich => "your Lich",
+        Origin::Agent(_) => "an agent",
+        Origin::Manual | Origin::Behavior(_) | Origin::Hydra => "Hydra",
+    }
+}
 
 /// How a family stops what it started, for `;stop`: `true` when something
 /// was running.
@@ -50,6 +102,9 @@ pub(crate) enum Took {
     /// A `;multi` that is stopped stops what it started (the review of
     /// 2026-09-29: the batch let go of it and it kept sending).
     Stoppable(tokio::task::JoinHandle<()>, Stopper),
+    /// Not run: its word, one of [`PLAYERS_OWN`], is only the player's to
+    /// type, and someone else sent it.
+    Refused(&'static str),
 }
 
 /// The controls of a run a family started, put here once the run has them
@@ -144,7 +199,7 @@ pub(crate) struct Commands {
     /// Creature tags (`crate::targetid`).
     targetid: Arc<OnceLock<Handler>>,
     trigger: Arc<OnceLock<Handler>>,
-    batch: Arc<OnceLock<Starter>>,
+    batch: Arc<OnceLock<Batch>>,
     agent: Arc<OnceLock<Handler>>,
     /// The player's own Lich (`crate::lich`).
     lich: Arc<OnceLock<Handler>>,
@@ -172,7 +227,7 @@ impl Commands {
         let commands = Self::default();
         let routes = commands.clone();
         let told = handle.clone();
-        let runner: Runner = Arc::new(move |line: &str| {
+        let runner: Runner = Arc::new(move |line: &str, origin: Origin| {
             if asks_for_help(line) {
                 let lines = HELP.iter().map(|&line| line.to_owned()).collect();
                 told.say(Notice::table(NoticeKind::Info, lines).answering());
@@ -194,8 +249,23 @@ impl Commands {
                 return Claimed::Done;
             }
             // A task it started runs on by itself: nobody typing waits.
-            if routes.route(line).is_some() {
-                return Claimed::Done;
+            match routes.route(line, origin) {
+                Some(Took::Refused(word)) => {
+                    let symbol = told
+                        .command_symbol()
+                        .unwrap_or(cena_session::command::claimant::DEFAULT_SYMBOL);
+                    told.say(Notice::line(
+                        NoticeKind::Warn,
+                        format!(
+                            "`{symbol}{}` was not run: {symbol}{word} is only for you to type, and {} sent it.",
+                            line.trim(),
+                            sender(origin),
+                        ),
+                    ));
+                    return Claimed::Done;
+                }
+                Some(_) => return Claimed::Done,
+                None => {}
             }
             let starting = if cena_behavior::travel::parse_command(line).is_some() {
                 Some("Travel")
@@ -237,13 +307,30 @@ impl Commands {
     /// what it did; `None` when no family knows the word. Each family
     /// answers `Some` for its own words and `None` for the rest, so the
     /// first to answer has the line.
-    pub(crate) fn route(&self, line: &str) -> Option<Took> {
-        for family in [&self.travel, &self.hunt, &self.batch, &self.relay] {
+    ///
+    /// `origin` sent it: a word of [`PLAYERS_OWN`] from anyone but the
+    /// player is [`Took::Refused`], before any family sees it -- **the one
+    /// place that refuses**, for a typed line and a batch's alike.
+    pub(crate) fn route(&self, line: &str, origin: Origin) -> Option<Took> {
+        if let Some(word) = refused(line, origin) {
+            return Some(Took::Refused(word));
+        }
+        for family in [&self.travel, &self.hunt] {
             if let Some(starter) = family.get()
                 && let Some(took) = starter(line)
             {
                 return Some(took);
             }
+        }
+        if let Some(batch) = self.batch.get()
+            && let Some(took) = batch(line, origin)
+        {
+            return Some(took);
+        }
+        if let Some(relay) = self.relay.get()
+            && let Some(took) = relay(line)
+        {
+            return Some(took);
         }
         for family in [
             &self.loot,
@@ -359,9 +446,45 @@ impl Commands {
 
     /// Route `;multi` and `;foreach` to `handler` from now on. Once, as for
     /// travel.
-    pub(crate) fn batch(&self, handler: Starter) {
+    pub(crate) fn batch(&self, handler: Batch) {
         once(&self.batch, "batch", handler);
     }
+}
+
+/// Stand-ins for the families of [`PLAYERS_OWN`], each keeping the line it
+/// ran, for the tests of who may reach them.
+#[cfg(test)]
+pub(crate) fn stand_ins(commands: &Commands) -> Arc<std::sync::Mutex<Vec<String>>> {
+    /// `Some` when `line`'s word is one of `words`, kept in `ran`.
+    fn keeps(line: &str, words: &[&str], ran: &std::sync::Mutex<Vec<String>>) -> Option<()> {
+        let word = line.split_whitespace().next()?;
+        words.iter().any(|w| word.eq_ignore_ascii_case(w)).then(|| {
+            ran.lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .push(line.to_owned());
+        })
+    }
+    let ran = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let families: [(&str, &'static [&'static str]); 3] = [
+        ("agent", &["agent"]),
+        ("trigger", &["trigger", "triggers"]),
+        ("lich", &["lich"]),
+    ];
+    for (family, words) in families {
+        let ran = Arc::clone(&ran);
+        let handler: Handler =
+            Arc::new(move |line: &str| keeps(line, words, &ran).map(|()| Claimed::Done));
+        match family {
+            "agent" => commands.agent(handler),
+            "trigger" => commands.trigger(handler),
+            _ => commands.lich(handler),
+        }
+    }
+    let relayed = Arc::clone(&ran);
+    commands.relay(Arc::new(move |line: &str| {
+        keeps(line, &["to", "all"], &relayed).map(|()| Took::Done)
+    }));
+    ran
 }
 
 #[cfg(test)]
@@ -450,6 +573,87 @@ mod tests {
             ["look"],
             "only the game's line was sent"
         );
+    }
+
+    /// The one table: the player's typing may give every command; no one
+    /// else may give the player's own, and everyone may give the rest.
+    #[test]
+    fn only_the_players_typing_gives_the_players_own_commands() {
+        for line in [
+            "agent level takeover",
+            "AGENT approve 3",
+            "trigger approve theirs",
+            "triggers set x send look",
+            "lich on",
+            "to Baelor look",
+            "all stand",
+            "all -Dicate stand",
+        ] {
+            assert_eq!(refused(line, Origin::Manual), None, "{line}");
+            for origin in [Origin::Trigger, Origin::Script, Origin::Lich] {
+                assert!(refused(line, origin).is_some(), "{line} from {origin:?}");
+            }
+        }
+        for line in [
+            "go2 bank",
+            "hunt stop",
+            "multi 2,look",
+            "sorter on",
+            "alls",
+            "together",
+        ] {
+            assert_eq!(refused(line, Origin::Trigger), None, "{line}");
+        }
+    }
+
+    /// A script's line and every line the player's Lich writes reach Hydra's
+    /// command line as theirs: refused the player's own commands, and given
+    /// the rest (the crate review of 2026-10-01, BI-B-2).
+    #[tokio::test(flavor = "current_thread", start_paused = true)]
+    async fn a_script_and_lich_never_give_the_players_own_commands() {
+        let (source, transcript) =
+            AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+        let session = Session::new(source);
+        let handle = session.handle();
+        let (_, mut events) = session.subscribe();
+        let commands = Commands::install(&handle);
+        let ran = stand_ins(&commands);
+        let walked = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let walks = Arc::clone(&walked);
+        commands.travel(Arc::new(move |line: &str| {
+            line.starts_with("go2").then(|| {
+                walks.lock().unwrap().push(line.to_owned());
+                Took::Done
+            })
+        }));
+        tokio::spawn(session.into_actor().run());
+        let script = handle.script_door();
+        let lich = handle.lich_door();
+        for line in [
+            ".agent level takeover",
+            ".all .agent level takeover",
+            ".lich off",
+        ] {
+            script.send(line).await;
+            for from in [
+                cena_session::script::lich::LineFrom::Lich,
+                cena_session::script::lich::LineFrom::Player,
+            ] {
+                lich.send(line, from).await;
+            }
+        }
+        assert!(ran.lock().unwrap().is_empty(), "{:?}", ran.lock().unwrap());
+        assert!(
+            told(&mut events)
+                .iter()
+                .any(|said| said.contains("a script sent it")),
+            "the refusal is said"
+        );
+        script.send(".go2 bank").await;
+        lich.send(".go2 bank", cena_session::script::lich::LineFrom::Lich)
+            .await;
+        assert_eq!(*walked.lock().unwrap(), ["go2 bank", "go2 bank"]);
+        assert!(transcript.lines().is_empty(), "{:?}", transcript.lines());
     }
 
     /// `;stop` stops every family that has something running, says which,

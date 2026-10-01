@@ -330,17 +330,19 @@ impl SessionHandle {
         self.desk.get().map(super::claimant::Desk::symbol)
     }
 
-    /// Give a typed line to whoever runs commands (`super::claimant`).
-    /// `None`: it is the
-    /// game's, and the caller sends it as it always has.
+    /// Give a line `origin` sent as if typed to whoever runs commands
+    /// (`super::claimant`), saying who sent it. `None`: it is the game's,
+    /// and the caller sends it as it always has.
     ///
     /// **Every manual path asks this first** ([`Self::send_manual_at`]),
     /// so a frontend gets the player's commands without knowing what any
     /// of them are -- and one that sends by another route does not
-    /// silently lose them.
+    /// silently lose them. A trigger, a script and Lich ask it with their
+    /// own origin, never [`Origin::Manual`](crate::Origin::Manual), so a
+    /// command only the player may give can tell them apart.
     #[must_use]
-    pub fn typed(&self, line: &str) -> Option<super::Claimed> {
-        self.desk.get()?.claim(line)
+    pub fn typed(&self, line: &str, origin: crate::Origin) -> Option<super::Claimed> {
+        self.desk.get()?.claim(line, origin)
     }
 
     /// Say something to the player (`crate::notice`).

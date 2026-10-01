@@ -93,7 +93,7 @@ pub(crate) async fn run(
         tokio::select! {
             event = events.recv() => match event {
                 Ok(Event::Act { act, generation }) => {
-                    send(&handle, generation, &act.trigger, &act.line).await;
+                    send(&handle, generation, &act.trigger, &act.line, &act.captured).await;
                 }
                 Ok(_) | Err(RecvError::Lagged(_)) => {}
                 Err(RecvError::Closed) => return,
@@ -192,7 +192,10 @@ mod tests {
 
         assert!(
             commands
-                .route("trigger add stunned You are stunned")
+                .route(
+                    "trigger add stunned You are stunned",
+                    cena_session::Origin::Manual
+                )
                 .is_some()
         );
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -208,7 +211,11 @@ mod tests {
 
         // A file changed by hand is read again by everyone at one reload.
         fs::write(cena_behavior::triggers::path(&dir), "").unwrap();
-        assert!(commands.route("trigger reload").is_some());
+        assert!(
+            commands
+                .route("trigger reload", cena_session::Origin::Manual)
+                .is_some()
+        );
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         assert_eq!(dicate.handle().triggers().triggers().len(), 0);
         assert_eq!(

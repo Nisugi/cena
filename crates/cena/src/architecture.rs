@@ -370,6 +370,19 @@
 //! | the player's **scripts**, in a script runner (Ruby with Lich's engine) | [`script::Door`](cena_session::script::Door) | send lines, read the game's lines and a local copy of the state, and answer hooks within a deadline | `plan/46`, `crates/cena-agent/SCRIPTS.md`, [`scripts`](cena_agent::scripts) |
 //! | the player's own **Lich**, through the Lich relay | [`LichDoor`](cena_session::script::lich::LichDoor) | read the game's bytes as they came, send lines, have what the player types, and show its text in the game's place | `plan/51`, [`cena_agent::lich`], [`script::lich`](cena_session::script::lich) |
 //!
+//! **Hydra's command line knows who sent a line.** A script's line and
+//! Lich's reach it, as a trigger's send does, through
+//! [`typed`](cena_session::SessionHandle::typed), which carries the sender's
+//! [`Origin`](cena_session::Origin) to the desk; the binary's one table,
+//! [`PLAYERS_OWN`](crate::commands::PLAYERS_OWN), refuses `agent`,
+//! `trigger`, `lich`, `to` and `all` to all but
+//! [`Origin::Manual`](cena_session::Origin::Manual), in a batch too, and the
+//! rest run as the player's would (the crate review of 2026-10-01). Every
+//! line Lich writes is [`Origin::Lich`](cena_session::Origin::Lich) to the
+//! command line, and a line a script's input hook changed is
+//! [`Origin::Script`](cena_session::Origin::Script): the player's own Hydra
+//! commands reach the desk before either sees them.
+//!
 //! **The Lich relay keeps Hydra's connection to the game.** Lich runs in
 //! pipe mode against a loopback port Hydra holds
 //! ([`run`](cena_agent::lich::run)), is handed the game's bytes as they

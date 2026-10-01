@@ -77,6 +77,10 @@ pub enum Ran {
     Done,
     /// Nothing knows its word.
     Unknown,
+    /// Its word is one only the player's own typing may give, and this batch
+    /// was not typed by the player: a trigger's, a script's or Lich's
+    /// (`crates/cena/src/commands.rs`, the crate review of 2026-10-01).
+    Refused,
 }
 
 /// How a batch runs a Hydra command: given the line without its symbol, a

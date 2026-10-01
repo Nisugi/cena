@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use cena_behavior::batch::{self, Command, Desk, Hydra, Kind, Ran};
 use cena_session::command::claimant::DEFAULT_SYMBOL;
-use cena_session::{AuthorityToken, Notice, NoticeKind, SessionHandle, SessionObserver};
+use cena_session::{AuthorityToken, Notice, NoticeKind, Origin, SessionHandle, SessionObserver};
 
 use crate::commands::{Commands, Took};
 
@@ -40,9 +40,9 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
         let desk = Arc::clone(desk);
         commands.stops(name, Arc::new(move || desk.stop()));
     }
-    let hydra = through(commands.clone());
+    let routes = commands.clone();
     let (told, observer) = (handle.clone(), observer.clone());
-    commands.batch(Arc::new(move |line: &str| {
+    commands.batch(Arc::new(move |line: &str, origin: Origin| {
         let symbol = told.command_symbol().unwrap_or(DEFAULT_SYMBOL);
         let command = match batch::parse(line, symbol)? {
             Ok(command) => command,
@@ -76,7 +76,10 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
                 let desk = desk(job.kind());
                 let stopping = Arc::clone(&desk);
                 let stopper: crate::commands::Stopper = Arc::new(move || stopping.stop());
-                let (handle, observer, hydra) = (told.clone(), observer.clone(), hydra.clone());
+                // Its Hydra commands are its sender's, so a trigger's batch
+                // is refused what the trigger is (`crate::commands`).
+                let hydra = through(routes.clone(), origin);
+                let (handle, observer) = (told.clone(), observer.clone());
                 Some(Took::Stoppable(
                     tokio::spawn(async move {
                         match observer.subscribe().await {
@@ -113,15 +116,17 @@ pub(crate) fn open(handle: &SessionHandle, observer: &SessionObserver, commands:
     }));
 }
 
-/// How a batch runs a Hydra command: routed as a typed one is, and waited
-/// for until what it started is over. A batch stopped while it waits drops
-/// the wait, and stops what it started as it goes.
-fn through(commands: Commands) -> Hydra {
+/// How a batch runs a Hydra command: routed as a typed one is, as `origin`
+/// sent it -- the sender of the batch's own line -- and waited for until
+/// what it started is over. A batch stopped while it waits drops the wait,
+/// and stops what it started as it goes.
+fn through(commands: Commands, origin: Origin) -> Hydra {
     Arc::new(move |line: &str| {
-        let took = commands.route(line);
+        let took = commands.route(line, origin);
         Box::pin(async move {
             match took {
                 None => Ran::Unknown,
+                Some(Took::Refused(_)) => Ran::Refused,
                 Some(Took::Done) => Ran::Done,
                 Some(Took::Started(task)) => {
                     let _ = task.await;

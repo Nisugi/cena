@@ -24,6 +24,15 @@
 //! with just the number"*). It sees the line only after the symbol has
 //! passed on it, and a line it does not take is the game's as before.
 //!
+//! # Who sent the line goes with it
+//!
+//! A line reaches the desk from the player's typing ([`Origin::Manual`]), a
+//! trigger's send ([`Origin::Trigger`]), a script's `put`
+//! ([`Origin::Script`]) or the player's Lich ([`Origin::Lich`]), and the
+//! runner is told which (the crate review of 2026-10-01, BI-D-2, BI-B-2).
+//! What each may run is the binary's to decide, in one table
+//! (`crates/cena/src/commands.rs`); this crate only carries the word.
+//!
 //! # This crate knows nothing about commands
 //!
 //! It holds the symbol, splits the line, and asks whoever registered. What
@@ -33,6 +42,8 @@
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, OnceLock};
+
+use crate::Origin;
 
 /// Hydra's command symbol until a character's settings say otherwise.
 ///
@@ -91,8 +102,9 @@ pub enum Claimed {
 /// binary once it has built the behaviors.
 ///
 /// Called with the line **less its symbol**, trimmed of nothing else: a
-/// command's own arguments are its own business.
-pub type Runner = Arc<dyn Fn(&str) -> Claimed + Send + Sync>;
+/// command's own arguments are its own business. And with who sent it, so
+/// a command that only the player may give can refuse the rest.
+pub type Runner = Arc<dyn Fn(&str, Origin) -> Claimed + Send + Sync>;
 
 /// Who may take a line typed **without** the symbol: `true` when it took
 /// the line, which then never reaches the game.
@@ -157,7 +169,8 @@ impl Desk {
         self.symbol.store(u32::from(symbol), Ordering::Relaxed);
     }
 
-    /// What to do with a typed line. `None`: it is the game's.
+    /// What to do with a line `origin` sent as if typed. `None`: it is the
+    /// game's.
     ///
     /// A line without the symbol is offered to [`Self::set_bare`]'s taker,
     /// if one is registered, and is the game's unless it takes it.
@@ -165,7 +178,7 @@ impl Desk {
     /// **Leading whitespace is allowed before the symbol** and nothing else
     /// is: `  ;go2 bank` is a command, `say ;go2 bank` is speech.
     #[must_use]
-    pub fn claim(&self, line: &str) -> Option<Claimed> {
+    pub fn claim(&self, line: &str, origin: Origin) -> Option<Claimed> {
         let Some(rest) = line.trim_start().strip_prefix(self.symbol()) else {
             let taken = self.bare.get().is_some_and(|bare| bare(line.trim()));
             return taken.then_some(Claimed::Done);
@@ -174,7 +187,7 @@ impl Desk {
         if rest.trim().is_empty() {
             return Some(Claimed::Unknown);
         }
-        Some((self.runner)(rest))
+        Some((self.runner)(rest, origin))
     }
 }
 
@@ -188,7 +201,7 @@ mod tests {
     fn desk(symbol: Option<char>) -> (Desk, Arc<Mutex<Vec<String>>>) {
         let seen = Arc::new(Mutex::new(Vec::new()));
         let kept = Arc::clone(&seen);
-        let runner: Runner = Arc::new(move |line: &str| {
+        let runner: Runner = Arc::new(move |line: &str, _: Origin| {
             kept.lock().map(|mut seen| seen.push(line.to_owned())).ok();
             if line.split_whitespace().next() == Some("go2") {
                 Claimed::Done
@@ -203,10 +216,13 @@ mod tests {
     #[test]
     fn a_line_with_the_symbol_is_hydras_known_or_not() {
         let (desk, seen) = desk(None);
-        assert_eq!(desk.claim(".go2 bank"), Some(Claimed::Done));
-        assert_eq!(desk.claim(".go22 bank"), Some(Claimed::Unknown));
-        assert_eq!(desk.claim("."), Some(Claimed::Unknown));
-        assert_eq!(desk.claim(".   "), Some(Claimed::Unknown));
+        assert_eq!(desk.claim(".go2 bank", Origin::Manual), Some(Claimed::Done));
+        assert_eq!(
+            desk.claim(".go22 bank", Origin::Manual),
+            Some(Claimed::Unknown)
+        );
+        assert_eq!(desk.claim(".", Origin::Manual), Some(Claimed::Unknown));
+        assert_eq!(desk.claim(".   ", Origin::Manual), Some(Claimed::Unknown));
         // The symbol is gone, and nothing else is.
         assert_eq!(
             *seen.lock().unwrap(),
@@ -218,7 +234,7 @@ mod tests {
     fn a_line_without_it_is_the_games_and_is_not_even_looked_at() {
         let (desk, seen) = desk(None);
         for line in ["north", "say .go2 bank", "", "  ", "go2 bank"] {
-            assert_eq!(desk.claim(line), None, "{line:?}");
+            assert_eq!(desk.claim(line, Origin::Manual), None, "{line:?}");
         }
         assert!(seen.lock().unwrap().is_empty());
     }
@@ -230,18 +246,56 @@ mod tests {
         let (desk, seen) = desk(None);
         assert!(desk.set_bare(Arc::new(|line: &str| line == "401")));
         assert!(!desk.set_bare(Arc::new(|_: &str| true)), "once");
-        assert_eq!(desk.claim("  401 "), Some(Claimed::Done));
-        assert_eq!(desk.claim("north"), None);
-        assert_eq!(desk.claim(".go2 bank"), Some(Claimed::Done));
+        assert_eq!(desk.claim("  401 ", Origin::Manual), Some(Claimed::Done));
+        assert_eq!(desk.claim("north", Origin::Manual), None);
+        assert_eq!(desk.claim(".go2 bank", Origin::Manual), Some(Claimed::Done));
         assert_eq!(*seen.lock().unwrap(), ["go2 bank".to_owned()]);
+    }
+
+    /// The runner is told who sent the line, as the caller said it.
+    #[test]
+    fn the_runner_hears_who_sent_the_line() {
+        let heard = Arc::new(Mutex::new(Vec::new()));
+        let kept = Arc::clone(&heard);
+        let runner: Runner = Arc::new(move |_: &str, origin: Origin| {
+            kept.lock().map(|mut heard| heard.push(origin)).ok();
+            Claimed::Done
+        });
+        let desk = Desk::new(None, runner);
+        for origin in [
+            Origin::Manual,
+            Origin::Trigger,
+            Origin::Script,
+            Origin::Lich,
+        ] {
+            assert_eq!(
+                desk.claim(".agent level takeover", origin),
+                Some(Claimed::Done)
+            );
+        }
+        assert_eq!(
+            *heard.lock().unwrap(),
+            [
+                Origin::Manual,
+                Origin::Trigger,
+                Origin::Script,
+                Origin::Lich
+            ]
+        );
     }
 
     /// Leading space is a typo, not speech.
     #[test]
     fn the_symbol_may_be_led_up_to_by_whitespace() {
         let (desk, _) = desk(None);
-        assert_eq!(desk.claim("  .go2 bank"), Some(Claimed::Done));
-        assert_eq!(desk.claim("\t.go2 bank"), Some(Claimed::Done));
+        assert_eq!(
+            desk.claim("  .go2 bank", Origin::Manual),
+            Some(Claimed::Done)
+        );
+        assert_eq!(
+            desk.claim("\t.go2 bank", Origin::Manual),
+            Some(Claimed::Done)
+        );
     }
 
     /// `;` is Lich's by default, so Hydra leaves it alone (the author,
@@ -250,7 +304,7 @@ mod tests {
     fn a_semicolon_is_not_hydras_by_default() {
         let (desk, seen) = desk(None);
         assert_eq!(DEFAULT_SYMBOL, '.');
-        assert_eq!(desk.claim(";go2 bank"), None);
+        assert_eq!(desk.claim(";go2 bank", Origin::Manual), None);
         assert!(seen.lock().unwrap().is_empty());
     }
 
@@ -275,9 +329,9 @@ mod tests {
     #[test]
     fn the_symbol_is_the_players_to_choose() {
         let (desk, _) = desk(Some('/'));
-        assert_eq!(desk.claim("/go2 bank"), Some(Claimed::Done));
+        assert_eq!(desk.claim("/go2 bank", Origin::Manual), Some(Claimed::Done));
         assert_eq!(desk.symbol(), '/');
         // ...and then the old one is the game's again, as it was before.
-        assert_eq!(desk.claim(".go2 bank"), None);
+        assert_eq!(desk.claim(".go2 bank", Origin::Manual), None);
     }
 }

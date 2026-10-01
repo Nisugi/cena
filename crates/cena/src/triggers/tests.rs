@@ -115,7 +115,12 @@ impl Typing {
 
     /// Type `line` (without its symbol), and what it said.
     fn typed(&mut self, line: &str) -> Vec<String> {
-        assert!(self.commands.route(line).is_some(), "{line} was not ours");
+        assert!(
+            self.commands
+                .route(line, cena_session::Origin::Manual)
+                .is_some(),
+            "{line} was not ours"
+        );
         told(&mut self.events)
     }
 

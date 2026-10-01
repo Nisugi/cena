@@ -18,6 +18,7 @@
 //! precedent there; the numbers are CLAUDE'S, to confirm (`plan/45` §6e).
 
 use std::collections::VecDeque;
+use std::ops::Range;
 
 use super::{Hit, Matcher};
 
@@ -34,6 +35,13 @@ pub struct Act {
     pub trigger: String,
     /// The line, as if typed: a Hydra command, or the game's.
     pub line: String,
+    /// The byte spans of [`Self::line`] the regex's groups filled in: text
+    /// the game sent, which may be another player's words. In order; empty
+    /// for a line sent as written. What may be sent knowing them is the
+    /// binary's (`crates/cena/src/triggers/act.rs`): a group may fill in what
+    /// a command is given, never choose the command (the crate review of
+    /// 2026-10-01, MO-F-3).
+    pub captured: Vec<Range<usize>>,
     /// Seconds before this trigger acts again.
     pub cooldown: u32,
 }
@@ -93,13 +101,14 @@ impl Matcher {
         let trigger = self.triggers.get(rank)?;
         let rule = &trigger.rule;
         let template = rule.send.as_ref()?;
-        let line = match hit {
-            Some(hit) => self.expand(hit, template, text),
-            None => template.clone(),
+        let (line, captured) = match hit.and_then(|hit| self.captures(hit, text)) {
+            Some(captures) => expand_marked(&captures, template),
+            None => (template.clone(), Vec::new()),
         };
         Some(Act {
             trigger: trigger.name.clone(),
             line,
+            captured,
             cooldown: rule.cooldown,
         })
     }
@@ -109,4 +118,54 @@ impl Matcher {
     pub fn condition_act(&self, rank: usize) -> Option<Act> {
         self.act(rank, None, "")
     }
+}
+
+/// `template` with `captures`' groups filled in, exactly as
+/// [`regex::Captures::expand`] fills it, and the spans of the line each
+/// group filled.
+///
+/// The template is read as the regex crate reads it (`$$` a `$`; `${name}`;
+/// `$` and the longest run of letters, digits and `_`; any other `$` as
+/// written) and each reference is filled by `expand` itself, so the line is
+/// the crate's to the byte (`a_send_marks_what_its_groups_filled_in`).
+fn expand_marked(captures: &regex::Captures<'_>, template: &str) -> (String, Vec<Range<usize>>) {
+    let (mut line, mut filled) = (String::new(), Vec::new());
+    let mut rest = template;
+    while let Some(at) = rest.find('$') {
+        line.push_str(&rest[..at]);
+        rest = &rest[at..];
+        if rest[1..].starts_with('$') {
+            line.push('$');
+            rest = &rest[2..];
+            continue;
+        }
+        let Some(end) = reference_end(rest) else {
+            line.push('$');
+            rest = &rest[1..];
+            continue;
+        };
+        let start = line.len();
+        captures.expand(&rest[..end], &mut line);
+        if line.len() > start {
+            filled.push(start..line.len());
+        }
+        rest = &rest[end..];
+    }
+    line.push_str(rest);
+    (line, filled)
+}
+
+/// Where the group reference at the start of `rest` (its `$` first) ends,
+/// as the regex crate reads one; `None` when the `$` starts none.
+fn reference_end(rest: &str) -> Option<usize> {
+    let after = rest.get(1..)?;
+    if let Some(braced) = after.strip_prefix('{') {
+        // `$`, `{`, the name, `}`.
+        return braced.find('}').map(|close| close + 3);
+    }
+    let run = after
+        .bytes()
+        .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+        .count();
+    (run > 0).then_some(run + 1)
 }

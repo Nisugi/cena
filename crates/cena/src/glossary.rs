@@ -265,7 +265,7 @@
 //! | **Master switch** | a category, or one kind of response, turned off for every trigger: the file's `[categories]` and `[responses]` | |
 //! | **Attention** | what a trigger calls for beyond the line: a sound, an OS notification, a banner ([`Attention`]); once in its trigger's cooldown, and once for every character that saw the same thing, played by the binary even with no page open | alert, which is one kind: the banner |
 //! | **Origin** | where an imported trigger came from, `Wrayth: <file>`: importing that file again replaces what it brought, and it holds a send from a rule the player did not write ([`wrayth`]). Not a command's [`Origin`], who sent it | source |
-//! | **Act** | a trigger's line sent as if the player typed it: through the `;` command table first, then to the game as [`Origin::Trigger`], never counted as a person; at most once in the trigger's cooldown and at the character's pace ([`Act`], [`Pace`]) | action, which `plan/12` §6a.3 keeps for a registry not built |
+//! | **Act** | a trigger's line sent as if the player typed it: through the `;` command table first, then to the game as [`Origin::Trigger`], never counted as a person; at most once in the trigger's cooldown and at the character's pace ([`Act`], [`Pace`]). Never one of the commands only the player may type (`agent`, `trigger`, `lich`, `to`, `all`), and a regex group never chooses its command | action, which `plan/12` §6a.3 keeps for a registry not built |
 //! | **Approved** | the line a trigger from elsewhere may send (`;trigger approve`): only that line, so a changed one is held again | trusted |
 //!
 //! # Scripts

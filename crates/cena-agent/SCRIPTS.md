@@ -188,7 +188,7 @@ no roundtime check and no queue, as Lich's `put` writes straight to the game. An
 | `outcome` | Means |
 |---|---|
 | `sent` | it went to the game; `cursor` is its `sent` event's |
-| `ran` | Hydra's command, and Hydra took it |
+| `ran` | Hydra's command, and Hydra took it. One of the commands only the player may type -- `agent`, `trigger`, `lich`, `to`, `all` -- is taken and refused, and the player told: a script never gives them |
 | `unknown` | it started with the symbol, and Hydra has no such command. Nobody was told: say so, naming the script |
 | `refused` | the session would not send it; `why` says why (busy: not ready, or its queue full) |
 | `lost` | no connection took it: the session is gone, or between connections |
@@ -247,5 +247,6 @@ markup (`<prompt`, `<pushBold/>`) does not match.
 What the player's line becomes, by the `input` event's `asked`: `line` to use in its place (the
 same line to leave it), or `null` to swallow it: nothing is sent and nothing runs. One line, no
 line breaks. What you answer goes on as the player's typing would, to Hydra's own commands, to
-yours (`typed`), or to the game. Answers `{"late": false}`, or `{"late": true}` when the line
+yours (`typed`), or to the game -- but a line you changed is yours, not the player's, to Hydra's
+command line, so it never gives `agent`, `trigger`, `lich`, `to` or `all`. Answers `{"late": false}`, or `{"late": true}` when the line
 already went as typed.

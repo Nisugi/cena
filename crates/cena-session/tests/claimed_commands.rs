@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use cena_platform::AnsweringSource;
 use cena_session::command::claimant::{Claimed, Desk, Runner};
-use cena_session::{Event, Session};
+use cena_session::{Event, Origin, Session};
 
 const PROMPT: &[u8] = b"<prompt time=\"1\">&gt;</prompt>\n";
 const DEADLINE: Duration = Duration::from_secs(5);
@@ -23,7 +23,7 @@ async fn a_mistyped_command_is_answered_and_the_game_never_hears_it() {
 
     let ran: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let kept = Arc::clone(&ran);
-    let runner: Runner = Arc::new(move |line: &str| {
+    let runner: Runner = Arc::new(move |line: &str, _: Origin| {
         kept.lock().map(|mut ran| ran.push(line.to_owned())).ok();
         if line.starts_with("go2 ") {
             Claimed::Done
@@ -88,7 +88,7 @@ async fn a_claimed_line_from_a_stale_generation_does_not_run() {
 
     let ran: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let kept = Arc::clone(&ran);
-    let runner: Runner = Arc::new(move |line: &str| {
+    let runner: Runner = Arc::new(move |line: &str, _: Origin| {
         kept.lock().map(|mut ran| ran.push(line.to_owned())).ok();
         Claimed::Done
     });
@@ -119,7 +119,7 @@ async fn a_session_with_no_desk_sends_everything_but_lichs() {
     tokio::spawn(session.into_actor().run());
 
     assert_eq!(handle.command_symbol(), None);
-    assert_eq!(handle.typed("/go2 bank"), None);
+    assert_eq!(handle.typed("/go2 bank", Origin::Manual), None);
     let sent = handle
         .send_manual_at(generation, "/go2 bank", DEADLINE)
         .await;
@@ -142,7 +142,7 @@ async fn the_symbol_can_change_after_the_desk_is_installed() {
     let generation = handle.generation();
     tokio::spawn(session.into_actor().run());
 
-    let runner: Runner = Arc::new(|_: &str| Claimed::Done);
+    let runner: Runner = Arc::new(|_: &str, _: Origin| Claimed::Done);
     assert!(handle.set_desk(Desk::new(None, runner)));
     assert_eq!(handle.command_symbol(), Some('.'));
 

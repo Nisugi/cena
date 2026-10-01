@@ -14,7 +14,7 @@ use cena_agent::scripts::{Runners, router};
 use cena_platform::AnsweringSource;
 use cena_session::command::claimant::{Claimed, Desk, Runner};
 use cena_session::trigger::{Matcher, Pattern, Rule, Trigger};
-use cena_session::{Body as Said, Event, Session};
+use cena_session::{Body as Said, Event, Origin, Session};
 use http_body_util::BodyExt;
 use tokio_util::sync::CancellationToken;
 use tower::ServiceExt;
@@ -104,7 +104,7 @@ fn squelching_character() -> Option<(
     );
     let session = Session::new(source);
     let handle = session.handle();
-    let runner: Runner = Arc::new(|line: &str| {
+    let runner: Runner = Arc::new(|line: &str, _: Origin| {
         if line.trim() == "known" {
             Claimed::Done
         } else {

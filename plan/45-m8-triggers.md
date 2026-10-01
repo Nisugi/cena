@@ -595,6 +595,21 @@ said. **MET**: `crates/cena/src/triggers/act.rs`'s test,
 `crates/cena-session/tests/attendance.rs` (`a_trigger_sending_is_not_a_person_either`),
 `crates/cena-session/tests/trigger_flags.rs` (the pace, said once). Eight mutants, all caught.
 
+> **CORRECTED 2026-10-01** (the crate review of that day, BI-D-1, BI-D-2, MO-F-3). *"As
+> if typed"* had let a trigger give every Hydra command, and the command line could not tell
+> a trigger's line from the player's: a send of `$1` on another player's whisper, or a
+> `;multi 1,say $1` given a comma, ran `;agent level takeover`, and a `;foreach` or a
+> `;multi` split at semicolons walked past the one check (`;all`/`;to`, read off commas).
+> Now the desk is told the origin (`SessionHandle::typed`), and one table in
+> `crates/cena/src/commands.rs` (`PLAYERS_OWN`) refuses `agent`, `trigger`, `lich`, `to`
+> and `all` to anything but the player's typing, a batch's own commands included; every
+> other command still runs as typed. And a regex group fills in what a command is given,
+> never which command: a send whose groups would supply its first word, an entry's, or a
+> separator inside a Hydra command is not sent, and is said
+> (`crates/cena/src/triggers/act.rs`, the model marking what the groups filled in,
+> `Act::captured`). So approving a send's template approves every command it can give.
+> The puppet idiom, `send = "$1"`, no longer sends: **the author's to confirm**.
+
 ### 6e. Stage 5 as built -- CLAUDE'S, to confirm
 
 | Question | Built | Why |

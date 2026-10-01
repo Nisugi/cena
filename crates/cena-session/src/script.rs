@@ -16,7 +16,11 @@
 //!   ([`Event::Heard`](crate::Event::Heard)), while a runner reads it.
 //! - [`Door::send`]: a line as if typed, Lich's `put`. Hydra's own command
 //!   when it starts with the command symbol, as a trigger's line is
-//!   (`plan/45` Stage 5), so nothing marked as Hydra's reaches the game;
+//!   (`plan/45` Stage 5), so nothing marked as Hydra's reaches the game --
+//!   **save the commands only the player's own typing may give** (`agent`,
+//!   `trigger`, `lich`, `to`, `all`; the binary's `commands.rs`), which a
+//!   script's line is refused, as the player's consent is not a script's to
+//!   give (the crate review of 2026-10-01, BI-B-2);
 //!   otherwise to the game at once as [`Origin::Script`], with no roundtime
 //!   gate and no queue, as `Game.puts` writes straight to the socket
 //!   (`inventory/13` §1.2), and never counted as the player being there.
@@ -188,8 +192,10 @@ impl Door {
     }
 
     /// Send `line` as if typed: Hydra's own command, or the game's line.
+    /// Hydra's command line hears it as [`Origin::Script`], so the commands
+    /// only the player may give refuse it.
     pub async fn send(&self, line: &str) -> Sending {
-        match self.handle.typed(line) {
+        match self.handle.typed(line, Origin::Script) {
             Some(Claimed::Unknown) => Sending::Unknown,
             Some(_) => Sending::Ran,
             None => match self.handle.send_now(line, Origin::Script, Gate::None).await {

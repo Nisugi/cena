@@ -110,8 +110,9 @@ async fn a_scripts_line_goes_out_as_the_scripts_and_says_where() {
     let (source, transcript) = AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
     let session = Session::new(source);
     let handle = session.handle();
-    let runner: Runner = Arc::new(|line: &str| {
-        if line.trim() == "known" {
+    let runner: Runner = Arc::new(|line: &str, origin: Origin| {
+        // Hydra's command line hears a script's line as the script's.
+        if line.trim() == "known" && origin == Origin::Script {
             Claimed::Done
         } else {
             Claimed::Unknown

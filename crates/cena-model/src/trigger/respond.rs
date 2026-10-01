@@ -220,20 +220,21 @@ impl Matcher {
     /// `template` for `hit`: its groups filled in for a regex, as written
     /// for a literal.
     pub(super) fn expand(&self, hit: &Hit, template: &str, text: &str) -> String {
-        let captures = self
-            .regexes
-            .iter()
-            .find(|(rank, _)| *rank == hit.trigger)
-            .and_then(|(_, regex)| regex.captures_at(text, hit.span.start))
-            .filter(|captures| {
-                captures.get(0).map(|whole| whole.range()) == Some(hit.span.clone())
-            });
-        let Some(captures) = captures else {
+        let Some(captures) = self.captures(hit, text) else {
             return template.to_owned();
         };
         let mut with = String::new();
         captures.expand(template, &mut with);
         with
+    }
+
+    /// The groups of `hit` in `text`, for a regex trigger.
+    pub(super) fn captures<'t>(&self, hit: &Hit, text: &'t str) -> Option<regex::Captures<'t>> {
+        self.regexes
+            .iter()
+            .find(|(rank, _)| *rank == hit.trigger)
+            .and_then(|(_, regex)| regex.captures_at(text, hit.span.start))
+            .filter(|captures| captures.get(0).map(|whole| whole.range()) == Some(hit.span.clone()))
     }
 }
 

@@ -32,6 +32,19 @@
 //! register after login: a word of theirs typed before that is answered
 //! *still starting; nothing was sent*.
 //!
+//! **Who sent the line decides five words.** A line also comes from a
+//! trigger's `send`, a script's `put`, and the player's own Lich, and each
+//! runs Hydra's commands as the player would -- save `agent`, `trigger`
+//! (`triggers`), `lich`, `to` and `all`, the commands that decide what may
+//! act on the character, which run only when the player types them
+//! ([`PLAYERS_OWN`](crate::commands::PLAYERS_OWN)). From anything else they
+//! are refused before any family hears them, and said: *`.agent level
+//! takeover` was not run: .agent is only for you to type, and a trigger sent
+//! it*. A `multi` or `foreach` runs its own commands as whoever sent it, so
+//! one stops at the first of those words. A trigger's regex group fills in
+//! what a command is given and never which command (see
+//! [`triggers`](crate::triggers), its `act.rs`).
+//!
 //! Two lines are read without the symbol. A bare spell number or alias is
 //! cast as `sc` would (see *sc*; `sc set typed off` stops it). And with a
 //! character's own Lich on, a line starting with `;` is Lich's own command

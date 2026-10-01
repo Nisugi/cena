@@ -323,12 +323,20 @@ impl LichDoor {
     /// ([`super::Door::send`]); otherwise to the game at once, with no
     /// roundtime gate and no queue, as `Game.puts` writes straight to the
     /// socket.
+    ///
+    /// **Hydra's command line hears every line Lich writes as
+    /// [`Origin::Lich`]**, even one Lich says the player typed: what the
+    /// player types with Hydra's symbol is Hydra's before Lich is handed
+    /// anything ([`SessionHandle::send_typed_at`]), so a Hydra command
+    /// coming back from Lich was made by Lich -- an alias, a hook, or a
+    /// script writing without `<c>` -- and the commands only the player may
+    /// give refuse it (the crate review of 2026-10-01, BI-B-2).
     pub async fn send(&self, line: &str, from: LineFrom) -> Sending {
         let origin = match from {
             LineFrom::Lich => Origin::Lich,
             LineFrom::Player => Origin::Manual,
         };
-        match self.handle.typed(line) {
+        match self.handle.typed(line, Origin::Lich) {
             Some(Claimed::Unknown) => Sending::Unknown,
             Some(_) => Sending::Ran,
             None => match self.handle.send_now(line, origin, Gate::None).await {
@@ -355,7 +363,7 @@ mod tests {
     use crate::command::claimant::{Claimed, Desk};
     use crate::lifecycle::GenerationCell;
     use crate::observation::EventPublisher;
-    use crate::{Event, Outcome, SessionHandle};
+    use crate::{Event, Origin, Outcome, SessionHandle};
 
     /// No actor answers here, so a line sent to the game waits this long.
     const DEADLINE: Duration = Duration::from_millis(10);
@@ -460,7 +468,7 @@ mod tests {
         let running = Arc::clone(&ran);
         let desk = Desk::new(
             Some('.'),
-            Arc::new(move |line: &str| {
+            Arc::new(move |line: &str, _: Origin| {
                 running.lock().unwrap().push(line.to_owned());
                 Claimed::Done
             }),
@@ -502,5 +510,37 @@ mod tests {
         );
         handle.send_typed_at(generation, "exp", DEADLINE).await;
         assert_eq!(around.for_the_game().as_deref(), Some("exp"), "no Lich");
+    }
+
+    /// A Hydra command Lich writes is Lich's to Hydra's command line, even
+    /// one Lich says the player typed: the player's own Hydra commands never
+    /// reach Lich (the crate review of 2026-10-01, BI-B-2).
+    #[tokio::test]
+    async fn a_hydra_command_lich_writes_is_heard_as_lichs() {
+        let (handle, _around) = character();
+        let heard = Arc::new(Mutex::new(Vec::new()));
+        let hearing = Arc::clone(&heard);
+        let desk = Desk::new(
+            Some('.'),
+            Arc::new(move |line: &str, origin: Origin| {
+                hearing.lock().unwrap().push((line.to_owned(), origin));
+                Claimed::Done
+            }),
+        );
+        assert!(handle.set_desk(desk));
+        let door = handle.lich_door();
+        for from in [super::LineFrom::Lich, super::LineFrom::Player] {
+            assert!(matches!(
+                door.send(".agent level takeover", from).await,
+                super::Sending::Ran
+            ));
+        }
+        assert_eq!(
+            *heard.lock().unwrap(),
+            [
+                ("agent level takeover".to_owned(), Origin::Lich),
+                ("agent level takeover".to_owned(), Origin::Lich),
+            ]
+        );
     }
 }

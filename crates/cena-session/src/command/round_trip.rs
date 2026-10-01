@@ -19,6 +19,19 @@ struct How {
     gate: Gate,
 }
 
+/// Where a line on the manual path came from.
+#[derive(Clone, Copy)]
+enum Typed {
+    /// Hydra's own line on the manual path: a batch's, a relayed one.
+    Not,
+    /// The player typed it at a frontend, and no hook changed it.
+    Player,
+    /// The player typed something, and a script's input hook made it this
+    /// line: still the player's typing for the game and for Lich, but a
+    /// script's for Hydra's command line.
+    Hooked,
+}
+
 impl Default for How {
     fn default() -> Self {
         Self {
@@ -201,7 +214,9 @@ impl SessionHandle {
         deadline: std::time::Duration,
     ) -> Outcome {
         let Some(ask) = self.hooks().typing() else {
-            return self.manual_at(generation, line, deadline, true).await;
+            return self
+                .manual_at(generation, line, deadline, Typed::Player)
+                .await;
         };
         match tokio::time::timeout(crate::script::HOOK_DEADLINE, ask(line)).await {
             Ok(Ok(None)) => {
@@ -209,8 +224,18 @@ impl SessionHandle {
                 self.attendance.mark();
                 Outcome::Handled
             }
-            Ok(Ok(Some(changed))) => self.manual_at(generation, &changed, deadline, true).await,
-            Ok(Err(_)) | Err(_) => self.manual_at(generation, line, deadline, true).await,
+            // A hook that made another line of it made a script's line, for
+            // Hydra's command line (the crate review of 2026-10-01, SE-B):
+            // the player did not type `.agent level takeover` because a hook
+            // turned `look` into it.
+            Ok(Ok(Some(changed))) if changed != line => {
+                self.manual_at(generation, &changed, deadline, Typed::Hooked)
+                    .await
+            }
+            Ok(Ok(Some(_)) | Err(_)) | Err(_) => {
+                self.manual_at(generation, line, deadline, Typed::Player)
+                    .await
+            }
         }
     }
 
@@ -227,18 +252,24 @@ impl SessionHandle {
         line: &str,
         deadline: std::time::Duration,
     ) -> Outcome {
-        self.manual_at(generation, line, deadline, false).await
+        self.manual_at(generation, line, deadline, Typed::Not).await
     }
 
-    /// [`Self::send_manual_at`]; `typed` when the player typed it at a
-    /// frontend, which a running Lich has before the game.
+    /// [`Self::send_manual_at`]; `typed` says whether the player typed it at
+    /// a frontend, which a running Lich has before the game, and whether a
+    /// script's hook changed it.
     async fn manual_at(
         &self,
         generation: Generation,
         line: &str,
         deadline: std::time::Duration,
-        typed: bool,
+        typed: Typed,
     ) -> Outcome {
+        let (claimant, typed) = match typed {
+            Typed::Not => (Origin::Manual, false),
+            Typed::Player => (Origin::Manual, true),
+            Typed::Hooked => (Origin::Script, true),
+        };
         // A person typed this, whatever becomes of it -- stale, claimed by
         // Hydra's command line, or sent (`attendance.rs`).
         self.attendance.mark();
@@ -258,7 +289,7 @@ impl SessionHandle {
         // (`super::claimant`), so they are answered `Handled`: no window was
         // opened and no frame matched. An unknown one is handled too -- by
         // telling the player so.
-        if let Some(claimed) = self.typed(line) {
+        if let Some(claimed) = self.typed(line, claimant) {
             if claimed == super::Claimed::Unknown {
                 let symbol = self.command_symbol().unwrap_or(super::COMMAND_SYMBOL);
                 self.say(
