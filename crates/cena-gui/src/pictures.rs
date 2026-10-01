@@ -109,7 +109,15 @@ pub(crate) fn was_read(context: &egui::Context, path: &str) -> bool {
 /// A PNG, or any picture the `image` crate reads, as a texture.
 fn read(context: &egui::Context, path: &str) -> Option<egui::TextureHandle> {
     let bytes = std::fs::read(Path::new(path)).ok()?;
-    let image = image::load_from_memory(&bytes).ok()?.to_rgba8();
+    let mut image = image::load_from_memory(&bytes).ok()?;
+    // **No larger than a texture can be** (the crate review of 2026-10-01,
+    // GU-C-1): egui asserts it and the GPU refuses it, either way on the
+    // window thread, which every character's session shares.
+    let most = u32::try_from(context.input(|input| input.max_texture_side)).unwrap_or(u32::MAX);
+    if image.width() > most || image.height() > most {
+        image = image.resize(most, most, image::imageops::FilterType::Triangle);
+    }
+    let image = image.to_rgba8();
     let size = [
         usize::try_from(image.width()).ok()?,
         usize::try_from(image.height()).ok()?,
@@ -160,6 +168,24 @@ mod tests {
         assert_eq!(soon.size()[0], 2, "not looked at again within the second");
         let again = picture_at(&context, &at, later + LOOK_AGAIN * 2).unwrap();
         assert_eq!(again.size()[0], 5, "changed: read again");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The crate review of 2026-10-01, GU-C-1: a picture wider than the
+    /// largest texture the window can hold killed the window thread, and with
+    /// it every character; its path is saved, so again at every start. It is
+    /// shrunk to fit.
+    #[test]
+    fn a_picture_too_big_for_a_texture_is_shrunk_to_fit() {
+        let dir = folder("big");
+        let path = dir.join("big.png");
+        let context = egui::Context::default();
+        let most = context.input(|input| input.max_texture_side);
+        let wide = u32::try_from(most).unwrap() + 1000;
+        png(&path, wide, SystemTime::now()).unwrap();
+        let at = path.to_string_lossy().into_owned();
+        let read = picture_at(&context, &at, Instant::now()).expect("read");
+        assert!(read.size()[0] <= most, "{:?} within {most}", read.size());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
