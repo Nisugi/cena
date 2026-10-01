@@ -13,13 +13,20 @@ use super::{Flag, Form, Look, Redirect};
 
 impl Form {
     /// The rule this form makes, checked as the file's would be: what the
-    /// matcher runs.
+    /// matcher runs. Whether it is on and who it is for are the file's
+    /// reader's, not the rule's, so they are taken off first, as the reader
+    /// takes them (`cena_behavior::triggers`' `entry`; UI-7: a form that set
+    /// either was refused as an unknown field).
     ///
     /// # Errors
     ///
     /// Why the file would refuse it.
     pub fn rule(&self) -> Result<Rule, String> {
-        Value::Table(to_table(self))
+        let mut table = to_table(self);
+        for theirs in ["enabled", "characters"] {
+            table.remove(theirs);
+        }
+        Value::Table(table)
             .try_into::<Rule>()
             .map_err(|why| why.message().to_owned())
     }
@@ -363,6 +370,31 @@ mod tests {
         assert!(
             nothing.rule().is_err(),
             "a trigger that does nothing is refused"
+        );
+    }
+
+    /// A form limited to characters and switched off is still a rule the
+    /// matcher runs: who it is for and whether it is on are the file's to
+    /// read, not the rule's (UI-7).
+    #[test]
+    fn a_form_for_some_characters_and_off_still_makes_its_rule() {
+        let form = Form {
+            name: "rock".to_owned(),
+            text: "a rock".to_owned(),
+            squelch: true,
+            enabled: false,
+            characters: vec!["Nisugi".to_owned()],
+            ..Form::default()
+        };
+        let table = to_table(&form);
+        assert!(
+            table.contains_key("enabled") && table.contains_key("characters"),
+            "the input reaches both keys: {table:?}"
+        );
+        assert!(
+            form.rule().is_ok_and(|rule| rule.squelch),
+            "{:?}",
+            form.rule()
         );
     }
 }
