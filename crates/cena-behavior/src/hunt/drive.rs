@@ -82,8 +82,6 @@ const SETTLE_CAP: Duration = Duration::from_secs(15);
 const QUIT_DEADLINE: Duration = Duration::from_secs(10);
 /// The idle beat: how often the loop turns with nothing to do.
 const BEAT: Duration = Duration::from_millis(250);
-/// How often the transcript is read while a line's answer is awaited.
-const ANSWER_BEAT: Duration = Duration::from_millis(20);
 /// How many times a line the game held back is sent again.
 const MAX_RESENDS: u8 = 3;
 /// The most commands one visit's looting sends before it is given up on.
@@ -216,8 +214,6 @@ pub async fn hunt_in(
         memory: Memory::default(),
         transcript: String::new(),
         said: fold::Reading::default(),
-        owed: std::collections::VecDeque::new(),
-        settled_at: None,
         line: String::new(),
         down: false,
         membership: group.map(|(boards, place)| Membership::new(boards, place)),
@@ -263,16 +259,9 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// The main window's text since the last loot command was sent, for
     /// reading its reply.
     transcript: String,
-    /// The main window's line being read, to settle what is owed
-    /// (`drive/send.rs`), unless a person said it (`drive/fold.rs`).
+    /// The main window's line being read, unless a person said it
+    /// (`drive/fold.rs`).
     said: fold::Reading,
-    /// Lines written whose answer has not been heard, oldest first: the
-    /// next answer-shaped line is theirs, not the line now awaited's
-    /// (`drive/send.rs`).
-    owed: std::collections::VecDeque<send::Owed>,
-    /// Where in the transcript the last line that settled an owed one
-    /// ended, while a line is awaited: what is before it is not that line's.
-    settled_at: Option<usize>,
     /// The line being read, any window, for the interaction monitor.
     line: String,
     /// The connection dropped and the session is reconnecting: the hunt

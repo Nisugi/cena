@@ -119,7 +119,6 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                     if game {
                         self.transcript.push('\n');
                         let said = std::mem::take(&mut self.said.text);
-                        self.owed_heard(&said);
                         // The whole line: a run ends at every link, so a
                         // creature's name and its swing were never in one run
                         // (the crate review of 2026-10-01, BE-A-1).
@@ -160,7 +159,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         self.cursor = snapshot.cursor;
         self.transcript.clear();
         self.line.clear();
-        self.owe_nothing();
+        self.said.clear();
         match snapshot.lifecycle {
             State::Ready => self.down = false,
             State::Reconnecting => self.link_lost(),
@@ -182,7 +181,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             return;
         }
         self.down = true;
-        self.owe_nothing();
+        self.said.clear();
         self.state.invalidate_for_reconnect();
         self.machine.link_lost();
         self.party_link_lost();

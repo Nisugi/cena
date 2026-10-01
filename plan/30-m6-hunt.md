@@ -190,6 +190,12 @@ there are **six** policies under one holder, not a second behavior racing the fi
   > the next, which may have gone through: a missed resend is made good by the next tick, a
   > double send is two attacks. `tests/hunt_answer_drive.rs` drives both cases through a
   > scripted game that now speaks unasked (`TranscriptHandle::say`).
+  >
+  > **MOVED INTO THE SESSION, 2026-10-01** (the author's choice, `plan/12` §4.4 as amended):
+  > the reading past a prompt and the owed lines are `cena_session::command::answer`'s now.
+  > The hunt hands the session what answers each line (`hunt/answer.rs`'s table, as
+  > `send_answered`), and gets back `Outcome::Answered` with the game's line, so a holding is
+  > known to be its own line's. The same two tests drive it, unchanged.
 
   **The last check belongs in the session, not the behavior.** A behavior reads its own
   folded copy of the state, which trails the actor's by however many events are still
