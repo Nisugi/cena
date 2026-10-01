@@ -42,6 +42,7 @@ use super::settings::Town;
 pub use super::step::{Round, Step};
 
 mod bank;
+mod returns;
 mod sack;
 
 use bank::Bank;
@@ -98,6 +99,15 @@ pub struct Seller {
     /// The pool's worker as the map names it for the room the character
     /// stands in.
     worker: Option<String>,
+    /// A box from the pool held in hand while the round sells, the pool to
+    /// be visited again for it (`plan/returns.rs`).
+    aside: Option<String>,
+    /// Every box set aside this round: once each.
+    set_aside: BTreeSet<String>,
+    /// A box set aside twice, in hand at the round's end.
+    stuck: Option<String>,
+    /// Every good the round has queued a shop for, by id.
+    seen: BTreeSet<String>,
     /// What the gem shop sent on to the pawnshop.
     onward: Onward,
     /// What the hands held when the round began, to fetch back at its end.
@@ -129,9 +139,11 @@ impl Seller {
         }
         let mut shops = BTreeSet::new();
         let mut note = false;
+        let mut seen = BTreeSet::new();
         match round {
             Round::All => {
-                for (item, types, _) in goods::goods(&town, state) {
+                for (item, types, _) in goods::goods(&town, state, None) {
+                    seen.insert(item.id.clone());
                     if let Some(shop) = goods::shop_for(&town, &item, &types) {
                         shops.insert(shop);
                     }
@@ -186,6 +198,10 @@ impl Seller {
             bank,
             pool: None,
             worker: None,
+            aside: None,
+            set_aside: BTreeSet::new(),
+            stuck: None,
+            seen,
             onward: Onward::default(),
             restore,
             going_home: false,
@@ -299,8 +315,17 @@ impl Seller {
             self.lots_built = true;
             self.sacks = goods::sacks(shop, &self.town, state, &self.sold_whole).into();
             let whole: Vec<String> = self.sacks.iter().cloned().collect();
-            self.lots =
-                goods::lots(shop, &self.town, state, &self.skipped, &whole, &self.onward).into();
+            let goods = self.goods(state);
+            self.lots = goods::lots(
+                shop,
+                &self.town,
+                state,
+                goods,
+                &self.skipped,
+                &whole,
+                &self.onward,
+            )
+            .into();
         }
         if let Some(sack) = self.sacks.pop_front() {
             self.sold_whole.insert(sack.clone());
@@ -313,7 +338,7 @@ impl Seller {
             return self.continue_sack(state).unwrap_or(Step::Done);
         }
         if let Some(lot) = self.lots.pop_front() {
-            if let Some(free) = free_a_hand(state) {
+            if let Some(free) = free_a_hand(state, self.held_box()) {
                 self.lots.push_front(lot);
                 return free;
             }
@@ -323,31 +348,6 @@ impl Seller {
         // This shop is done.
         self.shop = None;
         self.bank.banked = false;
-        self.decide(state, nearest)
-    }
-
-    /// At the pool: the visit begun on arrival, gone on with, sent to the
-    /// bank and back when it asks, and over when it says so.
-    fn at_pool(&mut self, state: &GameState, nearest: &dyn Fn(&str) -> Option<RoomId>) -> Step {
-        if self.pool.is_none() {
-            let (drop, collect) = match self.round {
-                Round::Pool { drop, collect } => (drop, collect),
-                // A round gives the pool boxes when the profile uses it, and
-                // asks for its returns always (`always_check_pool`).
-                Round::All | Round::Bank => (self.town.pool, true),
-            };
-            // No worker in the room: the pool is passed by.
-            self.pool = Pool::new(&self.town, state, self.worker.as_deref())
-                .map(|pool| pool.only(drop, collect));
-        }
-        if self.pool.as_mut().is_some_and(Pool::wants_bank) {
-            return self.bank_between(state, nearest);
-        }
-        if let Some(step) = self.pool.as_mut().and_then(|pool| pool.next(state)) {
-            return step;
-        }
-        self.pool = None;
-        self.shop = None;
         self.decide(state, nearest)
     }
 
@@ -436,7 +436,7 @@ impl Seller {
     fn restore_hands(&mut self, state: &GameState) -> Option<Step> {
         self.restore.retain(|id| !holds(state, id));
         let id = self.restore.first()?.clone();
-        if let Some(free) = free_a_hand(state) {
+        if let Some(free) = free_a_hand(state, self.held_box()) {
             return Some(free);
         }
         self.restore.remove(0);
@@ -668,12 +668,18 @@ fn other_hand(state: &GameState, id: &str) -> Option<String> {
 }
 
 /// A hand to fetch into: `None` when one is free, else the stow that frees
-/// the right hand into the default bag (`free_hands`, `:3839`).
-fn free_a_hand(state: &GameState) -> Option<Step> {
+/// the right hand into the default bag (`free_hands`, `:3839`) -- the left,
+/// when the right holds `keep`, a box the round holds on to.
+fn free_a_hand(state: &GameState, keep: Option<&str>) -> Option<Step> {
     if !(state.right_hand.is_holding() && state.left_hand.is_holding()) {
         return None;
     }
-    let item = state.right_hand.id()?.to_owned();
+    let hand = if keep.is_some_and(|id| state.right_hand.holds(id)) {
+        &state.left_hand
+    } else {
+        &state.right_hand
+    };
+    let item = hand.id()?.to_owned();
     let bag = state.containers.stow(StowSlot::Default)?.id.clone();
     Some(Step::Stow { item, bag })
 }

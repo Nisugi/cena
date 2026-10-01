@@ -71,6 +71,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                         Emptied::Out => Vec::new(),
                         Emptied::Locked => vec![town::Reply::BoxLocked],
                         Emptied::CoinsLeft => vec![town::Reply::CoinsLeft],
+                        Emptied::Unseen => vec![town::Reply::BoxUnseen],
+                        Emptied::ThingsLeft => vec![town::Reply::ThingsLeft],
                     };
                     let facts: Vec<cena_session::LootFact> = self
                         .state
@@ -105,6 +107,12 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         if !came_to.is_empty() {
             self.reports.keep_round(came_to.clone());
             self.handle.say(Notice::table(NoticeKind::Info, came_to));
+        }
+        if seller.stuck().is_some() {
+            self.handle.say(Notice::line(
+                NoticeKind::Warn,
+                "Loot: a box from the pool is still in hand, holding what no bag will take.",
+            ));
         }
         self.memory.full.clear();
         self.share_full();

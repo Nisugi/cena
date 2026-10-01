@@ -477,6 +477,9 @@ impl Planner {
     /// What the game said to the last step. `state` is as it stands after
     /// the reply: the hands, for a gem a skinning broke out.
     pub fn outcome_in(&mut self, outcome: &Outcome, state: &GameState) {
+        if self.too_heavy(state, outcome) {
+            return;
+        }
         if let (Some(last), Some(skinning)) = (self.last.clone(), self.skinning.as_mut())
             && let Some(name) = skinning.outcome(&last, outcome, state)
             && self.memory.unskinnable.insert(name.clone())

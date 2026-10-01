@@ -55,6 +55,12 @@ pub enum Reply {
     /// silvers*), so the rest are still in it (`box_loot`,
     /// `eloot.lic:5109-5115`).
     CoinsLeft,
+    /// Not the game's: the driver says the box's contents were never listed,
+    /// so it is kept as a locked one is (`box_loot`, `eloot.lic:5096`).
+    BoxUnseen,
+    /// Not the game's: the driver says something wanted is still in the box,
+    /// that no bag would take (`pool_full_recovery?`, `eloot.lic:5384-5388`).
+    ThingsLeft,
     /// A scroll read names a spell: `(215) Frenzy`, and whether the line
     /// calls it vibrant.
     ScrollSpell {

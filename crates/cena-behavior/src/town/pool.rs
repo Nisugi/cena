@@ -20,6 +20,10 @@
 //!   or a box's coins that would not all fit (`box_loot`, `:5109-5115`): the
 //!   bank, then back to ask again ([`Pool::wants_bank`]); refused again
 //!   straight after, what was refused is given up.
+//! - **A returned box that still holds what no bag would take**: the visit
+//!   stops there with the box in hand ([`Pool::aside`]), for the round to
+//!   sell and come back to it (`pool_direct_sell_recovery`, `:5455-5491`).
+//!   A box whose contents were never listed is kept, not trashed (`:5096`).
 //!
 //! The worker is the one the map names for the room (`Room::pool_worker`;
 //! `find_worker`, `:3204`), else one of eloot's words for a worker.
@@ -115,6 +119,9 @@ pub(super) struct Pool {
     /// gives up what was refused.
     unloaded: bool,
     default_bag: Option<String>,
+    /// A returned box still holding what no bag would take, in hand: the
+    /// visit stopped at it.
+    aside: Option<String>,
 }
 
 /// The boxes the round takes to the pool: in a hand first, then the selling
@@ -197,7 +204,23 @@ impl Pool {
                 .containers
                 .stow(StowSlot::Default)
                 .map(|b| b.id.clone()),
+            aside: None,
         })
+    }
+
+    /// The visit takes up a box an earlier one set aside, in hand: it is
+    /// emptied first, before anything is given or asked for.
+    pub(super) fn resume(mut self, id: String) -> Self {
+        self.boxes.retain(|(held, _)| *held != id);
+        let bag = self.default_bag.clone().unwrap_or_default();
+        self.doing = Doing::Emptying { id, bag };
+        self
+    }
+
+    /// The returned box this visit stopped at, in hand: something in it no
+    /// bag would take.
+    pub(super) fn aside(&self) -> Option<&str> {
+        self.aside.as_deref()
     }
 
     /// Only part of the visit (`;eloot pool deposit`, `pool return`,
@@ -435,9 +458,21 @@ impl Pool {
             return;
         }
         self.unloaded = false;
-        // Locked, coins still in it after the bank, or a valuable box the
-        // profile sells: back in the bag. Else out it goes.
+        if replies.contains(&Reply::ThingsLeft) {
+            // Something in it no bag would take: the visit stops here, the
+            // box in hand, for the round to sell what it can and come back
+            // (`pool_direct_sell_recovery`, `eloot.lic:5455-5491`).
+            self.aside = Some(id);
+            self.stop_dropping = true;
+            self.returns_over = true;
+            self.doing = Doing::Idle;
+            return;
+        }
+        // Locked, never looked into, coins still in it after the bank, or a
+        // valuable box the profile sells: back in the bag. Else out it goes,
+        // known empty.
         self.doing = if replies.contains(&Reply::BoxLocked)
+            || replies.contains(&Reply::BoxUnseen)
             || coins_left
             || (self.keep_valuable && is_valuable(state, &id))
         {

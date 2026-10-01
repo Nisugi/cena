@@ -232,15 +232,33 @@ fn wanted(town: &Town, item: &RoomItem, types: &ObjectTypes) -> bool {
         || (types.sells_to("furrier") && (town.sells("skin") || town.sells("reagent")))
 }
 
-/// Everything the round may part with: the item, its types, its bag.
-pub(super) fn goods(town: &Town, state: &GameState) -> Vec<(RoomItem, ObjectTypes, String)> {
+/// One thing the round may part with: the item, its types, and the bag it
+/// is in.
+pub(super) type Good = (RoomItem, ObjectTypes, String);
+
+/// Everything the round may part with: what the selling bags hold, and what
+/// is in `aside`, a box from the pool held in hand because no bag would take
+/// what is left in it. From that box a gold ingot is sold whatever the
+/// profile sells, as eloot sells one no bag takes at the gem shop on the
+/// spot (`handle_ingot`, `eloot.lic:7188-7203`).
+pub(super) fn goods(town: &Town, state: &GameState, aside: Option<&str>) -> Vec<Good> {
     let ready: BTreeSet<String> = ReadySlot::ALL
         .iter()
         .filter_map(|slot| state.containers.ready(*slot))
         .map(|item| item.id.clone())
         .collect();
+    let mut sources = bags(town, state);
+    if let Some(id) = aside {
+        let inside = state
+            .inventory
+            .container(id)
+            .map(|c| c.items.clone())
+            .unwrap_or_default();
+        sources.push((id.to_owned(), inside));
+    }
     let mut out = Vec::new();
-    for (bag, items) in bags(town, state) {
+    for (bag, items) in sources {
+        let from_aside = aside == Some(bag.as_str());
         for item in items {
             if ready.contains(&item.id)
                 || town.excludes(&item.text)
@@ -250,9 +268,10 @@ pub(super) fn goods(town: &Town, state: &GameState) -> Vec<(RoomItem, ObjectType
                 continue;
             }
             let types = classify(&item.noun, &item.text);
+            let ingot = from_aside && item.text.contains("gold ingot");
             // Boxes are the pool's, and sold only when the profile sells
-            // them (`check_items`, `:6503`).
-            if (types.is("box") && !town.sells("box")) || !wanted(town, &item, &types) {
+            // them (`check_items`, `:6529`).
+            if !ingot && ((types.is("box") && !town.sells("box")) || !wanted(town, &item, &types)) {
                 continue;
             }
             out.push((item, types, bag.clone()));
@@ -337,19 +356,21 @@ fn takes(shop: Shop, town: &Town, item: &RoomItem, types: &ObjectTypes) -> bool 
         || (shop == Shop::Pawnshop && types.is("clothing") && home == Some(Shop::Gemshop))
 }
 
-/// What to part with at `shop`, one lot at a time, leaving out what the
-/// round has given up on and the bags about to sell whole.
+/// What to part with at `shop` of the round's `goods`, one lot at a time,
+/// leaving out what the round has given up on and the bags about to sell
+/// whole.
 pub(super) fn lots(
     shop: Shop,
     town: &Town,
     state: &GameState,
+    goods: Vec<Good>,
     skipped: &BTreeSet<String>,
     whole: &[String],
     onward: &Onward,
 ) -> Vec<Lot> {
     let clerk = clerk(state);
     let mut out = Vec::new();
-    for (item, types, bag) in goods(town, state) {
+    for (item, types, bag) in goods {
         let sent_on = shop == Shop::Pawnshop && onward.has(&item.id);
         if skipped.contains(&item.id) || !(sent_on || takes(shop, town, &item, &types)) {
             continue;

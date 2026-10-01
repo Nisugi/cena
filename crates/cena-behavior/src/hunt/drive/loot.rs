@@ -131,7 +131,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
     /// the profile sells empty, else thrown out (`box_loot` and
     /// `save_trash_box`, `eloot.lic:5086`, `:7773`). Coins that would not
     /// all fit send it to the bank and back to gather the rest
-    /// (`:5109-5115`).
+    /// (`:5109-5115`). A box not known empty stays in hand.
     async fn box_errand(&mut self, profile: &LootProfile) -> Result<&'static str, HuntEnd> {
         let Some(id) = town::box_in_hand(&self.state) else {
             return Ok("there is no box in hand.");
@@ -146,6 +146,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             Emptied::CoinsLeft => {
                 Ok("stopped: the box's coins will not all fit, even after the bank.")
             }
+            Emptied::Unseen => Ok("stopped: what the box holds was not seen, so it is kept."),
+            Emptied::ThingsLeft => {
+                Ok("stopped: the box holds what no bag will take, so it is kept in hand.")
+            }
             Emptied::Out => self.keep_or_toss(profile, &id).await,
         }
     }
@@ -153,9 +157,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
     /// `loot ground` (`box_loot_ground`, `eloot.lic:5144-5219`): the hands
     /// put away as a trip puts them away, then each box on the ground taken
     /// up, emptied, and kept or thrown out as `loot box` does; one that is
-    /// locked is put back where it lay. Coins that would not all fit stop it,
-    /// as they stop eloot (`:5170-5173`), the box put back with the rest of
-    /// them in it. The hands are given back at the end.
+    /// locked is put back where it lay, and so is one not known empty. Coins
+    /// that would not all fit stop it, as they stop eloot (`:5170-5173`), the
+    /// box put back with the rest of them in it. The hands are given back at
+    /// the end.
     async fn ground_errand(&mut self, profile: &LootProfile) -> Result<String, HuntEnd> {
         let boxes: Vec<String> = self
             .state
@@ -180,7 +185,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             self.send(line, None).await?;
         }
         let (mut emptied, mut locked, mut missed) = (0_usize, 0_usize, 0_usize);
-        let mut coins_left = false;
+        let (mut not_emptied, mut coins_left) = (0_usize, false);
         for id in &boxes {
             self.send(&format!("get #{id}"), None).await?;
             self.hold(BEAT).await?;
@@ -195,6 +200,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                 }
                 Emptied::Locked => {
                     locked += 1;
+                    self.send(&format!("drop #{id}"), None).await?;
+                }
+                Emptied::Unseen | Emptied::ThingsLeft => {
+                    not_emptied += 1;
                     self.send(&format!("drop #{id}"), None).await?;
                 }
                 Emptied::CoinsLeft => {
@@ -216,6 +225,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         }
         if missed > 0 {
             parts.push(format!("{missed} could not be taken up"));
+        }
+        if not_emptied > 0 {
+            parts.push(format!(
+                "{not_emptied} put back not emptied, holding what no bag would take or not seen into"
+            ));
         }
         if coins_left {
             parts.push(

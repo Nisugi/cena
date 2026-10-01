@@ -522,3 +522,54 @@ fn a_pool_step_that_comes_to_nothing_ends_the_visit() {
     }
     assert_eq!(seller.next(&state, &at_pool), Step::Walk(HOME));
 }
+
+/// A returned box whose contents were never listed is kept, not trashed
+/// with whatever it holds (`box_loot`, `eloot.lic:5096`; the crate review of
+/// 2026-10-01, BE-E-5).
+#[test]
+fn a_returned_box_never_looked_into_is_kept() {
+    let mut state = setup(&[], &[]);
+    with_worker(&mut state);
+    let town = Town {
+        always_check_pool: true,
+        ..pool_town()
+    };
+    let mut seller = Seller::new(town, &state, HOME).expect("a round");
+    seller.next(&state, &at_pool);
+    seller.next(&state, &at_pool);
+    hand(&mut state, true, Some(("6", "chest", "iron chest")));
+    seller.outcome(&[returned("6", "chest", "iron chest")], &[], &state);
+    assert_eq!(
+        seller.next(&state, &at_pool),
+        Step::EmptyBox("6".to_owned())
+    );
+    seller.outcome(&[], &[Reply::BoxUnseen], &state);
+    assert_eq!(
+        seller.next(&state, &at_pool),
+        Step::Stow {
+            item: "6".to_owned(),
+            bag: "902".to_owned()
+        }
+    );
+}
+
+/// `loot pool` sells nothing, so a returned box no bag would empty stays in
+/// hand at once, and the round says so (`stow_box_item`, `eloot.lic:5363`).
+#[test]
+fn loot_pool_keeps_a_box_no_bag_would_empty_in_hand() {
+    let mut state = setup(&[], &[]);
+    with_worker(&mut state);
+    let returns = cena_behavior::town::Round::Pool {
+        drop: false,
+        collect: true,
+    };
+    let mut seller = Seller::for_round(pool_town(), &state, HOME, returns).expect("a round");
+    seller.next(&state, &at_pool);
+    seller.next(&state, &at_pool);
+    hand(&mut state, true, Some(("6", "chest", "iron chest")));
+    seller.outcome(&[returned("6", "chest", "iron chest")], &[], &state);
+    seller.next(&state, &at_pool);
+    seller.outcome(&[], &[Reply::ThingsLeft], &state);
+    assert_eq!(seller.next(&state, &at_pool), Step::Walk(HOME));
+    assert_eq!(seller.stuck(), Some("6"));
+}

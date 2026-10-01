@@ -113,3 +113,111 @@ async fn loot_pool_gives_to_the_maps_worker_and_banks_after() {
     );
     assert_eq!(at(&lines, "give #70 300"), None, "not the woman: {lines:?}");
 }
+
+/// A profile that takes gems from its boxes and pools them.
+const RETURNS: &str = "take = [\"gem\"]\n\n[town]\nsell_locksmith_pool = true\n";
+
+/// The worker hands back the iron chest `6`.
+const CHEST_BACK: &[u8] = b"<pushBold/>The <a exist=\"71\" noun=\"scoundrel\">grimy halfling scoundrel</a><popBold/> says, \"Alright, here's your <a exist=\"6\" noun=\"chest\">iron chest</a> back.\"\n<right exist=\"6\" noun=\"chest\">iron chest</right>\n<prompt time=\"1002\">&gt;</prompt>\n";
+
+/// The backpack, listed and empty.
+fn an_empty_pack(state: &mut GameState) {
+    inside(state, "902", &[]);
+}
+
+/// A chest back from the pool whose contents were never listed is kept,
+/// not thrown out with whatever it holds (`box_loot`, `eloot.lic:5096`; the
+/// crate review of 2026-10-01, BE-E-5).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_returned_chest_never_looked_into_goes_back_in_the_pack() {
+    let errand = Errand::Pool {
+        drop: false,
+        collect: true,
+    };
+    let (transcript, task, _) = set_out_knowing(
+        errand,
+        Vec::new(),
+        (TOWN, RETURNS),
+        &Arc::default(),
+        &FullBags::default(),
+        an_empty_pack,
+    );
+    transcript.answer("east", AT_THE_POOL);
+    transcript.answer("ask #71 for return", CHEST_BACK);
+    transcript.answer(
+        "_drag #6 #902",
+        &reply("You put an iron chest in your backpack.\n<right>Empty</right>"),
+    );
+    transcript.answer(
+        "ask #71 for return",
+        &reply("The grimy halfling scoundrel says, \"We don't have any boxes ready for you.\""),
+    );
+    transcript.answer("west", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(errand))),
+        "{lines:?}"
+    );
+    assert!(
+        in_order(
+            &lines,
+            &[
+                "east",
+                "ask #71 for return",
+                "open #6",
+                "look in #6",
+                "_drag #6 #902",
+                "ask #71 for return",
+                "west",
+            ]
+        ),
+        "{lines:?}"
+    );
+    assert_eq!(at(&lines, "trash #6"), None, "{lines:?}");
+}
+
+/// A chest holding an emerald no bag will take is not thrown out: `loot pool`
+/// sells nothing, so it stays in hand, and the round says so.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_returned_chest_no_bag_will_empty_stays_in_hand_and_is_said() {
+    let errand = Errand::Pool {
+        drop: false,
+        collect: true,
+    };
+    let (transcript, task, mut told) = set_out_knowing(
+        errand,
+        Vec::new(),
+        (TOWN, RETURNS),
+        &Arc::default(),
+        &FullBags::default(),
+        an_empty_pack,
+    );
+    transcript.answer("east", AT_THE_POOL);
+    transcript.answer("ask #71 for return", CHEST_BACK);
+    transcript.answer(
+        "look in #6",
+        &reply("<inv id='6'>In the <a exist=\"6\" noun=\"chest\">iron chest</a>:</inv>\n<inv id='6'> an <a exist=\"61\" noun=\"emerald\">uncut emerald</a></inv>"),
+    );
+    transcript.answer(
+        "loot #61",
+        &reply("The uncut emerald won't fit in the backpack."),
+    );
+    transcript.answer("west", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(errand))),
+        "{lines:?}"
+    );
+    assert!(in_order(&lines, &["east", "loot #61", "west"]), "{lines:?}");
+    assert_eq!(at(&lines, "trash #6"), None, "{lines:?}");
+    let said = drive_support::told_so_far(&mut told);
+    assert!(
+        said.iter()
+            .any(|(_, text)| text.contains("a box from the pool is still in hand")),
+        "{said:?}"
+    );
+}

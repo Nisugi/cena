@@ -245,6 +245,15 @@ async fn loot_ground_empties_the_boxes_there_and_leaves_a_locked_one() {
             "<right exist=\"50\" noun=\"coffer\">battered iron coffer</right>",
         ),
     );
+    // Empty, as the game lists an empty container: looked into, and nothing
+    // in it. A box never listed is not thrown out (`eloot.lic:5096`).
+    transcript.answer(
+        "look in #50",
+        &reply(
+            "<inv id='50'>In the <a exist=\"50\" noun=\"coffer\">battered iron coffer</a>:</inv>",
+            "<inv id='50'> nothing</inv>",
+        ),
+    );
     transcript.answer("trash #50", &reply("You toss the coffer away.", empty));
     transcript.answer(
         "get #51",

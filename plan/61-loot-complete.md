@@ -3,7 +3,7 @@
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
 ahead and work on the loot plan"*). **Steps 1, 2 and 3 BUILT the same day** on branch
 `loot-complete` (§5a, §5b, §5c); **step 4 BUILT 2026-10-01** in three parts (§5d, §5e,
-§5f), and **step 5a** the same day (§5g). The author: *"let's plan out the rest of it.
+§5f), and **steps 5a and 5b** the same day (§5g, §5h). The author: *"let's plan out the rest of it.
 Hydra's loot should have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
@@ -168,7 +168,8 @@ the author's answers set (§7), with the bounty trips dropped (§6).
    pool, full bags during a return, the worker by the room's tag, scarabs and the gem
    shop's odd nouns, the ingot, plinite; and step 1's leftovers, `loot pool` banking the
    boxes' silver and `loot box` taking an empty box to a bin. Scripted-game tests of
-   `loot sell`, `loot pool` and `loot box`. In three parts: **5a BUILT** (§5g).
+   `loot sell`, `loot pool` and `loot box`. In three parts: **5a BUILT** (§5g), **5b
+   BUILT** (§5h).
 6. **Selling by choice**: `loot sell type <types>`, `loot sell shop <shops>`, `loot sell
    item <names>` (eloot's three `--` forms, in Hydra's words).
 7. **The coin hand**, coin bag and gambling kit: found, used after a loot, drained at the
@@ -497,6 +498,58 @@ gem shop's odd nouns, and the scripted tests of `loot sell` and `loot box`.
   errand harness moved to `tests/errand_support/` for it). Each rule was broken by hand
   against its tests: 20 mutations, 20 caught, the walk's fold among them: undone, the
   scripted `loot pool` gives its box to nobody.
+
+## 5h. Step 5b, BUILT 2026-10-01: what a return leaves that no bag takes
+
+- **A box is thrown out only when it is known empty.** The box planner says how a box
+  came out (`loot::Emptied`): emptied; locked; coins left; **never listed**, its `look
+  in` answered with no listing, which eloot puts back (`box_loot`, `eloot.lic:5096`); or
+  **things left**, something the profile wants still in it, every bag that would take it
+  full, a drag that never took, or a gold ingot. Before, a box not emptied was taken for
+  an empty one, and the pool, `loot box` and `loot ground` threw it out with what it
+  held. The crate review of the same day found the never-listed case on `main` (BE-E-5);
+  the others were found here. An empty box is listed as one: the game sends its
+  `<inv>` header and ` nothing` (`cena-model/src/state/inventory.rs`), which the scripted
+  `loot ground` test had not answered with, and now does.
+- **A gold ingot that will not fit** says nothing of the bag (`single_drag`,
+  `:4141-4146`): too heavy for any, it is left where it is and the bag stays open to the
+  rest. Before, each bag it was tried in was marked full for the hunt.
+- **A returned box that still holds what no bag would take** (`pool_full_recovery?`,
+  `:5384-5388`; `pool_direct_sell_recovery`, `:5455-5491`): the pool's visit stops with
+  the box in hand; the round sells, the box's contents among its goods, a gold ingot
+  whatever the profile sells (`handle_ingot`, `:7188-7203`), and comes back to the pool,
+  where the box is emptied first with the room the sales made, and the returns go on
+  (`town/plan/returns.rs`). Once a box: set aside a second time it stays in hand and the
+  round says so, as eloot pauses (`pool_sell_recovery`, `:5516-5526`); `loot pool`
+  sells nothing, so its box stays in hand at once (`stow_box_item`, `:5363`). A stow to
+  free a hand puts the other hand's thing away, never that box. **Claude's call, for the
+  author:** eloot sells the box's contents straight from the box, a trip per shop, then
+  runs a whole round, then goes back to the pool; Hydra holds the box through the round
+  it is already running, which does both in one pass. eloot parks the box on a disk when
+  what is left has nowhere to sell (`pool_sell_recovery`, `:5516`); Hydra keeps it in
+  hand.
+- **The shops follow what the returns brought** (`Sell.sell`, `:7820-7835`:
+  `check_items` after `process_boxes`): after each visit to the pool, the shops for
+  anything the round has not seen are queued, one visited already again too. Before, the
+  round chose its shops before the pool, and what the boxes held waited for the next
+  rest.
+- **What the hands held when the round began is never for sale** (the crate review's
+  BE-E-6): a weapon stowed in a selling bag to free a hand at one shop was sold at the
+  next. Those ids are left out of the round's goods, and fetched back at the end as
+  before.
+- `town/goods.rs`'s `lots` takes the round's goods instead of reading the bags itself,
+  so the box held aside and the hands' ids are decided in one place (`Seller::goods`).
+- *Tests:* the box planner (a box never listed and one listed empty; a gem no bag takes;
+  a gold ingot marking no bag full, the next thing still going in, `tests/loot_box.rs`);
+  the round (the shops after the returns; a box set aside, its emerald sold, the box
+  emptied on coming back and the returns going on, the shield put away for a hand and
+  the box kept; an ingot sold from the box; a box set aside twice staying in hand; the
+  sword stowed at the gem shop not sold at the pawnshop, `tests/town_returns.rs`); the
+  pool (a box never looked into kept; `loot pool` keeping a box it cannot empty,
+  `tests/town_pool.rs`); and over a scripted game, a chest the worker hands back and
+  `look in` never lists put back in the pack, and a chest holding an emerald the pack
+  refuses kept in hand and said (`tests/loot_rounds.rs`). Each rule was broken by hand
+  against its tests: 17 mutations, 17 caught.
 
 ## 6. Not ported, and why
 

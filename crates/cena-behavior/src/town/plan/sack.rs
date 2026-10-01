@@ -31,7 +31,7 @@ impl Seller {
                     self.sack = Some((sack.clone(), SackPhase::Selling));
                     return Some(Step::SellSack(sack));
                 }
-                if let Some(free) = free_a_hand(state) {
+                if let Some(free) = free_a_hand(state, self.held_box()) {
                     return Some(free);
                 }
                 Some(Step::Fetch(sack))
