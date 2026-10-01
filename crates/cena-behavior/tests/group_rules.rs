@@ -680,6 +680,7 @@ fn a_lost_leaders_successor_is_decided_once_for_the_group() {
     };
     let ask = |members: Vec<Report>| {
         boards.succeed(
+            "GS3",
             "Lorwyn",
             |new| members.iter().any(|r| r.name == new && r.present()),
             || successor(&members, &settings, 0).map(str::to_owned),
@@ -699,4 +700,32 @@ fn a_lost_leaders_successor_is_decided_once_for_the_group() {
     let mut gone = seen(90, 95);
     gone.remove(0);
     assert_eq!(ask(gone).as_deref(), Some("Baelor"));
+}
+
+/// BE-B-4: one name on two games is two characters, and a group is in one
+/// game. Two Baelors leading lead two boards; a handover on one game is not
+/// taken by the same name on the other.
+#[test]
+fn the_same_name_on_two_games_leads_two_groups() {
+    use cena_behavior::group::Boards;
+    let boards = Boards::new();
+    let (gs3, gsf) = (boards.lead("GS3", "Baelor"), boards.lead("GSF", "Baelor"));
+    assert!(
+        !std::sync::Arc::ptr_eq(&gs3, &gsf),
+        "one board for two games"
+    );
+    assert!(boards.of("GSF", "Baelor").is_some());
+    boards.close("GSF", "Baelor");
+    assert!(boards.of("GSF", "Baelor").is_none());
+    assert!(
+        boards.of("GS3", "Baelor").is_some(),
+        "the other game's stays"
+    );
+
+    boards.hand_over("GS3", "Baelor", "Kiyna");
+    assert_eq!(boards.take_handed("GSF", "Baelor"), None);
+    assert_eq!(
+        boards.take_handed("GS3", "Baelor").as_deref(),
+        Some("Kiyna")
+    );
 }

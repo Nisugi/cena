@@ -106,8 +106,11 @@ fn room_with(state: &mut GameState, creatures: &[(i64, &str, bool)]) {
 }
 
 /// A character standing in the game's room 1000 with a warg, a troll and a
-/// warg's corpse, its group as `grouped` leaves it.
+/// warg's corpse, its group as `grouped` leaves it. `GSF Baelor` is Baelor
+/// on the game GSF; a bare name is on no game the login burst named.
 fn start(name: &str, grouped: &GroupEvent, state: &mut GameState) {
+    let (game, name) = name.split_once(' ').unwrap_or(("", name));
+    state.character.instance = (!game.is_empty()).then(|| game.to_owned());
     state.character.name = Some(name.to_owned());
     state.room.id = Some("1000".into());
     state.status.set("standing", true);
@@ -404,7 +407,7 @@ async fn a_followers_stop_leaves_the_group() {
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_leader_given_up_hands_over_to_its_successor() {
     let boards = Boards::new();
-    let old = boards.lead("Ashryn");
+    let old = boards.lead("", "Ashryn");
     let report = |name: &str, link| cena_behavior::group::Report {
         name: name.to_owned(),
         link,
@@ -454,4 +457,47 @@ async fn a_leader_given_up_hands_over_to_its_successor() {
     assert!(opened, "Dicate leads: {by_dicate:?}");
     assert!(by_kiyna.contains(&"leave group".to_owned()), "{by_kiyna:?}");
     assert!(joined, "Kiyna follows Dicate: {by_kiyna:?}");
+}
+
+/// BE-B-4: Baelor on GS3 follows Nisugi; another Baelor, on GSF, hunts
+/// alone. A solo hunt takes its name off every board each turn, and the
+/// boards were kept by the name alone, so the GSF Baelor took the GS3
+/// Baelor's report off Nisugi's board. A group is in one game.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_solo_hunt_leaves_a_same_named_follower_on_another_game_alone() {
+    let boards = Boards::new();
+    let nisugi = boards.lead("GS3", "Nisugi");
+    nisugi.publish(cena_behavior::group::Report {
+        name: "Baelor".to_owned(),
+        link: cena_session::State::Ready,
+        room: Some(cena_map::RoomId(1)),
+        rest: None,
+        unready: None,
+        hindrance: None,
+        grouped: true,
+        health: Some(100),
+        headroom: None,
+        prepared: None,
+        looted: Vec::new(),
+        dropped: None,
+    });
+    let stop = CancellationToken::new();
+    let (solo, task, session) = member_hunt(
+        "GSF Baelor",
+        FOLLOWER,
+        &GroupEvent::NotInGroup,
+        Place::Read,
+        &boards,
+        &stop,
+    );
+    // Hunting alone: each of these turns read the group first.
+    let hunted = drive_support::until_written(&solo, "target #41").await;
+    stop.cancel();
+    let _ = task.await;
+    session.cancel();
+    assert!(hunted, "the solo hunt took turns: {:?}", solo.lines());
+    assert!(
+        nisugi.reports().contains_key("Baelor"),
+        "the GS3 Baelor's report is still on Nisugi's board"
+    );
 }

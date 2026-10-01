@@ -1,7 +1,8 @@
 //! The board: what the members of one group publish, and read of each
 //! other (`plan/39` §5).
 //!
-//! One per group, found by the leader's name. Every member publishes its
+//! One per group, found by the game and the leader's name ([`Boards`]: one
+//! name can be on two games). Every member publishes its
 //! [`Report`] each tick; the leader also publishes [`Leading`], what it is
 //! doing now. Each is a [`watch`]: a writer never waits for a reader, and a
 //! reader takes the latest (`plan/12` §5.5, *no shared lock on a hot
@@ -40,13 +41,32 @@ pub enum Place {
     Follow(String),
 }
 
-/// Every group's board in this Hydra, by the leading character's name.
+/// A character in this Hydra: its game instance and its name.
+///
+/// **A group is in one game**, and one name can be on two games: the boards
+/// and the handover were kept by the name alone, so `Baelor` on GSF and
+/// `Baelor` on GS3 shared one board, each withdrawing the other's report and
+/// each leader mustering the other game's followers (the crate review of
+/// 2026-10-01, BE-B-4; the seats were fixed for the same reason, R6).
+type Key = (String, String);
+
+fn key(game: &str, name: &str) -> Key {
+    (game.to_owned(), name.to_owned())
+}
+
+/// Every group's board in this Hydra, by the game and the leading
+/// character's name.
+///
+/// `game` in every method is the character's instance
+/// ([`cena_session::GameState`]'s `character.instance`), as the login burst
+/// names it.
 #[derive(Debug, Default)]
 pub struct Boards {
-    boards: Mutex<BTreeMap<String, Arc<Board>>>,
+    boards: Mutex<BTreeMap<Key, Arc<Board>>>,
     /// Leaders lost and who took over from each (`plan/39` Stage 6), for
-    /// the one who comes back to follow (question 8).
-    handed: Mutex<BTreeMap<String, String>>,
+    /// the one who comes back to follow (question 8). The successor is on
+    /// the lost leader's game.
+    handed: Mutex<BTreeMap<Key, String>>,
 }
 
 impl Boards {
@@ -56,28 +76,29 @@ impl Boards {
         Arc::new(Self::default())
     }
 
-    /// The board `leader` leads, made the first time it leads.
+    /// The board `leader` leads on `game`, made the first time it leads.
     #[must_use]
-    pub fn lead(&self, leader: &str) -> Arc<Board> {
+    pub fn lead(&self, game: &str, leader: &str) -> Arc<Board> {
         let mut boards = self.boards.lock().unwrap_or_else(PoisonError::into_inner);
         Arc::clone(
             boards
-                .entry(leader.to_owned())
+                .entry(key(game, leader))
                 .or_insert_with(|| Arc::new(Board::new())),
         )
     }
 
-    /// The board `leader` leads, when its hunt has made one.
+    /// The board `leader` leads on `game`, when its hunt has made one.
     #[must_use]
-    pub fn of(&self, leader: &str) -> Option<Arc<Board>> {
+    pub fn of(&self, game: &str, leader: &str) -> Option<Arc<Board>> {
         let boards = self.boards.lock().unwrap_or_else(PoisonError::into_inner);
-        boards.get(leader).cloned()
+        boards.get(&key(game, leader)).cloned()
     }
 
-    /// `new` leads what `old` led: said to `old` when it comes back.
-    pub fn hand_over(&self, old: &str, new: &str) {
+    /// `new` leads what `old` led on `game`: said to `old` when it comes
+    /// back.
+    pub fn hand_over(&self, game: &str, old: &str, new: &str) {
         let mut handed = self.handed.lock().unwrap_or_else(PoisonError::into_inner);
-        handed.insert(old.to_owned(), new.to_owned());
+        handed.insert(key(game, old), new.to_owned());
     }
 
     /// Who leads what `old` led, **decided once for the group**: the one
@@ -93,44 +114,47 @@ impl Boards {
     #[must_use]
     pub fn succeed(
         &self,
+        game: &str,
         old: &str,
         stands: impl Fn(&str) -> bool,
         choose: impl FnOnce() -> Option<String>,
     ) -> Option<String> {
+        let old = key(game, old);
         let mut handed = self.handed.lock().unwrap_or_else(PoisonError::into_inner);
-        if let Some(new) = handed.get(old)
+        if let Some(new) = handed.get(&old)
             && stands(new)
         {
             return Some(new.clone());
         }
         let new = choose();
         match &new {
-            Some(new) => handed.insert(old.to_owned(), new.clone()),
-            None => handed.remove(old),
+            Some(new) => handed.insert(old, new.clone()),
+            None => handed.remove(&old),
         };
         new
     }
 
-    /// Who took over from `old`, once: `old` follows them now.
+    /// Who took over from `old` on `game`, once: `old` follows them now.
     #[must_use]
-    pub fn take_handed(&self, old: &str) -> Option<String> {
+    pub fn take_handed(&self, game: &str, old: &str) -> Option<String> {
         let mut handed = self.handed.lock().unwrap_or_else(PoisonError::into_inner);
-        handed.remove(old)
+        handed.remove(&key(game, old))
     }
 
-    /// Take down the board `leader` leads: its hunt is over, and so are its
-    /// followers' (`plan/39` §8, question 3).
-    pub fn close(&self, leader: &str) {
+    /// Take down the board `leader` leads on `game`: its hunt is over, and
+    /// so are its followers' (`plan/39` §8, question 3).
+    pub fn close(&self, game: &str, leader: &str) {
         let mut boards = self.boards.lock().unwrap_or_else(PoisonError::into_inner);
-        boards.remove(leader);
+        boards.remove(&key(game, leader));
     }
 
-    /// Take `name`'s report off every board but `keep`'s: a member is on one
-    /// board, the one of whoever it follows or leads now.
-    pub fn withdraw_except(&self, name: &str, keep: Option<&str>) {
+    /// Take `name`'s report off every board on `game` but `keep`'s: a member
+    /// is on one board, the one of whoever it follows or leads now. A board
+    /// on another game is another character's, whatever its name.
+    pub fn withdraw_except(&self, game: &str, name: &str, keep: Option<&str>) {
         let boards = self.boards.lock().unwrap_or_else(PoisonError::into_inner);
-        for (leader, board) in boards.iter() {
-            if Some(leader.as_str()) != keep {
+        for ((on, leader), board) in boards.iter() {
+            if on == game && Some(leader.as_str()) != keep {
                 board.withdraw(name);
             }
         }

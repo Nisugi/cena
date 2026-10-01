@@ -204,7 +204,7 @@
 //! |---|---|---|
 //! | **Role** | a member's part: lead, follow or solo, read off the game's group and never chosen ([`group::Role`], [`group::role`]) | |
 //! | **Report** | what one member of a group publishes for the leader to read: its connection, room, rest reason and what keeps it ([`group::Report`]); the leader adds [`group::Leading`] | |
-//! | **Board** | one group's shared place: every member's latest report, and what the leader is doing now, found by the leader's name ([`group::Board`], [`group::Boards`]) | a queue of orders: the leader publishes state, not commands (`plan/39` §3) |
+//! | **Board** | one group's shared place: every member's latest report, and what the leader is doing now, found by the game and the leader's name ([`group::Board`], [`group::Boards`]) | a queue of orders: the leader publishes state, not commands (`plan/39` §3) |
 //! | **Party** | the group as one member's hunt sees it for one tick, handed to the pure engine as the map is ([`group::Party`]) | the game's group |
 //! | **Muster** | gathering the group: what it does about a member apart from the leader, and until when ([`group::Muster`], [`group::muster`]) | rally |
 //! | **Lost wait** | how long each muster wait lasts before the group stops waiting, 90 seconds by default ([`group::Settings::lost_wait`]) | |

@@ -92,6 +92,13 @@ pub(super) enum Seen {
 }
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+    /// This character's game, which keys its group's board with the
+    /// leader's name: a group is in one game, and one name can be on two
+    /// (BE-B-4). Empty until the login burst names it.
+    fn game(&self) -> String {
+        self.state.character.instance.clone().unwrap_or_default()
+    }
+
     /// Read the group for this turn and hand the engine its [`Party`].
     pub(super) fn see_party(&mut self, here: Option<RoomId>) -> Seen {
         let Some(name) = self.state.character.name.clone() else {
@@ -101,7 +108,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         if self.membership.is_none() {
             return Seen::Go;
         }
-        self.back_after_handover(&name);
+        let game = self.game();
+        self.back_after_handover(&game, &name);
         let Some(member) = self.membership.as_mut() else {
             return Seen::Go;
         };
@@ -134,15 +142,15 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 }
                 _ => {
                     member.on = None;
-                    member.boards.withdraw_except(&name, None);
+                    member.boards.withdraw_except(&game, &name, None);
                     self.machine.see(None);
                     return Seen::Go;
                 }
             },
         };
         let board = match role {
-            Role::Lead => Some(member.boards.lead(&name)),
-            _ => member.boards.of(&leader),
+            Role::Lead => Some(member.boards.lead(&game, &name)),
+            _ => member.boards.of(&game, &leader),
         };
         let Some(board) = board else {
             // Following a leader whose hunt has ended: so has this one.
@@ -165,7 +173,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             return Seen::Go;
         };
         if member.on.as_ref().is_none_or(|(on, _)| *on != leader) {
-            member.boards.withdraw_except(&name, Some(&leader));
+            member.boards.withdraw_except(&game, &name, Some(&leader));
             member.on = Some((leader.clone(), Arc::clone(&board)));
         }
         let reports = board.reports();
@@ -178,7 +186,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 leader_lost,
                 Some(Muster::Gone | Muster::TakeHome | Muster::Drag | Muster::Add)
             ) {
-                return self.hand_over(&name, &leader, &board, &reports, &leading);
+                return self.hand_over(&game, &name, &leader, &board, &reports, &leading);
             }
             Party {
                 name,
@@ -199,11 +207,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
 
     /// Back after the lead passed while it was away (question 8): it follows
     /// the new leader.
-    fn back_after_handover(&mut self, name: &str) {
+    fn back_after_handover(&mut self, game: &str, name: &str) {
         let Some(member) = self.membership.as_mut() else {
             return;
         };
-        if let Some(new) = member.boards.take_handed(name) {
+        if let Some(new) = member.boards.take_handed(game, name) {
             member.following = Some(new.clone());
             member.on = None;
             member.expected.clear();
@@ -262,6 +270,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
     /// (`plan/39` §1, the author's handover; question 4's successor).
     fn hand_over(
         &mut self,
+        game: &str,
         name: &str,
         old: &str,
         board: &Arc<Board>,
@@ -283,6 +292,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             .collect();
         // One answer for the group, not one a follower (`Boards::succeed`).
         let successor = member.boards.succeed(
+            game,
             old,
             |new| members.iter().any(|r| r.name == new && r.present()),
             || group::successor(&members, &settings, 0).map(str::to_owned),
@@ -491,10 +501,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         let Some(member) = self.membership.as_ref() else {
             return;
         };
-        member.boards.withdraw_except(&name, None);
+        let game = self.game();
+        member.boards.withdraw_except(&game, &name, None);
         let led = member.on.as_ref().map(|(leader, _)| *leader == name);
         if led == Some(true) {
-            member.boards.close(&name);
+            member.boards.close(&game, &name);
         }
         // Question 3: a follower's own stop leaves the game's group, and the
         // rest hunt on without it (bigshot's `LEAVE_GROUP`, `:10108`).

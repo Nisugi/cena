@@ -411,7 +411,8 @@ sessions, two desks and one board in one test, through a full cycle: the followe
 leader's target, the named looter loots, both walk to rest, the leader waits for the
 follower's prep **for this rest**, and both walk back.
 **BUILT 2026-09-26.** The board is `group/board.rs` (`Boards`, one set per process, found by
-the leader's name; per member a `watch` of its `Report`, and one of the leader's `Leading`).
+the game and the leader's name, since one name can be on two games (BE-B-4 of the 2026-10-01
+review; the handover's table likewise); per member a `watch` of its `Report`, and one of the leader's `Leading`).
 The driver reads it each turn and hands the pure engine a `Party` (`group/party.rs`,
 `hunt/drive/party.rs`); the engine's arms are `hunt/party.rs`, run between survival and rest.
 
