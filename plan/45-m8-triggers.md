@@ -474,7 +474,7 @@ measured axum; who plays a sound when no viewer is open.
 
 **BUILT 2026-09-27**: sounds, OS notifications and banners.
 
-- The responses are `sound = "<file or path>"`, `notify = true | "<words>"`, `alert = true |
+- The responses are `sound = "<file name>"`, `notify = true | "<words>"`, `alert = true |
   "<words>"`, and `cooldown = N` (`crates/cena-model/src/trigger/attention.rs`). `true`
   says the line as the game sent it, or a condition's name; words fill in a regex's `$1`.
   They fire on a squelched line (§4) and from a condition, and `[responses]` switches each.
@@ -482,11 +482,21 @@ measured axum; who plays a sound when no viewer is open.
   game's clock (`Cooldowns`), and is published as `Event::Attention`.
 - The binary plays: one desk for every character, on a thread of its own
   (`crates/cena/src/attention.rs`). A call another character made within a second is the
-  same occurrence and passes silently; the sound is found by path or in `<data dir>/sounds`
-  as `VellumFE` finds one; the audio device opens at the first sound. **With no page open,
-  it still sounds**: that answers who plays it.
+  same occurrence and passes silently; the sound is found by its file name in
+  `<data dir>/sounds` as `VellumFE` finds one; the audio device opens at the first sound.
+  **With no page open, it still sounds**: that answers who plays it.
 - Wrayth's `sound` imports as the trigger's `sound`, no longer `held`; a sound found nowhere
   is said at load, once, with where to put it.
+- **CORRECTED 2026-10-01** (the crate review, BI-B-1 and BE-F-4): a sound was played from
+  the path the file gave when it was there. On Windows a network path in a shared file
+  (`\\host\share\x.wav`) is opened by contacting that host, which is answered with the
+  player's NTLM credentials, and the path was looked at on every reload. A sound is now a
+  **file name in the sounds folder and nothing else** (`crates/cena-behavior/src/triggers/sound.rs`):
+  an import keeps a sound's file name (CLAUDE'S CALL: rewritten, not refused, since a
+  Wrayth path names a file on the machine that made the export and the sounds folder was
+  already where it was looked for); `;trigger set` and the editor refuse a path; a reload
+  names each path in the file and why it will not play; the desk refuses one before it
+  looks for anything.
 - The banner is a page's: the pump keeps a character's `alert`s and sends each as an
   `alert` message after the update that carried its line, to the pages open then, never in
   a snapshot (`crates/cena-ui/WIRE.md`). The page shows it as text for 4 seconds, at most 5
@@ -509,7 +519,7 @@ sound has been played or notification shown by a test; that is the author's firs
 | Cooldown | per character and per trigger, 3 game seconds unless `cooldown` says, in the session | `VellumFE`'s `DEFAULT_COOLDOWN_SECS`; on the game's clock as every expiry in the model is; in the session so the desk and a page agree on what came |
 | Several characters, one occurrence | the same trigger, sound and words from another character within a second passes silently | the merged streams' second (`cena_ui::Merger`); the same character twice is two occurrences, which its cooldown already let through |
 | A notification's title | `Hydra: <character>`, the first to see it | several characters' one occurrence names the first |
-| A sound not found | said once at load and after each change, grouped, with the sounds folder | a Wrayth path from another machine is the likely case |
+| A sound not found | said once at load and after each change, grouped, with the sounds folder | a Wrayth path from another machine is the likely case; a path is never followed (Stage 3 above, CORRECTED 2026-10-01) |
 | The cap on banners | the page's: 5 at once, 4 seconds each | `VellumFE`'s `MAX_CONCURRENT` and `DEFAULT_DURATION_SECS`; the pump keeps the newest 5 between publishes |
 | A banner on the wire | a new `alert` message within version 1, never in a snapshot | a page opened later is not shown what it missed; a page from an older process cannot pair with a newer one (the pairing token is per process), so no older page meets the new kind |
 | The hub page | shows no banners | each banner is a character's; the hub's merged streams already carry what several characters heard |
@@ -561,7 +571,7 @@ changes nothing. **MET**: `crates/cena/src/triggers/tests.rs`,
 | Names as one trigger per style, as `VellumFE`? | **No**, one trigger per name | `VellumFE` merges because its engine is multi-literal; here one literal is one trigger, and a name is removed alone |
 | Importing a file again | **replaces** what that file brought (`origin = "Wrayth: <file>"`), whatever was changed since | the same file twice is the same file once; a change made since is lost, and the import says how many it replaced |
 | A name the player already uses | **left to the player**; the import's is `<name> (Wrayth)` | the player's own rule outranks an import |
-| A sound | kept as `held = { sound = "<path>" }`, the trigger's look on | Stage 3 is held; the path is from the original machine, as `VellumFE` notes |
+| A sound | kept as `held = { sound = "<path>" }`, the trigger's look on. **Since Stage 3**, the trigger's `sound`; **since 2026-10-01**, only its file name (Stage 3's CORRECTED note) | Stage 3 is held; the path is from the original machine, as `VellumFE` notes |
 | An entry with no colour Hydra can show (`skin`, a palette miss, not `#rrggbb`) | **left out and noted**, unless the other colour stands | a trigger with no response is refused (§5a); the note says which |
 | `<ignores>` | imported, as squelches; `disable` sets the category's switch both ways | `VellumFE` does not import them; the Saga complaint is the master toggle |
 | Whole words | Hydra's default (§5d) | Wrayth's own rule is UNVERIFIED, and the author settled the question it raised (§5d): a name inside a longer word was never meant |

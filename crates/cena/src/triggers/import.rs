@@ -72,8 +72,8 @@ pub(super) fn import(
         said.push((
             NoticeKind::Info,
             format!(
-                "{} play a sound: from the path Wrayth wrote when it is there, otherwise by \
-                 its file name from {}.",
+                "{} play a sound, kept as its file name and played from {}: a path the file \
+                 gave is never followed.",
                 counted_as(brought.sounds, "trigger"),
                 crate::attention::sounds_dir(dir).display()
             ),

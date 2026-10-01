@@ -54,6 +54,35 @@ fn set_changes_one_field_and_a_refused_result_is_refused() {
     assert!(none.contains("no trigger `nobody`"), "{none}");
 }
 
+/// A sound set by `;trigger set` or the editor is a file name in the
+/// sounds folder, never a path (BI-B-1): a trigger's send could type the
+/// `set`, so game text must not be able to plant a network path.
+#[test]
+fn a_sound_set_or_saved_is_a_file_name_and_a_path_is_refused() {
+    let text = edit::add("", "stunned", "You are stunned").unwrap();
+    for path in [
+        r"\\attacker.example\s\ding.wav",
+        r"C:\fx\ding.wav",
+        "../ding.wav",
+    ] {
+        let refused = edit::set(&text, "stunned", "sound", typed(path)).unwrap_err();
+        assert!(refused.contains("sound"), "{refused}");
+        let one = edit::set(&text, "stunned", "for.Dicate.sound", typed(path));
+        assert!(one.is_err(), "{path}: one character's copy too");
+    }
+    let (set, _) = edit::set(&text, "stunned", "sound", typed("ding.wav")).unwrap();
+    assert_eq!(
+        triggers(&set).unwrap()[0].rule.sound.as_deref(),
+        Some("ding.wav")
+    );
+
+    let mut fields = toml::Table::new();
+    fields.insert("text".into(), "You are stunned".into());
+    fields.insert("sound".into(), r"\\host\share\ding.wav".into());
+    let saved = edit::save(&text, Some("stunned"), "stunned", fields, false).unwrap_err();
+    assert!(saved.contains("network"), "{saved}");
+}
+
 /// A name is the trigger's whole key, dots and all: `set` does not split it.
 #[test]
 fn a_name_with_dots_is_one_name() {

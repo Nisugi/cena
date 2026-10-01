@@ -204,7 +204,7 @@ fn does(ui: &mut egui::Ui, form: &mut Form, watch: Watch, book: &Book) {
     optional(ui, "Sound", &mut form.sound, |ui, sound| {
         ui.add(
             egui::TextEdit::singleline(sound)
-                .hint_text("a file in the sounds folder, or a path")
+                .hint_text("a file name in the sounds folder")
                 .desired_width(220.0),
         );
         pick(ui, "trigger-sound", sound, &book.sounds, "choose");

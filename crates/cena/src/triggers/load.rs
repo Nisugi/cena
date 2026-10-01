@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use cena_behavior::triggers::{self, Refused};
+use cena_behavior::triggers::{self, Refused, sound};
 use cena_session::trigger::Matcher;
 use cena_session::{NoticeKind, SessionHandle};
 
@@ -18,8 +18,9 @@ pub(super) struct Reload {
     pub(super) refused: Vec<Refused>,
     /// Triggers whose send waits for the player's approval.
     pub(super) held: Vec<Refused>,
-    /// The sounds found nowhere, said.
-    pub(super) unfound: Option<String>,
+    /// The sounds that will not play, said: refused as paths, or found
+    /// nowhere.
+    pub(super) unfound: Vec<String>,
 }
 
 /// Read the file and give `character`'s session its triggers.
@@ -31,16 +32,49 @@ pub(super) fn reload(
     let loaded = triggers::load(dir)?;
     let mine = loaded.triggers.for_character(character);
     let count = mine.len();
-    let sounds = crate::attention::sounds_dir(dir);
-    let mut missing: Vec<String> = mine
+    let unfound = unplayable(
+        &crate::attention::sounds_dir(dir),
+        mine.iter()
+            .filter_map(|trigger| trigger.rule.sound.clone())
+            .collect(),
+    );
+    handle.set_triggers(Matcher::new(mine)?);
+    Ok(Reload {
+        count,
+        refused: loaded.refused,
+        held: loaded.held,
+        unfound,
+    })
+}
+
+/// What to say of the `named` sounds that will not play from `sounds`: each
+/// that is not a file name, and why, before anything is looked for (a path
+/// is never followed: `sound::refused`); then those found nowhere, in one
+/// line.
+pub(super) fn unplayable(sounds: &Path, mut named: Vec<String>) -> Vec<String> {
+    named.sort();
+    named.dedup();
+    let (refused, named): (Vec<String>, Vec<String>) = named
+        .into_iter()
+        .partition(|sound| sound::refused(sound).is_some());
+    let mut said: Vec<String> = refused
         .iter()
-        .filter_map(|trigger| trigger.rule.sound.clone())
-        .filter(|sound| crate::attention::found(&sounds, sound).is_none())
+        .map(|written| {
+            let why = sound::refused(written).unwrap_or_default();
+            format!(
+                "The sound `{written}` is not played: it {why}. Set it to its file name, `{}`, \
+                 and put the file in {}.",
+                sound::file_name(written),
+                sounds.display()
+            )
+        })
         .collect();
-    missing.sort();
-    missing.dedup();
-    let unfound = (!missing.is_empty()).then(|| {
-        format!(
+    let missing: Vec<String> = named
+        .into_iter()
+        .filter(|sound| crate::attention::found(sounds, sound).is_none())
+        .collect();
+    if !missing.is_empty() {
+        said.push(format!(
             "{} not found: {}. Put {} in {}.",
             counted_as(missing.len(), "sound"),
             missing
@@ -50,15 +84,9 @@ pub(super) fn reload(
                 .join(", "),
             if missing.len() == 1 { "it" } else { "them" },
             sounds.display()
-        )
-    });
-    handle.set_triggers(Matcher::new(mine)?);
-    Ok(Reload {
-        count,
-        refused: loaded.refused,
-        held: loaded.held,
-        unfound,
-    })
+        ));
+    }
+    said
 }
 
 /// What stays on when the file cannot be read: the triggers read before,
@@ -96,7 +124,12 @@ pub(super) fn loaded(
             .iter()
             .map(|held| (NoticeKind::Info, format!("{held}."))),
     );
-    said.extend(reload.unfound.map(|unfound| (NoticeKind::Warn, unfound)));
+    said.extend(
+        reload
+            .unfound
+            .into_iter()
+            .map(|unfound| (NoticeKind::Warn, unfound)),
+    );
     if asked || reload.count > 0 {
         said.push((NoticeKind::Info, format!("{} on.", counted(reload.count))));
     }

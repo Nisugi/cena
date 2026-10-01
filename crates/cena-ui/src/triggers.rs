@@ -104,7 +104,8 @@ pub struct Form {
     pub redirect: Option<Redirect>,
     /// Set or clear a flag.
     pub flag: Option<Flag>,
-    /// Play this: a file in the sounds folder, or a path.
+    /// Play this: a file name in the sounds folder, never a path
+    /// (`cena_behavior::triggers::sound`).
     pub sound: Option<String>,
     /// Say this as an OS notification; empty says the line.
     pub notify: Option<String>,

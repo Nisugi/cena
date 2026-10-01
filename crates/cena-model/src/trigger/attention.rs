@@ -59,8 +59,8 @@ impl TryFrom<RawSay> for Say {
 pub struct Attention {
     /// The trigger, by name: what its cooldown is kept by.
     pub trigger: String,
-    /// The sound to play, as the trigger names it: a file in the sounds
-    /// folder, or a path.
+    /// The sound to play, as the trigger names it: a file name in the
+    /// sounds folder (a path is refused where it is played).
     pub sound: Option<String>,
     /// What the OS notification says.
     pub notify: Option<String>,

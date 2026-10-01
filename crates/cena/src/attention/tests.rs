@@ -59,8 +59,8 @@ fn a_different_call_passes_and_a_banner_alone_does_not_reach_the_desk() {
     assert_eq!(once.admit(&call("Dicate", "banner", None, None), now), None);
 }
 
-/// A sound is found by its path, by its file name in the sounds folder, or
-/// with one of the four extensions.
+/// A sound is found by its file name in the sounds folder, as written or
+/// with one of the four extensions; a path is never followed (BI-B-1).
 #[test]
 fn a_sound_is_found_where_vellum_finds_one() {
     let root = std::env::temp_dir().join(format!("cena-attention-found-{}", std::process::id()));
@@ -72,7 +72,8 @@ fn a_sound_is_found_where_vellum_finds_one() {
     let at = |named: &str| found(&sounds, named);
     assert_eq!(
         at(&elsewhere.display().to_string()),
-        Some(elsewhere.clone())
+        None,
+        "a file outside the sounds folder is not played, though it is there"
     );
     assert_eq!(at("ding.wav"), Some(sounds.join("ding.wav")));
     assert_eq!(
@@ -81,11 +82,16 @@ fn a_sound_is_found_where_vellum_finds_one() {
         "an extension tried"
     );
     assert_eq!(at("chime"), Some(sounds.join("chime.ogg")));
-    // A path from another machine is found by its file name here.
-    assert_eq!(
-        at(r"C:\Users\Someone\Desktop\fx\ding.wav"),
-        Some(sounds.join("ding.wav"))
-    );
+    // A path is refused before anything is looked for, though its file name
+    // is here: a network path would reach out to the host it names.
+    for path in [
+        r"C:\Users\Someone\Desktop\fx\ding.wav",
+        r"\\203.0.113.9\s\ding.wav",
+        r"\\?\UNC\203.0.113.9\s\ding.wav",
+        "../sounds/ding.wav",
+    ] {
+        assert_eq!(at(path), None, "{path}");
+    }
     assert_eq!(
         at("ding.mp3"),
         None,

@@ -209,6 +209,33 @@ async fn list_off_and_every() {
     assert!(unknown[0].contains("`frobnicate`"), "{unknown:?}");
 }
 
+/// A reload says which sounds will not play: a path (a UNC one written by
+/// hand into the file, say) refused with why and its file name to write,
+/// before anything is looked for (BI-B-1); then those found nowhere.
+#[test]
+fn a_reload_refuses_a_sound_that_is_a_path_and_says_why() {
+    let sounds = Path::new("no-such-sounds-folder");
+    let said = load::unplayable(
+        sounds,
+        vec![
+            r"\\attacker.example\s\ding.wav".to_owned(),
+            "chime.wav".to_owned(),
+            r"\\attacker.example\s\ding.wav".to_owned(),
+        ],
+    );
+    assert_eq!(said.len(), 2, "{said:?}");
+    assert!(
+        said[0].starts_with(
+            r"The sound `\\attacker.example\s\ding.wav` is not played: it is a network"
+        ) && said[0].contains("its file name, `ding.wav`"),
+        "{said:?}"
+    );
+    assert!(
+        said[1].starts_with("1 sound not found: `chime.wav`."),
+        "{said:?}"
+    );
+}
+
 /// `;trigger import`: a Wrayth file comes in and is on at once, what is held
 /// is said, and the same file again replaces what it brought.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
@@ -224,15 +251,16 @@ async fn import_brings_a_wrayth_file_in_and_again_replaces_it() {
         ) && said[0].contains("13 triggers on for Nisugi"),
         "{said:?}"
     );
-    // The fixture's sounds point at a machine this is not: said once, with
-    // where to put them.
+    // The fixture's sounds point at a machine this is not: kept by their
+    // file names (BI-B-1), said once, with where to put them.
     assert!(
-        said[1].starts_with(r"Triggers: 2 sounds not found: `C:\fx\CPU unit lost.wav`, `C:\fx\data.wav`. Put them in ")
-            && said[1].ends_with("sounds."),
+        said[1].starts_with(
+            "Triggers: 2 sounds not found: `CPU unit lost.wav`, `data.wav`. Put them in "
+        ) && said[1].ends_with("sounds."),
         "{said:?}"
     );
     assert!(
-        said[2].starts_with("Triggers: 2 triggers play a sound: from the path Wrayth wrote"),
+        said[2].starts_with("Triggers: 2 triggers play a sound, kept as its file name"),
         "{said:?}"
     );
     assert_eq!(typing.triggers().triggers().len(), 13);

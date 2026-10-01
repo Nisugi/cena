@@ -51,6 +51,10 @@
 //! is `held`, a table by the response's name (`held = { sound = "…" }`).
 //! Both belong to the trigger, not to one character's copy.
 //!
+//! **A sound is a file name** in the sounds folder, never a path
+//! ([`sound`]): a path in a file another player wrote could make Hydra reach
+//! out to their machine.
+//!
 //! **A trigger from elsewhere does not send until the player approves it**
 //! (author, `plan/45` §1 row 1: *"b is fine"*). One with an `origin` and a
 //! `send` loads with the send held, and says so ([`Loaded::held`]), until
@@ -79,6 +83,7 @@ use toml::{Table, Value};
 
 pub mod edit;
 mod entry;
+pub mod sound;
 pub mod wrayth;
 
 /// The file's name under the data directory.

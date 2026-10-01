@@ -17,8 +17,10 @@
 //! **The sound** is found as `VellumFE` finds one
 //! (`reference/VellumFE/src/sound.rs`): by its file name in the sounds folder,
 //! `<data dir>/sounds`, as written or with `.wav`, `.mp3`, `.ogg` or `.flac`
-//! after it. A path that is there is played from where it is, which is where
-//! a Wrayth import's sounds point on the machine that made them. The audio
+//! after it. **A path is never followed**, not even one that is there
+//! (`cena_behavior::triggers::sound`, the crate review of 2026-10-01,
+//! BI-B-1): on Windows a network path in a file another player wrote would
+//! make Hydra reach out to their host with the player's credentials. The audio
 //! device is opened at the first sound, not before: `VellumFE` found opening
 //! it can take ten seconds on a machine with none.
 
@@ -30,6 +32,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::{Duration, Instant};
 
+use cena_behavior::triggers::sound;
 use cena_session::Event;
 use cena_session::trigger::Attention;
 use tokio::sync::broadcast::{self, error::RecvError};
@@ -54,15 +57,15 @@ pub(crate) fn sounds_dir(dir: &Path) -> PathBuf {
     dir.join("sounds")
 }
 
-/// Where the sound `named` is: the path itself when it is one that is
-/// there, otherwise its file name in `sounds`, as written or with one of
-/// [`EXTENSIONS`]. `None` when it is nowhere.
+/// Where the sound `named` is: the file of that name in `sounds`, as
+/// written or with one of [`EXTENSIONS`]. `None` when it is nowhere, and,
+/// before anything is looked for, when `named` is not a file name
+/// ([`sound::refused`]): a path is never followed.
 pub(crate) fn found(sounds: &Path, named: &str) -> Option<PathBuf> {
-    let written = Path::new(named);
-    if written.is_absolute() && written.is_file() {
-        return Some(written.to_path_buf());
+    if sound::refused(named).is_some() {
+        return None;
     }
-    let file = named.rsplit(['\\', '/']).next().unwrap_or(named);
+    let file = named.trim();
     let here = sounds.join(file);
     if here.is_file() {
         return Some(here);
@@ -201,10 +204,13 @@ impl Speaker {
     fn play(&mut self, sounds: &Path, named: &str) {
         let Some(path) = found(sounds, named) else {
             if !self.missing.iter().any(|said| said == named) {
-                eprintln!(
-                    "[attention] no sound `{named}`: put it in {}",
-                    sounds.display()
-                );
+                match sound::refused(named) {
+                    Some(why) => eprintln!("[attention] sound `{named}` not played: it {why}"),
+                    None => eprintln!(
+                        "[attention] no sound `{named}`: put it in {}",
+                        sounds.display()
+                    ),
+                }
                 self.missing.push(named.to_owned());
             }
             return;

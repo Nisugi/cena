@@ -175,7 +175,11 @@ fn change(
                     counted(count)
                 ),
             )];
-            said.extend(unfound.map(|unfound| (NoticeKind::Warn, unfound)));
+            said.extend(
+                unfound
+                    .into_iter()
+                    .map(|unfound| (NoticeKind::Warn, unfound)),
+            );
             said
         }
         Err(why) => vec![

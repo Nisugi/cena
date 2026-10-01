@@ -102,13 +102,17 @@ pub fn add(text: &str, name: &str, words: &str) -> Result<String, String> {
 /// # Errors
 ///
 /// The file is not TOML, there is no such trigger, the key is not a
-/// setting's name, or the trigger is refused with it.
+/// setting's name, the trigger is refused with it, or it is a `sound` that
+/// is not a file name ([`super::sound`]).
 pub fn set(
     text: &str,
     name: &str,
     key: &str,
     value: Value,
 ) -> Result<(String, Option<Value>), String> {
+    if key.rsplit('.').next() == Some("sound") {
+        file_name(&value)?;
+    }
     let mut old = None;
     let text = change(text, &[name], |table| {
         old = settings::set_in(trigger(table, name)?, key, value)?;
@@ -383,7 +387,8 @@ pub fn tables(text: &str) -> Result<Vec<(String, Table)>, String> {
 /// # Errors
 ///
 /// The file is not TOML, the name is empty or taken, `was` is not a trigger,
-/// or the trigger as saved would be refused (the reason).
+/// the trigger as saved would be refused (the reason), or its sound is not a
+/// file name ([`super::sound`]).
 pub fn save(
     text: &str,
     was: Option<&str>,
@@ -394,6 +399,9 @@ pub fn save(
     let name = name.trim();
     if name.is_empty() {
         return Err("a trigger needs a name".to_owned());
+    }
+    if let Some(sound) = fields.get("sound") {
+        file_name(sound)?;
     }
     change(text, &[name], |table| {
         let triggers = section(table, "trigger")?;
@@ -428,7 +436,8 @@ pub fn save(
 /// with `origin` (`plan/54` step 5): what made it theirs, where it came from
 /// and what it was approved to send (`for`, `origin`, `held`, `approved`) is
 /// left behind, so every send it brings is held until this player approves it
-/// (`plan/45` §1 row 1).
+/// (`plan/45` §1 row 1). A sound is kept as its file name, never as the path
+/// their file gave ([`super::sound`]).
 ///
 /// # Errors
 ///
@@ -447,8 +456,15 @@ pub fn shared(text: &str, origin: &str) -> Result<Import, String> {
         for theirs in ["for", "origin", "held", "approved"] {
             own.remove(theirs);
         }
-        if own.contains_key("sound") {
-            brought.sounds += 1;
+        // A sound is kept as its file name, never as the path their file
+        // gave (`sound`); one that is not text stays, for the read to refuse.
+        if let Some(Value::String(written)) = own.remove("sound") {
+            if let Some(kept) = brought.sound(name, &written) {
+                own.insert("sound".to_owned(), Value::String(kept));
+                brought.sounds += 1;
+            }
+        } else if let Some(other) = value.get("sound") {
+            own.insert("sound".to_owned(), other.clone());
         }
         own.insert("origin".to_owned(), Value::String(origin.to_owned()));
         brought.triggers.push((name.clone(), own));
@@ -541,6 +557,21 @@ fn change(
         return Err(refused.why.clone());
     }
     Ok(out)
+}
+
+/// `Ok` unless `sound` is text that is not a file name in the sounds folder
+/// ([`super::sound::refused`]); a value of another kind is the read's to
+/// refuse.
+fn file_name(sound: &Value) -> Result<(), String> {
+    match sound
+        .as_str()
+        .map(|named| (named, super::sound::refused(named)))
+    {
+        Some((named, Some(why))) => Err(format!(
+            "the sound `{named}` {why}: write its file name, and put the file in the sounds folder"
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// The triggers in file order: category, then name.

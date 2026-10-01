@@ -6,7 +6,7 @@
 //! | `<strings>` `<h text color bgcolor>` | a trigger on the words, with a look; category "Wrayth strings" |
 //! | `line="y"` | the look covers the whole line |
 //! | `case="y"` | case-sensitive (the author's reading, §1 row 4, UNVERIFIED) |
-//! | `sound` | the trigger's `sound`, the path as Wrayth wrote it: played from there when it is there, and otherwise by its file name from the sounds folder (Stage 3) |
+//! | `sound` | the trigger's `sound`: the file name of the path Wrayth wrote, played from the sounds folder (Stage 3). Never the path: it names a file on the machine that made the file, and a network path would make Hydra reach out to that host ([`super::sound`]) |
 //! | `<names>` | the same, category "Wrayth names" |
 //! | `<ignores>` | a squelch on the words, category "Wrayth ignores"; `disable='y'` switches the category off |
 //! | `@N` | the colour the file's `<palette>` gives entry N |
@@ -42,6 +42,8 @@ use std::collections::BTreeMap;
 
 use toml::{Table, Value};
 
+use super::sound;
+
 /// The category Wrayth's `<strings>` come in.
 pub const STRINGS: &str = "Wrayth strings";
 /// The category Wrayth's `<names>` come in.
@@ -58,7 +60,8 @@ pub struct Import {
     pub ignores_on: Option<bool>,
     /// How many came from `<strings>`, `<names>` and `<ignores>`.
     pub counts: [usize; 3],
-    /// How many triggers play a sound.
+    /// How many triggers play a sound, each kept as a file name in the
+    /// sounds folder.
     pub sounds: usize,
     /// What could not be carried, one sentence each.
     pub notes: Vec<String>,
@@ -145,7 +148,10 @@ impl Import {
                 look.insert(to.to_owned(), Value::String(colour));
             }
         }
-        let sound = entry.get("sound").filter(|sound| !sound.is_empty());
+        let sound = entry
+            .get("sound")
+            .filter(|sound| !sound.is_empty())
+            .and_then(|written| self.sound(words, written));
         if look.is_empty() && sound.is_none() {
             self.notes.push(format!(
                 "`{words}` has no colour Hydra can show, and is left out"
@@ -159,10 +165,25 @@ impl Import {
             trigger.insert("look".to_owned(), Value::Table(look));
         }
         if let Some(sound) = sound {
-            trigger.insert("sound".to_owned(), Value::String(sound.clone()));
+            trigger.insert("sound".to_owned(), Value::String(sound));
             self.sounds += 1;
         }
         Some(trigger)
+    }
+
+    /// The sound `written` for the trigger on `words`, as Hydra keeps it: its
+    /// file name ([`sound::imported`]); `None`, noted, when even that is not
+    /// one.
+    pub(super) fn sound(&mut self, words: &str, written: &str) -> Option<String> {
+        match sound::imported(written) {
+            Ok(name) => Some(name),
+            Err(why) => {
+                self.notes.push(format!(
+                    "`{words}`: its sound `{written}` {why}, and is left out"
+                ));
+                None
+            }
+        }
     }
 
     /// A Wrayth colour as `#rrggbb`: its own, or its palette entry's; `None`

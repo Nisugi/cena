@@ -117,16 +117,16 @@ fn every_highlight_name_and_ignore_in_the_fixture_comes_in() {
     assert!(erratic.squelch);
     assert!(erratic.look.is_none());
 
-    // The sound is the path Wrayth wrote, and each trigger says where it
-    // came from.
+    // The sound is the file name of the path Wrayth wrote, never the path
+    // (BI-B-1), and each trigger says where it came from.
     let private = edit::show(&text, "[Private]").unwrap();
     assert!(
-        private.contains(&r"sound = 'C:\fx\data.wav'".to_owned()),
+        private.contains(&"sound = \"data.wav\"".to_owned()),
         "{private:?}"
     );
     assert_eq!(
         named(&all, "[Private]").unwrap().rule.sound.as_deref(),
-        Some(r"C:\fx\data.wav")
+        Some("data.wav")
     );
     assert!(
         private.contains(&format!("origin = \"{ORIGIN}\"")),
@@ -260,6 +260,64 @@ fn what_cannot_be_carried_is_named_and_the_rest_comes_in() {
     );
     assert_eq!(import.counts, [5, 0, 0]);
     assert_eq!(import.sounds, 1);
+}
+
+/// A shared file's sound is kept as its file name, never as the path the
+/// file gave (BI-B-1): a UNC path would make Hydra reach out to the host it
+/// names. A sound whose file name is not one is dropped, and said.
+#[test]
+fn an_imported_sound_is_only_its_file_name() {
+    let xml = r##"<settings><strings>
+        <h color="#ff0000" text="You" sound="\\attacker.example\s\ding.wav"/>
+        <h color="#ff0000" text="a device" sound="C:\fx\CON"/>
+        <h color="" text="only a device" sound="\\.\pipe\.."/>
+        </strings></settings>"##;
+    let import = wrayth::read(xml, ORIGIN).unwrap();
+    let sound = |name: &str| {
+        import
+            .triggers
+            .iter()
+            .find(|(named, _)| named == name)
+            .and_then(|(_, table)| table.get("sound"))
+            .and_then(|sound| sound.as_str())
+            .map(str::to_owned)
+    };
+    assert_eq!(sound("You").as_deref(), Some("ding.wav"));
+    assert_eq!(sound("a device"), None);
+    assert!(
+        import
+            .triggers
+            .iter()
+            .all(|(name, _)| name != "only a device"),
+        "a trigger left with nothing to do is left out"
+    );
+    assert_eq!(import.sounds, 1);
+    assert_eq!(
+        import.notes,
+        [
+            "`a device`: its sound `C:\\fx\\CON` is a device's name on Windows, not a file, \
+             and is left out",
+            "`only a device`: its sound `\\\\.\\pipe\\..` is not a file name, and is left out",
+            "`only a device` has no colour Hydra can show, and is left out",
+        ]
+    );
+
+    let shared = "[trigger.ding]\ntext = 'You'\nsound = '\\\\203.0.113.9\\s\\a.wav'\n\n\
+                  [trigger.dev]\ntext = 'x'\nsquelch = true\nsound = 'nul'\n";
+    let import = edit::shared(shared, "Shared: theirs.toml").unwrap();
+    let (text, merged) = edit::import("", "Shared: theirs.toml", &import).unwrap();
+    assert!(merged.refused.is_empty(), "{:?}", merged.refused);
+    let all = mine(&text);
+    assert_eq!(
+        named(&all, "ding").unwrap().rule.sound.as_deref(),
+        Some("a.wav")
+    );
+    assert_eq!(named(&all, "dev").unwrap().rule.sound, None);
+    assert_eq!(import.sounds, 1);
+    assert_eq!(
+        import.notes,
+        ["`dev`: its sound `nul` is a device's name on Windows, not a file, and is left out"]
+    );
 }
 
 #[test]
