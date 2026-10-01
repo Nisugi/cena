@@ -11,7 +11,7 @@ use std::time::Duration;
 use cena_session::{ChunkLine, CommandId, Event, Frame, GameState, Notice, NoticeKind, State};
 use tokio::sync::broadcast::error::{RecvError, TryRecvError};
 
-use super::{BEAT, Driver, HuntEnd};
+use super::{BEAT, Driver, HuntEnd, Learned};
 use crate::error::BehaviorError;
 use crate::travel::TravelNotes;
 
@@ -31,7 +31,7 @@ impl Reading {
     }
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Fold what has come, and take the state afresh if any was lost: a lag
     /// seen here was caught up only at the next turn, and an errand decided
     /// from a state with holes until then (the crate review of 2026-10-01,

@@ -20,12 +20,12 @@
 use cena_session::command::answer::again_after;
 use cena_session::{CommandId, Frame, Gate, Origin, Outcome, Refusal};
 
-use super::{BEAT, Driver, HuntEnd, MAX_RESENDS, SEND_DEADLINE, SETTLE_CAP};
+use super::{BEAT, Driver, HuntEnd, Learned, MAX_RESENDS, SEND_DEADLINE, SETTLE_CAP};
 use crate::error::BehaviorError;
 use crate::hunt::answer;
 use crate::travel::TravelNotes;
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Wait out roundtime and cast roundtime, up to the cap.
     pub(super) async fn settle(&mut self) -> Result<(), HuntEnd> {
         let cap = tokio::time::Instant::now() + SETTLE_CAP;

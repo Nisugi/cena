@@ -6,13 +6,13 @@ use cena_map::RoomId;
 use cena_session::{CommandId, Event, Notice, NoticeKind, Snapshot, State};
 use tokio::sync::broadcast::error::RecvError;
 
-use super::{Driver, HuntEnd, fold_into};
+use super::{Driver, HuntEnd, Learned, fold_into};
 use crate::error::BehaviorError;
 use crate::hunt::engine::Hunt;
 use crate::hunt::said::Phase;
 use crate::travel::{Ended, TravelNotes, travel_holding};
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Walk to `to` with travel's driver under this authority, folding this
     /// hunt's own stream meanwhile.
     pub(super) async fn walk(&mut self, to: RoomId) -> Result<(), HuntEnd> {

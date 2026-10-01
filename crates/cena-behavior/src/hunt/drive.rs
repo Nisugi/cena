@@ -104,6 +104,16 @@ pub enum HuntEnd {
     Stopped(BehaviorError),
 }
 
+/// What a hunt learned that outlives it, handed to the caller to keep.
+#[derive(Clone, Copy, Debug)]
+pub enum Learned<'a> {
+    /// Creatures that cannot be skinned: the loot profile's.
+    Unskinnable(&'a [String]),
+    /// Creatures the game would not let the hunt target: the character's
+    /// settings (`hunt/untargetable.rs`).
+    Untargetable(&'a [String]),
+}
+
 /// Hunt on `profile` until the machine or the session ends it. The caller
 /// holds `token` already (the desk claims and releases).
 #[allow(clippy::too_many_arguments)]
@@ -118,7 +128,7 @@ pub async fn hunt(
     heartbeat: &Heartbeat,
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
-    learned: impl FnMut(&[String]) + Send,
+    learned: impl FnMut(Learned<'_>) + Send,
 ) -> HuntEnd {
     Box::pin(hunt_in(
         handle,
@@ -152,7 +162,7 @@ pub async fn hunt_in(
     heartbeat: &Heartbeat,
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
-    learned: impl FnMut(&[String]) + Send,
+    learned: impl FnMut(Learned<'_>) + Send,
     group: Option<(Arc<Boards>, Place)>,
     reports: &Reports,
 ) -> HuntEnd {
@@ -231,7 +241,7 @@ pub async fn hunt_in(
     end
 }
 
-struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> {
+struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> {
     hunting_map: Option<Map>,
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
@@ -275,7 +285,7 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     heartbeat: &'a Heartbeat,
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     async fn run(&mut self) -> HuntEnd {
         loop {
             self.heartbeat.beat();
@@ -333,6 +343,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             self.report(&said);
             // How it is getting on, for whoever steers it.
             self.machine.report_progress(now);
+            let untargetable = self.machine.take_untargetable();
+            if !untargetable.is_empty() {
+                (self.learned)(Learned::Untargetable(&untargetable));
+            }
             for note in self.machine.take_notes() {
                 self.handle
                     .say(Notice::line(NoticeKind::Info, format!("Hunt: {note}")));

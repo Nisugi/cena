@@ -422,6 +422,7 @@ impl Hunt {
     /// `here`, at game second `now`.
     pub fn tick(&mut self, state: &GameState, here: Here<'_>, now: Option<u32>) -> Said {
         self.waiting = None;
+        self.name_untargetable(state);
         if let Some(said) = self.errand_line() {
             return said;
         }

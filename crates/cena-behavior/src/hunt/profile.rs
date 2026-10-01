@@ -101,8 +101,8 @@ pub struct Profile {
     /// Its nearest is the `untargetable` list it learns from the game
     /// refusing `target`, which it uses the same two ways
     /// (`bigshot.lic:8583`, `:8624-8634`); the hunt keeps that list too,
-    /// by creature id and for one hunt (`hunt/replies.rs`,
-    /// `Reply::Untargetable`). Not `invalid_targets`, which is
+    /// by name and across hunts, in the character's settings
+    /// (`hunt/untargetable.rs`). Not `invalid_targets`, which is
     /// [`Flee::uncounted`].
     pub never_attack: Vec<String>,
     /// When to leave the room.

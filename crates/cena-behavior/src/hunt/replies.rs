@@ -17,7 +17,7 @@
 //! | [`Reply::Unwilling`] | `bigshot.lic:5537` | wait, and try again |
 //! | [`Reply::Rooted`] | `bigshot.lic:5534-5536` | wait, and try again |
 //! | [`Reply::NoMana`] | `spell.rb:29,36` | rest for mana |
-//! | [`Reply::Untargetable`] | `bigshot.lic:8779-8783` | never choose that creature again this hunt |
+//! | [`Reply::Untargetable`] | `bigshot.lic:8779-8783` | never choose that creature, or one by its name, again; the name kept across hunts (`hunt/untargetable.rs`) |
 //!
 //! bigshot rests on an attack with no effect (`$bigshot_should_rest`);
 //! here it ends the hunt, because a rest does not bless an arrow and the
@@ -144,11 +144,17 @@ pub(super) struct Heard {
     /// The game said a `flee.messages` phrase: leave at the next tick.
     pub(super) flee_said: bool,
     /// Creatures the game would not let the hunt target, by id: never
-    /// chosen again this hunt. An id lasts the creature's life (the author:
-    /// stable unless the server reboots). bigshot remembers the *name*
-    /// across hunts (`CharSettings['untargetable']`); that is the author's
-    /// call, and not made here.
+    /// chosen again. An id lasts the creature's life (the author: stable
+    /// unless the server reboots). Their names are learned at the next tick
+    /// and kept across hunts (`hunt/untargetable.rs`).
     pub(super) untargetable: BTreeSet<i64>,
+    /// Those of `untargetable` whose names have been learned.
+    pub(super) untargetable_named_ids: BTreeSet<i64>,
+    /// Creature names never chosen, lowercase: learned, or remembered from
+    /// earlier hunts.
+    pub(super) untargetable_names: BTreeSet<String>,
+    /// Names learned since the driver last asked, to be kept.
+    pub(super) untargetable_learned: Vec<String>,
 }
 
 impl Hunt {

@@ -91,6 +91,7 @@ impl Hunt {
                 && creature.ally().is_none()
                 && !self.boon_ignored(creature.id)
                 && !self.heard.untargetable.contains(&creature.id)
+                && !self.untargetable_named(&creature.name)
                 && !listed(&self.profile.never_attack, creature)
         })
     }

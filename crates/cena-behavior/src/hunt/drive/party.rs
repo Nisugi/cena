@@ -16,7 +16,7 @@ use cena_map::RoomId;
 use cena_session::group::Leader;
 use cena_session::{CommandId, Frame, Gate, Origin, State};
 
-use super::{Driver, HuntEnd};
+use super::{Driver, HuntEnd, Learned};
 use crate::error::BehaviorError;
 use crate::group::{
     self, Board, Boards, Hindrance, LOST_WAIT, Leading, Muster, Party, Place, Report, Role,
@@ -91,7 +91,7 @@ pub(super) enum Seen {
     Over(HuntEnd),
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// This character's game, which keys its group's board with the
     /// leader's name: a group is in one game, and one name can be on two
     /// (BE-B-4). Empty until the login burst names it.

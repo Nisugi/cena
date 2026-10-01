@@ -5,14 +5,14 @@ use std::time::Duration;
 
 use cena_session::{CommandId, Notice, NoticeKind};
 
-use super::{BEAT, Driver, HEAL_STEPS, HuntEnd, STOCK_STEPS, WAGGLE_STEPS};
+use super::{BEAT, Driver, HEAL_STEPS, HuntEnd, Learned, STOCK_STEPS, WAGGLE_STEPS};
 use crate::cast;
 use crate::heal::stock::Step as StockStep;
 use crate::heal::{self, Healed, Healer, Reply as HealReply, Step as HealStep, Stocked, Stocker};
 use crate::travel::{TravelNotes, destination, walker_from};
 use crate::waggle::{Step as WaggleStep, Waggled, Waggler};
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Heal with the healer (`plan/36`): each step sent through the gate,
     /// each reply read from the transcript. Says how it ended.
     pub(super) async fn heal(&mut self) -> Result<(), HuntEnd> {

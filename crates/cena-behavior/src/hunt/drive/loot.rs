@@ -3,12 +3,12 @@
 
 use cena_session::{CommandId, Notice, NoticeKind};
 
-use super::{BEAT, Driver, HuntEnd, LOOT_STEPS};
+use super::{BEAT, Driver, HuntEnd, LOOT_STEPS, Learned};
 use crate::loot::{Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify};
 use crate::town::Town;
 use crate::travel::TravelNotes;
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Loot with the planner (`plan/31` Stage 2): each step sent through the
     /// gate, each reply read for what eloot would act on, until the planner
     /// says it is done. What it learned is kept for the next room, and a
@@ -28,7 +28,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             .collect();
         if !fresh.is_empty() {
             self.saved_unskinnable.extend(fresh.iter().cloned());
-            (self.learned)(&fresh);
+            (self.learned)(Learned::Unskinnable(&fresh));
         }
         Ok(())
     }

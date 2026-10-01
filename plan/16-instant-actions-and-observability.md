@@ -1009,6 +1009,20 @@ That is the same conclusion §5.2f reached from the rate data, arriving from the
 **bound the batch by entitlement, and let the natural synchronisation points do the pacing.** A
 StringProc every few rooms means the queue drains regularly without any delay logic at all.
 
+> **THE AUTHOR'S RULE, 2026-10-01** (*"we went through testing and everything for the batch
+> travel"*), which supersedes "no delay ladder" above:
+>
+> - Travel sends the moves that have nothing attached to them -- cardinal directions, `go door`
+>   and the like -- in **batches of 1 + the typeahead**: 3 on the author's account (typeahead 2).
+> - **A batch every 150 ms**: the measured limit for sending the next batch without tripping
+>   typeahead (§5.2f).
+> - **It sets its own typeahead**: the refusal says the account's number (*"Sorry, you may only
+>   type ahead 2 commands."*), so the batch becomes 1 + that.
+> - **If it still trips at the right size, the time between batches is raised by 50 ms** until
+>   it does not.
+>
+> Built in `plan/24`'s walker, which had sent one move per room until then.
+
 **UNVERIFIED:** whether a refused *movement* behaves like a refused `look` -- refused cleanly with
 the path intact -- or whether the server's movement handling differs. Worth one deliberate test
 before Travel is built, because a move that is silently dropped rather than refused would desync

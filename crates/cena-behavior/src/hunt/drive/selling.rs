@@ -3,11 +3,11 @@
 
 use cena_session::{CommandId, Notice, NoticeKind};
 
-use super::{BEAT, Driver, HuntEnd, SELL_STEPS};
+use super::{BEAT, Driver, HuntEnd, Learned, SELL_STEPS};
 use crate::town::{self, Seller, Step as Errand, Town};
 use crate::travel::{TravelNotes, destination, walker_from};
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
     /// room tagged for it, walked with travel's driver; each step sent through
     /// the gate; each reply read as the ledger's facts from this driver's own

@@ -577,7 +577,12 @@ helper) and to say what it met (a waylaid caravan's bandits).
 > beside a body (upstream pauses), and is not asked of the room a trip starts in, so starting
 > again beside the body walks on. **`typeahead` is not ported, on purpose**: every move here
 > is verified by the room it lands in before the next is sent, which is the rule Vellum's
-> recorded bugs argue for. *Not built:* what a waylaid caravan met (the trip just plans
+> recorded bugs argue for.
+>
+> > **CORRECTED 2026-10-01.** That was not the author's design. The author: *"we went through
+> > testing and everything for the batch travel"*: moves with nothing attached go in batches of
+> > 1 + the typeahead, a batch every 150 ms, the typeahead read from the game's refusal and the
+> > spacing raised 50 ms at a time if it still trips (`plan/16` §5.2g, the author's rule). *Not built:* what a waylaid caravan met (the trip just plans
 > again, per §5's ruling on hostiles), and go2's `locker` target, which needs the
 > character's CHE and the model does not know it.
 

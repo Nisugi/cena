@@ -27,9 +27,10 @@ use tokio_util::sync::CancellationToken;
 use self::finish::Finish;
 use super::chain;
 use super::command::Command;
-use super::drive::{HuntEnd, hunt_in};
+use super::drive::{HuntEnd, Learned, hunt_in};
 use super::engine::Hunt;
 use super::report::{Reports, Status};
+use super::untargetable;
 use crate::error::BehaviorError;
 use crate::group::{Boards, Place};
 use crate::heal::{self, HealProfile};
@@ -644,17 +645,25 @@ impl Desk {
         let next = Arc::clone(&self.ids);
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
         let (mut file, notes) = self.traveller(handle, &joined.0.state);
-        let loot_file = joined
+        let who = joined
             .0
             .state
             .character
             .instance
-            .as_deref()
-            .zip(joined.0.state.character.name.as_deref())
+            .clone()
+            .zip(joined.0.state.character.name.clone());
+        let loot_file = who
+            .as_ref()
             .and_then(|(instance, name)| loot::path(&self.dir, instance, name));
+        let machine = untargetable::read(handle, &self.dir, who.as_ref(), machine);
         {
             let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
-            let learned = |names: &[String]| unskinnable(handle, loot_file.as_deref(), names);
+            let learned = |learned: Learned<'_>| match learned {
+                Learned::Unskinnable(names) => unskinnable(handle, loot_file.as_deref(), names),
+                Learned::Untargetable(names) => {
+                    untargetable::keep(handle, &self.dir, who.as_ref(), names);
+                }
+            };
             let run = Box::pin(hunt_in(
                 handle,
                 stop,

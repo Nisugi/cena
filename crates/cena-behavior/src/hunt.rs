@@ -71,6 +71,7 @@ pub mod said;
 pub mod setup;
 mod steer;
 mod targets;
+pub mod untargetable;
 mod verbs;
 mod wand;
 mod wander;
