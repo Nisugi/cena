@@ -122,19 +122,36 @@ pub(crate) fn holding(handle: &SessionHandle) -> Option<AuthorityToken> {
 
 /// Take the character over, as operation `approval`'s yes or an allowed act.
 pub(crate) fn take_over(handle: &SessionHandle, approval: Option<u64>) -> Result<Report, String> {
-    if let Some(held) = &handle.agent.lock().takeover {
-        return Err(format!(
-            "the agent already holds this character (operation {})",
-            held.operation
-        ));
-    }
     let ending = Ending::default();
-    let holder = handle.clone();
-    let report = crate::operation::begin(handle, "take over", approval, true, |reporter| {
-        holder.agent.lock().takeover = Some(Holding {
-            operation: reporter.id(),
+    // Checked and taken under one lock: two takeovers at once both passed
+    // the check before either was recorded, and the one that lost the claim
+    // cleared the winner's record, leaving the authority held with nothing
+    // a lowered level could take back (the crate review of 2026-10-01,
+    // SE-B-3). Its operation is named once it has one, just below.
+    {
+        let mut inner = handle.agent.lock();
+        if let Some(held) = &inner.takeover {
+            return Err(format!(
+                "the agent already holds this character (operation {})",
+                held.operation
+            ));
+        }
+        inner.takeover = Some(Holding {
+            operation: 0,
             ending: ending.clone(),
         });
+    }
+    let holder = handle.clone();
+    let report = crate::operation::begin(handle, "take over", approval, true, |reporter| {
+        if let Some(held) = holder
+            .agent
+            .lock()
+            .takeover
+            .as_mut()
+            .filter(|held| held.ending.token == ending.token)
+        {
+            held.operation = reporter.id();
+        }
         let released = ending.clone();
         Started {
             ended: Box::pin(hold(holder.clone(), ending, reporter)),

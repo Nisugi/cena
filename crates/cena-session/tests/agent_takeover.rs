@@ -139,6 +139,52 @@ async fn a_takeover_holds_the_character_until_it_is_given_back() {
     assert_eq!(handle.agent_holds(), None);
 }
 
+/// Two `take_over`s at the same moment, from two threads: one is admitted
+/// and the other refused, never both, so the authority is never held with
+/// nothing recording the takeover that holds it (the crate review of
+/// 2026-10-01, SE-B-3). A race, so it is run many times.
+#[test]
+fn two_takeovers_at_once_admit_one() {
+    // The racers are plain threads; the runtime only takes what they spawn.
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    for round in 0..300 {
+        let _inside = runtime.enter();
+        let (source, _transcript) =
+            AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+        let session = Session::new(source);
+        let handle = session.handle();
+        handle.set_agent_level(Level::Takeover);
+        let start = Arc::new(std::sync::Barrier::new(2));
+        let racers: Vec<_> = ["a", "b"]
+            .into_iter()
+            .map(|request| {
+                let (handle, start) = (handle.clone(), Arc::clone(&start));
+                let runtime = runtime.handle().clone();
+                std::thread::spawn(move || {
+                    let _inside = runtime.enter();
+                    let door = handle.agent_door();
+                    let call = Call {
+                        request,
+                        generation: Some(handle.generation()),
+                    };
+                    start.wait();
+                    matches!(door.take_over("to steer", call), Ok(Admitted::Operation(_)))
+                })
+            })
+            .collect();
+        let admitted = racers
+            .into_iter()
+            .map(|racer| racer.join().unwrap())
+            .filter(|admitted| *admitted)
+            .count();
+        assert_eq!(admitted, 1, "round {round}");
+        drop(session);
+    }
+}
+
 /// The player's stop outranks the agent: the authority comes back at once,
 /// before the takeover has even noticed, and the ending says revoked.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
