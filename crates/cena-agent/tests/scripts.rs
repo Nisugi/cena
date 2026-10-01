@@ -391,6 +391,58 @@ async fn a_runner_starts_a_built_in_and_hears_it_end() {
     assert!(hunt["refused"].as_str().unwrap().contains("not a built-in"));
 }
 
+/// A runner that goes (it died, or Hydra let it go) stops the built-ins it
+/// started: a `go2` does not walk on with no script behind it, as Lich's
+/// would have died with Lich.
+#[tokio::test(flavor = "current_thread")]
+async fn a_dismissed_runner_stops_what_it_started() {
+    use cena_session::operation::{Allows, Control, Ended, Performer, Start, Started, Work};
+    let (source, _transcript) = AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
+    let session = Session::new(source);
+    let handle = session.handle();
+    let observer = session.observer();
+    tokio::spawn(session.into_actor().run());
+    let stops = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let told = Arc::clone(&stops);
+    let start: Start = Arc::new(move |_line: &str, _reporter| {
+        let told = Arc::clone(&told);
+        Started {
+            ended: Box::pin(std::future::pending::<Ended>()),
+            steer: Arc::new(move |control| {
+                told.lock().unwrap().push(control);
+                Ok(())
+            }),
+            token: None,
+        }
+    });
+    let allows: Allows = Arc::new(|line: &str| Ok(line.to_owned()));
+    assert!(handle.set_performer(Performer {
+        allowed: "go2".to_owned(),
+        allows,
+        start,
+        halt: Arc::new(|| {}),
+    }));
+    let runners = Runners::default();
+    let token = runners
+        .admit("Nisugi", handle.script_door(), &observer)
+        .await
+        .unwrap();
+    let app = router(runners.clone(), &CancellationToken::new());
+    let far = call(
+        &app,
+        &token,
+        "perform",
+        serde_json::json!({"line": "go2 far"}),
+    )
+    .await
+    .unwrap();
+    assert!(far["run"].as_u64().is_some(), "{far}");
+    assert!(stops.lock().unwrap().is_empty());
+
+    runners.dismiss(&token);
+    assert_eq!(*stops.lock().unwrap(), [Control::Stop]);
+}
+
 /// A scripted character warmed up, and a runner admitted for it with
 /// display and input hooks.
 struct Hooked {

@@ -168,8 +168,9 @@ Start one of Hydra's built-in behaviors, as a Lich script starts one of Lich's b
 Answers `{"run": n, "line": ...}`, the command as Hydra keeps it, or `{"refused": why}`: Hydra's
 behaviors are not ready yet (they are once the character has logged in), or Hydra does not run
 that line for a script. **It goes on whether or not the runner waits**; `listen` hears its
-`ended`, by `run`. It is the runner's, not an agent's: an agent does not see it among its
-operations.
+`ended`, by `run`. It does not outlive the runner: when the runner stops or dies, Hydra stops
+every built-in it started, as Lich's would have died with Lich. It is the runner's, not an
+agent's: an agent does not see it among its operations.
 
 ## `stop` `{ run }`
 

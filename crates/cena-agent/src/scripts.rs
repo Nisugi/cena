@@ -164,12 +164,24 @@ impl Runners {
     }
 
     /// The runner with `token` has stopped: nothing more is kept for it, its
-    /// hooks hold nothing back, and its token opens nothing.
+    /// hooks hold nothing back, its token opens nothing, and the built-ins it
+    /// started are stopped, as Lich's `go2` would have died with Lich.
     pub fn dismiss(&self, token: &str) {
         let removed = self.lock().remove(token);
         if let Some(seat) = removed {
             seat.stop.cancel();
             seat.listening.close();
+            let steering = std::mem::take(
+                &mut seat
+                    .runs
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .steering,
+            );
+            for steer in steering.into_values() {
+                // One already ending refuses; there is no runner to tell.
+                let _ = steer(cena_session::operation::Control::Stop);
+            }
             if !self
                 .lock()
                 .values()
