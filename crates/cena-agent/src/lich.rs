@@ -34,6 +34,12 @@
 //!
 //! Closing its standard input stops it
 //! (`reference/lich-5/lib/common/pipe_io.rb`).
+//!
+//! **A Lich that stops reading is let go, never waited on** (as the
+//! session's copy is, `cena_session::script::lich`): one whose script's hook
+//! never returns reads neither its game nor its standard input. Each write
+//! to it is a task of its own ([`feed`]), so a stop, its exit, and the
+//! [`WIRE_CHUNKS`] chunks it has left unread are always seen, and end it.
 
 use std::collections::VecDeque;
 use std::ffi::OsString;
@@ -43,13 +49,16 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use cena_session::script::Sending;
-use cena_session::script::lich::{Attached, LICH_SYMBOL, LichDoor, LineFrom, Shown, WIRE_CHUNKS};
+use cena_session::script::lich::{
+    Attached, LICH_SYMBOL, LichDoor, LineFrom, Shown, TYPED_LINES, WIRE_CHUNKS,
+};
 use cena_session::{Notice, NoticeKind};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TrySendError;
 use tokio_util::sync::CancellationToken;
 
 /// How long Lich has to connect once started. The spike measured 3.3 to
@@ -274,7 +283,7 @@ async fn relay(
             return Ended::Stopped;
         }
     };
-    let (reader, mut writer) = match taken {
+    let (reader, writer) = match taken {
         Ok(taken) => taken,
         Err(why) => {
             finish(child, stdin).await;
@@ -282,6 +291,13 @@ async fn relay(
         }
     };
     drop(listener);
+    // Every write to Lich is its own task's, so nothing Lich leaves unread
+    // holds up this loop: its stop, its exit and its falling behind are
+    // always seen. Each ends with `quit`, however this returns.
+    let quit = CancellationToken::new();
+    let _quit = quit.clone().drop_guard();
+    let game = feed(writer, WIRE_CHUNKS, quit.clone());
+    let typed_in = feed(stdin, TYPED_LINES, quit.clone());
     let mut lines = read_lines(reader);
     let (mut lines_open, mut typing_open) = (true, true);
     loop {
@@ -289,11 +305,12 @@ async fn relay(
             chunk = wire.next() => {
                 let Some(chunk) = chunk else {
                     let ended = if wire.fell_behind() { Ended::FellBehind } else { Ended::SessionGone };
-                    finish(child, stdin).await;
-                    return ended;
+                    return let_go(child, &quit, ended).await;
                 };
-                // A Lich that hung up is going: its exit says why.
-                let _ = writer.write_all(&chunk).await;
+                // Closed: a Lich that hung up is going, and its exit says why.
+                if let Err(TrySendError::Full(_)) = game.try_send(chunk) {
+                    return let_go(child, &quit, Ended::FellBehind).await;
+                }
             }
             line = lines.recv(), if lines_open => match line {
                 Some(line) => pass_on(door, &line).await,
@@ -301,17 +318,53 @@ async fn relay(
             },
             typed = typing.next(), if typing_open => match typed {
                 Some(line) => {
-                    let _ = stdin.write_all(format!("{line}\n").as_bytes()).await;
+                    if let Err(TrySendError::Full(_)) = typed_in.try_send(format!("{line}\n").into_bytes()) {
+                        door.say(Notice::line(
+                            NoticeKind::Warn,
+                            format!("Lich is not reading what is typed for it ({TYPED_LINES} lines wait): not handed: {line}"),
+                        ));
+                    }
                 }
                 None => typing_open = false,
             },
             status = child.wait() => return exited(status, &errors),
-            () = stop.cancelled() => {
-                finish(child, stdin).await;
-                return Ended::Stopped;
-            }
+            () = stop.cancelled() => return let_go(child, &quit, Ended::Stopped).await,
         }
     }
+}
+
+/// Writes each chunk sent to `out`, in order, from a task of its own, until
+/// the sender goes or `quit`: a write Lich never reads ends with `quit`
+/// rather than holding anything up. `waiting` chunks wait for it; past them
+/// the sender's `try_send` is refused, and Lich has stopped reading.
+fn feed<W>(mut out: W, waiting: usize, quit: CancellationToken) -> mpsc::Sender<Vec<u8>>
+where
+    W: AsyncWrite + Unpin + Send + 'static,
+{
+    let (chunks, mut unwritten) = mpsc::channel::<Vec<u8>>(waiting);
+    tokio::spawn(async move {
+        loop {
+            let chunk = tokio::select! {
+                chunk = unwritten.recv() => chunk,
+                () = quit.cancelled() => None,
+            };
+            let Some(chunk) = chunk else { return };
+            tokio::select! {
+                written = out.write_all(&chunk) => if written.is_err() { return },
+                () = quit.cancelled() => return,
+            }
+        }
+    });
+    chunks
+}
+
+/// Stop a Lich the relay had connected: its feeds end, which closes its
+/// standard input, and it is killed if it has not exited within
+/// [`STOP_DEADLINE`]. Says `ended`.
+async fn let_go(child: Child, quit: &CancellationToken, ended: Ended) -> Ended {
+    quit.cancel();
+    reap(child).await;
+    ended
 }
 
 fn spawn(launch: &Launch, port: u16) -> std::io::Result<Child> {
@@ -473,8 +526,14 @@ fn exited(status: std::io::Result<ExitStatus>, errors: &Mutex<VecDeque<String>>)
 
 /// Stop Lich: close its standard input, and kill it if it has not exited
 /// within [`STOP_DEADLINE`].
-async fn finish(mut child: Child, stdin: ChildStdin) {
+async fn finish(child: Child, stdin: ChildStdin) {
     drop(stdin);
+    reap(child).await;
+}
+
+/// Wait [`STOP_DEADLINE`] for Lich to exit, its standard input closed, and
+/// kill it if it has not.
+async fn reap(mut child: Child) {
     if tokio::time::timeout(STOP_DEADLINE, child.wait())
         .await
         .is_err()
@@ -485,9 +544,34 @@ async fn finish(mut child: Child, stdin: ChildStdin) {
 
 #[cfg(test)]
 mod tests {
-    use super::{accept_keyed, shared_symbol};
+    use super::{accept_keyed, feed, shared_symbol};
     use tokio::io::AsyncWriteExt;
     use tokio::net::{TcpListener, TcpStream};
+    use tokio::sync::mpsc::error::TrySendError;
+    use tokio_util::sync::CancellationToken;
+
+    /// A reader that never reads: the feed's queue fills, so the relay sees
+    /// it, and the write it is stuck in ends with `quit`.
+    #[tokio::test]
+    async fn a_feed_nobody_reads_is_refused_and_let_go() {
+        let (out, _unread) = tokio::io::duplex(64);
+        let quit = CancellationToken::new();
+        let chunks = feed(out, 4, quit.clone());
+        let mut sent = 0;
+        let refused = loop {
+            match chunks.try_send(vec![0; 64]) {
+                Ok(()) => sent += 1,
+                Err(why) => break why,
+            }
+            tokio::task::yield_now().await;
+            assert!(sent < 100, "the queue never filled");
+        };
+        assert!(matches!(refused, TrySendError::Full(_)));
+        quit.cancel();
+        tokio::time::timeout(std::time::Duration::from_secs(5), chunks.closed())
+            .await
+            .expect("the stuck write ended with quit");
+    }
 
     /// Hydra's default, `.`, leaves Lich's `;` alone; a player who gives
     /// Hydra `;` is told Lich's commands are out of reach.

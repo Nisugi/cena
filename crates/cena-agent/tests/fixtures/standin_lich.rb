@@ -20,6 +20,10 @@
 # Once it has seen a prompt it acts as a script would, once: it puts `look`
 # as Lich's scripts do, with `<c>`, and says what its frontend is, having set
 # it to `unknown` as pipe mode does (main.rb:569).
+#
+# With STANDIN_STALL set it is a Lich whose script's hook never returns:
+# once it has acted it reads nothing more, from its game or its standard
+# input, and only being killed ends it.
 
 require 'socket'
 
@@ -30,6 +34,7 @@ version = $stdin.gets
 game = TCPSocket.new(host, Integer(port))
 game.write(key, version)
 $stdout.sync = true
+stall = ENV.key?('STANDIN_STALL')
 
 Thread.new do
   acted = false
@@ -40,11 +45,14 @@ Thread.new do
 
     acted = true
     game.write("<c>look\n", "<c>frontend #{$frontend}\n")
+    loop { sleep 60 } if stall
   end
 rescue IOError, SystemCallError
   nil
 end
 
+# A sleep with no end would be Ruby's deadlock, and end it.
+loop { sleep 60 } if stall
 while (line = $stdin.gets)
   if line.start_with?(';echo ')
     $stdout.write("#{line.sub(/\A;echo /, '').chomp}\r\n")

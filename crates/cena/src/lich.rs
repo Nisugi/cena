@@ -231,9 +231,12 @@ impl Lichs {
         running.insert(seat.id, Running { stop, task });
     }
 
-    /// Stop the character's Lich: whether one ran.
+    /// Stop the character's Lich: whether one ran. Its entry stays until its
+    /// relay has ended, so a `lich on` meanwhile finds it still running
+    /// rather than starting a second beside it, and `close` and `shutdown`
+    /// still wait for it.
     fn stop(&self, id: SessionId) -> bool {
-        self.lock().remove(&id).is_some_and(|one| {
+        self.lock().get(&id).is_some_and(|one| {
             one.stop.cancel();
             !one.task.is_finished()
         })
