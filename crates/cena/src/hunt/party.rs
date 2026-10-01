@@ -52,16 +52,25 @@ impl Sitter {
 }
 
 /// The seat `member` sits in on the game `instance`, other than `leader`'s
-/// own session.
+/// own session, while its session is `live`.
+///
+/// A session that ended on its own (a refused login, the retry ladder's
+/// cap) stays on the table, seat and all, until it is removed: started on
+/// it, a follower's hunt failed on the dead session and the leader waited
+/// for it up to `lost_wait`, told nothing (the crate review of 2026-10-01,
+/// BI-C-6).
 fn seated<'a, T>(
     seats: &'a BTreeMap<SessionId, (Sitter, T)>,
     leader: SessionId,
     instance: &str,
     member: &str,
+    live: impl Fn(&T) -> bool,
 ) -> Option<&'a (Sitter, T)> {
     seats
         .iter()
-        .find(|(session, (sitter, _))| **session != leader && sitter.is(instance, member))
+        .find(|(session, (sitter, seat))| {
+            **session != leader && sitter.is(instance, member) && live(seat)
+        })
         .map(|(_, seat)| seat)
 }
 
@@ -141,7 +150,9 @@ pub(super) fn form(
     let seats = seats.lock().unwrap_or_else(PoisonError::into_inner).clone();
     let mut followers = Vec::new();
     for member in with {
-        match seated(&seats, handle.session(), instance, member) {
+        match seated(&seats, handle.session(), instance, member, |seat| {
+            !seat.observer.has_ended()
+        }) {
             Some((sitter, seat)) => {
                 drop(start_placed(
                     &seat.desk,
@@ -191,12 +202,32 @@ mod tests {
             (SessionId(3), (sitter("GS3", "Baelor"), 3)),
         ]);
         let found = |leader, instance, member| {
-            seated(&seats, SessionId(leader), instance, member).map(|(_, seat)| *seat)
+            seated(&seats, SessionId(leader), instance, member, |_| true).map(|(_, seat)| *seat)
         };
         assert_eq!(found(1, "GS3", "baelor"), Some(3));
         assert_eq!(found(1, "GSF", "Baelor"), Some(2));
         assert_eq!(found(1, "GS3", "Nisugi"), None, "not the leader itself");
         assert_eq!(found(9, "GS3", "Nisugi"), Some(1));
         assert_eq!(found(1, "GS3", "Lorwyn"), None);
+    }
+
+    /// BI-C-6: a session that ended on its own keeps its seat until it is
+    /// taken off the table; a leader does not count it as a follower.
+    #[tokio::test]
+    async fn a_seat_whose_session_ended_is_not_found() {
+        let (source, _transcript) = cena_platform::AnsweringSource::logged_in(b"");
+        let session = cena_session::Session::new(source);
+        let observer = session.observer();
+        let seats = BTreeMap::from([(SessionId(2), (sitter("GS3", "Baelor"), observer))]);
+        let live = |observer: &SessionObserver| !observer.has_ended();
+        assert!(
+            seated(&seats, SessionId(1), "GS3", "Baelor", live).is_some(),
+            "a session not yet ended is found"
+        );
+        drop(session);
+        assert!(
+            seated(&seats, SessionId(1), "GS3", "Baelor", live).is_none(),
+            "an ended session's seat is passed by"
+        );
     }
 }

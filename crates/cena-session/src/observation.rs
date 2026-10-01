@@ -88,6 +88,15 @@ impl SessionObserver {
         }
     }
 
+    /// Whether the session has ended for good: its supervisor finished it
+    /// (a refused login, the retry ladder's cap, a stop), or its owner is
+    /// gone. A reconnect in progress is not an ending: the supervisor holds
+    /// the inbox between connections.
+    #[must_use]
+    pub fn has_ended(&self) -> bool {
+        self.final_snapshot.borrow().is_some() || self.requests.is_closed()
+    }
+
     fn closed_snapshot(&self) -> Result<Subscription, ObserveError> {
         let snapshot = self
             .final_snapshot
