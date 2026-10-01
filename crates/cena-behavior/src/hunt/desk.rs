@@ -10,6 +10,8 @@
 //! Importing, checking and listing profiles need no session state and stay
 //! with whoever installs the desk.
 
+mod finish;
+
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
@@ -22,6 +24,7 @@ use cena_session::{
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
+use self::finish::Finish;
 use super::chain;
 use super::command::Command;
 use super::drive::{HuntEnd, hunt_in};
@@ -379,19 +382,13 @@ impl Desk {
             if let Some(before) = before {
                 before.over.cancelled().await;
             }
+            // From here, every way out lets go and makes room for the next
+            // run, a panic included (`desk/finish.rs`).
+            let _finish = Finish::new(&desk, &handle, number, over, &what);
             desk.reports.running(&what);
             // Its commands echoed as the player starts it: `hunt>attack`.
             handle.name_behavior(desk.token, word);
-            let end = Box::pin(desk.hunt_once(&handle, &stop, joined, machine, place)).await;
-            // Before `over`: the next run, waiting on it, reports after this.
-            desk.reports.tell(None);
-            let mut slot = desk.running.lock().unwrap_or_else(PoisonError::into_inner);
-            if slot.as_ref().is_some_and(|hunt| hunt.number == number) {
-                *slot = None;
-            }
-            drop(slot);
-            over.cancel();
-            end
+            Box::pin(desk.hunt_once(&handle, &stop, joined, machine, place)).await
         });
         Underway { task, steering }
     }
@@ -623,7 +620,8 @@ impl Desk {
         }
     }
 
-    /// Claim, hunt with the watchdog beside it, release.
+    /// Claim, and hunt with the watchdog beside it. The release is the
+    /// run's [`Finish`], so that a panic lets go too.
     async fn hunt_once(
         &self,
         handle: &SessionHandle,
@@ -654,7 +652,7 @@ impl Desk {
             .as_deref()
             .zip(joined.0.state.character.name.as_deref())
             .and_then(|(instance, name)| loot::path(&self.dir, instance, name));
-        let end = {
+        {
             let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
             let learned = |names: &[String]| unskinnable(handle, loot_file.as_deref(), names);
             let run = Box::pin(hunt_in(
@@ -684,9 +682,7 @@ impl Desk {
                 },
             )
             .await
-        };
-        handle.release(self.token);
-        end
+        }
     }
 
     /// The character's travel file and the notes a walk works from, as

@@ -95,6 +95,9 @@ crates/cena-model/src/spells.rs 700
 # fields: looting (drive/loot.rs), healing, stocking and waggling
 # (drive/errands.rs), and the selling round (drive/selling.rs). 396 lines left.
 crates/cena-behavior/src/hunt/drive.rs 450
+# NEW SPLIT PARENT, 2026-10-01. crates/cena-behavior/src/hunt/desk.rs is the
+# hunt desk; a run's ending moved into desk/finish.rs (crate review BI-C-1).
+crates/cena-behavior/src/hunt/desk.rs 800
 # NEW SPLIT PARENT, 2026-09-25. crates/cena-behavior/src/hunt/import.rs is the
 # bigshot importer; it reached 806 of 800 as bigshot's settings were carried,
 # and its rest keys (thresholds, fog and waypoints, wounded_eval) moved into
