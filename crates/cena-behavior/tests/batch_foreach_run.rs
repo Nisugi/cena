@@ -287,7 +287,7 @@ async fn a_missing_target_with_a_question_mark_is_skipped() {
 /// backpack's answer (BE-F-5): the backpack was skipped as closed.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn another_players_words_are_not_the_looks_answer() {
-    let mut game = logged_in().await.unwrap();
+    let game = logged_in().await.unwrap();
     let mut reply = b"<preset id='speech'><a exist=\"-10007833\" noun=\"Pukk\">Pukk</a> says</preset>, \"That is closed.\"\n".to_vec();
     reply.extend(look(BACKPACK));
     game.transcript.answer("look in backpack", &reply);
