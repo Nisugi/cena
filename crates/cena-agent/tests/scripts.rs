@@ -396,7 +396,7 @@ async fn a_runner_starts_a_built_in_and_hears_it_end() {
 /// would have died with Lich.
 #[tokio::test(flavor = "current_thread")]
 async fn a_dismissed_runner_stops_what_it_started() {
-    use cena_session::operation::{Allows, Control, Ended, Performer, Start, Started, Work};
+    use cena_session::operation::{Allows, Control, Ended, Performer, Start, Started};
     let (source, _transcript) = AnsweringSource::logged_in(b"<prompt time=\"1\">&gt;</prompt>\n");
     let session = Session::new(source);
     let handle = session.handle();
