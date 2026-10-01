@@ -578,9 +578,10 @@ Each ends in something demonstrable, as `12` §8 asks.
      `put` anywhere but a hand, `my <container>` or an `#id` the model shows the character
      carries (`GameState::carries`, checked as the session writes the line), since onto a
      player it gives and into a bin it destroys (the author, 2026-10-01); `toss`, `break`,
-     `tear`, `share`, `pay`; and `q`, `qu`, `ex` alone, which may be a quit. A certain quit
+     `tear`, `share`, `pay`. A certain quit
      (`quit`, `qui`, `exit`, `exi`) is the session's quit gate's, which lets an agent out
-     only holding a takeover.
+     only holding a takeover; `q`, `qu` and `ex` are not quits, since the game's parser needs
+     three letters (the author, 2026-10-01).
    - No write-time gate: an agent's line goes as the player's does, and the game answers a
      line sent in roundtime with its own `...wait`. `Gate::Act` is a behavior's, for actions
      whose target it chose.

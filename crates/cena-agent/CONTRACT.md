@@ -219,8 +219,7 @@ command symbol (a Hydra command: `perform`) or with `,`; a first word that is, o
 of drop, discard, trash, sell, give, offer, exchange, trade, mail, place, throw, hurl, empty,
 destroy, sacrifice, unmark, toss, break, tear, share, pay -- except the directions `d`, `e`,
 `o`, `s`, `se`, `u`, since the game takes abbreviations; `mark ... remove`; `set
-nomarkeddrop` or `set saferdrop` not `on`; `q`, `qu` or `ex` alone, which may be a quit
-(say `quit`); and a `_drag` or `put` anywhere but the character's own: a `_drag` goes only
+nomarkeddrop` or `set saferdrop` not `on`; and a `_drag` or `put` anywhere but the character's own: a `_drag` goes only
 to `left`, `right`, `my <container>` or one `#id`, a `put` only into `my <container>` or one
 `#id` (`put my topaz` drops it; `_drag #123 #<player>` gives it away; a bin destroys it).
 Refused as `{"refused": "request", "why": "never sent: ..."}`. An `#id` the list lets

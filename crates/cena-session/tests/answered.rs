@@ -101,6 +101,45 @@ async fn a_late_answer_is_its_own_lines_and_not_the_next() {
     assert_eq!(transcript.lines(), ["look", "fire", "fire"]);
 }
 
+/// The replay (`plan/06` §1.4): the author's hunt of 2026-09-30, as the
+/// game sent it after `fire #583850503`
+/// (`cena-behavior/tests/fixtures/fire_golem.xml`). The golem leaving and
+/// its prompt came first; Hydra sent `fire` twice more before the reply,
+/// forty lines on. Here the golem's part answers the `fire`, the rest comes
+/// later, and the round trip ends at the reply's own roundtime.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_authors_fire_waits_past_the_golem_for_its_roundtime() {
+    let wire = include_str!("../../cena-behavior/tests/fixtures/fire_golem.xml");
+    let golem = wire
+        .find("just went through")
+        .and_then(|at| wire[at..].find("</prompt>\n").map(|end| at + end + 10))
+        .expect("the golem's prompt is in the fixture");
+    let (before, after) = wire.split_at(golem);
+    let (handle, transcript) = hunting().await;
+    transcript.answer("fire #583850503", before.as_bytes());
+    let handle_fired = handle.clone();
+    let fired = tokio::spawn(async move {
+        handle_fired
+            .send_answered(
+                CommandId(1),
+                "fire #583850503",
+                Origin::Behavior(HUNT),
+                DEADLINE,
+                roundtime,
+                Gate::None,
+            )
+            .await
+    });
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(
+        !fired.is_finished(),
+        "the golem's prompt ended the round trip, as on 2026-09-30"
+    );
+    transcript.say(after.as_bytes());
+    let outcome = fired.await.expect("the round trip");
+    assert_eq!(outcome, Outcome::Answered("Roundtime: 4 sec.".to_owned()));
+}
+
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_refusal_answers_any_line() {
     let (handle, transcript) = hunting().await;

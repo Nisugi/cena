@@ -47,6 +47,7 @@
 //! |---|---|---|---|---|
 //! | `smithy_engage.xml` | `2026-09-13_14-51-55.xml` | 574-872 | 59,220 | arriving at the Smithy, a goliath diviner already targeted, Tangleweed and Camouflage cast, three shots, the diviner riding off, the sign casts between fights |
 //! | `smithy_kill.xml` | `2026-09-13_14-51-55.xml` | 873-1150 | 70,502 | inside the smithy: a pegasus fought and dropped dead, searched, the engineer taken up next |
+//! | `fire_golem.xml` | Hydra's own recording, `logs\2026-09-30\Nisugi-2026-09-30_20-20-37-000.bytes` (not under the Lich folder) | 2310-2369, Hydra's `<!-- CLIENT -->` lines taken out | 8,303 | the author's `fire` ×3 of 2026-09-30: a golem leaving and its prompt before the reply, which comes forty lines on; replayed by `cena-session/tests/answered.rs`. No other player is in it |
 //! | `arch_kill.xml` | `2026-09-21_21-49-41.xml` | 2700-3048 | 59,250 | the health era: a mastodon and a shield-maiden killed at the Runed Arch with health on every status, the author's own mastodon beside them, a player passing through |
 //!
 //! The cut starts on a room, so the state starts empty: the first prompts

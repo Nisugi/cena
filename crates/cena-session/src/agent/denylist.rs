@@ -52,16 +52,14 @@
 //! - **A quit by another spelling.** The game takes `qui` as `quit` (the
 //!   author, 2026-10-01). A certain quit (`quit`, `qui`, `exit`, `exi`) goes
 //!   on to the session's quit gate, which lets an agent log the character
-//!   out only holding a takeover; one that only may be (`q`, `qu`, `ex`) is
-//!   refused here, since the game, not the session, would decide it
-//!   (`actor/ending.rs`, the same review, L-2).
+//!   out only holding a takeover (`actor/ending.rs`, the same review, L-2).
+//!   `q`, `qu` and `ex` are not quits: the game's parser needs three letters
+//!   (the author, 2026-10-01).
 //!
 //! **What this is not**: a sandbox. It refuses the verbs that give things
 //! away or destroy them, as LAB's does, and it is not a list of what is
 //! safe. `plan/35` §3: the line that matters is Behaviors, below which
 //! everything goes through curated code.
-
-use crate::actor::ending::{is_exit_intent, may_be_exit};
 
 /// The verbs no agent line may begin with, nor with the start of one.
 const VERBS: &[&str] = &[
@@ -129,11 +127,6 @@ pub fn refused(line: &str, symbol: char) -> Option<String> {
     }
     if folded.contains([';', '|', '&']) {
         return Some("no `;`, `|` or `&`: one command, never a chain".to_owned());
-    }
-    if may_be_exit(&folded) && !is_exit_intent(&folded) {
-        return Some(format!(
-            "`{folded}` may be quit; an agent that may log the character out says `quit`"
-        ));
     }
     let words: Vec<&str> = folded.split(' ').collect();
     let first = *words.first()?;
@@ -316,10 +309,9 @@ mod tests {
 
     /// The crate review of 2026-10-01: verbs that drop, give or destroy
     /// beyond LAB's list (SE-B-1), a `_drag` or `put` onto a player, a bin
-    /// or anything not known to be the character's own (L-1), and a line
-    /// that may be a quit but is not certainly one (L-2).
+    /// or anything not known to be the character's own (L-1).
     #[test]
-    fn what_else_drops_gives_destroys_or_may_quit_is_denied() {
+    fn what_else_drops_gives_destroys_is_denied() {
         for line in [
             "toss emerald",
             "tos emerald",
@@ -338,10 +330,8 @@ mod tests {
             "put gem on table",
             "put gem in Nerten",
             "put gem in my",
-            "q",
-            "qu",
+            // Not a quit, but a start of `exchange` to the verb rule.
             "ex",
-            "<c>qu",
         ] {
             assert!(denied(line), "{line:?}");
         }
@@ -399,6 +389,9 @@ mod tests {
             "qui",
             "exit",
             "exi",
+            // Not quits: the game's parser needs three letters.
+            "q",
+            "qu",
             "exp",
             "tell",
             "bow",

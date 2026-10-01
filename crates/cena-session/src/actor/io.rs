@@ -17,7 +17,7 @@
 //! moves here is the two halves of one turn -- bytes out ([`SessionActor::pump`])
 //! and bytes in ([`SessionActor::ingest`]).
 
-use super::ending::{QUIT_EOF_DEADLINE, is_exit_intent, may_be_exit};
+use super::ending::{QUIT_EOF_DEADLINE, is_exit_intent};
 use super::lich_text::QuietWindow;
 use super::{Envelope, Event, SessionActor, WRITE_DEADLINE};
 use crate::command::{Outcome, Sent};
@@ -138,9 +138,8 @@ impl<S: ByteSource> SessionActor<S> {
                 // Live since M4: `cena-web` sends typed lines through
                 // `send_manual_at`, so a player typing `quit` reaches here.
                 // Who may log the character out: checked here because this
-                // path runs before `admit` (the review of 2026-09-29), and
-                // for a line that only may be a quit too (`ending.rs`).
-                if may_be_exit(&envelope.line) && !self.may_quit(envelope.origin) {
+                // path runs before `admit` (the review of 2026-09-29).
+                if is_exit_intent(&envelope.line) && !self.may_quit(envelope.origin) {
                     let _ = envelope
                         .reply
                         .send(Outcome::Refused(crate::command::Refusal::Permanent));
@@ -232,7 +231,8 @@ impl<S: ByteSource> SessionActor<S> {
                 // comes this way -- is a quit, not a write the server answers
                 // by closing and the supervisor answers by logging straight
                 // back in (the review of 2026-09-29).
-                if generation == self.generation && may_be_exit(&line) && !self.may_quit(origin) {
+                if generation == self.generation && is_exit_intent(&line) && !self.may_quit(origin)
+                {
                     let _ = reply.send(crate::command::Sent::Refused(
                         crate::command::Refusal::Permanent,
                     ));

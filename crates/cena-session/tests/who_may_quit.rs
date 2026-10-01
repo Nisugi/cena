@@ -62,13 +62,14 @@ async fn said_from(
     Some((outcome, sent))
 }
 
-/// The game takes `qui` as `quit` (the author, 2026-10-01), and `q`, `qu`
-/// and `ex` may be one too: none of them gets past the gate from an origin
-/// that may not log the character out (the crate review of 2026-10-01, L-2).
+/// The game takes `qui` as `quit` (the author, 2026-10-01): it does not get
+/// past the gate from an origin that may not log the character out (the
+/// crate review of 2026-10-01, L-2). `q`, `qu` and `ex` are not quits: the
+/// game's parser needs three letters (the author, the same day).
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn an_abbreviated_quit_is_checked_too() {
     let token = AuthorityToken(3);
-    for line in ["qui", "QUI", "<c>qui", "exi", "q", "qu", "ex"] {
+    for line in ["qui", "QUI", "<c>qui", "exi"] {
         for (origin, claim) in [
             (Origin::Agent(None), None),
             (Origin::Behavior(token), Some(token)),

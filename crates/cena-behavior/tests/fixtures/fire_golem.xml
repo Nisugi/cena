@@ -1,0 +1,58 @@
+<dialogData id='combat'><dropDownBox id='dDBTarget' value="gigas skald" cmd="target %dDBTarget%" tooltip='Select Target' content_text="gigas skald,giant warg" content_value="#583850503,#583872403" anchor_left='cmdTarget' anchor_right='cmdAttack' height='20' width='80'  top='93' left='0' align='n'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="583872403" health="590" maxhealth="600" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="583872403" noun="warg">niveous giant warg</a><popBold/></b>, a <a exist="583866679" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="583779209" health="260" maxhealth="260"/><b> <pushBold/>a <a exist="583779209" noun="panther">hulking semi-melanistic panther</a><popBold/></b> and<crtrStatus exist="583850503" health="469" maxhealth="600" hostile="1" stunned="1" rooted="1" prone="1" ascended="1"/><b> <pushBold/>a <a exist="583850503" noun="skald">grim gigas skald</a><popBold/></b> that appears stunned.</component>
+<pushBold/>A <a exist="583666370" noun="golem">behemothic gorefrost golem</a><popBold/> just went through a <a exist="-483069" noun="arch">rune-carved white granite arch</a>.
+<prompt time="1790818087">H&gt;</prompt>
+<dialogData id='minivitals'><skin id='healthSkin' name='healthBar' controls='health' left='0%' top='0%' width='25%' height='100%'/><progressBar id='health' value='95' text='health 184/193' left='0%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='injuries'><skin id='healthSkin' name='healthBar2' controls='health2' align='n' top='160' width='140' left='0' height='15'/><progressBar id='health2' value='95' text='health 184/193' customText='t' align='n' top='160' width='140' left='0' height='15'/></dialogData><dialogData id='minivitals'><skin id='staminaSkin' name='staminaBar' controls='stamina' left='50%' top='0%' width='25%' height='100%'/><progressBar id='stamina' value='85' text='stamina 136/159' left='50%' customText='t' top='0%' width='25%' height='100%'/></dialogData><dialogData id='expr'><label id='yourLvl' value='Level 100' top='0' left='0' align='n' width='160' height='15'/><progressBar id='mindState' value='0' text='clear as a bell' top='45' left='3' field_exp='0' max_field_exp='1403' ascension_exp='24904977' fashlonae='1' lumnis='3' exp='43904921' until_next='79' align='n' width='160' height='15'/><progressBar id='nextLvlPB' value='100' text='43904921 experience' top='20' left='3' align='n' width='160' height='15'/></dialogData><dialogData id='minivitals'><skin id='staminaSkin' name='staminaBar' controls='stamina' left='50%' top='0%' width='25%' height='100%'/><progressBar id='stamina' value='85' text='stamina 136/159' left='50%' customText='t' top='0%' width='25%' height='100%'/></dialogData><prompt time="1790818087">H&gt;</prompt>
+<dialogData id='encum'><progressBar id='encumlevel' value='0' text='None' top='5' left='-5' align='n' width='160' height='15'/><label id='encumblurb' value='You are not encumbered enough to notice.' top='10' left='0' align='n' width='160' height='50' justify='0' anchor_top='encumlevel'/></dialogData><crtrStatus exist="583850503" health="379" maxhealth="600" hostile="1" dead="1" rooted="1" prone="1" ascended="1"/><roundTime value='1790818091'/><dialogData id='combat'><dropDownBox id='dDBAmmo' value="none" cmd="ready AMMO %dDBAmmo%" content_text="none" content_value="clear" align='n' top='139' left='0' height='20' width='80' tooltip='Stance Selection' anchor_left='cmdLoad' anchor_right='cmdFire'/></dialogData>
+<component id='room objs'>  You also see<crtrStatus exist="583872403" health="590" maxhealth="600" hostile="1" ascended="1"/><b> <pushBold/>a <a exist="583872403" noun="warg">niveous giant warg</a><popBold/></b>, a <a exist="583866679" noun="briar">violently lashing emerald briar</a> bestrewn with unnaturally sharp spikes,<crtrStatus exist="583779209" health="260" maxhealth="260"/><b> <pushBold/>a <a exist="583779209" noun="panther">hulking semi-melanistic panther</a><popBold/></b> and<crtrStatus exist="583850503" health="379" maxhealth="600" hostile="1" dead="1" rooted="1" prone="1" ascended="1"/><b> <pushBold/>a <a exist="583850503" noun="skald">grim gigas skald</a><popBold/></b> that appears dead.</component>
+<component id='room players'></component>
+<clearStream id='inv' ifClosed=''/><pushStream id='inv'/>Your worn items are:
+  a <a exist="583779059" noun="gauntlets">pair of dusky centaur hide gauntlets</a>
+  an <a exist="583779060" noun="band">enruned urglaes band</a>
+  <a exist="583779061" noun="robes">some hooded red velvet robes</a>
+  a <a exist="583779062" noun="urnon">shard of chaotic urnon</a>
+  an <a exist="583779063" noun="sack">elesine treasure sack</a> with a blood crystal clasp
+  a <a exist="583779064" noun="satchel">shaggy dark grey wolf fur satchel</a>
+  a <a exist="583779066" noun="cloak">nacreous plumille cloak</a>
+  a <a exist="583779108" noun="standard">sacrosanct misty white battle standard</a> with a rippling incarnadine sheen
+  a <a exist="583779109" noun="necklace">cloth necklace</a>
+  a <a exist="583779110" noun="vines">ring of thorny tattooed vines</a>
+  a <a exist="583779113" noun="tattoo">pallid jade green dragonfly tattoo</a>
+  a <a exist="583779114" noun="scarab">fused snowflake obsidian and bleached bone scarab</a>
+  an <a exist="583779115" noun="pin">enameled cast iron cannon pin</a>
+  a <a exist="583779116" noun="charm">crystallized silvery fossil charm</a>
+  a <a exist="583779117" noun="insignia">kraken-etched insignia</a>
+  a <a exist="583779118" noun="periapt">small bone periapt</a>
+  <a exist="583779119" noun="puppies">several ebon-inked puppies</a> playing tug-of-war with a floriated vine
+  a <a exist="583779120" noun="badge">veniom-bound witchwood badge</a>
+  a <a exist="583779121" noun="brooch">quintuple orb brooch</a>
+  a <a exist="583779122" noun="satchel">faded leather satchel</a> etched with a vine and leaf pattern
+  a <a exist="583779123" noun="backpack">patchwork dwarf skin backpack</a> bound by interwoven briar vines
+  a <a exist="583779133" noun="bandolier">quilled iron boar hide bandolier</a> shrouded by impaled leaves
+  a <a exist="583779164" noun="tunic">dark green elesine tunic</a> drenched with blood
+  a <a exist="583779165" noun="bracelet">briar and thorn wrotwood bracelet</a>
+  a <a exist="583779166" noun="ring">smooth bone ring</a> pierced by tiny crystal shards
+  a <a exist="583779167" noun="keyring">ruby-inlaid carved obsidian keyring</a>
+  a <a exist="583779171" noun="locus">gilded locus</a>
+  a <a exist="583779172" noun="kit">cire leather herb kit</a> scuffed at the corners
+  a <a exist="583779206" noun="anklet">spiderweb-patterned nightshade anklet</a> caught with bloodwood spiders
+  a <a exist="583779207" noun="arcarium">dark sapphire aversaris arcarium</a>
+  a <a exist="583779208" noun="arcarium">dark sapphire vangaris arcarium</a>
+<popStream/>
+You nock a faewood <a exist="583873500" noun="arrow">arrow</a> fletched with plain white feathers in your <a exist="583779163" noun="bow">glowbark long bow</a>.
+You take aim and fire a faewood arrow at <pushBold/>a <a exist="583850503" noun="skald">grim gigas skald</a><popBold/>!
+  AS: +564 vs DS: +490 with AvD: +32 + d100 roll: +98 = +204
+   ... and hit for 90 points of damage!
+   Blast to <pushBold/>the <a exist="583850503" noun="skald">gigas skald</a><popBold/>'s head destroys left eye!
+   Brain obliterated!
+   Disgusting, but painful only for a second.
+<pushBold/>A <a exist="583850503" noun="skald">grim gigas skald</a><popBold/> raises a hand as if to grasp for support as <pushBold/><a exist="583850503" noun="skald">she</a><popBold/> collapses, life going out of <pushBold/><a exist="583850503" noun="skald">her</a><popBold/> form.
+A white glow rushes away from <pushBold/>a <a exist="583850503" noun="skald">grim gigas skald</a><popBold/>.
+<pushBold/>A <a exist="583850503" noun="skald">grim gigas skald</a><popBold/> appears to recover some strength.
+The arrow sticks in <pushBold/>a <a exist="583850503" noun="skald">grim gigas skald</a><popBold/>'s left eye!
+Roundtime: 4 sec.
+<prompt time="1790818087">HR&gt;</prompt>
+...wait 4 seconds.
+<prompt time="1790818087">HR&gt;</prompt>
+...wait 4 seconds.
+<prompt time="1790818087">HR&gt;</prompt>

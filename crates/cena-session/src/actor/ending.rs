@@ -479,7 +479,8 @@ pub(super) const QUIT_EOF_DEADLINE: std::time::Duration = std::time::Duration::f
 /// 2026-10-01, L-2). `exi` is taken too: no other verb begins `exi`
 /// (`reference/wiki_clean/Verb_VERB_Verb list.txt`: `exchange`, `exhale`,
 /// `expel`, `experience`, `express`, `extinguish`, `extract`). Shorter ones
-/// are not certain, see [`may_be_exit`].
+/// are not quits: the game's parser needs three letters (the author,
+/// 2026-10-01), so `q`, `qu` and `ex` go as the ordinary lines they are.
 ///
 /// [`may_quit`]: SessionActor::may_quit
 pub(crate) fn is_exit_intent(line: &str) -> bool {
@@ -487,20 +488,6 @@ pub(crate) fn is_exit_intent(line: &str) -> bool {
     ["quit", "qui", "exit", "exi"]
         .iter()
         .any(|exit| word.eq_ignore_ascii_case(exit))
-}
-
-/// Whether this line may be a quit, as the game reads it: any start of
-/// `quit`, or of `exit` past `e` (which is east). `q` and `qu` may also be
-/// `quest`, `queue` or `quickstrike`, and `ex` half the `ex` verbs
-/// (`Verb_VERB_Verb list.txt`); which one the game takes no source here
-/// records, so these are neither sent as a quit nor let past [`may_quit`]
-/// as an ordinary line by an origin that may not log the character out.
-///
-/// [`may_quit`]: SessionActor::may_quit
-pub(crate) fn may_be_exit(line: &str) -> bool {
-    let word = bare(line).to_ascii_lowercase();
-    !word.is_empty()
-        && ("quit".starts_with(&word) || (word.len() >= 2 && "exit".starts_with(&word)))
 }
 
 /// The line without its spacing or Lich's `<c>`.
