@@ -142,6 +142,9 @@ pub struct Hunt {
     pub(super) loot: Option<LootProfile>,
     /// The bags found full, shared by every run on the desk (`errands.rs`).
     pub(super) full_bags: Option<super::errands::FullBags>,
+    /// What of a selling round to sell: all of it but for `loot sell
+    /// type|shop|item` (`errands.rs`).
+    pub(super) choice: crate::town::Choice,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
     /// Why this turn waits, with the numbers: set by the rest arm, cleared
@@ -256,6 +259,7 @@ impl Hunt {
             seed,
             loot: None,
             full_bags: None,
+            choice: crate::town::Choice::All,
             must_rest: None,
             waiting: None,
             field_rest: false,

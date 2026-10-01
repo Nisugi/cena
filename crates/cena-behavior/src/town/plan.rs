@@ -35,6 +35,7 @@ use cena_map::RoomId;
 use cena_session::containers::StowSlot;
 use cena_session::{GameState, LootFact};
 
+use super::choice::Choice;
 use super::goods::{self, How, Lot, Onward, Shop};
 use super::pool::{self, Pool};
 use super::reply::Reply;
@@ -153,12 +154,19 @@ impl Seller {
                     }
                 }
                 // The pool for the boxes carried, or for its returns alone
-                // every round (`process_boxes`, `eloot.lic:7696`, `:7714`).
-                if (town.pool && !pool::boxes(&town, state).is_empty()) || town.always_check_pool {
+                // every round (`process_boxes`, `eloot.lic:7696`, `:7714`);
+                // of a choice, only for its boxes (`choice.rs`).
+                if town.choice.pools()
+                    && ((town.pool && !pool::boxes(&town, state).is_empty())
+                        || town.always_check_pool)
+                {
                     shops.insert(Shop::Pool);
                 }
+                shops.retain(|shop| town.choice.visits(*shop));
                 note = goods::note_in_bag(state);
-                if shops.is_empty() && !note {
+                // Nothing chosen for sale is no round, a note or not
+                // (`custom_type`, `:6775`).
+                if shops.is_empty() && (!note || town.choice != Choice::All) {
                     return None;
                 }
             }

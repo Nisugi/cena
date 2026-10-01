@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use cena_behavior::hunt::{FullBags, Hunt, HuntEnd, hunt};
 use cena_behavior::loot::{Errand, Learned, LootProfile};
+use cena_behavior::town::Choice;
 use cena_behavior::travel::TravelNotes;
 use cena_behavior::watchdog::Heartbeat;
 use cena_map::{Map, Room};
@@ -104,6 +105,36 @@ pub fn inside(state: &mut GameState, bag: &str, things: &[(&str, &str, &str)]) {
 pub fn set_out_knowing(
     errand: Errand,
     floor: Vec<RoomItem>,
+    place: (&'static str, &'static str),
+    learned: &Arc<Mutex<Vec<Learned>>>,
+    full: &FullBags,
+    knows: impl FnOnce(&mut GameState),
+) -> Under {
+    set_out_run((errand, Choice::All), floor, place, learned, full, knows)
+}
+
+/// `loot sell type|shop|item`: the selling round, only as much of it as
+/// `choice` says, on `place` (rooms and profile), the character knowing
+/// what `knows` says.
+pub fn set_out_choosing(
+    choice: Choice,
+    place: (&'static str, &'static str),
+    knows: impl FnOnce(&mut GameState),
+) -> Under {
+    set_out_run(
+        (Errand::Sell, choice),
+        Vec::new(),
+        place,
+        &Arc::default(),
+        &FullBags::default(),
+        knows,
+    )
+}
+
+/// [`set_out_knowing`] and [`set_out_choosing`] both.
+fn set_out_run(
+    (errand, choice): (Errand, Choice),
+    floor: Vec<RoomItem>,
     (rooms, profile): (&'static str, &'static str),
     learned: &Arc<Mutex<Vec<Learned>>>,
     full: &FullBags,
@@ -166,8 +197,9 @@ pub fn set_out_knowing(
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-        let machine =
-            Hunt::loot_only(LootProfile::parse(profile).ok()?, errand).with_full_bags(full);
+        let machine = Hunt::loot_only(LootProfile::parse(profile).ok()?, errand)
+            .with_full_bags(full)
+            .with_choice(choice);
         handle.claim(AuthorityToken(1)).await.ok()?;
         let heartbeat = Heartbeat::default();
         let end = Box::pin(hunt(

@@ -84,6 +84,9 @@ pub enum Command {
     /// `;loot` and its words: one part of looting or selling, by itself
     /// (`plan/61` step 1).
     Loot(Errand),
+    /// `;loot sell type|shop|item <what>`: the selling round, only as much
+    /// of it as chosen (`plan/61` step 6).
+    LootSell(crate::town::Choice),
     /// `;loot last`: what the last selling round came to (`plan/61` step 2).
     LootLast,
     /// `;loot reset unskinnable [creature]`: forget every creature learned
@@ -209,37 +212,10 @@ const RESERVED: &[&str] = &[
     "setup",
 ];
 
+pub use super::help::help;
+
 /// What a wrongly said command is answered with.
 pub const USAGE: &str = "hunt <name> [quick|bounty], hunt <name> with <character>..., hunt stop, hunt list, hunt check <name>, hunt show <name> [setting], hunt set <name> <setting> <value>, hunt unset <name> <setting>, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>. `hunt help` says more.";
-
-/// What `hunt help`, `heal help` and `waggle help` say, a line each.
-#[must_use]
-pub const fn help(topic: Topic) -> &'static [&'static str] {
-    match topic {
-        Topic::Hunt => HUNT_HELP,
-        Topic::Heal => HEAL_HELP,
-        Topic::Waggle => WAGGLE_HELP,
-        Topic::Sc => SC_HELP,
-        Topic::Loot => LOOT_HELP,
-    }
-}
-
-const LOOT_HELP: &[&str] = &[
-    "loot                                   skin and search the dead here, take what the floor holds",
-    "loot skin                              only skin the dead here",
-    "loot box                               empty the open box in hand, then keep it or throw it out (in the pool's bin when none is here)",
-    "loot ground                            the same for each box on the ground; a locked one stays there",
-    "loot sell                              the selling round: the pool, the shops, the bank, and back",
-    "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them; the bank after a drop-off",
-    "loot deposit                           the bank alone, keeping the silver the profile says",
-    "loot last                              what the last selling round came to, shop by shop",
-    "loot reset unskinnable [creature]      forget the creatures learned unskinnable, or one of them",
-    "loot show                              the loot settings, skinning and selling with them",
-    "loot set <setting> <value>             change one: loot set town.sell_keep_silver 5000",
-    "loot unset <setting>                   back to its default",
-    "loot summary | recent | boxes | creatures | cap   reports on what was recorded",
-    "A hunt loots and sells by the same settings. `stop` or `hunt stop` stops one under way.",
-];
 
 /// The words after `loot` that are the ledger's reports, and not this
 /// module's (`crates/cena/src/loot.rs`).
@@ -265,6 +241,17 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
         ["box"] => Errand::Box,
         ["ground"] => Errand::Ground,
         ["sell"] => Errand::Sell,
+        // eloot's `--type`, `--sellable` and `--sell` (`eloot.lic:8033`).
+        [
+            "sell",
+            how @ ("type" | "types" | "shop" | "shops" | "item" | "items"),
+            ..,
+        ] => {
+            let chose = crate::town::Choice::parse(how, after_words(line, 3))
+                .map(Command::LootSell)
+                .map_err(|why| format!("Loot: {why}"));
+            return Some(chose);
+        }
         ["deposit"] => Errand::Deposit,
         ["pool"] => Errand::Pool {
             drop: true,
@@ -281,58 +268,13 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
         },
         _ => {
             return Some(Err(
-                "loot, loot skin, loot box, loot ground, loot sell, loot pool [deposit|return], loot deposit, loot last; `loot help` says more."
+                "loot, loot skin, loot box, loot ground, loot sell [type|shop|item <what>], loot pool [deposit|return], loot deposit, loot last; `loot help` says more."
                     .to_owned(),
             ));
         }
     };
     Some(Ok(Command::Loot(errand)))
 }
-
-const HUNT_HELP: &[&str] = &[
-    "hunt <profile>                         hunt on a profile",
-    "hunt <profile> quick | bounty          clear this room | hunt until the bounty is done",
-    "hunt <profile> with <name> <name>...   lead these characters, each hunting its own <profile>",
-    "hunt stop                              stop",
-    "hunt list                              the profiles there are",
-    "hunt check <profile>                   read it as this character will run it: what is wrong, what is held",
-    "hunt show <profile> [setting]          every setting, or those under one: hunt show ojandhaart rest",
-    "hunt set <profile> <setting> <value>   change one: hunt set ojandhaart rooms.resting 29877",
-    "hunt unset <profile> <setting>         take one out, so the default decides it",
-    "hunt import <bigshot yaml> [as <name>] bring in a bigshot profile",
-    "hunt import-loot <eloot yaml>          bring in eloot's settings as this character's loot profile",
-    "hunt setup                             where the map's setup page is",
-    "A value is on or off, a number, a list [\"a\", \"b\"], a table { name = \"warg\", routine = \"a\" }, or words.",
-    "A setting in a list is picked by number from 1: hunt set ojandhaart targets.2.routine c",
-    "heal help, waggle help, keep list, go2 help: the other behaviors. `help` lists everything.",
-];
-
-const HEAL_HELP: &[&str] = &[
-    "heal [spellcast] [ranged] [blood]      heal with herbs: everything, or only what stops a cast, a shot, or the blood",
-    "heal show                              the heal settings, the defaults included",
-    "heal set <setting> <value>             change one: heal set container herb pouch",
-    "heal unset <setting>                   back to its default",
-    "heal stock | fill                      stock the herb container at the herbalist | buy one of each herb it lacks",
-    "A hunt heals at every rest once a container is set. `hunt stop` stops a heal under way.",
-];
-
-const SC_HELP: &[&str] = &[
-    "sc <spell|alias> [target] [count]      cast it: sc 401, sc 903 kobold, sc 111 3",
-    "sc alias <spell> <name>                call a spell by a name of yours: sc alias 211 bravery",
-    "sc verb <spell> <verb>                 cast it with this verb (channel, evoke, incant...)",
-    "sc stance <spell> <stance>             take this stance to cast it",
-    "sc set typed on|off                    cast a bare 401 or alias typed with no sc (on by default)",
-    "sc set conserve|safety|channel|stance on|off   keep mana, need a target, channel attacks, stance",
-    "A cast goes beside a running hunt, never in its place. The Spellcaster page in Settings has every setting.",
-];
-
-const WAGGLE_HELP: &[&str] = &[
-    "waggle [name] [name]...                cast the waggle spells on these people, or yourself",
-    "waggle show                            the waggle settings, the defaults included",
-    "waggle set <setting> <value>           change one: waggle set cast_list [101, 107, 401]",
-    "waggle unset <setting>                 back to its default",
-    "`hunt stop` stops a waggle under way.",
-];
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
@@ -724,12 +666,38 @@ mod tests {
     #[test]
     fn loot_and_its_words() {
         use crate::loot::Errand;
+        use crate::town::{Choice, Shop};
         let loot = |line| parse(line).and_then(Result::ok);
         assert_eq!(loot("loot"), Some(Command::Loot(Errand::Room)));
         assert_eq!(loot("LOOT Skin"), Some(Command::Loot(Errand::Skin)));
         assert_eq!(loot("loot box"), Some(Command::Loot(Errand::Box)));
         assert_eq!(loot("loot ground"), Some(Command::Loot(Errand::Ground)));
         assert_eq!(loot("loot sell"), Some(Command::Loot(Errand::Sell)));
+        // eloot's `--type`, `--sellable` and `--sell` (`plan/61` step 6).
+        let owned = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect();
+        assert_eq!(
+            loot("loot sell type gem, skin"),
+            Some(Command::LootSell(Choice::Kinds(owned(&["gem", "skin"]))))
+        );
+        assert_eq!(
+            loot("LOOT SELL SHOP gemshop furrier"),
+            Some(Command::LootSell(Choice::Shops(vec![
+                Shop::Gemshop,
+                Shop::Furrier
+            ])))
+        );
+        assert_eq!(
+            loot("loot sell item Blue Crystal, silver wand"),
+            Some(Command::LootSell(Choice::Names(owned(&[
+                "blue crystal",
+                "silver wand"
+            ]))))
+        );
+        assert!(matches!(
+            parse("loot sell type wnad"),
+            Some(Err(why)) if why.starts_with("Loot: ") && why.contains("wnad")
+        ));
+        assert!(matches!(parse("loot sell shop"), Some(Err(_))));
         assert_eq!(loot("loot deposit"), Some(Command::Loot(Errand::Deposit)));
         for (line, drop, collect) in [
             ("loot pool", true, true),

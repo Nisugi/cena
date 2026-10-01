@@ -14,22 +14,25 @@ use cena_behavior::hunt::{Ending, FullBags, HuntEnd};
 use cena_behavior::loot::Errand;
 use cena_session::{Frame, GameState};
 use drive_support::arrival;
-use errand_support::{at, ended, in_order, inside, link, reply, set_out_knowing};
+use errand_support::{at, ended, in_order, inside, link, reply, set_out_choosing, set_out_knowing};
 
 /// Home (1), the pool east of it (2), whose worker the map names, the bank
-/// west of it (3) and the gem shop north (4).
+/// west of it (3), the gem shop north (4) and the pawnshop south (5).
 const TOWN: &str = r#"[
   {"id":1,"uid":[1001],"exits":[
     {"to":2,"kind":"cardinal","cmd":"east","cost":1},
     {"to":3,"kind":"cardinal","cmd":"west","cost":1},
-    {"to":4,"kind":"cardinal","cmd":"north","cost":1}]},
+    {"to":4,"kind":"cardinal","cmd":"north","cost":1},
+    {"to":5,"kind":"cardinal","cmd":"south","cost":1}]},
   {"id":2,"uid":[1002],"tags":["locksmith pool"],
    "meta":["boxpool:npc:grimy halfling scoundrel"],"exits":[
     {"to":1,"kind":"cardinal","cmd":"west","cost":1}]},
   {"id":3,"uid":[1003],"tags":["bank"],"exits":[
     {"to":1,"kind":"cardinal","cmd":"east","cost":1}]},
   {"id":4,"uid":[1004],"tags":["gemshop"],"exits":[
-    {"to":1,"kind":"cardinal","cmd":"south","cost":1}]}
+    {"to":1,"kind":"cardinal","cmd":"south","cost":1}]},
+  {"id":5,"uid":[1005],"tags":["pawnshop"],"exits":[
+    {"to":1,"kind":"cardinal","cmd":"north","cost":1}]}
 ]"#;
 
 /// A profile that tips the pool 300 a box.
@@ -438,4 +441,71 @@ async fn loot_box_banks_for_coins_that_will_not_fit_and_gathers_the_rest() {
         ),
         "{lines:?}"
     );
+}
+
+/// A profile that sells gems and weapons, but never a diamond.
+const GEMS_AND_WEAPONS: &str = "take = [\"gem\"]\n\n[town]\nsell_loot_types = [\"gem\", \"weapon\"]\nsell_exclude = [\"diamond\"]\n";
+
+/// `loot sell type gem` (eloot's `--type`, `custom_type`,
+/// `eloot.lic:6744-6813`): the emerald sold, the bank, home; the poignard the
+/// profile sells too left for another round, the pawnshop not walked to.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn loot_sell_type_gem_sells_the_gem_and_leaves_the_poignard() {
+    let (transcript, task, _) = set_out_choosing(
+        cena_behavior::town::Choice::Kinds(vec!["gem".to_owned()]),
+        (TOWN, GEMS_AND_WEAPONS),
+        |state| {
+            inside(
+                state,
+                "902",
+                &[
+                    ("61", "emerald", "uncut emerald"),
+                    ("62", "diamond", "uncut diamond"),
+                    ("63", "poignard", "steel poignard"),
+                ],
+            );
+        },
+    );
+    transcript.answer("north", &arrival(1004));
+    transcript.answer(
+        "get #61",
+        &reply("You remove an uncut emerald from in your backpack.\n<right exist=\"61\" noun=\"emerald\">uncut emerald</right>"),
+    );
+    transcript.answer(
+        "sell #61",
+        &reply("Arnalto takes the uncut emerald, gives it a careful examination and hands you 900 silver for it.\n<right>Empty</right>"),
+    );
+    // From the gem shop home, and -- were the poignard sold -- on to the
+    // pawnshop.
+    transcript.answer("south", &arrival(1001));
+    transcript.answer("south", &arrival(1005));
+    transcript.answer("west", &arrival(1003));
+    transcript.answer(
+        "deposit all",
+        &reply("You deposit 900 silvers into your account."),
+    );
+    transcript.answer("east", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Sell))),
+        "{lines:?}"
+    );
+    assert!(
+        in_order(
+            &lines,
+            &[
+                "north",
+                "get #61",
+                "sell #61",
+                "south",
+                "west",
+                "deposit all",
+                "east"
+            ]
+        ),
+        "{lines:?}"
+    );
+    assert_eq!(at(&lines, "get #63"), None, "the poignard stays: {lines:?}");
 }

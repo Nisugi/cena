@@ -112,6 +112,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                         "no boxes to take to the pool.",
                     ),
                     Errand::Deposit => (Round::Bank, "deposited.", "the bank was not reached."),
+                    _ if *self.machine.choice() != town::Choice::All => (
+                        Round::All,
+                        "the selling round is done.",
+                        "nothing of that to sell: only what the profile sells is sold.",
+                    ),
                     _ => (Round::All, "the selling round is done.", "nothing to sell."),
                 };
                 if self.sell_round(round).await? {

@@ -53,6 +53,7 @@ pub mod drive;
 pub mod engine;
 mod errands;
 mod follow;
+mod help;
 pub mod import;
 mod keep_learned;
 mod maintain;

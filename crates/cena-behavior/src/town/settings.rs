@@ -8,6 +8,8 @@
 
 use toml::Table;
 
+use super::choice::Choice;
+
 /// How the character sells (`eloot.lic:2027-2072`, the `sell_*` keys).
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[expect(
@@ -72,6 +74,9 @@ pub struct Town {
     /// The loot profile's `loot_phase`: a box is looked at before the
     /// pool's worker takes it, and unphased when it is phased.
     pub phase_boxes: bool,
+    /// What of the round is sold this time (`loot sell type|shop|item`): all
+    /// of it but when the player chose. Not a setting; the driver sets it.
+    pub choice: Choice,
 }
 
 impl Default for Town {
@@ -100,6 +105,7 @@ impl Default for Town {
             overflow: Vec::new(),
             keep_closed: false,
             phase_boxes: false,
+            choice: Choice::All,
         }
     }
 }
@@ -175,6 +181,7 @@ impl Town {
             overflow: Vec::new(),
             keep_closed: false,
             phase_boxes: false,
+            choice: Choice::All,
         }
     }
 
@@ -398,7 +405,7 @@ pub const TABLE: &[crate::settings::Key] = {
 
 #[cfg(test)]
 mod tests {
-    use super::{TABLE, Town};
+    use super::{Choice, TABLE, Town};
 
     /// A town of every setting, none at its default but the disk.
     fn every() -> Town {
@@ -426,6 +433,7 @@ mod tests {
             overflow: Vec::new(),
             keep_closed: false,
             phase_boxes: false,
+            choice: Choice::All,
         }
     }
 

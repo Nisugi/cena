@@ -3,7 +3,7 @@
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
 ahead and work on the loot plan"*). **Steps 1, 2 and 3 BUILT the same day** on branch
 `loot-complete` (§5a, §5b, §5c); **step 4 BUILT 2026-10-01** in three parts (§5d, §5e,
-§5f), and **step 5** the same day in three more (§5g, §5h, §5i). The author: *"let's plan out the rest of it.
+§5f), **step 5** the same day in three more (§5g, §5h, §5i), and **step 6** (§5j). The author: *"let's plan out the rest of it.
 Hydra's loot should have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
@@ -170,7 +170,7 @@ the author's answers set (§7), with the bounty trips dropped (§6).
    boxes' silver and `loot box` taking an empty box to a bin. Scripted-game tests of
    `loot sell`, `loot pool` and `loot box`. BUILT, in three parts (§5g, §5h, §5i).
 6. **Selling by choice**: `loot sell type <types>`, `loot sell shop <shops>`, `loot sell
-   item <names>` (eloot's three `--` forms, in Hydra's words).
+   item <names>` (eloot's three `--` forms, in Hydra's words). BUILT (§5j).
 7. **The coin hand**, coin bag and gambling kit: found, used after a loot, drained at the
    bank; `sell_share_silvers`.
 8. **The town locksmith** with its priority and `case` boxes; **incremental tipping**;
@@ -579,6 +579,52 @@ gem shop's odd nouns, and the scripted tests of `loot sell` and `loot box`.
 - *Tests:* the reliquary (`tests/town_pool.rs`), the gem shop's odd ones
   (`tests/town_shops.rs`), and the three scripted runs above. Each rule was broken by
   hand against its tests: 5 mutations, 5 caught.
+
+## 5j. Step 6, BUILT 2026-10-01: selling by choice
+
+- **`loot sell type <kinds>`, `loot sell shop <shops>`, `loot sell item <names>`**: eloot's
+  `--type`, `--sellable` and `--sell` (`eloot.lic:8033-8048`; `custom_type`,
+  `custom_sellable`, `custom_list`, `:6653-6813`) in Hydra's words (`town/choice.rs`,
+  `Choice`). Each narrows the round the profile would run, as eloot's do, and none widens
+  it: the profile's kinds, its `sell_exclude`, its appraisal limits, kept transmogs and
+  scrolls all still hold, so `loot sell type wand` for a profile that sells no wands
+  sells nothing, and says so. eloot's three read `sell_loot_types` the same way
+  (`check_items`, `:6531`; `gemshop`, `:6992`; `pawnshop`, `:7546`).
+  - `type`: kinds as the object table names them (66 of them), between commas or a space
+    apart, a kind of two words (`alchemy equipment`) taken whole; an unknown one is said
+    with the kinds there are, as eloot says it (`:6757-6758`). With `box` among them the
+    boxes go to the pool first (`process_boxes`, `:6769`).
+  - `shop`: `gemshop`, `pawnshop`, `furrier`, `collectibles` (or `collectible`),
+    `chronomage`; `consignment` is said not to be built yet (step 9). No pool, as
+    eloot's `--sellable` has none.
+  - `item`: names between commas, a space being part of a name, matched anywhere in a
+    thing's name and in any case (eloot's regex is case-sensitive, `:6658`). No pool.
+- **A bag is sold whole only when everything in it the shop would buy is chosen.** eloot
+  sells its gem sack whole for `--type` only when `gem` is named (`gemshop`, `:6970`);
+  said of any choice, a sack holding a ruby is not sold whole for `item emerald`, and
+  the ruby is not sold.
+- **Nothing chosen for sale is no round**, a note in the bag or not (`custom_type`,
+  `:6775`). The gem shop's refusals still go on to the pawnshop when only the gem shop
+  was chosen, as eloot's `finish_sell_run` sends them (`:6109-6113`).
+- eloot's quirks, not reproduced: `--type` matching a thing's whole type string, so a
+  thing both `jewelry` and `magic` is not `jewelry` (`check_items`, `:6509`); `--sell`
+  offering every named thing at every shop it visits (`custom_list`, `:6681`), and
+  offering things `sell_exclude` names (`:6664`).
+- A choice rides on the errand's machine beside its loot profile (`Hunt::with_choice`),
+  the command being `Command::LootSell`; the selling driver hands it to the round's
+  settings (`Town::choice`). An agent at `behaviors` may start each, as it may `loot
+  sell` (`crates/cena/src/perform.rs`); `loot help` and the reference page list them.
+- `hunt/command.rs` passed its cap of 800 with the new words; the families' help texts
+  moved down to `hunt/help.rs`, `command.rs` re-exporting `help` where the binary reads
+  it.
+- *Tests:* the words (`hunt/command.rs`, `town/choice.rs`, the agent's in `perform.rs`);
+  the round (a kind chosen; a kind the profile does not sell, no round though a note
+  waits; `type box` to the pool, and another kind not; a shop chosen and no pool; an item
+  chosen sold alone, its sack not sold whole and its ruby left; `type gem` still selling
+  the gem sack whole, `tests/town_choice.rs`); and over a scripted game, `loot sell type
+  gem` selling the emerald and leaving the poignard the profile sells too, the pawnshop
+  not walked to (`tests/loot_rounds.rs`). Each rule was broken by hand against its
+  tests: 7 mutations, 7 caught.
 
 ## 6. Not ported, and why
 

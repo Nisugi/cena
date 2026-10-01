@@ -144,6 +144,9 @@
 //! | `loot box` | empty the open box in hand, then keep it or throw it out, in the pool's bin when there is none here; a reliquary is always kept |
 //! | `loot ground` | the same for each box on the ground, the hands put away first and given back after; a locked box is left where it lay |
 //! | `loot sell` | the selling round: the locksmith pool, the shops, the bank, and back |
+//! | `loot sell type <kinds>` | the round for only these kinds, as the object table names them, between commas or a space apart: `loot sell type gem, skin`. The pool too for `type box` |
+//! | `loot sell shop <shops>` | the round at only these shops: `gemshop`, `pawnshop`, `furrier`, `collectibles`, `chronomage`; no pool |
+//! | `loot sell item <names>` | the round for only things whose names hold one of these, between commas: `loot sell item blue crystal, silver wand`; no pool. Each of the three sells only what the profile sells |
 //! | `loot pool` | the locksmith pool alone: give it the boxes carried, collect what is ready, then bank, keeping the silver carried before |
 //! | `loot pool deposit` | only give boxes, then bank as `loot pool` does |
 //! | `loot pool return` (`check`, `loot`) | only collect them; no bank |

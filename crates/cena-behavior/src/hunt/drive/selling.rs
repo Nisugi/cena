@@ -33,7 +33,9 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             // after (`pool`, `eloot.lic:7626-7648`).
             self.send("wealth quiet", None).await?;
         }
-        let town = Town::for_profile(&profile);
+        let mut town = Town::for_profile(&profile);
+        // What of it the player chose (`loot sell type|shop|item`).
+        town.choice = self.machine.choice().clone();
         let (bags, keep_closed) = (self.know_bags(&town).await?, town.keep_closed);
         let fwi = town.fwi && self.reaches_fwi(home);
         // A round frees the bags: none is known full from here. eloot clears

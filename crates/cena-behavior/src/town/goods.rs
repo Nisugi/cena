@@ -270,8 +270,13 @@ pub(super) fn goods(town: &Town, state: &GameState, aside: Option<&str>) -> Vec<
             let types = classify(&item.noun, &item.text);
             let ingot = from_aside && item.text.contains("gold ingot");
             // Boxes are the pool's, and sold only when the profile sells
-            // them (`check_items`, `:6529`).
-            if !ingot && ((types.is("box") && !town.sells("box")) || !wanted(town, &item, &types)) {
+            // them (`check_items`, `:6529`); and only what the player chose
+            // of the rest (`choice.rs`).
+            if !ingot
+                && ((types.is("box") && !town.sells("box"))
+                    || !wanted(town, &item, &types)
+                    || !town.choice.takes(&item, &types))
+            {
                 continue;
             }
             out.push((item, types, bag.clone()));
@@ -318,9 +323,10 @@ pub(super) fn clerk(state: &GameState) -> Option<String> {
 }
 
 /// The bags that sell whole at `shop`: at the gem shop a bag with gems and
-/// no excluded gem (`gemshop`, `:6938`); at the furrier a bag with furrier
-/// goods and none excluded (`furrier`, `:6858`). A bag already sold whole
-/// this round is not offered again.
+/// no excluded gem (`gemshop`, `:6966-6969`); at the furrier a bag with
+/// furrier goods and none excluded (`furrier`, `:6858`); and of a choice,
+/// only a bag whose every such thing is chosen (`choice.rs`). A bag already
+/// sold whole this round is not offered again.
 pub(super) fn sacks(
     shop: Shop,
     town: &Town,
@@ -340,9 +346,13 @@ pub(super) fn sacks(
     bags(town, state)
         .into_iter()
         .filter(|(bag, items)| {
+            let kept = |item: &RoomItem| {
+                town.excludes(&item.text)
+                    || !town.choice.takes(item, &classify(&item.noun, &item.text))
+            };
             !sold.contains(bag)
                 && items.iter().any(takes)
-                && !items.iter().any(|i| takes(i) && town.excludes(&i.text))
+                && !items.iter().any(|i| takes(i) && kept(i))
         })
         .map(|(bag, _)| bag)
         .collect()

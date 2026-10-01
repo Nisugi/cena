@@ -33,6 +33,20 @@ impl Hunt {
     pub fn full_bags(&self) -> Option<&FullBags> {
         self.full_bags.as_ref()
     }
+
+    /// Sell only this of the round (`loot sell type|shop|item`, `plan/61`
+    /// step 6).
+    #[must_use]
+    pub fn with_choice(mut self, choice: crate::town::Choice) -> Self {
+        self.choice = choice;
+        self
+    }
+
+    /// What of a selling round to sell.
+    #[must_use]
+    pub fn choice(&self) -> &crate::town::Choice {
+        &self.choice
+    }
 }
 
 impl super::desk::Desk {
@@ -52,12 +66,14 @@ impl super::desk::Desk {
     }
 
     /// `;loot` and its words: the errand started by the character's loot
-    /// profile; said and refused when there is none.
+    /// profile, a selling round only as much of it as `choice` says; said
+    /// and refused when there is none.
     pub(super) fn loot_errand(
         self: &std::sync::Arc<Self>,
         handle: &cena_session::SessionHandle,
         joined: (cena_session::Snapshot, impl Into<crate::travel::Heard>),
         errand: crate::loot::Errand,
+        choice: crate::town::Choice,
     ) -> Option<crate::operation::Underway<super::drive::HuntEnd>> {
         use cena_session::{Notice, NoticeKind};
         let character = &joined.0.state.character;
@@ -76,7 +92,7 @@ impl super::desk::Desk {
             ("loot", "loot"),
             handle.clone(),
             (joined.0, joined.1.into()),
-            Hunt::loot_only(profile, errand),
+            Hunt::loot_only(profile, errand).with_choice(choice),
         ))
     }
 }

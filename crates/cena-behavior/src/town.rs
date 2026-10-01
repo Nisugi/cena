@@ -24,6 +24,7 @@
 //! Hinterwilds has none.
 
 pub mod breakdown;
+pub mod choice;
 pub mod goods;
 pub mod plan;
 mod pool;
@@ -33,6 +34,7 @@ pub mod settings;
 mod step;
 
 pub use breakdown::Breakdown;
+pub use choice::Choice;
 pub use goods::{Shop, is_gold_ring};
 pub use plan::{Round, Seller, Step};
 pub use pool::{box_in_hand, keeps_box};

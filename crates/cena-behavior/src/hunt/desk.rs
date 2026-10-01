@@ -205,7 +205,12 @@ impl Desk {
             Command::Stock { fill } => {
                 self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }
-            Command::Loot(errand) => self.loot_errand(handle, joined, errand),
+            Command::Loot(errand) => {
+                self.loot_errand(handle, joined, errand, crate::town::Choice::All)
+            }
+            Command::LootSell(choice) => {
+                self.loot_errand(handle, joined, crate::loot::Errand::Sell, choice)
+            }
             Command::LootLast => {
                 self.say_last_round(handle);
                 None

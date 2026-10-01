@@ -115,6 +115,7 @@ pub(crate) fn open(
             | Command::Heal { .. }
             | Command::Stock { .. }
             | Command::Loot(_)
+            | Command::LootSell(_)
             | Command::LootLast
             | Command::Keep
             | Command::Waggle(_)
@@ -261,6 +262,7 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         | Command::Heal { .. }
         | Command::Stock { .. }
         | Command::Loot(_)
+        | Command::LootSell(_)
         | Command::LootLast
         | Command::Keep
         | Command::Waggle(_)
