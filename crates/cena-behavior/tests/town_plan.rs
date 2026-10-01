@@ -375,6 +375,73 @@ fn what_the_hands_held_comes_back_after_the_round() {
 }
 
 #[test]
+fn the_weapon_stowed_to_free_a_hand_is_never_sold_at_a_later_shop() {
+    // BE-E-6. The sword is stowed into the default bag to fetch the gem
+    // sack; the pawnshop's lots are built from that bag on arrival, and the
+    // profile sells weapons. The sword must come back, not be sold.
+    let mut state = setup(
+        &[("1", "pearl", "black pearl")],
+        &[("5", "tunic", "linen tunic")],
+    );
+    hand(&mut state, true, Some(("70", "sword", "steel broadsword")));
+    hand(&mut state, false, Some(("71", "shield", "iron buckler")));
+    let mut seller = Seller::new(town(), &state, HOME).expect("a round");
+    assert_eq!(seller.shops(), [Shop::Gemshop, Shop::Pawnshop]);
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(GEMSHOP));
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Stow {
+            item: "70".to_owned(),
+            bag: "902".to_owned()
+        },
+        "the sack needs a hand"
+    );
+    hand(&mut state, true, None);
+    inside(&mut state, "902", "70", "sword", "steel broadsword");
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Fetch("901".to_owned()));
+    hand(&mut state, true, Some(("901", "sack", "sack")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::SellSack("901".to_owned())
+    );
+    seller.outcome(&[sold(500)], &[Reply::SackInspected], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Wear("901".to_owned()));
+    hand(&mut state, true, None);
+    state.apply(&Frame::ClearContainer {
+        id: "901".to_owned(),
+    });
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Walk(PAWNSHOP));
+    // At the pawnshop: the tunic is the only lot.
+    assert_eq!(seller.next(&state, &nearest), Step::Fetch("5".to_owned()));
+    hand(&mut state, true, Some(("5", "tunic", "linen tunic")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Analyze("5".to_owned()));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(seller.next(&state, &nearest), Step::Sell("5".to_owned()));
+    hand(&mut state, true, None);
+    state.apply(&Frame::ClearContainer {
+        id: "902".to_owned(),
+    });
+    inside(&mut state, "902", "70", "sword", "steel broadsword");
+    seller.outcome(&[sold(10)], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Fetch("70".to_owned()),
+        "the sword back"
+    );
+    hand(&mut state, true, Some(("70", "sword", "steel broadsword")));
+    seller.outcome(&[], &[], &state);
+    assert_eq!(
+        seller.next(&state, &nearest),
+        Step::Walk(HOME),
+        "the sword was fetched to be kept, not offered for sale"
+    );
+}
+
+#[test]
 fn sell_again_to_be_sure_sends_the_sale_again() {
     let mut state = setup(&[], &[("8", "tunic", "linen tunic")]);
     let mut seller = Seller::new(town(), &state, HOME).expect("a round");

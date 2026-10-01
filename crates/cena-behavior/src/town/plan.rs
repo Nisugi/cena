@@ -109,7 +109,9 @@ pub struct Seller {
     pool: Option<Pool>,
     /// What the gem shop sent on to the pawnshop.
     onward: Onward,
-    /// What the hands held when the round began, to fetch back at its end.
+    /// What the hands held when the round began, to fetch back at its end,
+    /// and left out of every shop's lots: the round stows these to free a
+    /// hand, often into a bag it sells from (BE-E-6).
     restore: Vec<String>,
     /// A sale or a note this round: the bank is wanted at the end.
     earned: bool,
@@ -282,8 +284,12 @@ impl Seller {
             self.lots_built = true;
             self.sacks = goods::sacks(shop, &self.town, state, &self.sold_whole).into();
             let whole: Vec<String> = self.sacks.iter().cloned().collect();
-            self.lots =
-                goods::lots(shop, &self.town, state, &self.skipped, &whole, &self.onward).into();
+            // What the hands held is the round's to give back, never to sell:
+            // freeing a hand stows it into the default bag, which is a
+            // selling bag by default (BE-E-6).
+            let mut leave = self.skipped.clone();
+            leave.extend(self.restore.iter().cloned());
+            self.lots = goods::lots(shop, &self.town, state, &leave, &whole, &self.onward).into();
         }
         if let Some(sack) = self.sacks.pop_front() {
             self.sold_whole.insert(sack.clone());

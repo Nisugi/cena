@@ -301,8 +301,9 @@ fn takes(shop: Shop, town: &Town, item: &RoomItem, types: &ObjectTypes) -> bool 
         || (shop == Shop::Pawnshop && types.is("clothing") && home == Some(Shop::Gemshop))
 }
 
-/// What to part with at `shop`, one lot at a time, leaving out what the
-/// round has given up on and the bags about to sell whole.
+/// What to part with at `shop`, one lot at a time, leaving out `skipped`
+/// (what the round has given up on, and what the hands held when it began,
+/// which it gives back) and the bags about to sell whole.
 pub(super) fn lots(
     shop: Shop,
     town: &Town,

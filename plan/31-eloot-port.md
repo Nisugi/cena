@@ -231,7 +231,9 @@ their own.
   each prompt's `LootFact`s from the driver's own fold. Tested in `tests/town_plan.rs` (6)
   and `hunt_engine.rs` (the arrival). **Its leftovers BUILT 2026-09-25**: `return_hands`
   (what the hands held when the round began, a box aside, is fetched back before home, so a
-  weapon stowed to free a hand is in hand for the hunt); the jeweler's *not my field* sold
+  weapon stowed to free a hand is in hand for the hunt, and is left out of every shop's lots
+  meanwhile: the default bag it lands in is a selling bag by default, BE-E-6 of the
+  2026-10-01 review); the jeweler's *not my field* sold
   at the pawnshop instead (`retry_wrong_shop_jewelry_at_pawnshop`), and, when
   `sell_pawn_recheck` is on, what it found too valuable appraised there and put back
   (`recheck_refused_at_pawnshop`), the pawnshop joining the round for either;
