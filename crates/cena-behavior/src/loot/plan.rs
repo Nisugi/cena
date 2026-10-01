@@ -39,6 +39,7 @@ mod phase;
 mod step;
 pub(crate) use bags::{disks, named_bags};
 use boxed::Boxed;
+pub use boxed::Emptied;
 use hands::{PutAway, Side};
 use phase::Phasing;
 pub use step::{Left, Step};
@@ -206,13 +207,6 @@ impl Planner {
         let mut planner = Self::new(profile, memory, &[]);
         planner.boxed = Some(Boxed::new(box_id, charm));
         planner
-    }
-
-    /// The box emptied by [`Planner::for_box`] said it is locked: it goes
-    /// back in its bag.
-    #[must_use]
-    pub fn box_locked(&self) -> bool {
-        self.boxed.as_ref().is_some_and(Boxed::locked)
     }
 
     /// What was learned, for the next room.

@@ -88,6 +88,9 @@ pub enum Step {
     /// `look at #id`: a box, before the pool's worker takes it, to see
     /// whether it is phased (`box_unphase`, `eloot.lic:2986-2996`).
     LookAt(String),
+    /// `pluck #id`: the core out of a plinite the pool's worker handed back
+    /// (`box_loot`, `eloot.lic:5138-5140`).
+    Pluck(String),
     /// Put one thing in one bag.
     Stow {
         /// The item's id.

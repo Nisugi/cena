@@ -144,9 +144,9 @@
 //! | `loot box` | empty the open box in hand, then keep it or throw it out |
 //! | `loot ground` | the same for each box on the ground, the hands put away first and given back after; a locked box is left where it lay |
 //! | `loot sell` | the selling round: the locksmith pool, the shops, the bank, and back |
-//! | `loot pool` | the locksmith pool alone: give it the boxes carried, collect what is ready |
-//! | `loot pool deposit` | only give boxes |
-//! | `loot pool return` (`check`, `loot`) | only collect them |
+//! | `loot pool` | the locksmith pool alone: give it the boxes carried, collect what is ready, then bank, keeping the silver carried before |
+//! | `loot pool deposit` | only give boxes, then bank as `loot pool` does |
+//! | `loot pool return` (`check`, `loot`) | only collect them; no bank |
 //! | `loot deposit` | the bank alone, keeping the silver the profile says |
 //! | `loot last` | what the last selling round came to: silver by shop, the pool's boxes less its tips and fees, the bank, and what was appraised and kept. Said at the end of every round, a hunt's too |
 //! | `loot reset unskinnable [creature]` | forget every creature learned unskinnable, or the one named, in any case |

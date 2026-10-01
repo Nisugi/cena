@@ -7,7 +7,7 @@ use super::{BEAT, Driver, HuntEnd, LOOT_STEPS};
 use cena_session::containers::StowSlot;
 
 use crate::loot::{
-    Errand, Learned, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify,
+    Emptied, Errand, Learned, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify,
 };
 use crate::town::{self, Round, Town};
 use crate::travel::{TravelNotes, hands};
@@ -129,21 +129,33 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
 
     /// `loot box`: the open box in hand emptied, then kept when it is one
     /// the profile sells empty, else thrown out (`box_loot` and
-    /// `save_trash_box`, `eloot.lic:5086`, `:7773`).
+    /// `save_trash_box`, `eloot.lic:5086`, `:7773`). Coins that would not
+    /// all fit send it to the bank and back to gather the rest
+    /// (`:5109-5115`).
     async fn box_errand(&mut self, profile: &LootProfile) -> Result<&'static str, HuntEnd> {
         let Some(id) = town::box_in_hand(&self.state) else {
             return Ok("there is no box in hand.");
         };
-        if self.empty_box(profile, &id).await? {
-            return Ok("the box is locked.");
+        let mut emptied = self.empty_box(profile, &id).await?;
+        if emptied == Emptied::CoinsLeft {
+            self.sell_round(Round::Bank).await?;
+            emptied = self.empty_box(profile, &id).await?;
         }
-        self.keep_or_toss(profile, &id).await
+        match emptied {
+            Emptied::Locked => Ok("the box is locked."),
+            Emptied::CoinsLeft => {
+                Ok("stopped: the box's coins will not all fit, even after the bank.")
+            }
+            Emptied::Out => self.keep_or_toss(profile, &id).await,
+        }
     }
 
     /// `loot ground` (`box_loot_ground`, `eloot.lic:5144-5219`): the hands
     /// put away as a trip puts them away, then each box on the ground taken
     /// up, emptied, and kept or thrown out as `loot box` does; one that is
-    /// locked is put back where it lay. The hands are given back at the end.
+    /// locked is put back where it lay. Coins that would not all fit stop it,
+    /// as they stop eloot (`:5170-5173`), the box put back with the rest of
+    /// them in it. The hands are given back at the end.
     async fn ground_errand(&mut self, profile: &LootProfile) -> Result<String, HuntEnd> {
         let boxes: Vec<String> = self
             .state
@@ -168,6 +180,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             self.send(line, None).await?;
         }
         let (mut emptied, mut locked, mut missed) = (0_usize, 0_usize, 0_usize);
+        let mut coins_left = false;
         for id in &boxes {
             self.send(&format!("get #{id}"), None).await?;
             self.hold(BEAT).await?;
@@ -175,13 +188,21 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                 missed += 1;
                 continue;
             }
-            if self.empty_box(profile, id).await? {
-                locked += 1;
-                self.send(&format!("drop #{id}"), None).await?;
-                continue;
+            match self.empty_box(profile, id).await? {
+                Emptied::Out => {
+                    self.keep_or_toss(profile, id).await?;
+                    emptied += 1;
+                }
+                Emptied::Locked => {
+                    locked += 1;
+                    self.send(&format!("drop #{id}"), None).await?;
+                }
+                Emptied::CoinsLeft => {
+                    coins_left = true;
+                    self.send(&format!("drop #{id}"), None).await?;
+                    break;
+                }
             }
-            self.keep_or_toss(profile, id).await?;
-            emptied += 1;
         }
         for (item, _) in &stored {
             if !held(self, &item.id) {
@@ -195,6 +216,12 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         }
         if missed > 0 {
             parts.push(format!("{missed} could not be taken up"));
+        }
+        if coins_left {
+            parts.push(
+                "then stopped: no more coins can be carried, and the box was put back with the rest of them"
+                    .to_owned(),
+            );
         }
         Ok(format!("boxes on the ground: {}.", parts.join(", ")))
     }
@@ -230,20 +257,20 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         Ok("the box is emptied.")
     }
 
-    /// Empty the box in hand with the loot planner (`box_loot`), for the
-    /// selling round. `true` when the box would not open.
+    /// Empty the box in hand with the loot planner (`box_loot`), and say
+    /// how it came out.
     pub(super) async fn empty_box(
         &mut self,
         profile: &LootProfile,
         id: &str,
-    ) -> Result<bool, HuntEnd> {
+    ) -> Result<Emptied, HuntEnd> {
         let town = Town::for_profile(profile);
         let memory = std::mem::take(&mut self.memory);
         let charm = (!town.charm.is_empty()).then(|| town.charm.clone());
         let planner = Planner::for_box(profile.clone(), memory, id, charm);
         let planner = self.run_loot(planner, false).await?;
         self.tell_learned(&planner);
-        Ok(planner.box_locked())
+        Ok(planner.emptied())
     }
 
     /// Run a loot planner to its end: each step sent, each reply fed back.

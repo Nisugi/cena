@@ -88,6 +88,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         };
         self.notes = notes;
         (self.wrote)(&self.notes);
+        // The walk ends on its own copy's arrival; the room's lines are still
+        // queued on this stream. Folded now, so whoever reads the state next
+        // -- the selling round looking for the pool's worker or the
+        // Chronomage's clerk -- reads the room arrived in, not the one left.
+        self.drain().map_err(HuntEnd::Stopped)?;
         if let Some(room) = travelled.last_room {
             self.last_room = Some(room);
         }

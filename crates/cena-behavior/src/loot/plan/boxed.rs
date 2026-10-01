@@ -9,7 +9,8 @@
 //!
 //! A box that says it is locked is left alone and reported, so the caller
 //! puts it back in its bag (`return Inventory.single_drag(box) if line =~
-//! /locked/`).
+//! /locked/`). So are coins the character cannot carry: the rest stay in the
+//! box, and the caller banks and empties it again (`:5109-5115`).
 
 use cena_session::GameState;
 use cena_session::gameobj::ObjectTypes;
@@ -20,6 +21,18 @@ use super::{Left, Planner, Step};
 
 /// How many times the coins are asked for before they are left.
 const COIN_TRIES: u8 = 3;
+
+/// How a box came out of [`Planner::for_box`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Emptied {
+    /// Nothing the profile wants is left in it.
+    Out,
+    /// It would not open: back in its bag (`box_loot`, `eloot.lic:5090`).
+    Locked,
+    /// Its coins would not all fit on the character, and the rest are still
+    /// in it: eloot banks and gathers again (`:5109-5115`).
+    CoinsLeft,
+}
 
 /// Where the box is in being emptied.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,6 +52,8 @@ pub(super) struct Boxed {
     phase: Phase,
     coin_tries: u8,
     locked: bool,
+    /// The character could carry no more of its coins.
+    coins_left: bool,
 }
 
 impl Boxed {
@@ -49,20 +64,18 @@ impl Boxed {
             phase: Phase::Opening,
             coin_tries: 0,
             locked: false,
+            coins_left: false,
         }
-    }
-
-    /// The box said it is locked.
-    pub(super) const fn locked(&self) -> bool {
-        self.locked
     }
 
     /// What the game said to the last step, for the box.
     pub(super) fn outcome(&mut self, outcome: &Outcome) {
         match outcome {
             Outcome::Locked => self.locked = true,
-            // Gathered, or the character can hold no more: the coins are done.
+            // Gathered, or the character can hold no more: the coins are
+            // done, and what is left of them stays in the box.
             Outcome::Gathered | Outcome::CoinsFull if self.phase == Phase::Coins => {
+                self.coins_left = *outcome == Outcome::CoinsFull;
                 self.phase = Phase::Taking;
             }
             _ => {}
@@ -74,6 +87,16 @@ impl Planner {
     /// The box being emptied, by id.
     pub(super) fn boxed_id(&self) -> Option<&str> {
         self.boxed.as_ref().map(|boxed| boxed.id.as_str())
+    }
+
+    /// How the box emptied by [`Planner::for_box`] came out.
+    #[must_use]
+    pub fn emptied(&self) -> Emptied {
+        match &self.boxed {
+            Some(boxed) if boxed.locked => Emptied::Locked,
+            Some(boxed) if boxed.coins_left => Emptied::CoinsLeft,
+            _ => Emptied::Out,
+        }
     }
 
     /// The box's next step; `None` when the planner is not emptying a box.

@@ -230,7 +230,7 @@ const LOOT_HELP: &[&str] = &[
     "loot box                               empty the open box in hand, then keep it or throw it out",
     "loot ground                            the same for each box on the ground; a locked one stays there",
     "loot sell                              the selling round: the pool, the shops, the bank, and back",
-    "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them",
+    "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them; the bank after a drop-off",
     "loot deposit                           the bank alone, keeping the silver the profile says",
     "loot last                              what the last selling round came to, shop by shop",
     "loot reset unskinnable [creature]      forget the creatures learned unskinnable, or one of them",

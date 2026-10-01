@@ -128,6 +128,22 @@ pub struct Room {
     pub placement: Option<Placement>,
 }
 
+impl Room {
+    /// The locksmith pool's worker here, as the map names it: upstream's
+    /// `meta:boxpool:npc:<name>`, which eloot finds the worker by
+    /// (`find_worker`, `eloot.lic:3204`). Every pool carries one: 13 rooms,
+    /// 12 names, two of which (a dead halfling pirate, a grimy halfling
+    /// scoundrel) answer to none of eloot's words for a worker.
+    #[must_use]
+    pub fn pool_worker(&self) -> Option<&str> {
+        self.meta
+            .iter()
+            .find_map(|meta| meta.strip_prefix("boxpool:npc:"))
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+    }
+}
+
 /// A corrected position, stated as an offset from a room that did not move.
 ///
 /// # Why an offset and not a coordinate
@@ -172,6 +188,19 @@ mod tests {
         assert_eq!(room.id, RoomId(7));
         assert!(room.uid.is_empty() && room.exits.is_empty());
         assert_eq!(serde_json::to_string(&room).unwrap(), r#"{"id":7}"#);
+    }
+
+    /// The pool's worker is read off the room's `meta`, trimmed: one of the
+    /// map's names carries a trailing space.
+    #[test]
+    fn the_pool_worker_is_the_one_the_meta_names() {
+        let room: Room = serde_json::from_str(
+            r#"{"id":7,"meta":["boxpool:table:crude table","boxpool:npc:slender half-elven woman "]}"#,
+        )
+        .unwrap();
+        assert_eq!(room.pool_worker(), Some("slender half-elven woman"));
+        let bare: Room = serde_json::from_str(r#"{"id":8}"#).unwrap();
+        assert_eq!(bare.pool_worker(), None);
     }
 
     /// `plan/21` §3d: the game sends negative numbers for generated areas.

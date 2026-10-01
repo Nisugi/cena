@@ -4,7 +4,7 @@
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::{BEAT, Driver, HuntEnd, SELL_STEPS};
-use crate::loot::Learned;
+use crate::loot::{Emptied, Learned};
 use crate::town::{self, Round, Seller, Step as Errand, Town};
 use crate::travel::{TravelNotes, walker_from};
 
@@ -28,6 +28,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             return Ok(false);
         };
         self.know_stow_list().await?;
+        if let Round::Pool { drop: true, .. } = round {
+            // `loot pool` keeps what is carried now, and banks the rest
+            // after (`pool`, `eloot.lic:7626-7648`).
+            self.send("wealth quiet", None).await?;
+        }
         let town = Town::for_profile(&profile);
         let (bags, keep_closed) = (self.know_bags(&town).await?, town.keep_closed);
         let fwi = town.fwi && self.reaches_fwi(home);
@@ -43,6 +48,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         let _ = self.state.take_loot();
         for _ in 0..SELL_STEPS {
             let here = self.locate();
+            seller.worker_here(
+                here.and_then(|room| self.map.room(room))
+                    .and_then(cena_map::Room::pool_worker),
+            );
             let step = {
                 let now = self.state.game_time_now().unwrap_or(0);
                 let walker = walker_from(&self.state, &self.notes, now);
@@ -58,11 +67,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                     continue;
                 }
                 Errand::EmptyBox(id) => {
-                    let locked = self.empty_box(&profile, id).await?;
-                    let replies = if locked {
-                        vec![town::Reply::BoxLocked]
-                    } else {
-                        Vec::new()
+                    let replies = match self.empty_box(&profile, id).await? {
+                        Emptied::Out => Vec::new(),
+                        Emptied::Locked => vec![town::Reply::BoxLocked],
+                        Emptied::CoinsLeft => vec![town::Reply::CoinsLeft],
                     };
                     let facts: Vec<cena_session::LootFact> = self
                         .state
@@ -207,5 +215,6 @@ fn line_for(step: &Errand) -> Option<String> {
         Errand::Trash(id) => format!("trash #{id}"),
         Errand::Drop(id) => format!("drop #{id}"),
         Errand::LookAt(id) => format!("look at #{id}"),
+        Errand::Pluck(id) => format!("pluck #{id}"),
     })
 }

@@ -34,7 +34,7 @@ pub mod worth;
 pub use import::{Import, import};
 pub use learned::{Learned, forget_unskinnable, remember, remember_unskinnable};
 pub use outcome::{Outcome, classify};
-pub use plan::{Left, Memory, Planner, Step};
+pub use plan::{Emptied, Left, Memory, Planner, Step};
 pub use profile::{LootProfile, Skin, path};
 pub use worth::{Verdict, is_special, stow_slot, verdict};
 

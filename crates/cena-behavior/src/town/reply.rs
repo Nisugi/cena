@@ -39,14 +39,22 @@ pub enum Reply {
     /// The box needs no locksmith: *already unlocked* or *already open*.
     AlreadyOpen,
     /// *We don't have any boxes ready for you*, or *We don't seem to have
-    /// that box*; also *You need to lighten your load first*, which ends
-    /// the returns the same way.
+    /// that box*.
     NoneReady,
+    /// *You need to lighten your load first*: the worker will not hand a
+    /// box over to a character carrying this much. eloot banks and asks
+    /// again (`pool_return`, `eloot.lic:7443-7452`).
+    Lighten,
     /// *You do not notice a trash receptacle here*: drop it instead.
     NoTrash,
     /// Not the game's: the driver says the loot planner found the box
     /// locked, so it goes back to its bag.
     BoxLocked,
+    /// Not the game's: the driver says the box's coins would not all fit on
+    /// the character (*You can only collect*, *You cannot hold any more
+    /// silvers*), so the rest are still in it (`box_loot`,
+    /// `eloot.lic:5109-5115`).
+    CoinsLeft,
     /// A scroll read names a spell: `(215) Frenzy`, and whether the line
     /// calls it vibrant.
     ScrollSpell {
@@ -114,11 +122,11 @@ pub fn classify(line: &str) -> Option<Reply> {
     if has("already unlocked") || has("already open") {
         return Some(Reply::AlreadyOpen);
     }
-    if has("We don't have any boxes ready for you")
-        || has("We don't seem to have that box")
-        || has("You need to lighten your load first")
-    {
+    if has("We don't have any boxes ready for you") || has("We don't seem to have that box") {
         return Some(Reply::NoneReady);
+    }
+    if has("You need to lighten your load first") {
+        return Some(Reply::Lighten);
     }
     if has("You do not notice a trash receptacle") {
         return Some(Reply::NoTrash);

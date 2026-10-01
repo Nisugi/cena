@@ -1,7 +1,7 @@
 //! The loot planner, driven step by step with no game (`plan/31` §3):
 //! eloot's order, the game's own sorter, and what a reply teaches.
 
-use cena_behavior::loot::{Left, LootProfile, Memory, Outcome, Planner, Step};
+use cena_behavior::loot::{Emptied, Left, LootProfile, Memory, Outcome, Planner, Step};
 use cena_session::containers::{ContainerEvent, ItemRef, StowSlot};
 use cena_session::{Frame, GameState, Link, LinkKind, RoomItem, Run, Runs};
 
@@ -619,7 +619,7 @@ fn a_box_in_hand_is_opened_its_coins_charmed_out_and_its_gem_taken() {
         id: "40".to_owned(),
     });
     assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
-    assert!(!plan.box_locked());
+    assert_eq!(plan.emptied(), Emptied::Out);
 }
 
 #[test]
@@ -629,7 +629,7 @@ fn a_locked_box_is_left_alone_and_said_to_be() {
     assert_eq!(plan.next(&state), Step::Open("40".to_owned()));
     plan.outcome(&Outcome::Locked);
     assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
-    assert!(plan.box_locked());
+    assert_eq!(plan.emptied(), Emptied::Locked);
 }
 
 #[test]
@@ -646,4 +646,25 @@ fn without_a_charm_the_coins_are_gathered_by_hand() {
     });
     inside(&mut state, "40", "41", "coins", "12 silver coins");
     assert_eq!(plan.next(&state), Step::Coins("40".to_owned()));
+}
+
+/// Coins the character cannot carry stay in the box, and the box says so:
+/// the caller banks and empties it again (`box_loot`, `eloot.lic:5109-5115`).
+#[test]
+fn coins_that_will_not_fit_are_said_to_be_left_in_the_box() {
+    let mut state = state(&[], true);
+    let mut plan = Planner::for_box(profile(), Memory::default(), "40", None);
+    plan.next(&state);
+    plan.next(&state);
+    state.apply(&Frame::Container {
+        id: "40".to_owned(),
+        title: Some("Coffer".to_owned()),
+        target: None,
+        attrs: Vec::new(),
+    });
+    inside(&mut state, "40", "41", "coins", "9,000 silver coins");
+    assert_eq!(plan.next(&state), Step::Coins("40".to_owned()));
+    plan.outcome(&Outcome::CoinsFull);
+    assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
+    assert_eq!(plan.emptied(), Emptied::CoinsLeft);
 }

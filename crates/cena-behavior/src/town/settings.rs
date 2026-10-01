@@ -41,6 +41,10 @@ pub struct Town {
     pub appraisal_container: String,
     /// Drop boxes in the locksmith pool (`sell_locksmith_pool`).
     pub pool: bool,
+    /// Ask the pool for its returns every round, with no box to drop off or
+    /// the pool not used for drop-offs at all (`always_check_pool`,
+    /// `process_boxes`, `eloot.lic:7696`, `:7714`).
+    pub always_check_pool: bool,
     /// The standard tip per box (`sell_locksmith_pool_tip`).
     pub pool_tip: u64,
     /// The tip is a percent of the box's value (`sell_locksmith_pool_tip_percent`).
@@ -85,6 +89,7 @@ impl Default for Town {
             keep_silver: 0,
             appraisal_container: String::new(),
             pool: false,
+            always_check_pool: false,
             pool_tip: 0,
             pool_tip_percent: false,
             charm: String::new(),
@@ -159,6 +164,7 @@ impl Town {
             keep_silver: number(table, "sell_keep_silver", 0),
             appraisal_container: text(table, "appraisal_container"),
             pool: flag(table, "sell_locksmith_pool"),
+            always_check_pool: flag(table, "always_check_pool"),
             pool_tip: number(table, "sell_locksmith_pool_tip", 0),
             pool_tip_percent: flag(table, "sell_locksmith_pool_tip_percent"),
             charm: text(table, "charm_name"),
@@ -198,6 +204,10 @@ impl Town {
                 Some(Value::String(self.appraisal_container.clone())),
             ),
             ("sell_locksmith_pool", Some(Value::Boolean(self.pool))),
+            (
+                "always_check_pool",
+                Some(Value::Boolean(self.always_check_pool)),
+            ),
             ("sell_locksmith_pool_tip", number(self.pool_tip)),
             (
                 "sell_locksmith_pool_tip_percent",
@@ -342,6 +352,12 @@ pub const TABLE: &[crate::settings::Key] = {
             kind: KeyKind::Toggle,
         },
         Key {
+            name: "town.always_check_pool",
+            label: "Always check the pool",
+            help: "Ask the pool for its returns every round, even with no box to drop off.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
             name: "town.sell_locksmith_pool_tip",
             label: "Pool tip",
             help: "The tip per box.",
@@ -399,6 +415,7 @@ mod tests {
             keep_silver: 5000,
             appraisal_container: "cloak".to_owned(),
             pool: true,
+            always_check_pool: true,
             pool_tip: 25,
             pool_tip_percent: true,
             charm: "silver charm".to_owned(),

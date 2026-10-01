@@ -2,8 +2,9 @@
 
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
 ahead and work on the loot plan"*). **Steps 1, 2 and 3 BUILT the same day** on branch
-`loot-complete` (§5a, §5b, §5c); **step 4a BUILT 2026-10-01** (§5d). The author: *"let's plan out the rest of it. Hydra's loot should
-have all the features and commands of eloot."*
+`loot-complete` (§5a, §5b, §5c); **step 4 BUILT 2026-10-01** in three parts (§5d, §5e,
+§5f), and **step 5a** the same day (§5g). The author: *"let's plan out the rest of it.
+Hydra's loot should have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
 rest. This plan is the rest of the script. It was written from two surveys made the same
@@ -167,7 +168,7 @@ the author's answers set (§7), with the bounty trips dropped (§6).
    pool, full bags during a return, the worker by the room's tag, scarabs and the gem
    shop's odd nouns, the ingot, plinite; and step 1's leftovers, `loot pool` banking the
    boxes' silver and `loot box` taking an empty box to a bin. Scripted-game tests of
-   `loot sell`, `loot pool` and `loot box`.
+   `loot sell`, `loot pool` and `loot box`. In three parts: **5a BUILT** (§5g).
 6. **Selling by choice**: `loot sell type <types>`, `loot sell shop <shops>`, `loot sell
    item <names>` (eloot's three `--` forms, in Hydra's words).
 7. **The coin hand**, coin bag and gambling kit: found, used after a loot, drained at the
@@ -426,6 +427,76 @@ Step 4 is built in three commits: 4a here, 4b the bags (overflow, `keep_closed`,
   (`tests/loot_outcome.rs`); over a scripted game, `loot ground`
   (`tests/loot_errand.rs`). Each rule was broken by hand against its tests: 15
   mutations, 15 caught.
+
+## 5g. Step 5a, BUILT 2026-10-01: the pool
+
+Step 5 is built in three commits: 5a here, the pool's own gaps; 5b what a return leaves
+that no bag takes (the box set aside while the round sells, the ingot, the shops after the
+pool's returns, a box thrown out only once it is known empty); 5c `loot box` to a bin, the
+gem shop's odd nouns, and the scripted tests of `loot sell` and `loot box`.
+
+- **The worker the map names** (`find_worker`, `eloot.lic:3204-3211`):
+  `meta:boxpool:npc:<name>`, read by `cena_map::Room::pool_worker`; the selling driver
+  tells the round each step (`Seller::worker_here`). Every pool on the map names its
+  worker: 13 rooms, 12 names, and two of them, a dead halfling pirate and a grimy
+  halfling scoundrel, answer to none of eloot's eight words, so those two pools were
+  passed by. MEASURED over `reference/mapdb/mapdb.json`; the map Hydra ships carries the
+  same twelve. A worker the map names and the room lacks is no worker: a word could find
+  somebody else, and the box and its tip would go to them.
+- **A full pool** (`handle_full_pool`, `:7420-7427`; `:7404-7407`): the box goes back to
+  its bag and stays among those to give; what is ready is collected; once a box has come
+  back there is room, and the drop-offs go on. A full pool that gives nothing back takes
+  nothing more. Too little silver for the tip still stops the drop-offs for the visit.
+- ***Lighten your load*** (`pool_return`, `:7443-7452`): the round goes to the bank,
+  deposits, keeps its silver, and comes back to the pool, whose visit goes on where it was
+  (`town/plan/bank.rs`, `Seller::bank_between`). Refused again straight after, the
+  returns are given up, as eloot gives them up. **A box's coins that would not all fit**
+  (`box_loot`, `:5109-5115`) go the same way: the bank, then the box again for the rest;
+  the box planner says so (`loot::Emptied::CoinsLeft`). `loot box` does the same by
+  itself; `loot ground` stops there, as eloot's does (`:5170-5173`), the box put back
+  with the rest of its coins.
+- **A plinite the worker hands back** (`box_loot`, `:5138-5140`; `pool_return` takes a
+  box or a plinite, `:7455-7464`) is plucked, `pluck #id`, and what came of it put in the
+  default bag; a sword already in the other hand stays. Before, a plinite in hand ended
+  the returns.
+- **`always_check_pool`** (`process_boxes`, `:7696`, `:7714`): the round asks the pool for
+  its returns with no box to give, and with drop-offs off (`sell_locksmith_pool`). Typed
+  and shown on the *Selling* page, *Always check the pool*; the importer carried it
+  already.
+- **`loot pool` banks after** (`pool`, `:7626-7648`): a drop-off asks what is carried
+  first (`wealth quiet`), and the bank after keeps exactly that, so what the boxes held is
+  deposited and the tips paid are evened out. `loot pool return` banks nothing, as
+  eloot's does not. A round's tips count as earnings now: a round that only gave boxes
+  ends at the bank, as eloot's `silver_deposit` does whenever the silver changed. §5a
+  had said `loot pool` did not bank; it did when a box's coins were gathered, keeping
+  `sell_keep_silver` rather than what was carried, and it did after `pool return` too.
+- **A step the pool repeats five times** ends the visit, as any other step of the round
+  does. The pool had been left out of that count, and a box that would not go back in its
+  bag sent the same `_drag` until the round's cap of 400 steps.
+- **Found building it: the round read the room it had left.** A walk ends on travel's own
+  copy of the state; the hunt's copy folded the new room's lines only at its next send.
+  So the round, arriving at the pool, looked for the worker among the last room's NPCs and
+  passed the pool by; arriving at the Chronomage it looked for the clerk the same way and
+  gave no ring. The hunt's own turn drains its stream first, so the hunt was not
+  affected; every walk inside an errand was. The driver now folds what the walk's last
+  step brought before the walk returns (`hunt/drive/walk.rs`). The defect is on `main`
+  too, and not fixed there: the crate review of the same day has work in flight in the
+  same driver.
+- `town/plan.rs` passed its cap of 800 with this; it is a split parent now, capped at
+  700, the sacks sold whole (`town/plan/sack.rs`) and the bank's part in a round
+  (`town/plan/bank.rs`) moved down.
+- *Tests:* the planner (the worker the map names over eloot's words, and none when the
+  named one is not there; a full pool refilled once a return made room, and not when none
+  did; *lighten your load* to the bank and back, and given up when refused again; coins
+  that would not fit; a plinite plucked and put away; `always_check_pool` with no box and
+  with drop-offs off; `loot pool` banking what was carried, `pool return` not banking; a
+  pool step repeated five times, `tests/town_pool.rs`); the box planner's coins left
+  (`tests/loot_plan.rs`); the map's name (`cena-map`, `room.rs`); and over a scripted
+  game, `loot pool` in a small town, the worker the map names chosen over a woman in the
+  same room and the bank after keeping the 1,234 carried (`tests/loot_rounds.rs`; the
+  errand harness moved to `tests/errand_support/` for it). Each rule was broken by hand
+  against its tests: 20 mutations, 20 caught, the walk's fold among them: undone, the
+  scripted `loot pool` gives its box to nobody.
 
 ## 6. Not ported, and why
 

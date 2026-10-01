@@ -287,7 +287,12 @@ their own.
   `meta:boxpool:npc` tag (the round has no map tags, only room ids), incremental tipping
   (`use_incremental_tipping`, off for Nisugi), a full pool emptied by returns and filled
   again in the same visit, *lighten your load* answered with a bank trip, the town
-  locksmith, and a box's cursed contents kept out of a saved box.
+  locksmith, and a box's cursed contents kept out of a saved box. **Since BUILT by
+  `plan/61` step 5a (§5g, 2026-10-01):** the worker by the room's tag (the driver tells
+  the round the map's name for it), a full pool refilled once returns made room, and
+  *lighten your load* answered with a bank trip, a box's coins that would not fit too.
+  Incremental tipping and the town locksmith are `plan/61` step 8, the cursed contents
+  step 9.
   As staged: A box in hand before anything else; every box in the
   box bag and the disk to the pool with the standard tip (`sell_locksmith_pool_tip`, or the
   incremental ladder), the worker found by the room's `meta:boxpool:npc` tag or eloot's
