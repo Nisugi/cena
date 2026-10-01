@@ -21,6 +21,17 @@
 //! | `incant`, `cast`, `evoke`, `channel` | a roundtime line, a fizzle, a spell not known |
 //! | `prepare`, `prep` | the spell ready, or one readied already |
 //! | `loot …` | the search's own lines |
+//! | `wave …` | bigshot's wave answers (`bigshot.lic:5988`); none in the wait is a spent wand, as bigshot has it |
+//! | `buy`, `order` | the herbalist's sale or price (`heal/reply.rs`) |
+//! | `eat`, `drink` | a herb going down, or why it did not (`heal/reply.rs`) |
+//! | `analyze` | `You analyze` (`eloot.lic:7568`) |
+//! | `read` | a scroll's or a note's reading (`eloot.lic:7555`, `:3374`) |
+//!
+//! The last five came with the crate review of 2026-10-01: read to the
+//! first prompt, a wand was declared spent and dropped when a creature's
+//! prompt came before the wave's reply (BE-A-6), `;heal stock` bought a batch
+//! twice when the sale came late (BE-E-3), and an item the profile keeps was
+//! sold when its `analyze` or `read` came late (BE-E-7).
 //!
 //! A line with no row (`store weapon`, `raise longbow`, a profile's own
 //! words) is answered by the first prompt: nothing says what the game
@@ -51,6 +62,11 @@ pub(super) fn answers(sent: &str) -> Option<Answers> {
         "incant" | "cast" | "evoke" | "channel" => cast,
         "prepare" | "prep" => prepare,
         "loot" => loot,
+        "wave" => wave,
+        "buy" | "order" => herbalist,
+        "eat" | "drink" => herb,
+        "analyze" => |line: &str| line.starts_with("You analyze"),
+        "read" => read,
         word if ROUND.contains(&word) => round,
         _ => return None,
     })
@@ -103,6 +119,48 @@ fn loot(line: &str) -> bool {
     ]
     .iter()
     .any(|did| line.starts_with(did))
+}
+
+fn wave(line: &str) -> bool {
+    [
+        "d100",
+        "You hurl",
+        "is already dead",
+        "You do not see that here",
+        "You are in no condition",
+        "I could not find",
+    ]
+    .iter()
+    .any(|said| line.contains(said))
+}
+
+/// The herbalist's answer to `buy` or `order`: the sale, too little silver,
+/// or a price.
+fn herbalist(line: &str) -> bool {
+    use crate::heal::reply::{Reply, classify};
+    matches!(
+        classify(line),
+        Some(Reply::Sold | Reply::NotEnough | Reply::Price(_) | Reply::NeedHand)
+    )
+}
+
+/// The answer to eating or drinking a herb.
+fn herb(line: &str) -> bool {
+    crate::heal::reply::classify(line).is_some_and(|reply| {
+        !matches!(
+            reply,
+            crate::heal::reply::Reply::Sold
+                | crate::heal::reply::Reply::NotEnough
+                | crate::heal::reply::Reply::Price(_)
+        )
+    })
+}
+
+fn read(line: &str) -> bool {
+    line.starts_with("It takes you a moment")
+        || line.starts_with("There is nothing there to read")
+        || line.contains("Hold in right hand to use")
+        || line.contains("has a value of ")
 }
 
 #[cfg(test)]
@@ -172,6 +230,32 @@ mod tests {
             !heard("fire #1", "Roundtime changed to 1 second."),
             "an addendum"
         );
+    }
+
+    /// BE-A-6, BE-E-3, BE-E-7: a creature arriving answers none of these.
+    #[test]
+    fn errands_are_answered_by_their_own_lines_not_an_arrival() {
+        let arriving = "A niveous giant warg pads in, deadly quiet despite its great size.";
+        for (sent, answer) in [
+            (
+                "wave my oaken wand at #42",
+                "You hurl a fiery ball at a warg!  d100 roll: 77",
+            ),
+            ("buy", "Sold for 120 silver."),
+            ("order 10 3", "That will be 120 silvers for the lot."),
+            (
+                "eat my acantha leaf",
+                "You take a bite of your acantha leaf.",
+            ),
+            (
+                "analyze #9",
+                "You analyze the sword and sense it bears ALTER 41.",
+            ),
+            ("read #9", "It takes you a moment to focus on the scroll."),
+        ] {
+            assert!(!heard(sent, arriving), "{sent}");
+            assert!(heard(sent, answer), "{sent}: {answer}");
+        }
     }
 
     #[test]
