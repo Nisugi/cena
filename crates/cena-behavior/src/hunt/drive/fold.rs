@@ -10,9 +10,10 @@ use cena_session::{CommandId, Event, Frame, GameState, Notice, NoticeKind, State
 
 use super::Driver;
 use crate::error::BehaviorError;
+use crate::loot::Learned;
 use crate::travel::TravelNotes;
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     pub(super) fn fold(&mut self, event: &Event) -> Result<(), BehaviorError> {
         match event {
             Event::StateChanged(State::Reconnecting) => self.link_lost(),

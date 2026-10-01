@@ -648,7 +648,9 @@ impl Desk {
             .and_then(|(instance, name)| loot::path(&self.dir, instance, name));
         let end = {
             let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
-            let learned = |names: &[String]| unskinnable(handle, loot_file.as_deref(), names);
+            let learned = |learned: &loot::Learned| {
+                super::keep_learned::remember(handle, loot_file.as_deref(), learned);
+            };
             let run = Box::pin(hunt_in(
                 handle,
                 stop,
@@ -733,42 +735,6 @@ impl Desk {
                 format!("Hunt: what the walk learned could not be saved -- {why}."),
             ));
         }
-    }
-}
-
-/// Write creatures learned unskinnable into the loot profile, as eloot saves
-/// its profile when the game says *You cannot skin* (`eloot.lic:5846`), so
-/// the next hunt does not try them. Said either way.
-fn unskinnable(handle: &SessionHandle, file: Option<&std::path::Path>, names: &[String]) {
-    let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
-    let Some(file) = file else { return };
-    // With no other change to the profile between its reading and its
-    // writing: a player may be changing it from the menu (the crate review
-    // of 2026-09-28, R5).
-    let saved = cena_session::store::changing(file, || {
-        std::fs::read_to_string(file)
-            .map_err(|e| e.to_string())
-            .and_then(|text| loot::remember_unskinnable(&text, names))
-            .and_then(|written| match written {
-                Some(text) => crate::settings::save(file, &text).map_err(|e| e.to_string()),
-                None => Ok(()),
-            })
-    });
-    match saved {
-        Ok(()) => say(
-            NoticeKind::Info,
-            format!(
-                "{} cannot be skinned; the loot profile remembers.",
-                names.join(", ")
-            ),
-        ),
-        Err(why) => say(
-            NoticeKind::Warn,
-            format!(
-                "{} cannot be skinned, but the loot profile could not be updated -- {why}.",
-                names.join(", ")
-            ),
-        ),
     }
 }
 

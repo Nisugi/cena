@@ -49,6 +49,12 @@ pub struct LootProfile {
     pub take: Vec<String>,
     /// Names, or words in names, never taken (`loot_exclude`).
     pub leave: Vec<String>,
+    /// Names, or words in names, taken whatever their kind (`loot_keep`):
+    /// `leave` still wins, and so does a curse not wanted.
+    pub keep: Vec<String>,
+    /// Creatures, by words in their names, never searched or skinned
+    /// (`critter_exclude`).
+    pub leave_creatures: Vec<String>,
     /// Go defensive to loot (`loot_defensive`).
     pub defensive: bool,
     /// The disk is a container when the bags are full (`use_disk`).
@@ -63,8 +69,13 @@ pub struct LootProfile {
     pub overflow: Vec<String>,
     /// Names learned to crumble when stowed; left where they lie.
     pub crumbly: Vec<String>,
-    /// Names the game refused to let this character hold; left.
+    /// Names the game refused to let this character hold; left, when
+    /// `remember_unlootable` is on.
     pub unlootable: Vec<String>,
+    /// Add to `unlootable` what the game will not let this character hold,
+    /// when it is of no kind the object table knows, and leave what it names
+    /// (`log_unlootables`); off, the list is not read.
+    pub remember_unlootable: bool,
     /// Containers that close themselves; opened before a drag (`auto_close`).
     pub autoclose: Vec<String>,
     /// Skinning, when the profile turns it on (`skin_enable` and the
@@ -179,32 +190,25 @@ impl LootProfile {
     pub fn takes(&self, category: &str) -> bool {
         self.take.iter().any(|word| word == category)
     }
-}
 
-/// The profile file's text with these creatures added to what it has learned
-/// cannot be skinned, as eloot saves its profile on *You cannot skin*
-/// (`eloot.lic:5846`). `Ok(None)` when every name is already there.
-///
-/// # Errors
-///
-/// The text is not a loot profile, or cannot be written back as one.
-pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<String>, String> {
-    // The comments at the file's head are kept, as `;hunt set` keeps them
-    // (`settings::split`): written back from the profile alone, the first
-    // *You cannot skin* took the importer's notes of what it dropped out of
-    // the file (the review of 2026-09-29).
-    let (head, _) = crate::settings::split(text)?;
-    let mut profile = LootProfile::parse(text)?;
-    let before = profile.skin.unskinnable.len();
-    for name in names {
-        if !profile.skin.unskinnable.contains(name) {
-            profile.skin.unskinnable.push(name.clone());
-        }
+    /// Is a thing of this name taken whatever its kind (`keep`)?
+    #[must_use]
+    pub fn keeps(&self, name: &str) -> bool {
+        self.keep
+            .iter()
+            .any(|word| super::worth::has_word(name, word))
     }
-    if profile.skin.unskinnable.len() == before {
-        return Ok(None);
+
+    /// Is a corpse of this name left unsearched and unskinned: named in
+    /// `leave_creatures`, or a child (`search`, `eloot.lic:5714-5715`)?
+    #[must_use]
+    pub fn leaves_creature(&self, name: &str) -> bool {
+        super::worth::has_word(name, "child")
+            || self
+                .leave_creatures
+                .iter()
+                .any(|word| super::worth::has_word(name, word))
     }
-    Ok(Some(format!("{head}{}", profile.to_toml()?)))
 }
 
 /// The character's loot profile: `<data>/hunt/loot/<instance>_<character>.toml`,
@@ -231,6 +235,18 @@ pub const TABLE: &[crate::settings::Key] = {
             name: "leave",
             label: "Never take",
             help: "Names, or words in names, never taken.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "keep",
+            label: "Always take",
+            help: "Names, or words in names, taken whatever their kind. Never take still wins.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "leave_creatures",
+            label: "Never search",
+            help: "Creatures, by words in their names, never searched or skinned.",
             kind: KeyKind::Words,
         },
         Key {
@@ -272,8 +288,14 @@ pub const TABLE: &[crate::settings::Key] = {
         Key {
             name: "unlootable",
             label: "Cannot be held",
-            help: "Names the game refused to let this character hold, left.",
+            help: "Names the game refused to let this character hold, left while the switch below is on.",
             kind: KeyKind::Words,
+        },
+        Key {
+            name: "remember_unlootable",
+            label: "Remember what cannot be held",
+            help: "Add to Cannot be held what the game will not let this character hold, when it is of no known kind, and leave it from then on. Off: that list is not read.",
+            kind: KeyKind::Toggle,
         },
         Key {
             name: "autoclose",

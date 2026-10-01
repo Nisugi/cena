@@ -54,6 +54,7 @@ pub mod engine;
 mod errands;
 mod follow;
 pub mod import;
+mod keep_learned;
 mod maintain;
 mod monitor;
 mod party;

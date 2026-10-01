@@ -2,7 +2,7 @@
 
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
 ahead and work on the loot plan"*). **Steps 1, 2 and 3 BUILT the same day** on branch
-`loot-complete` (§5a, §5b, §5c). The author: *"let's plan out the rest of it. Hydra's loot should
+`loot-complete` (§5a, §5b, §5c); **step 4a BUILT 2026-10-01** (§5d). The author: *"let's plan out the rest of it. Hydra's loot should
 have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
@@ -271,6 +271,53 @@ pawnshop to sell at"*).
   another town for a bounty thing"*): `fwi_return` before a bounty's skins and gems are
   sold in its own town (`:3274`), and the note carried back to a bank off the island
   after it (`deposit_note`, `:3342`). See §6.
+
+## 5d. Step 4a, BUILT 2026-10-01: what is taken and searched, and what is learned
+
+Step 4 is built in three commits: 4a here, 4b the bags (overflow, `keep_closed`,
+`track_full_sacks`, the group's disks), 4c the hands, phasing and `loot ground`.
+
+- **`keep`** (eloot's `loot_keep`, `cena-behavior/src/loot/worth.rs`): a thing named in it
+  is taken whatever its kind, past every rule that throws a thing out
+  (`reject_invalid_loot`, `eloot.lic:5647`), but not past the player's own `leave` nor a
+  curse not wanted (`loot_specials`, `:5588-5595`), and it is taken one by one as a
+  special (`:5595`), whatever was learned of its name.
+- **`leave_creatures`** (`critter_exclude`): a corpse named in it is never searched nor
+  skinned (`search`, `:5714`; `skin`, `:5891`), and neither is a child (`:5715`)
+  (`LootProfile::leaves_creature`, `loot/plan.rs`).
+- **`remember_unlootable`** (`log_unlootables`): the `unlootable` list is read only when
+  it is on (`:5655`); and then a thing the game would not let the character hold, of no
+  kind the object table knows, is added to it (`ELoot.unlootable`, `:2951-2959`). Off,
+  the planner still leaves such a thing for the rest of the hunt.
+- **What a visit learns reaches the profile** (`loot/learned.rs`, `Learned`,
+  `remember`): a creature that cannot be skinned (as before), a thing that crumbled
+  (eloot saves it, `:4149-4153`; not a critter's bandana or robes crumbling as they are
+  opened, `:5045-5050`), a thing that could not be held when remembered, and a bag that
+  closes itself. The planner collects them (`loot/plan/learn.rs`); the hunt's driver
+  hands them on after each visit; the hunt desk writes them in under the file's lock and
+  says each kind once (`hunt/keep_learned.rs`, moved out of `desk.rs` at its cap). The
+  driver's callback is now `FnMut(&Learned)`.
+- **A bag closed by hand is not a bag that closes itself** (`loot/plan/bags.rs`): eloot's
+  test (`store_item`, `:4119-4124`): when the game says *It's closed!* and the bag's
+  contents are still listed, it closed itself, and is learned and named for the profile;
+  not listed, it was closed by hand, and is only opened. Hydra had taken every closed bag
+  for one that closes itself. The profile's `autoclose` names are read now: a bag named
+  there is opened before anything goes in.
+- **`loot reset unskinnable [creature]`** (eloot's `manage_unskinnable`, `:2169-2193`):
+  every creature learned unskinnable forgotten, or the one named, in any case
+  (`loot::forget_unskinnable`; the binary's `hunt/settings.rs`, `reset_unskinnable`). A
+  hunt under way keeps its own list until it ends.
+- **The importer** carries `loot_keep`, `critter_exclude` and `log_unlootables`, no longer
+  noting them dropped; the *Loot* page shows *Always take*, *Never search* and *Remember
+  what cannot be held*.
+- *Tests:* the verdict (kept past the weapon rule and a crumbly name, `leave` winning;
+  the unlootable list read only when remembered, `tests/loot_worth.rs`); the planner (a
+  creature left and a child, a thing kept, a bag closed by hand opened and not learned, a
+  bag that closes itself learned once a hunt, a bag named in the profile opened first,
+  what could not be held remembered only when asked, `tests/loot_plan.rs`); the profile
+  writer and the reset (`loot/learned.rs`, the binary's `hunt/settings.rs`); the words;
+  and over a scripted game, a thing that crumbles reaches the profile writer
+  (`tests/loot_errand.rs`).
 
 ## 6. Not ported, and why
 

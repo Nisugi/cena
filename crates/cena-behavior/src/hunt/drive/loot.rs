@@ -6,11 +6,13 @@ use cena_session::{CommandId, Notice, NoticeKind};
 use super::{BEAT, Driver, HuntEnd, LOOT_STEPS};
 use cena_session::containers::StowSlot;
 
-use crate::loot::{Errand, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify};
+use crate::loot::{
+    Errand, Learned, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify,
+};
 use crate::town::{self, Round, Town};
 use crate::travel::TravelNotes;
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     /// Loot with the planner (`plan/31` Stage 2): each step sent through the
     /// gate, each reply read for what eloot would act on, until the planner
     /// says it is done. What it learned is kept for the next room, and a
@@ -21,23 +23,17 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         };
         let memory = std::mem::take(&mut self.memory);
         let planner = Planner::new(profile, memory, corpses);
-        self.run_loot(planner, true).await?;
-        self.keep_unskinnable();
+        let planner = self.run_loot(planner, true).await?;
+        self.tell_learned(&planner);
         Ok(())
     }
 
-    /// Hand what this run learned unskinnable to whoever writes the profile,
-    /// once each.
-    fn keep_unskinnable(&mut self) {
-        let fresh: Vec<String> = self
-            .memory
-            .unskinnable
-            .difference(&self.saved_unskinnable)
-            .cloned()
-            .collect();
-        if !fresh.is_empty() {
-            self.saved_unskinnable.extend(fresh.iter().cloned());
-            (self.learned)(&fresh);
+    /// Hand what a visit learned to whoever writes the profile. Each name
+    /// is learned once a hunt: the memory carries it to the next room.
+    fn tell_learned(&mut self, planner: &Planner) {
+        let learned = planner.learned();
+        if !learned.is_empty() {
+            (self.learned)(learned);
         }
     }
 
@@ -63,7 +59,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                     Planner::new(profile, memory, &corpses)
                 };
                 let planner = self.run_loot(planner, false).await?;
-                self.keep_unskinnable();
+                self.tell_learned(&planner);
                 match planner.ended() {
                     Some(Left::Nothing) => "done.",
                     Some(Left::BagsFull) => "stopped: every bag that would take it is full.",
@@ -141,6 +137,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         let charm = (!town.charm.is_empty()).then(|| town.charm.clone());
         let planner = Planner::for_box(profile.clone(), memory, id, charm);
         let planner = self.run_loot(planner, false).await?;
+        self.tell_learned(&planner);
         Ok(planner.box_locked())
     }
 
@@ -174,11 +171,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 Step::Ask(what) => ((*what).to_owned(), None),
                 Step::Search(id) => (format!("loot #{id}"), None),
                 Step::LootRoom => ("loot room".to_owned(), None),
-                Step::LootItem(id) => (format!("loot #{id}"), self.floor_name(id)),
-                Step::Open(bag) => (format!("open #{bag}"), self.floor_name(bag)),
+                Step::LootItem(id) => (format!("loot #{id}"), self.floor_item(id)),
+                Step::Open(bag) => (format!("open #{bag}"), self.floor_item(bag)),
                 Step::LookIn(bag) => (format!("look in #{bag}"), None),
                 Step::Drag { item, bag } => {
-                    (format!("_drag #{item} #{bag}"), self.floor_name(item))
+                    (format!("_drag #{item} #{bag}"), self.floor_item(item))
                 }
                 Step::Wield(id) => (format!("get #{id}"), None),
                 Step::Kneel => ("kneel".to_owned(), None),
@@ -194,8 +191,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
             let outcomes: Vec<LootOutcome> = self.transcript.lines().filter_map(classify).collect();
             for outcome in &outcomes {
                 planner.outcome_in(outcome, &self.state);
-                if let Some(name) = &touched {
-                    planner.learn(outcome, name);
+                if let Some(item) = &touched {
+                    planner.learn_item(outcome, item);
                 }
             }
             if outcomes.is_empty() {

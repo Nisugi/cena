@@ -10,9 +10,10 @@ use super::{Driver, HuntEnd, fold_into};
 use crate::error::BehaviorError;
 use crate::hunt::engine::Hunt;
 use crate::hunt::said::Phase;
+use crate::loot::Learned;
 use crate::travel::{Ended, TravelNotes, travel_holding};
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     /// Walk to `to` with travel's driver under this authority, folding this
     /// hunt's own stream meanwhile.
     pub(super) async fn walk(&mut self, to: RoomId) -> Result<(), HuntEnd> {

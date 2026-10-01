@@ -7,12 +7,12 @@
 mod drive_support;
 mod ready;
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use cena_behavior::hunt::{Ending, Hunt, HuntEnd, hunt};
-use cena_behavior::loot::{Errand, LootProfile};
+use cena_behavior::loot::{Errand, Learned, LootProfile};
 use cena_behavior::travel::TravelNotes;
 use cena_behavior::watchdog::Heartbeat;
 use cena_map::{Map, Room};
@@ -89,7 +89,7 @@ fn set_out(
     tokio::task::JoinHandle<Option<HuntEnd>>,
     tokio::sync::broadcast::Receiver<cena_session::Event>,
 ) {
-    set_out_in(errand, floor, ROOMS, PROFILE)
+    set_out_in(errand, floor, ROOMS, PROFILE, &Arc::default())
 }
 
 /// [`set_out`], on this map and by this loot profile.
@@ -98,6 +98,7 @@ fn set_out_in(
     floor: Vec<RoomItem>,
     rooms: &'static str,
     profile: &'static str,
+    learned: &Arc<Mutex<Vec<Learned>>>,
 ) -> (
     cena_platform::TranscriptHandle,
     tokio::task::JoinHandle<Option<HuntEnd>>,
@@ -159,6 +160,7 @@ fn set_out_in(
     tokio::spawn(session.into_actor().run());
 
     let stop = CancellationToken::new();
+    let kept = Arc::clone(learned);
     let task = tokio::spawn(async move {
         ready::until_ready(ready).await.ok()?;
         let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
@@ -179,7 +181,11 @@ fn set_out_in(
             &heartbeat,
             TravelNotes::default(),
             |_| {},
-            |_| {},
+            move |learned: &Learned| {
+                if let Ok(mut held) = kept.lock() {
+                    held.push(learned.clone());
+                }
+            },
         ))
         .await;
         Some(end)
@@ -298,7 +304,13 @@ async fn loot_deposit_walks_to_the_bank_keeps_the_silver_and_comes_back() {
 /// `sell_fwi`, the bank is Mist Harbor's though the town's is as near.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_profile_that_sells_in_mist_harbor_banks_there() {
-    let (transcript, task, _) = set_out_in(Errand::Deposit, Vec::new(), TWO_BANKS, SELLS_IN_FWI);
+    let (transcript, task, _) = set_out_in(
+        Errand::Deposit,
+        Vec::new(),
+        TWO_BANKS,
+        SELLS_IN_FWI,
+        &Arc::default(),
+    );
     transcript.answer("south", &arrival(1003));
     transcript.answer("north", &arrival(1001));
     let end = ended(task).await;
@@ -314,4 +326,49 @@ async fn a_profile_that_sells_in_mist_harbor_banks_there() {
         .collect();
     assert!(order.iter().all(Option::is_some), "{lines:?}");
     assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{lines:?}");
+}
+
+/// What a visit learns reaches whoever writes the profile: a thing that
+/// crumbles as it is stowed is named, as eloot saves it (`eloot.lic:4149-4153`).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_thing_that_crumbles_is_told_to_the_profile() {
+    let floor = vec![
+        RoomItem {
+            id: "3".to_owned(),
+            noun: "whatsit".to_owned(),
+            text: "peculiar glowing whatsit".to_owned(),
+            before: None,
+            after: None,
+            status: None,
+        },
+        // Not wanted: the floor goes item by item, not by `loot room`.
+        RoomItem {
+            id: "4".to_owned(),
+            noun: "acantha".to_owned(),
+            text: "acantha leaf".to_owned(),
+            before: None,
+            after: None,
+            status: None,
+        },
+    ];
+    let learned = Arc::default();
+    let (transcript, task, _) = set_out_in(Errand::Room, floor, ROOMS, PROFILE, &learned);
+    transcript.answer(
+        "loot #42",
+        b"You search the giant warg.\n<prompt time=\"1001\">&gt;</prompt>\n",
+    );
+    transcript.answer(
+        "_drag #3 #902",
+        b"The peculiar glowing whatsit crumbles and decays away.\n<prompt time=\"1002\">&gt;</prompt>\n",
+    );
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Room))),
+        "{lines:?}"
+    );
+    let told = learned.lock().map(|held| held.clone()).unwrap_or_default();
+    assert_eq!(told.len(), 1, "{told:?}");
+    assert_eq!(told[0].crumbly, ["peculiar glowing whatsit"]);
 }

@@ -62,7 +62,7 @@ use super::engine::{Ending, Here, Hunt, Said};
 use super::report::{self, Reports, Status};
 use crate::error::BehaviorError;
 use crate::group::{Boards, Place};
-use crate::loot::Memory;
+use crate::loot::{Learned, Memory};
 use crate::travel::{Heard, TravelNotes, room_of};
 use crate::watchdog::Heartbeat;
 
@@ -108,7 +108,7 @@ pub async fn hunt(
     heartbeat: &Heartbeat,
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
-    learned: impl FnMut(&[String]) + Send,
+    learned: impl FnMut(&Learned) + Send,
 ) -> HuntEnd {
     Box::pin(hunt_in(
         handle,
@@ -142,7 +142,7 @@ pub async fn hunt_in(
     heartbeat: &Heartbeat,
     notes: TravelNotes,
     wrote: impl FnMut(&TravelNotes) + Send,
-    learned: impl FnMut(&[String]) + Send,
+    learned: impl FnMut(&Learned) + Send,
     group: Option<(Arc<Boards>, Place)>,
     reports: &Reports,
 ) -> HuntEnd {
@@ -176,12 +176,6 @@ pub async fn hunt_in(
             return HuntEnd::Finished(Ending::NoHuntingRoom);
         }
     };
-    // What the profile already says cannot be skinned; a name learned beyond
-    // it is written back.
-    let saved_unskinnable = machine
-        .loot_profile()
-        .map(|profile| profile.skin.unskinnable.iter().cloned().collect())
-        .unwrap_or_default();
     let mut driver = Driver {
         handle,
         cancel,
@@ -200,7 +194,6 @@ pub async fn hunt_in(
         notes,
         wrote,
         learned,
-        saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
         line: String::new(),
@@ -219,7 +212,7 @@ pub async fn hunt_in(
     end
 }
 
-struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> {
+struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> {
     hunting_map: Option<Map>,
     handle: &'a SessionHandle,
     cancel: &'a CancellationToken,
@@ -238,10 +231,8 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     /// once and kept as a walk changes it.
     notes: TravelNotes,
     wrote: W,
-    /// Told the creatures learned unskinnable, to write into the profile.
+    /// Told what looting learned, to write into the profile.
     learned: L,
-    /// The unskinnable names the profile holds, and those already told.
-    saved_unskinnable: std::collections::BTreeSet<String>,
     /// What looting learned: full bags, autoclosers, crumbly names.
     memory: Memory,
     /// The main window's text since the last loot command was sent, for
@@ -258,7 +249,7 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[St
     reports: &'a Reports,
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     async fn run(&mut self, heartbeat: &Heartbeat) -> HuntEnd {
         loop {
             heartbeat.beat();

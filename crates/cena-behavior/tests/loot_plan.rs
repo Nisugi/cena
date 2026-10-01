@@ -31,6 +31,49 @@ fn inside(state: &mut GameState, container: &str, id: &str, noun: &str, text: &s
     });
 }
 
+/// Dead creatures in the room, as the wire states them: one bold link each,
+/// in one `room objs` component, and each one's status.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors; only its bold depth matters"
+)]
+fn dead(state: &mut GameState, creatures: &[(i64, &str, &str)]) {
+    let runs = creatures
+        .iter()
+        .map(|(id, noun, name)| {
+            let mut run = Run {
+                text: (*name).to_owned(),
+                style: Default::default(),
+                link: Some(Link {
+                    kind: LinkKind::Exist {
+                        id: id.to_string(),
+                        noun: (*noun).to_owned(),
+                    },
+                    text: (*name).to_owned(),
+                    coord: None,
+                }),
+                inner_link: None,
+            };
+            run.style.bold_depth = 1;
+            run
+        })
+        .collect();
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs },
+    });
+    for (id, _, _) in creatures {
+        state.apply(&Frame::CreatureStatus {
+            id: id.to_string(),
+            attrs: vec![
+                ("exist".to_owned(), id.to_string()),
+                ("hostile".to_owned(), "1".to_owned()),
+                ("dead".to_owned(), "1".to_owned()),
+            ],
+        });
+    }
+}
+
 fn nisugi() -> LootProfile {
     let yaml = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -248,11 +291,116 @@ fn a_bag_that_closed_on_the_games_verb_is_opened_before_the_next_try() {
     let state = state(&floor, true);
     let mut plan = Planner::new(profile(), Memory::default(), &[]);
     assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
-    plan.outcome(&Outcome::Closed);
-    assert!(plan.memory().autoclosers.contains("901"));
+    // The sack is not listed: closed by hand, not a bag that closes itself.
+    plan.outcome_in(&Outcome::Closed, &state);
+    assert!(plan.memory().autoclosers.is_empty());
+    assert!(plan.learned().autoclose.is_empty());
     assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
     plan.outcome(&Outcome::Stored);
     assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+}
+
+/// A bag still listed with its contents when the game says it is closed
+/// closed itself (`eloot.lic:4119-4124`): learned, named for the profile, and
+/// opened first from then on, in the next room too.
+#[test]
+fn a_bag_that_closes_itself_is_learned_and_named_for_the_profile() {
+    // The acantha is not wanted, so the floor goes item by item.
+    let floor = [
+        item("1", "emerald", "uncut emerald"),
+        item("2", "acantha", "acantha leaf"),
+    ];
+    let mut state = state(&floor, true);
+    inside(&mut state, "901", "5", "diamond", "blue diamond");
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+    plan.outcome_in(&Outcome::Closed, &state);
+    assert!(plan.memory().autoclosers.contains("901"));
+    assert_eq!(plan.learned().autoclose, ["sack"]);
+    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
+    let mut next = Planner::new(profile(), plan.memory().clone(), &[]);
+    assert_eq!(next.next(&state), Step::Open("901".to_owned()));
+    assert!(next.learned().is_empty(), "learned once a hunt");
+}
+
+/// A bag the profile names in `autoclose` is opened before anything goes in.
+#[test]
+fn a_bag_named_in_the_profile_is_opened_first() {
+    let floor = [item("1", "emerald", "uncut emerald")];
+    let state = state(&floor, true);
+    let mut p = profile();
+    p.autoclose = vec!["sack".to_owned()];
+    let mut plan = Planner::new(p, Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootRoom);
+    plan.outcome(&Outcome::NothingHere);
+    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+}
+
+/// `critter_exclude` and a child: never searched; the rest are.
+#[test]
+fn a_creature_the_profile_leaves_is_not_searched() {
+    let mut state = state(&[], true);
+    dead(
+        &mut state,
+        &[
+            (41, "kobold", "kobold"),
+            (42, "rat", "giant rat"),
+            (43, "child", "lost child"),
+        ],
+    );
+    let mut p = profile();
+    p.leave_creatures = vec!["kobold".to_owned()];
+    let mut plan = Planner::new(p, Memory::default(), &[41, 42, 43]);
+    assert_eq!(plan.next(&state), Step::Search(42));
+    plan.outcome(&Outcome::Searched);
+    assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
+}
+
+/// A thing kept by name is taken whatever its kind, one by one; `leave`
+/// still wins.
+#[test]
+fn a_thing_kept_by_name_is_taken_whatever_its_kind() {
+    let floor = [
+        item("1", "sword", "ora broadsword"),
+        item("2", "crystal", "blue crystal"),
+    ];
+    let state = state(&floor, true);
+    let mut p = profile();
+    p.keep = vec!["broadsword".to_owned(), "crystal".to_owned()];
+    p.leave = vec!["blue".to_owned()];
+    let mut plan = Planner::new(p, Memory::default(), &[]);
+    assert_eq!(
+        plan.next(&state),
+        Step::Drag {
+            item: "1".to_owned(),
+            bag: "902".to_owned()
+        },
+        "a weapon, kept: a special, dragged; the crystal is left"
+    );
+}
+
+/// What could not be held is named for the profile only when it remembers
+/// them, and only when the thing is of no known kind.
+#[test]
+fn what_could_not_be_held_is_remembered_only_when_asked() {
+    let state = state(&[], true);
+    let whatsit = item("3", "whatsit", "peculiar glowing whatsit");
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    plan.learn_item(&Outcome::Unlootable, &whatsit);
+    assert!(plan.learned().unlootable.is_empty());
+    assert!(
+        plan.memory()
+            .unlootable
+            .contains("peculiar glowing whatsit")
+    );
+    let mut p = profile();
+    p.remember_unlootable = true;
+    let mut plan = Planner::new(p, Memory::default(), &[]);
+    plan.learn_item(&Outcome::Unlootable, &whatsit);
+    plan.learn_item(&Outcome::Unlootable, &item("4", "emerald", "uncut emerald"));
+    assert_eq!(plan.learned().unlootable, ["peculiar glowing whatsit"]);
+    let _ = plan.next(&state);
 }
 
 #[test]

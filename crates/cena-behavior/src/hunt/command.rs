@@ -86,6 +86,9 @@ pub enum Command {
     Loot(Errand),
     /// `;loot last`: what the last selling round came to (`plan/61` step 2).
     LootLast,
+    /// `;loot reset unskinnable [creature]`: forget every creature learned
+    /// unskinnable, or the one named (`plan/61` step 4).
+    ResetUnskinnable(Option<String>),
     /// `;sc <spell|alias> [target] [count]`: one spell, as set up.
     Sc(Vec<String>),
     /// `;sc alias|verb|stance|set ...`: change the spellcaster profile.
@@ -229,6 +232,7 @@ const LOOT_HELP: &[&str] = &[
     "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them",
     "loot deposit                           the bank alone, keeping the silver the profile says",
     "loot last                              what the last selling round came to, shop by shop",
+    "loot reset unskinnable [creature]      forget the creatures learned unskinnable, or one of them",
     "loot show                              the loot settings, skinning and selling with them",
     "loot set <setting> <value>             change one: loot set town.sell_keep_silver 5000",
     "loot unset <setting>                   back to its default",
@@ -251,6 +255,11 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
         [] => Errand::Room,
         [word, ..] if LOOT_REPORTS.contains(word) => return None,
         ["last"] => return Some(Ok(Command::LootLast)),
+        // The creature as typed: eloot matches it without regard to case.
+        ["reset", "unskinnable", rest @ ..] => {
+            let creature = (!rest.is_empty()).then(|| after_words(line, 3).to_owned());
+            return Some(Ok(Command::ResetUnskinnable(creature)));
+        }
         ["skin"] => Errand::Skin,
         ["box"] => Errand::Box,
         ["sell"] => Errand::Sell,
@@ -740,6 +749,14 @@ mod tests {
             assert_eq!(parse(report), None, "{report}");
         }
         assert_eq!(loot("loot last"), Some(Command::LootLast));
+        assert_eq!(
+            loot("loot reset unskinnable"),
+            Some(Command::ResetUnskinnable(None))
+        );
+        assert_eq!(
+            loot("loot RESET unskinnable  Krag Dweller "),
+            Some(Command::ResetUnskinnable(Some("Krag Dweller".to_owned())))
+        );
         assert!(matches!(parse("loot everything"), Some(Err(_))));
         assert_eq!(parse("loot help"), Some(Ok(Command::Help(Topic::Loot))));
         assert_eq!(

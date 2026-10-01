@@ -32,9 +32,8 @@ impl Planner {
             self.bags_full = true;
             return Some(Step::Done(Left::BagsFull));
         };
-        if self.memory.autoclosers.contains(&bag) && !self.opened.contains(&bag) {
-            self.opened.insert(bag.clone());
-            return Some(Step::Open(bag));
+        if let Some(open) = self.open_first(state, &bag) {
+            return Some(open);
         }
         Some(Step::Drag { item: id, bag })
     }

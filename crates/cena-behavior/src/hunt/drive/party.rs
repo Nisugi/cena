@@ -23,6 +23,7 @@ use crate::group::{
     Settings, muster,
 };
 use crate::hunt::said::{Ending, Phase};
+use crate::loot::Learned;
 use crate::travel::TravelNotes;
 
 /// How close together every member's drop must be to count as one network
@@ -91,7 +92,7 @@ pub(super) enum Seen {
     Over(HuntEnd),
 }
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     /// Read the group for this turn and hand the engine its [`Party`].
     pub(super) fn see_party(&mut self, here: Option<RoomId>) -> Seen {
         let Some(name) = self.state.character.name.clone() else {

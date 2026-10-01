@@ -4,10 +4,11 @@
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::{BEAT, Driver, HuntEnd, SELL_STEPS};
+use crate::loot::Learned;
 use crate::town::{self, Round, Seller, Step as Errand, Town};
 use crate::travel::{TravelNotes, walker_from};
 
-impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Driver<'_, F, W, L> {
+impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver<'_, F, W, L> {
     /// Sell with the town planner (`plan/31` Stage 4): each shop the nearest
     /// room tagged for it, walked with travel's driver; each step sent through
     /// the gate; each reply read as the ledger's facts from this driver's own
@@ -142,13 +143,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
         Ok(())
     }
 
-    /// The name of a thing on the floor, by id.
-    pub(super) fn floor_name(&self, id: &str) -> Option<String> {
+    /// A thing on the floor, by id.
+    pub(super) fn floor_item(&self, id: &str) -> Option<cena_session::RoomItem> {
         self.state
             .room
             .objects
             .iter()
             .find(|item| item.id == id)
-            .map(|item| item.text.clone())
+            .cloned()
     }
 }
