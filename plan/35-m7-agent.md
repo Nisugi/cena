@@ -559,7 +559,7 @@ Each ends in something demonstrable, as `12` §8 asks.
      interleaves). It was listed under step 5; sending needs it now, so it came now.
    - **A game command is an operation**: its result is the round trip -- `answered` when the
      game sent anything before its next prompt (the matcher typed input uses), `no_answer`,
-     the session's refusals (roundtime, stunned...) -- never whether the line did what was
+     the session's refusals (not roundtime: see the next-but-one point) -- never whether the line did what was
      meant (LAB: *"Report sent-but-unverified separately from evidence-backed success"*). The
      tool waits for the answer and hands back the game's text that came meanwhile.
    - **`text`** (Observe, §6's): the game's lines as viewers see them (`Event::Line`, M8's),
@@ -573,7 +573,14 @@ Each ends in something demonstrable, as `12` §8 asks.
      drop a clear topaz.*), and verbs are abbreviated (`Verb_EXPERIENCE.txt`: *"commonly
      abbreviated to 'EXP'"*), so a first word that begins a denied verb is denied, save the
      six directions that do. `;` is denied anywhere, as LAB denies it, though only a leading
-     symbol is Hydra's.
+     symbol is Hydra's. **Closed since** (the integrated crate review of 2026-09-28, I4, and
+     the crate review of 2026-10-01, L-1, SE-B-1, L-2): `_drag ... drop`; a `_drag` or
+     `put` anywhere but a hand, `my <container>` or an `#id` the model shows the character
+     carries (`GameState::carries`, checked as the session writes the line), since onto a
+     player it gives and into a bin it destroys (the author, 2026-10-01); `toss`, `break`,
+     `tear`, `share`, `pay`; and `q`, `qu`, `ex` alone, which may be a quit. A certain quit
+     (`quit`, `qui`, `exit`, `exi`) is the session's quit gate's, which lets an agent out
+     only holding a takeover.
    - No write-time gate: an agent's line goes as the player's does, and the game answers a
      line sent in roundtime with its own `...wait`. `Gate::Act` is a behavior's, for actions
      whose target it chose.

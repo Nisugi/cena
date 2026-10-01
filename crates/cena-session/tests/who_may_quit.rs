@@ -31,6 +31,16 @@ async fn started() -> (
 /// `quit` from `origin`, queued, and how it was answered and whether it
 /// reached the wire; `None` if the authority could not be claimed first.
 async fn quit_from(origin: Origin, claim: Option<AuthorityToken>) -> Option<(Outcome, bool)> {
+    said_from("quit", origin, claim).await
+}
+
+/// [`quit_from`] for any `line`: whether it, or the session's own `quit`,
+/// reached the wire.
+async fn said_from(
+    line: &str,
+    origin: Origin,
+    claim: Option<AuthorityToken>,
+) -> Option<(Outcome, bool)> {
     let (handle, transcript, cancel) = started().await;
     if let Some(token) = claim {
         handle.claim(token).await.ok()?;
@@ -38,15 +48,66 @@ async fn quit_from(origin: Origin, claim: Option<AuthorityToken>) -> Option<(Out
     let outcome = handle
         .send_and_await(
             CommandId(1),
-            "quit",
+            line,
             origin,
             Duration::from_secs(5),
             cena_session::queue::any_frame,
         )
         .await;
-    let sent = transcript.lines().iter().any(|line| line == "quit");
+    let sent = transcript
+        .lines()
+        .iter()
+        .any(|written| written == "quit" || written == line);
     cancel.cancel();
     Some((outcome, sent))
+}
+
+/// The game takes `qui` as `quit` (the author, 2026-10-01), and `q`, `qu`
+/// and `ex` may be one too: none of them gets past the gate from an origin
+/// that may not log the character out (the crate review of 2026-10-01, L-2).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn an_abbreviated_quit_is_checked_too() {
+    let token = AuthorityToken(3);
+    for line in ["qui", "QUI", "<c>qui", "exi", "q", "qu", "ex"] {
+        for (origin, claim) in [
+            (Origin::Agent(None), None),
+            (Origin::Behavior(token), Some(token)),
+        ] {
+            let (outcome, sent) = said_from(line, origin, claim).await.unwrap();
+            assert_eq!(
+                outcome,
+                Outcome::Refused(Refusal::Permanent),
+                "{line:?} from {origin:?}"
+            );
+            assert!(!sent, "{line:?} from {origin:?} reached the game");
+        }
+    }
+    let (handle, transcript, cancel) = started().await;
+    let refused = handle
+        .send_now("qui", Origin::Behavior(token), Gate::None)
+        .await;
+    assert!(
+        matches!(refused, Sent::Refused(Refusal::Permanent)),
+        "{refused:?}"
+    );
+    assert!(
+        !transcript
+            .lines()
+            .iter()
+            .any(|line| line == "qui" || line == "quit"),
+        "{:?}",
+        transcript.lines()
+    );
+    cancel.cancel();
+}
+
+/// The player's `qui` is a quit the session asked for, so nothing
+/// reconnects; a bare `q` from the player is the game's to read.
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_players_qui_is_a_quit() {
+    let (outcome, sent) = said_from("qui", Origin::Manual, None).await.unwrap();
+    assert_eq!(outcome, Outcome::Disconnected);
+    assert!(sent);
 }
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]

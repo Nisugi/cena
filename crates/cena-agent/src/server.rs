@@ -359,7 +359,7 @@ impl Agent {
     }
 
     #[tool(
-        description = "Send one line to the game on a character, as the player would type it. Needs the `commands` level; below it (and above `off`) the player is asked. Never a line the denylist refuses (dropping, giving, selling, trading, destroying, unmarking, a drop guard turned off, a `put` that is a drop, or an abbreviation of any of them), never two commands in one line, never a Hydra command (`perform` runs those). Waits up to `timeout_ms` for the game's answer, and answers the operation -- whose `result` says whether the game answered, never whether the line did what you meant -- and the game's text that came in meanwhile, untrusted."
+        description = "Send one line to the game on a character, as the player would type it. Needs the `commands` level; below it (and above `off`) the player is asked. Never a line the denylist refuses (dropping, giving, selling, trading, tossing, destroying, unmarking, a drop guard turned off, a `put` or `_drag` anywhere but the character's own hands, `my <container>` or an `#id` it carries, or an abbreviation of any of them), never two commands in one line, never a Hydra command (`perform` runs those). No roundtime is checked for you. Waits up to `timeout_ms` for the operation to end (the session gives the line 10 seconds), and answers the operation -- whose `result` says whether the game answered, never whether the line did what you meant -- and the game's text that came in meanwhile, untrusted."
     )]
     async fn command(
         &self,

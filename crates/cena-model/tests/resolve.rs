@@ -251,3 +251,48 @@ mod finding {
         assert_eq!(GameState::default().find_item("long bow"), None);
     }
 }
+
+/// `carries`: what the agent's denylist asks before an agent's line puts
+/// something somewhere (`plan/35` §3, the crate review of 2026-10-01, L-1).
+mod carried {
+    use cena_model::GameState;
+    use cena_protocol::Parser;
+
+    fn fed(wire: &str) -> GameState {
+        let mut parser = Parser::new();
+        let mut state = GameState::default();
+        for frame in parser.push_bytes(wire.as_bytes()) {
+            state.apply(&frame);
+        }
+        state
+    }
+
+    #[test]
+    fn a_hand_a_worn_container_and_what_is_in_it_are_carried() {
+        let state = fed(concat!(
+            "<right exist=\"111\" noun=\"pack\">a pack</right>\n",
+            "<clearStream id='inv'/><pushStream id='inv'/>Your worn items are:\n",
+            "  a <a exist=\"200\" noun=\"cloak\">dark cloak</a>\n",
+            "<popStream/>\n",
+            "<container id='200' title='My Cloak' target='#200'/>",
+            "<inv id='200'>In the <a exist=\"200\" noun=\"cloak\">cloak</a>:</inv>",
+            "<inv id='200'> a <a exist=\"201\" noun=\"sack\">small sack</a></inv>\n",
+            "<container id='900' title='Barrel' target='#900'/>",
+            "<inv id='900'> a <a exist=\"901\" noun=\"crate\">crate</a></inv>\n",
+            "<prompt time=\"1\">&gt;</prompt>\n",
+        ));
+        for id in ["111", "#111", "200", "#200", "201"] {
+            assert!(state.carries(id), "{id} is the character's");
+        }
+        // A window whose object is not carried is not the character's, nor
+        // what it lists; nor anything never seen.
+        for id in ["900", "901", "#-5", "", "#"] {
+            assert!(!state.carries(id), "{id:?} is not known to be carried");
+        }
+    }
+
+    #[test]
+    fn nothing_is_carried_before_the_game_says_so() {
+        assert!(!GameState::default().carries("111"));
+    }
+}

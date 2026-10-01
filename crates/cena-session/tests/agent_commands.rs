@@ -107,6 +107,53 @@ async fn a_lowered_level_takes_back_a_line_waiting_its_turn() {
     assert!(!wrote(&transcript, "look"), "{:?}", transcript.lines());
 }
 
+/// `_drag #<item> #<id>` onto a player gives the item away, and onto a bin
+/// destroys it (the author, 2026-10-01). An agent's `_drag` by id is
+/// written only onto what the model knows the character carries; anything
+/// else is refused at the write, never sent (the crate review of
+/// 2026-10-01, L-1).
+#[tokio::test(flavor = "current_thread")]
+async fn an_agents_drag_goes_only_onto_what_the_character_carries() {
+    let (handle, transcript) = ready(Level::Commands).await.unwrap();
+    let door = handle.agent_door();
+    transcript.answer(
+        "glance",
+        b"<right exist=\"555\" noun=\"pack\">a pack</right>\nYou glance down.\n<prompt time=\"2\">&gt;</prompt>\n",
+    );
+    let at = handle.generation();
+    let _ = handle
+        .send_manual_at(at, "glance", Duration::from_secs(5))
+        .await;
+    while !wrote(&transcript, "glance") {
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // A player's id (negative, as the wire sends them) and a bin's.
+    for (request, line) in [("d1", "_drag #42 #-9001"), ("d2", "_drag #42 #777")] {
+        let report = command(&door, line, request, handle.generation()).unwrap();
+        let ended = ended(&door, report.id).await.unwrap();
+        assert_eq!(
+            (ended.work, ended.reason.as_str()),
+            (Work::NoOpportunity, "refused"),
+            "{line}"
+        );
+        assert!(!wrote(&transcript, line), "{:?}", transcript.lines());
+    }
+
+    transcript.answer(
+        "_drag #42 #555",
+        b"You put a gem in your pack.\n<prompt time=\"3\">&gt;</prompt>\n",
+    );
+    let report = command(&door, "_drag #42 #555", "d3", handle.generation()).unwrap();
+    let ended = ended(&door, report.id).await.unwrap();
+    assert_eq!(ended.work, Work::Completed, "{ended:?}");
+    assert!(
+        wrote(&transcript, "_drag #42 #555"),
+        "into the pack it holds"
+    );
+}
+
 /// Written, it is the game's: a stop is refused saying so, and the
 /// player's stop has nothing to stop.
 #[tokio::test(flavor = "current_thread")]

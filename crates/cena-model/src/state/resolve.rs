@@ -52,7 +52,7 @@
 //! the question does not arise.
 
 use crate::state::GameState;
-use crate::state::containers::ReadySlot;
+use crate::state::containers::{ReadySlot, StowSlot};
 
 /// How well a name matched an item, best first.
 ///
@@ -228,6 +228,49 @@ impl GameState {
             return Some(Held::Right);
         }
         self.left_hand.holds(id).then_some(Held::Left)
+    }
+
+    /// Whether the object with exist id `id` (a leading `#` allowed) is known
+    /// to be the character's own: in a hand, worn, named by a stow or ready
+    /// slot, in the inventory tree, or listed inside a container window whose
+    /// object is one of those.
+    ///
+    /// **Known, not merely possible.** `false` for anything the model has
+    /// not seen as carried -- an object in the room, a player, a bin, or an
+    /// item of the character's the game has not listed yet -- so a caller
+    /// that must never put something where it is lost (the agent's
+    /// denylist, `plan/35` §3) refuses on `false`. A container window is
+    /// not taken as the character's on its own: only one whose object is
+    /// carried, one level down.
+    #[must_use]
+    pub fn carries(&self, id: &str) -> bool {
+        let id = id.strip_prefix('#').unwrap_or(id);
+        if id.is_empty() {
+            return false;
+        }
+        self.carries_directly(id)
+            || self.inventory.containers().any(|(window, container)| {
+                let object = container.target.as_deref().unwrap_or(window);
+                self.carries_directly(object) && container.items.iter().any(|item| item.id == id)
+            })
+    }
+
+    /// [`Self::carries`] without looking inside a container window.
+    fn carries_directly(&self, id: &str) -> bool {
+        let listed = |items: Option<&[super::containers::ItemRef]>| {
+            items.is_some_and(|items| items.iter().any(|item| item.id == id))
+        };
+        self.hand_holding(id).is_some()
+            || listed(self.worn.items())
+            || StowSlot::ALL
+                .into_iter()
+                .any(|slot| self.containers.stow(slot).is_some_and(|item| item.id == id))
+            || ReadySlot::ALL.into_iter().any(|slot| {
+                self.containers
+                    .ready(slot)
+                    .is_some_and(|item| item.id == id)
+            })
+            || self.inventory_snapshot.get(id).is_some()
     }
 
     /// Every item the game has named, with where it is.

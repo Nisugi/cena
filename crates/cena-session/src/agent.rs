@@ -71,6 +71,7 @@ mod perform;
 mod revocable;
 mod takeover;
 
+pub(crate) use denylist::destination;
 pub use denylist::refused;
 pub use door::{Call, Door};
 pub use revocable::Revocable;

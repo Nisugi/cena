@@ -69,7 +69,7 @@ JSON is `{"refused": "request", "character", "why"}`: a command an agent may not
 
 ## Acts are admitted once
 
-Every act (`tell_player`, `perform`, `control`) carries **your own `request_id`**, 1-64
+Every act (`tell_player`, `perform`, `control`, `command`, `take_over`) carries **your own `request_id`**, 1-64
 letters, digits, `-` or `_`. Asked again with the same id and the same act, it is answered as
 the first time was, **and never done twice**: after a lost reply, retry with the same id.
 The same id for a different act is refused. While the first is still being admitted, a
@@ -77,7 +77,7 @@ second is told so. An id that was refused without asking the player, or whose ac
 be done, admitted nothing and may be used again. The last 256 ids per character are kept, in
 memory: a restart of Hydra forgets them, and ends every operation they could have named.
 
-`perform` and `control` also carry `expected_generation`, the `generation` `state` last gave:
+`perform`, `control`, `command` and `take_over` also carry `expected_generation`, the `generation` `state` last gave:
 an act meant for a connection that has since been replaced is refused.
 
 ## `characters`
@@ -190,14 +190,20 @@ out as the agent's (`sent` with `origin: agent`), between the player's own lines
 takes a running behavior's place. Needs `commands`; below it, and above `off`, the player is
 asked, and the yes sends it.
 
-It is an operation: waits up to `timeout_ms` (10000, at most 30000) for the game's answer
-and answers `{operation, text}` -- the operation, and the game's text that came meanwhile,
-untrusted. **The result says whether the game answered, never whether the line did what you
-meant**: `completed`, `answered` means the game sent something before its next prompt;
-`unknown`, `no_answer` that it sent nothing but the prompt, or nothing in time (it may still
-have acted); `no_opportunity` with `roundtime`, `stunned` and their kind, that the session
-would not send it; `unknown` with `disconnected` or `session_ended`, that the answer was lost.
-Read the text, or `state`, for what happened.
+It is an operation: the tool waits up to `timeout_ms` (10000, at most 30000) for it to end,
+and answers `{operation, text}` -- the operation as it then stands (still running, if it has
+not ended), and the game's text that came meanwhile, untrusted. **The session gives the line
+10 seconds, whatever `timeout_ms` says**: a line still waiting its turn then is never written
+and ends `no_opportunity`, `no_answer`; a longer `timeout_ms` only waits longer for that.
+**The result says whether the game answered, never whether the line did what you meant**:
+`completed`, `answered` means the game sent something before its next prompt; `unknown`,
+`no_answer` that it sent nothing but the prompt, or nothing in time (it may still have
+acted); `no_opportunity`, `refused` that the session would not write it (a `_drag` or `put`
+into an `#id` the character is not known to carry, below; or a quit by an agent not holding
+a takeover); `unknown` with `disconnected` or `session_ended`, that the answer was lost (a
+takeover's `quit` ends so). **No roundtime, stun or web is checked for you**: a line sent in
+roundtime is written, and the game's answer (`...wait 3 seconds.`) is in the text, so read
+`state`'s `roundtime` first. Read the text, or `state`, for what happened.
 
 **Until the session writes the line, it can be stopped**, and is then never written:
 `interrupted` with `stopped` (your `stop`, or the player's `agent stop`) or `level_lowered`
@@ -211,12 +217,20 @@ LAB's, `crates/cena-session/src/agent/denylist.rs`): more than one line or a con
 character; `;`, `|` or `&` anywhere (never a chain); a line starting with the character's
 command symbol (a Hydra command: `perform`) or with `,`; a first word that is, or begins, one
 of drop, discard, trash, sell, give, offer, exchange, trade, mail, place, throw, hurl, empty,
-destroy, sacrifice, unmark -- except the directions `d`, `e`, `o`, `s`, `se`, `u`, since the
-game takes abbreviations; `mark ... remove`; `set nomarkeddrop` or `set saferdrop` not `on`;
-and a `put` that names no container, or puts on the ground, the floor or the room (`put my
-topaz` drops it); and a `_drag` onto `drop` (or a start of it) or the ground (`_drag #123
-drop` drops it), while a `_drag` to a hand or into a container goes. Refused as `{"refused": "request", "why": "never sent: ..."}`. The list is
-not a statement of what is safe.
+destroy, sacrifice, unmark, toss, break, tear, share, pay -- except the directions `d`, `e`,
+`o`, `s`, `se`, `u`, since the game takes abbreviations; `mark ... remove`; `set
+nomarkeddrop` or `set saferdrop` not `on`; `q`, `qu` or `ex` alone, which may be a quit
+(say `quit`); and a `_drag` or `put` anywhere but the character's own: a `_drag` goes only
+to `left`, `right`, `my <container>` or one `#id`, a `put` only into `my <container>` or one
+`#id` (`put my topaz` drops it; `_drag #123 #<player>` gives it away; a bin destroys it).
+Refused as `{"refused": "request", "why": "never sent: ..."}`. An `#id` the list lets
+through is checked as the session writes the line: one the character is not known to carry
+(in a hand, worn, in a stow or ready slot, in the inventory tree, or listed in a container
+it carries) ends `no_opportunity`, `refused`, never written. The list is not a statement of
+what is safe.
+
+**A quit** (`quit`, `qui`, `exit`, `exi`) logs the character out only while you hold a
+takeover; otherwise it ends `no_opportunity`, `refused`, never written.
 
 ## `take_over` `{ character, because, request_id, expected_generation }`
 

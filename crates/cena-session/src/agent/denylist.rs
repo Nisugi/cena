@@ -17,7 +17,7 @@
 //! as there, a line that starts with the command symbol is a Hydra command,
 //! which an agent runs through `perform` at its own level.
 //!
-//! # Three holes, each closed on a documented case
+//! # The holes, each closed on a documented case
 //!
 //! - **`put` with no container drops.** The wiki's own example
 //!   (`reference/wiki_clean/Verb_DROP.txt`): `>put my topaz` answers *You
@@ -35,14 +35,33 @@
 //!   the ground (`cena-behavior`'s `batch/build.rs` and `travel/routines/
 //!   day_pass.rs`; the GUI's carry to the floor). A `_drag` whose destination
 //!   is `drop`, or could be, or names the ground, is denied as a drop (the
-//!   integrated crate review of 2026-09-28, I4). A `_drag` to a hand
-//!   (`left`, `right`) or into a container (`#<id>`, `my cloak`) goes, as a
-//!   `put` into a container does: Hydra's own behaviors stow with it.
+//!   integrated crate review of 2026-09-28, I4).
+//! - **A `_drag` or a `put` into what is not the character's.** `_drag
+//!   #<item> #<player>` gives the item away and `_drag #<item> #<bin>`
+//!   destroys it (the author, 2026-10-01); a `put` into a bin is TRASH's own
+//!   example (`reference/wiki_clean/Verb_TRASH.txt`). So either goes only to
+//!   a hand (`left`, `right`, for a `_drag`), to `my <container>`, or to an
+//!   `#id` the model shows the character carries
+//!   (`cena_model::GameState::carries`), which the session checks as it
+//!   writes the line (`destination`, `actor/io.rs`): an id it does not know
+//!   is refused, never sent. Anything else -- a noun, which the game may
+//!   find in the room, `drop`, the ground -- is refused here (the crate
+//!   review of 2026-10-01, L-1).
+//! - **More verbs that drop, give or destroy** (the same review, SE-B-1):
+//!   `toss`, `break`, `tear`, `share` and `pay`, each cited at `VERBS`.
+//! - **A quit by another spelling.** The game takes `qui` as `quit` (the
+//!   author, 2026-10-01). A certain quit (`quit`, `qui`, `exit`, `exi`) goes
+//!   on to the session's quit gate, which lets an agent log the character
+//!   out only holding a takeover; one that only may be (`q`, `qu`, `ex`) is
+//!   refused here, since the game, not the session, would decide it
+//!   (`actor/ending.rs`, the same review, L-2).
 //!
 //! **What this is not**: a sandbox. It refuses the verbs that give things
 //! away or destroy them, as LAB's does, and it is not a list of what is
 //! safe. `plan/35` §3: the line that matters is Behaviors, below which
 //! everything goes through curated code.
+
+use crate::actor::ending::{is_exit_intent, may_be_exit};
 
 /// The verbs no agent line may begin with, nor with the start of one.
 const VERBS: &[&str] = &[
@@ -62,6 +81,17 @@ const VERBS: &[&str] = &[
     "destroy",
     "sacrifice",
     "unmark",
+    // Beyond LAB's list, each on the wiki's own words (the crate review of
+    // 2026-10-01, SE-B-1): `toss emerald` answers *"You toss your emerald
+    // onto the floor"* (`Verb_TOSS.txt`); BREAK *"is used to destroy an
+    // item"* (`Verb_BREAK.txt`); TEAR makes pages and cards into confetti
+    // (`Verb_TEAR.txt`); SHARE gives coins to the group (`Verb_SHARE.txt`);
+    // PAY gives them to a clerk (`Verb_PAY.txt`).
+    "toss",
+    "break",
+    "tear",
+    "share",
+    "pay",
 ];
 
 /// Movement words that begin a denied verb, and are movement all the same:
@@ -100,15 +130,19 @@ pub fn refused(line: &str, symbol: char) -> Option<String> {
     if folded.contains([';', '|', '&']) {
         return Some("no `;`, `|` or `&`: one command, never a chain".to_owned());
     }
+    if may_be_exit(&folded) && !is_exit_intent(&folded) {
+        return Some(format!(
+            "`{folded}` may be quit; an agent that may log the character out says `quit`"
+        ));
+    }
     let words: Vec<&str> = folded.split(' ').collect();
     let first = *words.first()?;
-    let begins = |verb: &str| !DIRECTIONS.contains(&first) && verb.starts_with(first);
-    if let Some(verb) = VERBS.iter().find(|verb| begins(verb)) {
+    if let Some(verb) = VERBS.iter().find(|verb| begins(first, verb)) {
         return Some(format!(
             "`{first}` may be {verb}, which an agent never sends: it gives away or destroys"
         ));
     }
-    if begins("mark") && words.last() == Some(&"remove") {
+    if begins(first, "mark") && words.last() == Some(&"remove") {
         return Some("removing a mark takes away a drop guard".to_owned());
     }
     let guard = words
@@ -117,40 +151,100 @@ pub fn refused(line: &str, symbol: char) -> Option<String> {
     if first == "set" && guard && words.last() != Some(&"on") {
         return Some("that turns off a drop guard".to_owned());
     }
-    if begins("put") {
-        return put(&words[1..]);
+    match onto(&words) {
+        Some(Onto::Not(why)) => Some(why),
+        Some(Onto::Safe | Onto::Id(_)) | None => None,
     }
+}
+
+/// The `#id` an agent's `_drag` or `put` puts something into, which the
+/// session lets it write only while the model shows the character carries
+/// it (`GameState::carries`, checked at the write in `actor/io.rs`). `None`
+/// for any other line, and for one [`refused`] denies or lets go on its
+/// words alone.
+#[must_use]
+pub(crate) fn destination(line: &str) -> Option<String> {
+    let folded = line.to_lowercase();
+    let words: Vec<&str> = folded.split_whitespace().collect();
+    match onto(&words) {
+        Some(Onto::Id(id)) => Some(id.to_owned()),
+        _ => None,
+    }
+}
+
+/// Where a `_drag` or a `put` puts what it moves, as far as its words say.
+enum Onto<'a> {
+    /// A hand, or `my` something: the character's own, by the game's word.
+    Safe,
+    /// An object by id: the character's own only if the model says so.
+    Id(&'a str),
+    /// Anywhere else, and why it is refused.
+    Not(String),
+}
+
+/// Where the `_drag` or `put` in `words` (folded, lowercase) puts what it
+/// moves; `None` for any other line.
+///
+/// Only the character's own hands and containers are safe: a `_drag` onto
+/// a player gives the item away, and onto a bin destroys it (the author,
+/// 2026-10-01), and a `put` into a bin is the trash verb's own example
+/// (`reference/wiki_clean/Verb_TRASH.txt`). A noun names whatever the game
+/// finds first, the room's included, so only `my <noun>` and an `#id` the
+/// model knows are trusted.
+fn onto<'a>(words: &[&'a str]) -> Option<Onto<'a>> {
+    let first = *words.first()?;
     if first == "_drag" {
-        return drag(words.get(2..).unwrap_or_default());
+        let not = || {
+            Onto::Not(
+                "a `_drag` goes only to a hand, `my <container>`, or a container the character carries by `#id`: anywhere else it may drop, give or destroy what it drags"
+                    .to_owned(),
+            )
+        };
+        return Some(match words.get(2..).unwrap_or_default() {
+            ["left" | "right"] | ["my", _, ..] => Onto::Safe,
+            [place] => by_id(place).map_or_else(not, Onto::Id),
+            // `_drag #1 #2` names one place; more words are not one.
+            _ => not(),
+        });
     }
-    None
-}
-
-/// Why a `_drag` whose destination is `onto` (the words after the item) is
-/// a drop, if it is.
-fn drag(onto: &[&str]) -> Option<String> {
-    onto.iter()
-        .any(|word| "drop".starts_with(word) || GROUND.contains(word))
-        .then(|| "a `_drag` onto `drop` or the ground drops what it drags".to_owned())
-}
-
-/// Why a `put` with `rest` after its verb is a drop, if it is.
-fn put(rest: &[&str]) -> Option<String> {
+    if !begins(first, "put") {
+        return None;
+    }
+    let rest = &words[1..];
     let Some(at) = rest.iter().position(|word| INTO.contains(word)) else {
-        return Some("a `put` that names no container drops what it puts".to_owned());
+        return Some(Onto::Not(
+            "a `put` that names no container drops what it puts".to_owned(),
+        ));
     };
-    let mut after = rest[at + 1..].iter().copied();
-    let target = match after.next() {
-        Some("the") => after.next(),
-        word => word,
-    };
-    match target {
-        None => Some("a `put` that names no container drops what it puts".to_owned()),
-        Some(place) if GROUND.contains(&place) => {
-            Some(format!("putting something on the {place} drops it"))
-        }
-        Some(_) => None,
+    let after = &rest[at + 1..];
+    let target = after.strip_prefix(&["the"]).unwrap_or(after);
+    if let [place] = target
+        && let Some(id) = by_id(place)
+    {
+        return Some(Onto::Id(id));
     }
+    Some(match target {
+        [] => Onto::Not("a `put` that names no container drops what it puts".to_owned()),
+        ["my", _, ..] => Onto::Safe,
+        [place, ..] if GROUND.contains(place) => {
+            Onto::Not(format!("putting something on the {place} drops it"))
+        }
+        _ => Onto::Not(
+            "a `put` goes only into `my <container>`, or a container the character carries by `#id`: a bin or another's takes what is put in it"
+                .to_owned(),
+        ),
+    })
+}
+
+/// The id `word` names, `#123` or `#-123`.
+fn by_id(word: &str) -> Option<&str> {
+    word.strip_prefix('#').filter(|id| !id.is_empty())
+}
+
+/// Whether a first word `first` may be `verb` abbreviated: it begins it,
+/// and is not one of the directions that happen to.
+fn begins(first: &str, verb: &str) -> bool {
+    !DIRECTIONS.contains(&first) && verb.starts_with(first)
 }
 
 #[cfg(test)]
@@ -220,6 +314,59 @@ mod tests {
         }
     }
 
+    /// The crate review of 2026-10-01: verbs that drop, give or destroy
+    /// beyond LAB's list (SE-B-1), a `_drag` or `put` onto a player, a bin
+    /// or anything not known to be the character's own (L-1), and a line
+    /// that may be a quit but is not certainly one (L-2).
+    #[test]
+    fn what_else_drops_gives_destroys_or_may_quit_is_denied() {
+        for line in [
+            "toss emerald",
+            "tos emerald",
+            "break clod",
+            "tear card",
+            "share 500",
+            "pay 100",
+            "_drag #123 Nerten",
+            "_drag #123 bin",
+            "_drag #123 in barrel",
+            "_drag #123",
+            "_drag #123 #456 drop",
+            "_drag #123 the barrel",
+            "put gem in barrel",
+            "put gem in the barrel",
+            "put gem on table",
+            "put gem in Nerten",
+            "put gem in my",
+            "q",
+            "qu",
+            "ex",
+            "<c>qu",
+        ] {
+            assert!(denied(line), "{line:?}");
+        }
+    }
+
+    /// Where an agent's `_drag` or `put` may go: a hand, `my` something, or
+    /// an id, which the session checks against the model as it writes
+    /// ([`super::destination`]).
+    #[test]
+    fn a_destination_by_id_is_left_to_the_model() {
+        use super::destination;
+        assert_eq!(destination("_drag #123 #456"), Some("456".to_owned()));
+        assert_eq!(destination("_DRAG #123  #-77"), Some("-77".to_owned()));
+        assert_eq!(destination("put #1 in #456"), Some("456".to_owned()));
+        assert_eq!(destination("put gem in the #456"), Some("456".to_owned()));
+        for line in [
+            "_drag #1 right",
+            "_drag #1 my cloak",
+            "put gem in my sack",
+            "look",
+        ] {
+            assert_eq!(destination(line), None, "{line:?}");
+        }
+    }
+
     /// What the list does not deny: the directions that begin a denied verb,
     /// a `put` into a container, a guard turned on, and ordinary lines.
     #[test]
@@ -235,7 +382,8 @@ mod tests {
             "exp",
             "say hello",
             "put topaz in my reticule",
-            "put gem on the table",
+            "put gem on my belt",
+            "put gem in #456",
             "stow sword",
             "get gem",
             "set nomarkeddrop on",
@@ -245,6 +393,15 @@ mod tests {
             "_drag #123 right",
             "_drag #123 left",
             "_drag #77 my cloak",
+            // A certain quit goes to the session's quit gate, which lets an
+            // agent log out only holding a takeover (`actor/ending.rs`).
+            "quit",
+            "qui",
+            "exit",
+            "exi",
+            "exp",
+            "tell",
+            "bow",
         ] {
             assert!(!denied(line), "{line:?}: {:?}", refused(line, ';'));
         }

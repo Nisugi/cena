@@ -17,7 +17,7 @@
 //! moves here is the two halves of one turn -- bytes out ([`SessionActor::pump`])
 //! and bytes in ([`SessionActor::ingest`]).
 
-use super::ending::{QUIT_EOF_DEADLINE, is_exit_intent};
+use super::ending::{QUIT_EOF_DEADLINE, is_exit_intent, may_be_exit};
 use super::lich_text::QuietWindow;
 use super::{Envelope, Event, SessionActor, WRITE_DEADLINE};
 use crate::command::{Outcome, Sent};
@@ -137,15 +137,16 @@ impl<S: ByteSource> SessionActor<S> {
                 //
                 // Live since M4: `cena-web` sends typed lines through
                 // `send_manual_at`, so a player typing `quit` reaches here.
+                // Who may log the character out: checked here because this
+                // path runs before `admit` (the review of 2026-09-29), and
+                // for a line that only may be a quit too (`ending.rs`).
+                if may_be_exit(&envelope.line) && !self.may_quit(envelope.origin) {
+                    let _ = envelope
+                        .reply
+                        .send(Outcome::Refused(crate::command::Refusal::Permanent));
+                    return None;
+                }
                 if is_exit_intent(&envelope.line) {
-                    // Who may log the character out: checked here because this
-                    // path runs before `admit` (the review of 2026-09-29).
-                    if !self.may_quit(envelope.origin) {
-                        let _ = envelope
-                            .reply
-                            .send(Outcome::Refused(crate::command::Refusal::Permanent));
-                        return None;
-                    }
                     if envelope
                         .revocable
                         .as_ref()
@@ -231,13 +232,13 @@ impl<S: ByteSource> SessionActor<S> {
                 // comes this way -- is a quit, not a write the server answers
                 // by closing and the supervisor answers by logging straight
                 // back in (the review of 2026-09-29).
+                if generation == self.generation && may_be_exit(&line) && !self.may_quit(origin) {
+                    let _ = reply.send(crate::command::Sent::Refused(
+                        crate::command::Refusal::Permanent,
+                    ));
+                    return None;
+                }
                 if generation == self.generation && is_exit_intent(&line) {
-                    if !self.may_quit(origin) {
-                        let _ = reply.send(crate::command::Sent::Refused(
-                            crate::command::Refusal::Permanent,
-                        ));
-                        return None;
-                    }
                     let (tx, _rx) = tokio::sync::oneshot::channel();
                     let ok = self.begin_quit(QUIT_EOF_DEADLINE, tx).await;
                     // The connection is ending: nothing more goes on it.
@@ -464,6 +465,20 @@ impl<S: ByteSource> SessionActor<S> {
             // out (`gate.rs`). Refused, not written.
             if let Err(refusal) = self.check_gate(envelope.gate) {
                 let _ = envelope.reply.send(Outcome::Refused(refusal));
+                continue;
+            }
+            // An agent's `_drag` or `put` by id goes only into what the
+            // character carries, as the model knows it now: onto a player it
+            // gives, into a bin it destroys (`agent/denylist.rs`, the crate
+            // review of 2026-10-01, L-1).
+            if matches!(envelope.origin, crate::command::Origin::Agent(_))
+                && let Some(id) = crate::agent::destination(&envelope.line)
+                && !self.state.carries(&id)
+            {
+                self.log(&format!("refused, #{id} is not carried: {}", envelope.line));
+                let _ = envelope
+                    .reply
+                    .send(Outcome::Refused(crate::command::Refusal::Permanent));
                 continue;
             }
             // An agent's line taken back first is never written

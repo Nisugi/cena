@@ -189,7 +189,9 @@ async fn a_command_sent_after_quit_does_not_reach_the_wire() {
 /// to diagnose.
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_typed_quit_is_recognised_as_leaving() {
-    for typed in ["quit", "exit", "  QUIT  ", "<c>quit"] {
+    // `qui` the game takes as `quit` (the author, 2026-10-01), and `exi` can
+    // be nothing else (the crate review of 2026-10-01, L-2).
+    for typed in ["quit", "exit", "  QUIT  ", "<c>quit", "qui", "exi"] {
         let (source, transcript) = AnsweringSource::new(PROMPT);
         let session = Session::new(source);
         let handle = session.handle();
@@ -248,6 +250,30 @@ async fn a_typed_quit_is_recognised_as_leaving() {
         cancel.cancel();
         let _ = driver.await;
     }
+}
+
+/// A frontend's typed `qui` takes the quit's path too, not the typed line's
+/// write at once, which would leave the server's close to read as a drop
+/// (the crate review of 2026-10-01, L-2).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_typed_abbreviated_quit_at_a_frontend_is_leaving() {
+    let (source, transcript) = AnsweringSource::new(PROMPT);
+    let session = Session::new(source);
+    let handle = session.handle();
+    let cancel = session.cancel_token();
+    let driver = tokio::spawn(session.into_actor().run());
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let outcome = handle
+        .send_typed_at(handle.generation(), "qui", Duration::from_secs(5))
+        .await;
+    assert_eq!(outcome, cena_session::Outcome::Disconnected);
+    let lines = transcript.lines();
+    assert!(lines.iter().any(|l| l == "quit"), "{lines:?}");
+    assert!(!lines.iter().any(|l| l == "qui"), "{lines:?}");
+
+    cancel.cancel();
+    let _ = driver.await;
 }
 
 /// An ordinary command that merely CONTAINS the word is not an exit.

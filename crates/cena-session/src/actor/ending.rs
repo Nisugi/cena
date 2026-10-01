@@ -471,10 +471,42 @@ pub(super) const QUIT_EOF_DEADLINE: std::time::Duration = std::time::Duration::f
 /// dependency and one line of trimming is not worth acquiring one (Rule -1).
 /// The `<c>` prefix is Lich's client-command wrapper, kept because a frontend
 /// porting Lich's input path may pass it through.
+///
+/// **And the game's abbreviations**, which Lich's test misses: the game
+/// takes `qui` as `quit` (the author, 2026-10-01), so a `qui` that was not
+/// recognised went to the game as a plain line, past [`may_quit`], and its
+/// close was read as a drop and reconnected (the crate review of
+/// 2026-10-01, L-2). `exi` is taken too: no other verb begins `exi`
+/// (`reference/wiki_clean/Verb_VERB_Verb list.txt`: `exchange`, `exhale`,
+/// `expel`, `experience`, `express`, `extinguish`, `extract`). Shorter ones
+/// are not certain, see [`may_be_exit`].
+///
+/// [`may_quit`]: SessionActor::may_quit
 pub(crate) fn is_exit_intent(line: &str) -> bool {
+    let word = bare(line);
+    ["quit", "qui", "exit", "exi"]
+        .iter()
+        .any(|exit| word.eq_ignore_ascii_case(exit))
+}
+
+/// Whether this line may be a quit, as the game reads it: any start of
+/// `quit`, or of `exit` past `e` (which is east). `q` and `qu` may also be
+/// `quest`, `queue` or `quickstrike`, and `ex` half the `ex` verbs
+/// (`Verb_VERB_Verb list.txt`); which one the game takes no source here
+/// records, so these are neither sent as a quit nor let past [`may_quit`]
+/// as an ordinary line by an origin that may not log the character out.
+///
+/// [`may_quit`]: SessionActor::may_quit
+pub(crate) fn may_be_exit(line: &str) -> bool {
+    let word = bare(line).to_ascii_lowercase();
+    !word.is_empty()
+        && ("quit".starts_with(&word) || (word.len() >= 2 && "exit".starts_with(&word)))
+}
+
+/// The line without its spacing or Lich's `<c>`.
+fn bare(line: &str) -> &str {
     let line = line.trim();
-    let line = line.strip_prefix("<c>").unwrap_or(line).trim();
-    line.eq_ignore_ascii_case("quit") || line.eq_ignore_ascii_case("exit")
+    line.strip_prefix("<c>").unwrap_or(line).trim()
 }
 
 impl<S: ByteSource> SessionActor<S> {
