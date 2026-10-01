@@ -1,8 +1,8 @@
 # 61. Loot, complete: every command and feature of eloot
 
 **Status: APPROVED 2026-09-30** (the author, the questions of §7 answered: *"You can go
-ahead and work on the loot plan"*). **Step 1 BUILT the same day** on branch
-`loot-complete` (§5a). The author: *"let's plan out the rest of it. Hydra's loot should
+ahead and work on the loot plan"*). **Steps 1 and 2 BUILT the same day** on branch
+`loot-complete` (§5a, §5b). The author: *"let's plan out the rest of it. Hydra's loot should
 have all the features and commands of eloot."*
 
 `plan/31` ported eloot's share of the hunt: looting, skinning, and a selling round at the
@@ -217,6 +217,26 @@ commit. A branch, `loot-complete`.
 - **Found, not this plan's**: on `main` at `75095f2a` two split parents are over their
   caps and `ratchet.rs` is red for them: `cena-behavior/src/hunt/drive.rs` (467 of 450,
   since `4eb41db3`) and `cena-gui/src/keys.rs` (459 of 450, since `1d114e2d`).
+
+## 5b. Step 2, BUILT 2026-09-30
+
+- **The breakdown** (`cena-behavior/src/town/breakdown.rs`, `Breakdown`): pure, fed each
+  prompt's `LootFact`s by the seller (`Seller::outcome`), so it costs the round no
+  command and no `wealth`. Silver by shop (gem shop, pawnshop, furrier); the locksmith
+  pool as what its boxes held less its tips and fees, with how many boxes were given and
+  came back; a total of the sales and the boxes less the pool's cost; the Chronomage's
+  credit apart, since it is not silver; the bank's deposits, notes and withdrawals; what
+  was appraised and not sold since, with its figure, or *too valuable for the shop*; and
+  how many items the round gave up on.
+- **Said at the end of every round**, a hunt's and an errand's
+  (`hunt/drive/selling.rs`), in place of the one line that counted what could not be
+  sold; kept on the desk's `Reports` for **`loot last`**, until Hydra is closed.
+- **Not eloot's**: its *Pool Return* count added into the silver total (`eloot.lic:6231`)
+  is not reproduced. `loot box` alone says no breakdown: it is not a round.
+- *Tests:* the adding up, the pool's net, what is kept and what a sale takes off that
+  list, the grouping of figures, a round with nothing to say (`breakdown.rs`); `loot
+  last` as a word; and over a scripted game the bank trip says *deposited 12,340* from
+  the game's own line (`tests/loot_errand.rs`).
 
 ## 6. Not ported, and why
 

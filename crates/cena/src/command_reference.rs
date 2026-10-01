@@ -147,6 +147,7 @@
 //! | `loot pool deposit` | only give boxes |
 //! | `loot pool return` (`check`, `loot`) | only collect them |
 //! | `loot deposit` | the bank alone, keeping the silver the profile says |
+//! | `loot last` | what the last selling round came to: silver by shop, the pool's boxes less its tips and fees, the bank, and what was appraised and kept. Said at the end of every round, a hunt's too |
 //! | `loot show`, `loot set <setting> <value>`, `loot unset <setting>` | the loot profile, skinning and selling with it: `loot set skin.enable on`, `loot set town.sell_keep_silver 5000` |
 //! | `loot help` | the table |
 //!

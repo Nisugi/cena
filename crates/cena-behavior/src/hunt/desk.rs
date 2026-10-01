@@ -51,7 +51,7 @@ pub struct Desk {
     boards: OnceLock<Arc<Boards>>,
     /// What its runs are doing, turn by turn, for a hunt panel (`plan/47`
     /// step 8).
-    reports: Reports,
+    pub(super) reports: Reports,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -203,6 +203,10 @@ impl Desk {
                 self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }
             Command::Loot(errand) => self.loot_errand(handle, joined, errand),
+            Command::LootLast => {
+                self.say_last_round(handle);
+                None
+            }
             Command::Run(name) => {
                 let character = &joined.0.state.character;
                 let loaded = chain::load(

@@ -14,8 +14,10 @@
 //!
 //! Stage 4a built the gem shop and the pawnshop; 4b the furrier, the
 //! collectibles counter, the Chronomage and the bank; 4c the locksmith pool.
-//! [`goods`] reads what the bags hold and which shop takes it.
+//! [`goods`] reads what the bags hold and which shop takes it, and
+//! [`breakdown`] adds up what the round came to.
 
+pub mod breakdown;
 pub mod goods;
 pub mod plan;
 mod pool;
@@ -23,6 +25,7 @@ pub mod reply;
 pub mod settings;
 mod step;
 
+pub use breakdown::Breakdown;
 pub use goods::{Shop, is_gold_ring};
 pub use plan::{Round, Seller, Step};
 pub use pool::{box_in_hand, keeps_box};

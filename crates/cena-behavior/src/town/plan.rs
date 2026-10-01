@@ -121,6 +121,8 @@ pub struct Seller {
     same: u8,
     /// Which part of the round this is.
     round: Round,
+    /// What the round has come to so far.
+    breakdown: super::Breakdown,
 }
 
 impl Seller {
@@ -200,6 +202,7 @@ impl Seller {
             last: None,
             same: 0,
             round,
+            breakdown: super::Breakdown::default(),
         })
     }
 
@@ -528,6 +531,7 @@ impl Seller {
     /// What the game said to the last step: the ledger's facts for the
     /// prompt, and the replies that are not facts.
     pub fn outcome(&mut self, facts: &[LootFact], replies: &[Reply], state: &GameState) {
+        self.breakdown.take(facts);
         let Some(last) = self.last.clone() else {
             return;
         };
@@ -742,6 +746,12 @@ impl Seller {
     #[must_use]
     pub fn skipped(&self) -> &BTreeSet<String> {
         &self.skipped
+    }
+
+    /// What the round came to, as lines for the player (`breakdown.rs`).
+    #[must_use]
+    pub fn breakdown(&self) -> Vec<String> {
+        self.breakdown.lines(self.skipped.len())
     }
 }
 

@@ -84,6 +84,8 @@ pub enum Command {
     /// `;loot` and its words: one part of looting or selling, by itself
     /// (`plan/61` step 1).
     Loot(Errand),
+    /// `;loot last`: what the last selling round came to (`plan/61` step 2).
+    LootLast,
     /// `;sc <spell|alias> [target] [count]`: one spell, as set up.
     Sc(Vec<String>),
     /// `;sc alias|verb|stance|set ...`: change the spellcaster profile.
@@ -226,6 +228,7 @@ const LOOT_HELP: &[&str] = &[
     "loot sell                              the selling round: the pool, the shops, the bank, and back",
     "loot pool | pool deposit | pool return the locksmith pool alone: both, only give boxes, only collect them",
     "loot deposit                           the bank alone, keeping the silver the profile says",
+    "loot last                              what the last selling round came to, shop by shop",
     "loot show                              the loot settings, skinning and selling with them",
     "loot set <setting> <value>             change one: loot set town.sell_keep_silver 5000",
     "loot unset <setting>                   back to its default",
@@ -247,6 +250,7 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
     let errand = match lower.as_slice() {
         [] => Errand::Room,
         [word, ..] if LOOT_REPORTS.contains(word) => return None,
+        ["last"] => return Some(Ok(Command::LootLast)),
         ["skin"] => Errand::Skin,
         ["box"] => Errand::Box,
         ["sell"] => Errand::Sell,
@@ -266,7 +270,7 @@ fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
         },
         _ => {
             return Some(Err(
-                "loot, loot skin, loot box, loot sell, loot pool [deposit|return], loot deposit; `loot help` says more."
+                "loot, loot skin, loot box, loot sell, loot pool [deposit|return], loot deposit, loot last; `loot help` says more."
                     .to_owned(),
             ));
         }
@@ -735,6 +739,7 @@ mod tests {
         ] {
             assert_eq!(parse(report), None, "{report}");
         }
+        assert_eq!(loot("loot last"), Some(Command::LootLast));
         assert!(matches!(parse("loot everything"), Some(Err(_))));
         assert_eq!(parse("loot help"), Some(Ok(Command::Help(Topic::Loot))));
         assert_eq!(

@@ -109,14 +109,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&[String])> Drive
                 self.transcript.lines().filter_map(town::classify).collect();
             seller.outcome(&facts, &replies, &self.state);
         }
-        if !seller.skipped().is_empty() {
-            self.handle.say(Notice::line(
-                NoticeKind::Info,
-                format!(
-                    "Hunt: {} items could not be sold this round.",
-                    seller.skipped().len()
-                ),
-            ));
+        // What it came to (`plan/61` step 2), said and kept for `loot last`.
+        let came_to = seller.breakdown();
+        if !came_to.is_empty() {
+            self.reports.keep_round(came_to.clone());
+            self.handle.say(Notice::table(NoticeKind::Info, came_to));
         }
         Ok(true)
     }

@@ -74,12 +74,14 @@ fn set_out(
 ) -> (
     cena_platform::TranscriptHandle,
     tokio::task::JoinHandle<Option<HuntEnd>>,
+    tokio::sync::broadcast::Receiver<cena_session::Event>,
 ) {
     let (source, transcript) = AnsweringSource::logged_in(PROMPT);
     let session = Session::new(source);
     let handle = session.handle();
     let (mut snapshot, events) = session.subscribe();
     let (_, ready) = session.subscribe();
+    let (_, told) = session.subscribe();
     let state = &mut snapshot.state;
     state.apply(&Frame::Prompt {
         time: "1000".into(),
@@ -155,7 +157,7 @@ fn set_out(
         .await;
         Some(end)
     });
-    (transcript, task)
+    (transcript, task, told)
 }
 
 /// The errand's ending, once it has one.
@@ -189,7 +191,7 @@ async fn loot_alone_searches_the_dead_takes_the_floor_and_ends() {
         after: None,
         status: None,
     };
-    let (transcript, task) = set_out(Errand::Room, vec![emerald]);
+    let (transcript, task, _) = set_out(Errand::Room, vec![emerald]);
     transcript.answer(
         "loot #42",
         b"You search the giant warg.\nIt had nothing of interest.\n<prompt time=\"1001\">&gt;</prompt>\n",
@@ -215,7 +217,7 @@ async fn loot_alone_searches_the_dead_takes_the_floor_and_ends() {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn loot_skin_skins_and_searches_nothing() {
-    let (transcript, task) = set_out(Errand::Skin, Vec::new());
+    let (transcript, task, _) = set_out(Errand::Skin, Vec::new());
     let end = ended(task).await;
     let lines = transcript.lines();
     assert_eq!(
@@ -233,9 +235,13 @@ async fn loot_skin_skins_and_searches_nothing() {
 
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn loot_deposit_walks_to_the_bank_keeps_the_silver_and_comes_back() {
-    let (transcript, task) = set_out(Errand::Deposit, Vec::new());
+    let (transcript, task, mut told) = set_out(Errand::Deposit, Vec::new());
     transcript.answer("north", &arrival(1002));
     transcript.answer("south", &arrival(1001));
+    transcript.answer(
+        "deposit all",
+        b"You deposit 12,340 silvers into your account.\n<prompt time=\"1003\">&gt;</prompt>\n",
+    );
     let end = ended(task).await;
     let lines = transcript.lines();
     assert_eq!(
@@ -250,4 +256,13 @@ async fn loot_deposit_walks_to_the_bank_keeps_the_silver_and_comes_back() {
     assert!(order.iter().all(Option::is_some), "{lines:?}");
     assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{lines:?}");
     assert_eq!(at(&lines, "loot #42"), None, "the dead are left alone");
+    // What the round came to is said at its end (`plan/61` step 2), from
+    // the game's own line.
+    let said = drive_support::told_so_far(&mut told);
+    assert!(
+        said.iter()
+            .any(|(_, text)| text.contains("the round came to")
+                && text.contains("Bank: deposited 12,340.")),
+        "{said:?}"
+    );
 }

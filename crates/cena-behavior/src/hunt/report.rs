@@ -39,6 +39,8 @@ pub struct Reports {
     latest: watch::Sender<Option<Status>>,
     /// What is running, as the desk named it: the profile, or `heal`.
     running: Mutex<String>,
+    /// What the last selling round came to, as it was said (`loot last`).
+    round: Mutex<Vec<String>>,
 }
 
 impl Default for Reports {
@@ -46,11 +48,27 @@ impl Default for Reports {
         Self {
             latest: watch::channel(None).0,
             running: Mutex::default(),
+            round: Mutex::default(),
         }
     }
 }
 
 impl Reports {
+    /// Keep what a selling round came to, in place of the round before.
+    pub(crate) fn keep_round(&self, lines: Vec<String>) {
+        *self.round.lock().unwrap_or_else(PoisonError::into_inner) = lines;
+    }
+
+    /// What the last selling round came to; empty when none has run since
+    /// Hydra started.
+    #[must_use]
+    pub fn last_round(&self) -> Vec<String> {
+        self.round
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
     /// Hear each report from now on, starting with the latest.
     #[must_use]
     pub fn follow(&self) -> watch::Receiver<Option<Status>> {

@@ -15,6 +15,21 @@ use crate::keep::{self, KeepProfile};
 use crate::waggle::WaggleProfile;
 
 impl super::desk::Desk {
+    /// `;loot last`: what the last selling round came to, as it was said.
+    pub(super) fn say_last_round(&self, handle: &cena_session::SessionHandle) {
+        use cena_session::{Notice, NoticeKind};
+        let lines = self.reports.last_round();
+        handle.say(if lines.is_empty() {
+            Notice::line(
+                NoticeKind::Info,
+                "Loot: no selling round has run since Hydra started.",
+            )
+            .answering()
+        } else {
+            Notice::table(NoticeKind::Info, lines).answering()
+        });
+    }
+
     /// `;loot` and its words: the errand started by the character's loot
     /// profile; said and refused when there is none.
     pub(super) fn loot_errand(
