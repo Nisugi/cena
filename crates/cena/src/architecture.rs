@@ -477,7 +477,9 @@
 //! [`cena_agent`] for the agent, a script runner and the Lich relay;
 //! and [`play`](crate::play) for how the binary ties them together. The
 //! words this page uses, and the ones that already mean two things, are in
-//! [`glossary`](crate::glossary). For the reasoning behind any of it,
+//! [`glossary`](crate::glossary), and every command a player types, family by
+//! family, is [`command_reference`](crate::command_reference). For the
+//! reasoning behind any of it,
 //! `plan/12` first and `plan/05` beside it.
 //! `research/` holds designs that were reversed or deferred, and is never
 //! instructions.

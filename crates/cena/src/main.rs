@@ -12,7 +12,9 @@
 //! **How the whole workspace fits together is [`architecture`]**: the crate
 //! graph, the flow of one line of game text, the three seams, and the tests
 //! that hold each in place. Read it first. **The words it uses are
-//! [`glossary`]**: one per concept, each linked to the item it names.
+//! [`glossary`]**: one per concept, each linked to the item it names. **The
+//! commands a player types are [`command_reference`]**, every family's words
+//! on one page, each linked to the module that answers it.
 //!
 //! This was M1's end-to-end slice, run for real: a single session narrated
 //! criterion by criterion, a looping `look` behind `--demo`, and measurement
@@ -44,6 +46,7 @@ mod atlas;
 mod attention;
 mod batch;
 mod combat;
+mod command_reference;
 mod commands;
 mod connector;
 mod doll;
