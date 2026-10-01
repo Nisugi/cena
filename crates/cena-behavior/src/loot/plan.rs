@@ -35,6 +35,7 @@ mod bags;
 mod boxed;
 mod hands;
 mod learn;
+pub(crate) use bags::{disks, named_bags};
 use boxed::Boxed;
 
 /// How many times a corpse is searched before it is given up on
@@ -79,8 +80,11 @@ pub enum Step {
     Cast(String),
     /// `loot #id` on a corpse.
     Search(i64),
-    /// `open #bag`: a critter's bag, or a bag that closes itself.
+    /// `open #bag`: a critter's bag, or a bag that is shut.
     Open(String),
+    /// `close #bag`: a bag opened this visit, when the profile keeps them
+    /// closed.
+    Close(String),
     /// `look in #bag`: a critter's bag, to learn what it holds.
     LookIn(String),
     /// `loot room`: everything left on the floor is wanted.
@@ -174,6 +178,8 @@ pub struct Planner {
     opened: BTreeSet<String>,
     /// Bags the game said are closed, by hand, to open before the next try.
     closed: BTreeSet<String>,
+    /// Bags opened this visit and closed again before it ended.
+    reclosed: BTreeSet<String>,
     /// What this visit learned that the profile does not hold yet.
     learned: Learned,
     /// Critters' bags being emptied this visit.
@@ -222,6 +228,7 @@ impl Planner {
             skipped: BTreeSet::new(),
             opened: BTreeSet::new(),
             closed: BTreeSet::new(),
+            reclosed: BTreeSet::new(),
             learned: Learned::default(),
             bags: BTreeMap::new(),
             room_looted: false,
@@ -263,9 +270,15 @@ impl Planner {
         &self.memory
     }
 
-    /// The next command.
+    /// The next command. Before the visit ends, the bags it opened are
+    /// closed again when the profile keeps them closed.
     pub fn next(&mut self, state: &GameState) -> Step {
-        let step = self.decide(state);
+        let mut step = self.decide(state);
+        if matches!(step, Step::Done(_))
+            && let Some(bag) = self.reclose(state)
+        {
+            step = Step::Close(bag);
+        }
         self.last = Some(step.clone());
         step
     }
@@ -323,6 +336,15 @@ impl Planner {
             }
         }
         if floor.specials.is_empty() && floor.unwanted == 0 && !self.room_looted {
+            // The bags the game stows into are opened first when the profile
+            // keeps them closed (`open_loot_containers`, `eloot.lic:3869-3889`).
+            for (_, types) in &floor.regular {
+                if let Some(bag) = self.bag_for(state, types)
+                    && let Some(open) = self.open_first(state, &bag)
+                {
+                    return open;
+                }
+            }
             self.room_looted = true;
             self.gathered = floor
                 .regular

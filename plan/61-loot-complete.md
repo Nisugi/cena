@@ -162,7 +162,7 @@ the author's answers set (§7), with the bounty trips dropped (§6).
 4. **The dead keys of the loot**: overflow containers, the `autoclose` list, `loot_keep`,
    `critter_exclude`, `keep_closed`, the group's disks, phasing with 704; `loot ground`;
    `loot reset unskinnable`; and `track_full_sacks`, `log_unlootables`, `favor_left`
-   (§7 item 4).
+   (§7 item 4). 4a and 4b BUILT (§5d, §5e); 4c next.
 5. **The round's missing pieces that every profile meets**: *lighten your load*, a full
    pool, full bags during a return, the worker by the room's tag, scarabs and the gem
    shop's odd nouns, the ingot, plinite; and step 1's leftovers, `loot pool` banking the
@@ -318,6 +318,55 @@ Step 4 is built in three commits: 4a here, 4b the bags (overflow, `keep_closed`,
   writer and the reset (`loot/learned.rs`, the binary's `hunt/settings.rs`); the words;
   and over a scripted game, a thing that crumbles reaches the profile writer
   (`tests/loot_errand.rs`).
+
+## 5e. Step 4b, BUILT 2026-10-01: the bags
+
+- **Where a thing goes** (`cena-behavior/src/loot/plan/bags.rs`, `Planner::bag_for`): a
+  box goes on a disk before any bag, the character's own (`disk`), then with
+  `disk_group` (eloot's `use_disk_group`) its group's in the room, its own first
+  (`single_drag_box`, `eloot.lic:4035-4066`); **nothing but a box goes on a disk**
+  (`:4038`). Then the stow list's bag for the kind, the default, and the overflow
+  containers in the profile's order (`single_drag`, `:3958-4007`). A disk that takes no
+  more is passed by as a full bag is. Hydra had put boxes in bags first and anything on
+  the disk once every bag was full; neither was eloot's.
+- **The overflow containers** are found as eloot finds them (`ensure_items`, `:2230`): by
+  the name's words among what is worn, `/\b<name>\b/i` over `GameObj.inv`, else by a
+  listed container's title (`named_bags`). eloot keeps them as one comma-separated
+  string (`set_inventory`, `:2357`); the importer splits it. The selling round reads the
+  same bags (`town::goods::selling_bags`).
+- **Someone's disk is never loot** (`loot/worth.rs`): read by the model's `Disk::read`, so
+  a `rusty iron Duffield coffer` is Duffield's disk, not a box. The rule had read a
+  possessive the game never sends, the defect fixed in the model on `main` the same day
+  (`74840eec`, `cena-model/src/state/disk.rs`).
+- **`keep_closed`**: a bag whose contents are not listed is opened before anything goes
+  in, `loot room` too (`open_loot_containers`, `:3869-3889`), and every bag a visit
+  opened is closed again before it ends (`:2409`), a disk never. A bag that closes
+  itself, learned or named in `autoclose`, is opened before `loot room` as well
+  (`:3864-3867`); it had been opened only before a drag.
+- **`track_full`** (eloot's `track_full_sacks`, on by default, `:508`): a bag found full
+  stays full across the hunt desk's runs, a hunt, a `loot`, the next hunt (`FullBags`,
+  `hunt/errands.rs`), until a selling round or a pool trip, which free every bag before
+  and after (`:7996`, `:8006`, `:8015`, `:8030`). Hydra never freed one, so a hunt that
+  had sold could rest again for a bag it had emptied. Off, each visit tries every bag
+  again (`:7911-7914`).
+- **The round's bags** (`hunt/drive/selling.rs`): a bag the round sells from whose
+  contents are not listed is opened and looked in first, as eloot does on starting
+  (`open_single_container`, `:3892-3921`); with `keep_closed` each is closed at the end,
+  but not one the ready list keeps a weapon in (`close_sell_containers`, `:3737-3746`).
+- **The importer** carries `use_disk_group`, `keep_closed` and `track_full_sacks`; the
+  *Loot* page shows *The group's disks too*, *Keep the bags closed* and *Remember full
+  bags*.
+- *Tests:* the planner (a box on the disk first and nothing else on it; the group's disk
+  after the character's own, never a stranger's; someone's disk never taken for a box;
+  the overflow bags in the profile's order, found among what is worn; a kept-closed bag
+  opened before `loot room` and closed after, the disk left alone; the importer,
+  `tests/loot_bags.rs`); over a scripted game, a bag found full skipped by the next `loot`
+  until a bank trip frees it, and tried again with `track_full` off; the round's bag
+  opened and looked in before it starts and closed after (`tests/loot_errand.rs`).
+  Each rule was broken by hand against its tests: 14 mutations, 14 caught. The round's
+  two clears were broken together: in these tests either one alone leaves the bags free,
+  so neither alone is pinned; the one before matters to a box emptied during the round,
+  the one after to a bag that box filled.
 
 ## 6. Not ported, and why
 

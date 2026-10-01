@@ -59,6 +59,12 @@ pub struct Town {
     /// Boxes on the character's disk go to the pool too: the loot
     /// profile's `use_disk`, set by the driver.
     pub disk: bool,
+    /// The loot profile's overflow containers, by name: sold from when
+    /// `containers` names `overflow`.
+    pub overflow: Vec<String>,
+    /// The loot profile's `keep_closed`: the bags opened to sell from are
+    /// closed again after the round.
+    pub keep_closed: bool,
 }
 
 impl Default for Town {
@@ -83,6 +89,8 @@ impl Default for Town {
             keep_scrolls: Vec::new(),
             fwi: false,
             disk: false,
+            overflow: Vec::new(),
+            keep_closed: false,
         }
     }
 }
@@ -154,6 +162,8 @@ impl Town {
             keep_scrolls: list(table, "sell_keep_scrolls"),
             fwi: flag(table, "sell_fwi"),
             disk: flag(table, "use_disk"),
+            overflow: Vec::new(),
+            keep_closed: false,
         }
     }
 
@@ -205,6 +215,8 @@ impl Town {
     pub fn for_profile(profile: &crate::loot::LootProfile) -> Self {
         let mut town = Self::from_table(&profile.town);
         town.disk |= profile.disk;
+        town.overflow.clone_from(&profile.overflow);
+        town.keep_closed = profile.keep_closed;
         town
     }
 
@@ -388,6 +400,8 @@ mod tests {
             keep_scrolls: vec!["215v".to_owned()],
             fwi: true,
             disk: false,
+            overflow: Vec::new(),
+            keep_closed: false,
         }
     }
 

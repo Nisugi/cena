@@ -140,6 +140,8 @@ pub struct Hunt {
     /// The character's loot profile, when one was imported (`plan/31`):
     /// corpses are then looted by the planner, not by a bare `loot #id`.
     pub(super) loot: Option<LootProfile>,
+    /// The bags found full, shared by every run on the desk (`errands.rs`).
+    pub(super) full_bags: Option<super::errands::FullBags>,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
     /// Why this turn waits, with the numbers: set by the rest arm, cleared
@@ -253,6 +255,7 @@ impl Hunt {
             notes: Vec::new(),
             seed,
             loot: None,
+            full_bags: None,
             must_rest: None,
             waiting: None,
             field_rest: false,

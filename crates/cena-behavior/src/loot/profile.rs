@@ -37,7 +37,7 @@ pub const ELOOT_CATEGORIES: &[&str] = &[
 ];
 
 /// What a character takes, leaves and falls back on when looting.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[expect(
     clippy::struct_excessive_bools,
@@ -57,15 +57,21 @@ pub struct LootProfile {
     pub leave_creatures: Vec<String>,
     /// Go defensive to loot (`loot_defensive`).
     pub defensive: bool,
-    /// The disk is a container when the bags are full (`use_disk`).
+    /// A box goes on the character's own disk before any bag, and the
+    /// disk's boxes go to the pool too (`use_disk`; `single_drag_box`,
+    /// `eloot.lic:4035-4066`). Nothing but a box goes on a disk.
     pub disk: bool,
+    /// The group's disks take boxes too, the character's own first
+    /// (`use_disk_group`).
+    pub disk_group: bool,
     /// Cast Sigil of Determination when a corpse is *not in any condition*
     /// to be searched (`sigil_determination_on_fail`).
     pub sigil_on_fail: bool,
     /// Phase (704) a box before stowing it (`loot_phase`).
     pub phase_boxes: bool,
-    /// Containers tried, by name and in order, when the stow list's bag and
-    /// the default are full (`overflow_containers`).
+    /// Containers tried, by a word of their names and in order, when the
+    /// stow list's bag and the default are full (`overflow_containers`); a
+    /// round sells from them when `town.sell_container` names `overflow`.
     pub overflow: Vec<String>,
     /// Names learned to crumble when stowed; left where they lie.
     pub crumbly: Vec<String>,
@@ -76,8 +82,16 @@ pub struct LootProfile {
     /// when it is of no kind the object table knows, and leave what it names
     /// (`log_unlootables`); off, the list is not read.
     pub remember_unlootable: bool,
-    /// Containers that close themselves; opened before a drag (`auto_close`).
+    /// Containers that close themselves; opened before anything goes in,
+    /// `loot room` too (`auto_close`).
     pub autoclose: Vec<String>,
+    /// The bags are kept closed: opened to loot or sell, and closed again
+    /// after (`keep_closed`).
+    pub keep_closed: bool,
+    /// A bag found full stays full until a selling round, across rooms and
+    /// runs (`track_full_sacks`, on by default as eloot's is); off, each
+    /// visit tries every bag again.
+    pub track_full: bool,
     /// Skinning, when the profile turns it on (`skin_enable` and the
     /// `skin_*` keys; `plan/31` §5).
     #[serde(default, skip_serializing_if = "Skin::is_off")]
@@ -87,6 +101,33 @@ pub struct LootProfile {
     /// [`crate::town::Town`].
     #[serde(skip_serializing_if = "toml::Table::is_empty")]
     pub town: toml::Table,
+}
+
+impl Default for LootProfile {
+    /// Every switch off and every list empty, but `track_full`, on as
+    /// eloot's `track_full_sacks` is (`eloot.lic:508`).
+    fn default() -> Self {
+        Self {
+            take: Vec::new(),
+            leave: Vec::new(),
+            keep: Vec::new(),
+            leave_creatures: Vec::new(),
+            defensive: false,
+            disk: false,
+            disk_group: false,
+            sigil_on_fail: false,
+            phase_boxes: false,
+            overflow: Vec::new(),
+            crumbly: Vec::new(),
+            unlootable: Vec::new(),
+            remember_unlootable: false,
+            autoclose: Vec::new(),
+            keep_closed: false,
+            track_full: true,
+            skin: Skin::default(),
+            town: toml::Table::new(),
+        }
+    }
 }
 
 /// How corpses are skinned, eloot's Skinning tab (`eloot.lic:937-947`,
@@ -258,7 +299,13 @@ pub const TABLE: &[crate::settings::Key] = {
         Key {
             name: "disk",
             label: "Use the disk",
-            help: "The disk holds what the bags cannot, and its boxes go to the pool.",
+            help: "A box goes on your disk before any bag, and the disk's boxes go to the pool. Nothing else goes on a disk.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "disk_group",
+            label: "The group's disks too",
+            help: "Boxes go on the group's disks as well, your own first.",
             kind: KeyKind::Toggle,
         },
         Key {
@@ -302,6 +349,18 @@ pub const TABLE: &[crate::settings::Key] = {
             label: "Containers that close themselves",
             help: "Opened before something is put in.",
             kind: KeyKind::Words,
+        },
+        Key {
+            name: "keep_closed",
+            label: "Keep the bags closed",
+            help: "Open the bags to loot or sell, and close them again after.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "track_full",
+            label: "Remember full bags",
+            help: "A bag found full is skipped until a selling round, across rooms and runs. Off: each visit tries every bag again.",
+            kind: KeyKind::Toggle,
         },
     ]
 };

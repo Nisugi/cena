@@ -323,7 +323,9 @@ fn a_bag_that_closes_itself_is_learned_and_named_for_the_profile() {
     assert!(next.learned().is_empty(), "learned once a hunt");
 }
 
-/// A bag the profile names in `autoclose` is opened before anything goes in.
+/// A bag the profile names in `autoclose` is opened before anything goes in,
+/// `loot room` too (`open_loot_containers`, `eloot.lic:3864-3867`), and once
+/// a visit.
 #[test]
 fn a_bag_named_in_the_profile_is_opened_first() {
     let floor = [item("1", "emerald", "uncut emerald")];
@@ -331,9 +333,9 @@ fn a_bag_named_in_the_profile_is_opened_first() {
     let mut p = profile();
     p.autoclose = vec!["sack".to_owned()];
     let mut plan = Planner::new(p, Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
     assert_eq!(plan.next(&state), Step::LootRoom);
     plan.outcome(&Outcome::NothingHere);
-    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
     assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
 }
 
@@ -444,29 +446,6 @@ fn what_the_hand_held_before_the_looting_is_left_in_it() {
         plan.next(&state),
         Step::LootRoom,
         "the sword was not on the floor: it is not dragged anywhere"
-    );
-}
-
-#[test]
-fn the_disk_is_the_last_bag_when_the_profile_uses_it() {
-    let floor = [
-        item("2", "acantha", "acantha leaf"),
-        item("3", "whatsit", "peculiar glowing whatsit"),
-        item("77", "disk", "Ashryn disk"),
-    ];
-    let mut state = state(&floor, true);
-    state.character.name = Some("Ashryn".to_owned());
-    let mut p = profile();
-    p.disk = true;
-    let mut memory = Memory::default();
-    memory.full.insert("902".to_owned());
-    let mut plan = Planner::new(p, memory, &[]);
-    assert_eq!(
-        plan.next(&state),
-        Step::Drag {
-            item: "3".to_owned(),
-            bag: "77".to_owned()
-        }
     );
 }
 

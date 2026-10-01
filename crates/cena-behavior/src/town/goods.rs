@@ -173,31 +173,53 @@ fn is_thorn_or_berry(item: &RoomItem) -> bool {
     item.noun.contains("thorn") || item.noun.contains("berry")
 }
 
-/// The bags sold from, by the profile's `sell_container` slots, with their
+/// The bags sold from, by the profile's `sell_container` words, with their
 /// contents as the inventory lists them.
 pub(super) fn bags(town: &Town, state: &GameState) -> Vec<(String, Vec<RoomItem>)> {
-    let mut seen = BTreeSet::new();
-    let mut out = Vec::new();
+    selling_bags(town, state)
+        .into_iter()
+        .map(|bag| {
+            let items = state
+                .inventory
+                .container(&bag)
+                .map(|c| c.items.clone())
+                .unwrap_or_default();
+            (bag, items)
+        })
+        .collect()
+}
+
+/// The bags sold from, by id, once each: the stow list's for each
+/// `sell_container` word, and the profile's overflow containers for
+/// `overflow` (`set_selling_containers`, `eloot.lic:2415-2448`).
+#[must_use]
+pub fn selling_bags(town: &Town, state: &GameState) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
     for word in &town.containers {
-        let slot = match word.as_str() {
-            "default" => Some(StowSlot::Default),
-            "overflow" => None,
-            other => StowSlot::parse(other),
+        let ids = match word.as_str() {
+            "overflow" => crate::loot::plan::named_bags(state, &town.overflow),
+            "default" => stow_id(state, StowSlot::Default),
+            other => StowSlot::parse(other)
+                .map(|slot| stow_id(state, slot))
+                .unwrap_or_default(),
         };
-        let Some(bag) = slot.and_then(|slot| state.containers.stow(slot)) else {
-            continue;
-        };
-        if !seen.insert(bag.id.clone()) {
-            continue;
+        for id in ids {
+            if !out.contains(&id) {
+                out.push(id);
+            }
         }
-        let items = state
-            .inventory
-            .container(&bag.id)
-            .map(|c| c.items.clone())
-            .unwrap_or_default();
-        out.push((bag.id.clone(), items));
     }
     out
+}
+
+/// The stow list's bag for a slot, as a list of none or one.
+fn stow_id(state: &GameState, slot: StowSlot) -> Vec<String> {
+    state
+        .containers
+        .stow(slot)
+        .map(|bag| bag.id.clone())
+        .into_iter()
+        .collect()
 }
 
 /// Whether the profile parts with this at some shop: a sold category, a
@@ -371,16 +393,12 @@ pub(super) fn lots(
     out
 }
 
-/// This character's own disk in the room, by id: a `disk` whose name begins
-/// with the character's name.
+/// This character's own disk in the room, by id (`Disk.mine`; the pool
+/// takes the own disk's boxes only, `find_boxes`, `eloot.lic:3107-3114`).
 pub(super) fn own_disk(state: &GameState) -> Option<String> {
-    let name = state.character.name.as_deref()?;
-    state
-        .room
-        .objects
-        .iter()
-        .find(|item| item.noun == "disk" && item.text.starts_with(name))
-        .map(|item| item.id.clone())
+    crate::loot::plan::disks(state, true, false)
+        .into_iter()
+        .next()
 }
 
 /// A note, scrip or chit in either hand (`read_note`, `:2445`).

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use cena_behavior::hunt::{Ending, Hunt, HuntEnd, hunt};
+use cena_behavior::hunt::{Ending, FullBags, Hunt, HuntEnd, hunt};
 use cena_behavior::loot::{Errand, Learned, LootProfile};
 use cena_behavior::travel::TravelNotes;
 use cena_behavior::watchdog::Heartbeat;
@@ -89,16 +89,23 @@ fn set_out(
     tokio::task::JoinHandle<Option<HuntEnd>>,
     tokio::sync::broadcast::Receiver<cena_session::Event>,
 ) {
-    set_out_in(errand, floor, ROOMS, PROFILE, &Arc::default())
+    set_out_in(
+        errand,
+        floor,
+        (ROOMS, PROFILE),
+        &Arc::default(),
+        &FullBags::default(),
+    )
 }
 
-/// [`set_out`], on this map and by this loot profile.
+/// [`set_out`], on this map and by this loot profile, with the bags known
+/// full shared as one desk shares them.
 fn set_out_in(
     errand: Errand,
     floor: Vec<RoomItem>,
-    rooms: &'static str,
-    profile: &'static str,
+    (rooms, profile): (&'static str, &'static str),
     learned: &Arc<Mutex<Vec<Learned>>>,
+    full: &FullBags,
 ) -> (
     cena_platform::TranscriptHandle,
     tokio::task::JoinHandle<Option<HuntEnd>>,
@@ -161,13 +168,15 @@ fn set_out_in(
 
     let stop = CancellationToken::new();
     let kept = Arc::clone(learned);
+    let full = Arc::clone(full);
     let task = tokio::spawn(async move {
         ready::until_ready(ready).await.ok()?;
         let rooms: Vec<Room> = serde_json::from_str(rooms).ok()?;
         let map = Map::from_rooms(rooms).ok()?;
         let next = Arc::new(AtomicU64::new(0));
         let ids = move || CommandId(next.fetch_add(1, Ordering::Relaxed));
-        let machine = Hunt::loot_only(LootProfile::parse(profile).ok()?, errand);
+        let machine =
+            Hunt::loot_only(LootProfile::parse(profile).ok()?, errand).with_full_bags(full);
         handle.claim(AuthorityToken(1)).await.ok()?;
         let heartbeat = Heartbeat::default();
         let end = Box::pin(hunt(
@@ -307,9 +316,9 @@ async fn a_profile_that_sells_in_mist_harbor_banks_there() {
     let (transcript, task, _) = set_out_in(
         Errand::Deposit,
         Vec::new(),
-        TWO_BANKS,
-        SELLS_IN_FWI,
+        (TWO_BANKS, SELLS_IN_FWI),
         &Arc::default(),
+        &FullBags::default(),
     );
     transcript.answer("south", &arrival(1003));
     transcript.answer("north", &arrival(1001));
@@ -332,31 +341,15 @@ async fn a_profile_that_sells_in_mist_harbor_banks_there() {
 /// crumbles as it is stowed is named, as eloot saves it (`eloot.lic:4149-4153`).
 #[tokio::test(flavor = "current_thread", start_paused = true)]
 async fn a_thing_that_crumbles_is_told_to_the_profile() {
-    let floor = vec![
-        RoomItem {
-            id: "3".to_owned(),
-            noun: "whatsit".to_owned(),
-            text: "peculiar glowing whatsit".to_owned(),
-            before: None,
-            after: None,
-            status: None,
-        },
-        // Not wanted: the floor goes item by item, not by `loot room`.
-        RoomItem {
-            id: "4".to_owned(),
-            noun: "acantha".to_owned(),
-            text: "acantha leaf".to_owned(),
-            before: None,
-            after: None,
-            status: None,
-        },
-    ];
     let learned = Arc::default();
-    let (transcript, task, _) = set_out_in(Errand::Room, floor, ROOMS, PROFILE, &learned);
-    transcript.answer(
-        "loot #42",
-        b"You search the giant warg.\n<prompt time=\"1001\">&gt;</prompt>\n",
+    let (transcript, task, _) = set_out_in(
+        Errand::Room,
+        whatsit_and_leaf(),
+        (ROOMS, PROFILE),
+        &learned,
+        &FullBags::default(),
     );
+    transcript.answer("loot #42", SEARCHED);
     transcript.answer(
         "_drag #3 #902",
         b"The peculiar glowing whatsit crumbles and decays away.\n<prompt time=\"1002\">&gt;</prompt>\n",
@@ -371,4 +364,145 @@ async fn a_thing_that_crumbles_is_told_to_the_profile() {
     let told = learned.lock().map(|held| held.clone()).unwrap_or_default();
     assert_eq!(told.len(), 1, "{told:?}");
     assert_eq!(told[0].crumbly, ["peculiar glowing whatsit"]);
+}
+
+const SEARCHED: &[u8] = b"You search the giant warg.\n<prompt time=\"1001\">&gt;</prompt>\n";
+
+const WONT_FIT: &[u8] =
+    b"The peculiar glowing whatsit won't fit in the backpack.\n<prompt time=\"1002\">&gt;</prompt>\n";
+
+/// A whatsit to drag into the backpack, and a leaf nobody wants: the floor
+/// goes item by item, not by `loot room`.
+fn whatsit_and_leaf() -> Vec<RoomItem> {
+    [
+        ("3", "whatsit", "peculiar glowing whatsit"),
+        ("4", "acantha", "acantha leaf"),
+    ]
+    .into_iter()
+    .map(|(id, noun, text)| RoomItem {
+        id: id.to_owned(),
+        noun: noun.to_owned(),
+        text: text.to_owned(),
+        before: None,
+        after: None,
+        status: None,
+    })
+    .collect()
+}
+
+/// The bags known full, as the desk holds them between runs.
+fn held(full: &FullBags) -> Vec<String> {
+    full.lock()
+        .map(|set| set.iter().cloned().collect())
+        .unwrap_or_default()
+}
+
+/// A bag found full stays so for the desk's next `loot` (`track_full_sacks`)
+/// until a trip to town frees it, as eloot clears `sacks_full` around every
+/// round (`eloot.lic:7996`, `:8006`).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn a_bag_found_full_stays_full_for_the_next_loot_until_a_round() {
+    let full = FullBags::default();
+    let room = (ROOMS, PROFILE);
+    let (transcript, task, _) = set_out_in(
+        Errand::Room,
+        whatsit_and_leaf(),
+        room,
+        &Arc::default(),
+        &full,
+    );
+    transcript.answer("loot #42", SEARCHED);
+    transcript.answer("_drag #3 #902", WONT_FIT);
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Room))),
+        "{lines:?}"
+    );
+    assert_eq!(held(&full), ["902"], "{lines:?}");
+
+    let (transcript, task, _) = set_out_in(
+        Errand::Room,
+        whatsit_and_leaf(),
+        room,
+        &Arc::default(),
+        &full,
+    );
+    transcript.answer("loot #42", SEARCHED);
+    let _ = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        at(&lines, "_drag #3 #902"),
+        None,
+        "the backpack is still full: {lines:?}"
+    );
+
+    let (transcript, task, _) =
+        set_out_in(Errand::Deposit, Vec::new(), room, &Arc::default(), &full);
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("south", &arrival(1001));
+    let _ = ended(task).await;
+    assert!(held(&full).is_empty(), "{:?}", transcript.lines());
+}
+
+/// With `track_full` off, each visit tries every bag again
+/// (`eloot.lic:7911-7914`).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn without_track_full_the_next_loot_tries_the_full_bag_again() {
+    const FORGETS: &str = "take = [\"gem\", \"magic\"]\ntrack_full = false\n";
+    let full = FullBags::default();
+    for _ in 0..2 {
+        let (transcript, task, _) = set_out_in(
+            Errand::Room,
+            whatsit_and_leaf(),
+            (ROOMS, FORGETS),
+            &Arc::default(),
+            &full,
+        );
+        transcript.answer("loot #42", SEARCHED);
+        transcript.answer("_drag #3 #902", WONT_FIT);
+        let _ = ended(task).await;
+        let lines = transcript.lines();
+        assert!(at(&lines, "_drag #3 #902").is_some(), "{lines:?}");
+    }
+}
+
+/// A bag the round sells from is opened and looked in when its contents are
+/// not listed (`open_single_container`, `eloot.lic:3892-3921`), and with
+/// `keep_closed` closed again at the end (`close_sell_containers`,
+/// `:3737-3746`).
+#[tokio::test(flavor = "current_thread", start_paused = true)]
+async fn the_rounds_bags_are_looked_in_first_and_closed_after_when_kept_closed() {
+    const KEEPS_CLOSED: &str =
+        "take = [\"gem\", \"magic\"]\nkeep_closed = true\n\n[town]\nsell_keep_silver = 500\n";
+    let (transcript, task, _) = set_out_in(
+        Errand::Deposit,
+        Vec::new(),
+        (ROOMS, KEEPS_CLOSED),
+        &Arc::default(),
+        &FullBags::default(),
+    );
+    transcript.answer("north", &arrival(1002));
+    transcript.answer("south", &arrival(1001));
+    let end = ended(task).await;
+    let lines = transcript.lines();
+    assert_eq!(
+        end,
+        Some(HuntEnd::Finished(Ending::Looted(Errand::Deposit))),
+        "{lines:?}"
+    );
+    let order: Vec<Option<usize>> = [
+        "open #902",
+        "look in #902",
+        "north",
+        "deposit all",
+        "south",
+        "close #902",
+    ]
+    .iter()
+    .map(|line| at(&lines, line))
+    .collect();
+    assert!(order.iter().all(Option::is_some), "{lines:?}");
+    assert!(order.windows(2).all(|pair| pair[0] < pair[1]), "{lines:?}");
 }

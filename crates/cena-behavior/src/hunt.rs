@@ -83,6 +83,7 @@ pub use command::{Command, parse as parse_command};
 pub use desk::Desk;
 pub use drive::{HuntEnd, hunt, hunt_in};
 pub use engine::{Ending, Here, Hunt, Said};
+pub use errands::FullBags;
 pub use guard::{Condition, Dialog, Fact, Facts, Guard, Measure, Used};
 pub use import::{Import, import};
 pub use profile::{Profile, Step};

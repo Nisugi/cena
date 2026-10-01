@@ -29,8 +29,14 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         };
         self.know_stow_list().await?;
         let town = Town::for_profile(&profile);
+        let (bags, keep_closed) = (self.know_bags(&town).await?, town.keep_closed);
         let fwi = town.fwi && self.reaches_fwi(home);
+        // A round frees the bags: none is known full from here. eloot clears
+        // `sacks_full` before and after a sell and a pool trip alike
+        // (`eloot.lic:7996`, `:8006`, `:8015`, `:8030`).
+        self.memory.full.clear();
         let Some(mut seller) = Seller::for_round(town, &self.state, home, round) else {
+            self.close_bags(keep_closed, &bags).await?;
             return Ok(false);
         };
         // Facts queued before the round are not the round's.
@@ -46,38 +52,11 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                 };
                 seller.next(state, &nearest)
             };
-            let line = match &step {
-                Errand::Done => break,
+            match &step {
                 Errand::Walk(to) => {
                     self.walk(*to).await?;
                     continue;
                 }
-                Errand::Fetch(id) => format!("get #{id}"),
-                Errand::Sell(id) | Errand::SellSack(id) => format!("sell #{id}"),
-                Errand::Appraise(id) => format!("appraise #{id}"),
-                Errand::Analyze(id) => format!("analyze #{id}"),
-                Errand::Wear(id) => format!("wear #{id}"),
-                Errand::ReadNote(id) | Errand::ReadScroll(id) => format!("read #{id}"),
-                Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
-                Errand::Deposit(id) => format!("deposit #{id}"),
-                Errand::Give { item, to } => format!("give #{item} to #{to}"),
-                Errand::Unbundle => "bundle remove".to_owned(),
-                Errand::DepositAll => "deposit all".to_owned(),
-                Errand::Withdraw(silver) => format!("withdraw {silver} silver"),
-                Errand::Swap => "swap".to_owned(),
-                Errand::Tip {
-                    to,
-                    amount,
-                    percent,
-                    confirm,
-                } => format!(
-                    "give #{to} {amount}{}{}",
-                    if *percent { " PERCENT" } else { "" },
-                    if *confirm { " confirm" } else { "" }
-                ),
-                Errand::AskReturn(to) => format!("ask #{to} for return"),
-                Errand::Trash(id) => format!("trash #{id}"),
-                Errand::Drop(id) => format!("drop #{id}"),
                 Errand::EmptyBox(id) => {
                     let locked = self.empty_box(&profile, id).await?;
                     let replies = if locked {
@@ -94,6 +73,10 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                     seller.outcome(&facts, &replies, &self.state);
                     continue;
                 }
+                _ => {}
+            }
+            let Some(line) = line_for(&step) else {
+                break;
             };
             self.transcript.clear();
             self.send(&line, None).await?;
@@ -115,7 +98,45 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             self.reports.keep_round(came_to.clone());
             self.handle.say(Notice::table(NoticeKind::Info, came_to));
         }
+        self.memory.full.clear();
+        self.share_full();
+        self.close_bags(keep_closed, &bags).await?;
         Ok(true)
+    }
+
+    /// The bags the round sells from, by id, each one's contents listed
+    /// first: one never looked in this session, or shut, is opened and
+    /// looked in, as eloot opens every stow bag when it starts
+    /// (`set_inventory`, `eloot.lic:2380-2383`).
+    async fn know_bags(&mut self, town: &Town) -> Result<Vec<String>, HuntEnd> {
+        let bags = town::goods::selling_bags(town, &self.state);
+        for bag in &bags {
+            if self.state.inventory.container(bag).is_none() {
+                self.send(&format!("open #{bag}"), None).await?;
+                self.send(&format!("look in #{bag}"), None).await?;
+                self.hold(BEAT).await?;
+            }
+        }
+        Ok(bags)
+    }
+
+    /// With `keep_closed`, the bags the round sold from closed again, but
+    /// never one the ready list stores a weapon in (`close_sell_containers`,
+    /// `eloot.lic:3737-3746`).
+    async fn close_bags(&mut self, keep_closed: bool, bags: &[String]) -> Result<(), HuntEnd> {
+        if !keep_closed {
+            return Ok(());
+        }
+        for bag in bags {
+            let ready = cena_session::containers::ReadySlot::ALL
+                .iter()
+                .filter_map(|slot| self.state.containers.ready(*slot))
+                .any(|item| item.id == *bag);
+            if !ready {
+                self.send(&format!("close #{bag}"), None).await?;
+            }
+        }
+        Ok(())
     }
 
     /// Whether a round that sells in Mist Harbor can get there from `home`
@@ -152,4 +173,38 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             .find(|item| item.id == id)
             .cloned()
     }
+}
+
+/// The line a step of the round sends; `None` for the end, and for the
+/// steps the driver does itself (a walk, a box emptied).
+fn line_for(step: &Errand) -> Option<String> {
+    Some(match step {
+        Errand::Done | Errand::Walk(_) | Errand::EmptyBox(_) => return None,
+        Errand::Fetch(id) => format!("get #{id}"),
+        Errand::Sell(id) | Errand::SellSack(id) => format!("sell #{id}"),
+        Errand::Appraise(id) => format!("appraise #{id}"),
+        Errand::Analyze(id) => format!("analyze #{id}"),
+        Errand::Wear(id) => format!("wear #{id}"),
+        Errand::ReadNote(id) | Errand::ReadScroll(id) => format!("read #{id}"),
+        Errand::Stow { item, bag } => format!("_drag #{item} #{bag}"),
+        Errand::Deposit(id) => format!("deposit #{id}"),
+        Errand::Give { item, to } => format!("give #{item} to #{to}"),
+        Errand::Unbundle => "bundle remove".to_owned(),
+        Errand::DepositAll => "deposit all".to_owned(),
+        Errand::Withdraw(silver) => format!("withdraw {silver} silver"),
+        Errand::Swap => "swap".to_owned(),
+        Errand::Tip {
+            to,
+            amount,
+            percent,
+            confirm,
+        } => format!(
+            "give #{to} {amount}{}{}",
+            if *percent { " PERCENT" } else { "" },
+            if *confirm { " confirm" } else { "" }
+        ),
+        Errand::AskReturn(to) => format!("ask #{to} for return"),
+        Errand::Trash(id) => format!("trash #{id}"),
+        Errand::Drop(id) => format!("drop #{id}"),
+    })
 }

@@ -130,7 +130,7 @@ Determination and tries again. Plant-like and in-hand critters (`tumbleweed`, `v
 | `loot_types` | 18 of the 21 categories; not `cursed`, `herb`, `junk`, `weapon` | the *take* list |
 | `loot_exclude` | `black ora`, `urglaes` | the *leave* list, by name |
 | `loot_defensive` | true | `Loot.defensive`, already in the profile |
-| `use_disk` | true | when a bag is full, the disk is a container too (`wait_for_disk`, `disk_usage`) |
+| `use_disk` | true | a box goes on the disk before any bag, and nothing else goes on it (`single_drag_box`, `:4035-4066`); **corrected 2026-10-01**, `plan/61` §5e: this read *when a bag is full, the disk is a container too*, and was built so |
 | `sigil_determination_on_fail` | true | recast on `not in any condition` |
 | `charm_name` | `fossil charm` | a worn charm found at set-up (`:2377`); its use is in Sell |
 | `loot_phase` | false | 704 on boxes: off |
@@ -184,7 +184,8 @@ taught, is `None`, and the planner holds rather than guesses (`plan/30` §3's ru
 - The hunt engine's Loot arm says `Said::Loot` and the hunt driver runs it as it runs a walk;
   `loot.script` unset keeps today's `loot #id`.
 - The disk as a container (`use_disk`: `wait_for_disk`, `disk_usage`, and the disk's own
-  full state), here rather than in Stage 3 (author, Q2).
+  full state), here rather than in Stage 3 (author, Q2). For boxes only, and before any
+  bag, since `plan/61` §5e.
 - The session memory of full bags becomes a **Rest reason** (`Why::Full`, *"too much
   loot"*) when every bag and the disk are full, in place of eloot's pause; a box left in
   hand that no bag will take is the same reason (author, Q3: *"we don't want to drop it, so

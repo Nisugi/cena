@@ -52,6 +52,8 @@ pub struct Desk {
     /// What its runs are doing, turn by turn, for a hunt panel (`plan/47`
     /// step 8).
     pub(super) reports: Reports,
+    /// The bags found full, shared by its runs (`errands.rs`).
+    full_bags: super::errands::FullBags,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -77,6 +79,7 @@ impl Desk {
             map_sha256: None,
             boards: OnceLock::new(),
             reports: Reports::default(),
+            full_bags: super::errands::FullBags::default(),
         })
     }
 
@@ -365,7 +368,9 @@ impl Desk {
         }
         let desk = Arc::clone(self);
         let steering = Steering::new(running.stop.clone());
-        let machine = machine.steered_by(steering.clone());
+        let machine = machine
+            .steered_by(steering.clone())
+            .with_full_bags(Arc::clone(&self.full_bags));
         let task = tokio::spawn(async move {
             let Running { number, stop, over } = running;
             if let Some(before) = before {

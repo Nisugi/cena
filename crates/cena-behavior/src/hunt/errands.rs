@@ -14,6 +14,27 @@ use crate::heal::HealProfile;
 use crate::keep::{self, KeepProfile};
 use crate::waggle::WaggleProfile;
 
+/// The bags found full, by id, shared by every run on one hunt desk: a bag
+/// eloot found full stays so across its runs until a selling round
+/// (`track_full_sacks`, `eloot.lic:7911-7914`), and a hunt, a `loot` and the
+/// next `loot` are runs here.
+pub type FullBags = std::sync::Arc<std::sync::Mutex<std::collections::BTreeSet<String>>>;
+
+impl Hunt {
+    /// Share the bags found full with the desk's other runs.
+    #[must_use]
+    pub fn with_full_bags(mut self, full: FullBags) -> Self {
+        self.full_bags = Some(full);
+        self
+    }
+
+    /// The bags found full, shared with the desk's other runs, when they are.
+    #[must_use]
+    pub fn full_bags(&self) -> Option<&FullBags> {
+        self.full_bags.as_ref()
+    }
+}
+
 impl super::desk::Desk {
     /// `;loot last`: what the last selling round came to, as it was said.
     pub(super) fn say_last_round(&self, handle: &cena_session::SessionHandle) {

@@ -21,11 +21,37 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
         let Some(profile) = self.machine.loot_profile().cloned() else {
             return Ok(());
         };
+        self.recall_full(&profile);
         let memory = std::mem::take(&mut self.memory);
         let planner = Planner::new(profile, memory, corpses);
         let planner = self.run_loot(planner, true).await?;
         self.tell_learned(&planner);
+        self.share_full();
         Ok(())
+    }
+
+    /// The bags known full as a visit starts: none when the profile tries
+    /// every bag each time (`track_full_sacks` off, `eloot.lic:7911-7914`);
+    /// else the hunt's, and what the desk's earlier runs found.
+    fn recall_full(&mut self, profile: &LootProfile) {
+        if !profile.track_full {
+            self.memory.full.clear();
+            return;
+        }
+        if let Some(shared) = self.machine.full_bags()
+            && let Ok(shared) = shared.lock()
+        {
+            self.memory.full.extend(shared.iter().cloned());
+        }
+    }
+
+    /// What is known full now, for the desk's next run.
+    pub(super) fn share_full(&self) {
+        if let Some(shared) = self.machine.full_bags()
+            && let Ok(mut shared) = shared.lock()
+        {
+            shared.clone_from(&self.memory.full);
+        }
     }
 
     /// Hand what a visit learned to whoever writes the profile. Each name
@@ -50,6 +76,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
             .filter(|creature| creature.corpse())
             .map(|creature| creature.id)
             .collect();
+        self.recall_full(&profile);
         let text = match errand {
             Errand::Room | Errand::Skin => {
                 let memory = std::mem::take(&mut self.memory);
@@ -85,6 +112,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                 }
             }
         };
+        self.share_full();
         self.handle
             .say(Notice::line(NoticeKind::Info, format!("Loot: {text}")));
         Ok(())
@@ -173,6 +201,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(&Learned)> Driver
                 Step::LootRoom => ("loot room".to_owned(), None),
                 Step::LootItem(id) => (format!("loot #{id}"), self.floor_item(id)),
                 Step::Open(bag) => (format!("open #{bag}"), self.floor_item(bag)),
+                Step::Close(bag) => (format!("close #{bag}"), None),
                 Step::LookIn(bag) => (format!("look in #{bag}"), None),
                 Step::Drag { item, bag } => {
                     (format!("_drag #{item} #{bag}"), self.floor_item(item))

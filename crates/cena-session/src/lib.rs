@@ -65,7 +65,7 @@ pub use cena_model::state::{
 // The loot ledger's facts, for the town planner that reads them from its own
 // fold of the stream (`plan/31` Stage 4).
 pub use cena_model::{Appraiser, Buyer, LootFact};
-pub use cena_model::{ChunkLine, GameState, Hand, Room, RoomItem, UnknownTag};
+pub use cena_model::{ChunkLine, Disk, GameState, Hand, Room, RoomItem, UnknownTag};
 // The creature a hunt reads and the status words it asks about: `plan/30`
 // section 1's table of what the model answers a hunter with. Beside the
 // other model vocabulary re-exported for behaviors, on the same terms.

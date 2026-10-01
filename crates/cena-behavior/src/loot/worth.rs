@@ -140,8 +140,9 @@ pub fn verdict(item: &RoomItem, profile: &LootProfile) -> Verdict {
     {
         return Verdict::Leave("not loot");
     }
-    // `Nisugi disk`: a player's disk is a capitalised name and the noun.
-    if item.noun == "disk" && name.chars().next().is_some_and(char::is_uppercase) {
+    // `Nisugi disk`, `fiery red Vasstryke disk`: anyone's, the character's
+    // own too (`reject_invalid_loot`, `eloot.lic:5651`).
+    if cena_session::Disk::read(item).is_some() {
         return Verdict::Leave("someone's disk");
     }
     // Read only when the profile remembers them (`eloot.lic:5655`).
