@@ -459,6 +459,11 @@ impl<S: ByteSource> SessionActor<S> {
             return None;
         }
         while let Some(envelope) = self.queue.take_next() {
+            // A window dropped for a caller gone still owes its prompt,
+            // before this one's (SE-A-2).
+            if self.queue.take_abandoned_window() {
+                self.owed.window_abandoned();
+            }
             // A window closed (or was dropped) before this one opens.
             self.end_quiet_window();
             // `plan/12` §5.2: anything from a prior generation is discarded.
@@ -538,7 +543,11 @@ impl<S: ByteSource> SessionActor<S> {
             }
         }
         // `take_next` drops a window whose caller stopped waiting, so a quiet
-        // one can end here as well as at its prompt.
+        // one can end here as well as at its prompt; and the prompt it still
+        // owes is booked now, before it can arrive (SE-A-2).
+        if self.queue.take_abandoned_window() {
+            self.owed.window_abandoned();
+        }
         self.end_quiet_window();
         None
     }

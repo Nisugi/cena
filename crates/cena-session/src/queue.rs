@@ -137,6 +137,9 @@ pub struct CommandQueue {
     /// Lines whose windows closed unanswered, oldest first: the next line
     /// that answers the oldest is its, not the open window's.
     owed: VecDeque<Owed>,
+    /// A window was dropped because its caller stopped waiting, and the
+    /// actor's prompt ledger has not been told ([`Self::take_abandoned_window`]).
+    abandoned_window: bool,
 }
 
 /// The most lines owed an answer at once; the oldest goes first.
@@ -254,6 +257,7 @@ impl CommandQueue {
                 self.owe(answers);
             }
             self.abandoned += 1;
+            self.abandoned_window = true;
         }
         if self.in_flight.is_some() {
             return None;
@@ -296,6 +300,13 @@ impl CommandQueue {
             }
             return Some(next);
         }
+    }
+
+    /// Whether a window was dropped because its caller stopped waiting since
+    /// this was last asked: its command's prompt is still coming, which the
+    /// actor's prompt ledger must book (`actor/owed.rs`, SE-A-2).
+    pub fn take_abandoned_window(&mut self) -> bool {
+        std::mem::take(&mut self.abandoned_window)
     }
 
     /// How many queued commands were dropped because their caller stopped

@@ -114,6 +114,15 @@ impl OwedPrompts {
         true
     }
 
+    /// The in-flight window was dropped, its caller gone (`take_next`): its
+    /// command is on the wire and its prompt still coming, ahead of what was
+    /// written after it, which is ahead of whatever is sent next (the crate
+    /// review of 2026-10-01, SE-A-2).
+    pub(super) fn window_abandoned(&mut self) {
+        self.before.push_back(Instant::now());
+        self.before.append(&mut self.after);
+    }
+
     /// How many prompts are owed, both sides together. For logs and tests.
     #[cfg(test)]
     fn len(&self) -> usize {
@@ -163,6 +172,23 @@ mod tests {
         assert!(owed.prompt(true), "and so is its prompt");
         assert!(!owed.window_is_answered_next(), "then the sigil's is owed");
         assert!(!owed.prompt(true), "and it does not close the next window");
+        assert_eq!(owed.len(), 0);
+    }
+
+    /// The crate review of 2026-10-01, SE-A-2: a window dropped because its
+    /// caller stopped waiting left a `look` typed during it owed `after`,
+    /// where nothing moved it; it later took the prompt of a window two on.
+    /// The dropped command's own prompt and the `look`'s come first.
+    #[tokio::test(start_paused = true)]
+    async fn an_abandoned_window_puts_its_prompt_and_what_followed_it_first() {
+        let mut owed = OwedPrompts::default();
+        owed.instant_sent(true);
+        owed.window_abandoned();
+        assert!(!owed.window_is_answered_next());
+        assert!(!owed.prompt(true), "the dropped command's own prompt");
+        assert!(!owed.prompt(true), "the look's");
+        assert!(owed.window_is_answered_next());
+        assert!(owed.prompt(true), "then the next window's");
         assert_eq!(owed.len(), 0);
     }
 

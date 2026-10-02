@@ -277,8 +277,15 @@ async fn ready_is_the_first_prompt_after_end_setup_and_neither_alone() {
          vitals behind it: {seen:?}"
     );
 
-    // The first prompt after it does.
-    type_line(&handle, 3, "after").await;
+    // The first prompt after it does: the burst's own, which the game sends
+    // behind the indicators and vitals, unasked. (A second command's prompt
+    // stood in for it, and is now booked as the marker's own: a window its
+    // caller gave up on still owes the prompt its reply ends with, SE-A-2.)
+    transcript.say(
+        b"<prompt time=\"2\">&gt;</prompt>
+",
+    );
+    tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(states(&mut events), vec![State::Ready]);
 
     running.abort();
