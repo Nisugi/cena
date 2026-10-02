@@ -43,6 +43,12 @@
 //! a list line** and keeps it at the prompt, popped or not. The login's block
 //! and the 11 hunt blocks all end cleanly that way (the census above).
 //!
+//! **And what the block runs on into is the main window's** (the crate
+//! review of 2026-10-01, MO-A-2): from the first line after the header that
+//! is not indented two spaces, the block's lines are routed as main-window
+//! lines (`GameState::past_list`), so the archer's shot that follows an
+//! arrow leaving the quiver reaches combat, loot, incidents and the story.
+//!
 //! # The reserve
 //!
 //! Lich stages every `<a>` of the `reserve` stream as a reserved item
@@ -87,12 +93,43 @@ struct Staging {
     lines: Option<Vec<ChunkLine>>,
     /// The prompt closed the stream: no `<popStream>` came.
     torn: bool,
+    /// The list has ended and the block runs on: what follows is the main
+    /// window's (`GameState::past_list`).
+    past: bool,
 }
 
 impl Staging {
     fn open(&mut self) {
         self.lines = Some(Vec::new());
         self.torn = false;
+        self.past = false;
+    }
+
+    /// Whether `line` is past the end of a worn list: after its header, a
+    /// line that is neither blank, the at-feet header nor indented two spaces, and
+    /// every line after that one. Before a header, never: a block of
+    /// another shape is left on its stream.
+    fn passes(&mut self, line: &Runs) -> bool {
+        let Some(lines) = &self.lines else {
+            return false;
+        };
+        if self.past {
+            return true;
+        }
+        let text = line.plain();
+        let headed = lines.iter().any(|kept| kept.text().trim() == WORN_HEADER);
+        // A list line is indented two spaces, as `item_line` reads it; the
+        // round's prose starts at the margin or three in.
+        let listed = text.starts_with("  ") && !text.starts_with("   ");
+        if !headed
+            || text.trim().is_empty()
+            || text.trim_start().starts_with(AT_FEET_HEADER)
+            || listed
+        {
+            return false;
+        }
+        self.past = true;
+        true
     }
 
     fn line(&mut self, line: &Runs) {
@@ -107,6 +144,7 @@ impl Staging {
 
     /// The lines, and whether the prompt closed them.
     fn close(&mut self) -> Option<(Vec<ChunkLine>, bool)> {
+        self.past = false;
         let lines = self.lines.take()?;
         Some((lines, std::mem::take(&mut self.torn)))
     }
@@ -239,6 +277,28 @@ impl Reserve {
 }
 
 impl GameState {
+    /// Whether `line`, completed on `stream`, is past the end of an `inv`
+    /// list the game never popped: the round's prose it runs on into, which
+    /// is the main window's (the crate review of 2026-10-01, MO-A-2).
+    /// MEASURED: of 5,929 `inv` pushes in the author's September logs, 5,895
+    /// run on unpopped to the prompt, 5,487 of them holding the archer's shot;
+    /// left on `inv`, combat, loot, incidents and the story never saw it.
+    pub(super) fn past_list(&mut self, stream: &str, line: &Runs) -> bool {
+        stream == INV && self.worn.staging.passes(line)
+    }
+
+    /// The stream a line just completed on `stream` was kept on: the main
+    /// window's once an `inv` list has ended ([`Self::past_list`]). What a
+    /// viewer is given the line on.
+    #[must_use]
+    pub fn line_stream<'a>(&self, stream: &'a str) -> &'a str {
+        if stream == INV && self.worn.staging.past {
+            ""
+        } else {
+            stream
+        }
+    }
+
     /// A stream opened: the `inv` or `reserve` list begins.
     pub(super) fn list_opened(&mut self, id: &str) {
         match id {

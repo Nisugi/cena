@@ -296,3 +296,40 @@ fn a_reserve_list_of_nothing_is_stated_empty() {
     feed(&mut state, PROMPT);
     assert_eq!(state.reserve.items(), Some(&[][..]));
 }
+
+/// The crate review of 2026-10-01, MO-A-2: the round an unpopped `inv` list
+/// runs on into is the main window's. `arch_kill.xml:28-81` lists the worn
+/// items and then the archer's shot, never popped: the shot was kept on
+/// `inv`, and combat, loot, incidents and the story never saw it.
+#[test]
+fn the_round_after_an_unpopped_list_is_the_main_windows() {
+    let mut state = GameState::default();
+    feed(&mut state, ARCH_KILL);
+    let text = |stream: &str| -> Vec<String> {
+        state
+            .stream(stream)
+            .iter()
+            .map(cena_protocol::runs::Runs::plain)
+            .collect()
+    };
+    let main = text("");
+    assert!(
+        main.iter()
+            .any(|line| line.starts_with("You nock a faewood")),
+        "the shot is the main window's"
+    );
+    let inv = text("inv");
+    assert!(
+        !inv.iter().any(|line| line.contains("You nock")),
+        "and not the list's: {inv:?}"
+    );
+    assert!(
+        inv.iter().any(|line| line.trim() == "Your worn items are:"),
+        "the list stays on its stream"
+    );
+    assert_eq!(
+        state.worn.items().map(<[_]>::len),
+        Some(31),
+        "and is read whole"
+    );
+}

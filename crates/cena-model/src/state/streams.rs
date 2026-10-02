@@ -161,13 +161,17 @@ impl GameState {
     /// resumes after the pop.
     pub(super) fn route_text(&mut self, text: &TextFrame) {
         if let Some(line) = self.pending.push(text) {
+            // An `inv` list the game never popped runs on into the round's
+            // prose, which is the main window's (`worn.rs`, MO-A-2).
+            let past = self.past_list(&text.stream, &line);
+            let stream: &str = if past { "" } else { &text.stream };
             // **The chunk sees the line too, and only the main stream's.**
             // A report's output is prose in the main window; a `thoughts` or
             // `bounty` stream carries someone else's words and must not become
             // part of the command's answer. Lich gates the same way, by
             // refusing lines while `XMLData.in_stream` is true
             // (`combat/tracker.rb:481`).
-            if text.stream.is_empty() {
+            if stream.is_empty() {
                 // The runs themselves, not a rendering of them: the links are
                 // what a combat consumer reads, and this used to drop them
                 // (`chunks.rs`, CORRECTED 2026-09-20).
@@ -201,8 +205,10 @@ impl GameState {
             if text.stream == super::known_spells::STREAM {
                 self.known_spells.read_line(&line);
             }
-            self.list_line(&text.stream, &line);
-            self.keep_line(&text.stream, line);
+            if !past {
+                self.list_line(&text.stream, &line);
+            }
+            self.keep_line(stream, line);
         }
     }
 

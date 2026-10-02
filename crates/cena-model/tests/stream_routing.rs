@@ -315,10 +315,15 @@ fn a_reconnect_forgets_every_stream() {
 fn an_empty_line_inside_a_stream_is_kept() {
     // An empty line is layout the game chose -- the blank between the worn-items
     // header and the list. Dropping it reflows someone else's formatting.
-    let state = fold(b"<pushStream id='inv'/>Your worn items are:\n\nan item\n<popStream/>\n");
+    // An item as the list writes one: two spaces, then the linked thing
+    // (`state/worn.rs`); a line of another shape is the round's prose after
+    // an unpopped list, the main window's (MO-A-2).
+    let state = fold(
+        b"<pushStream id='inv'/>Your worn items are:\n\n  a <a exist=\"1\" noun=\"cloak\">cloak</a>\n<popStream/>\n",
+    );
     assert_eq!(
         lines(&state, "inv"),
-        vec!["Your worn items are:", "", "an item"]
+        vec!["Your worn items are:", "", "  a cloak"]
     );
 }
 

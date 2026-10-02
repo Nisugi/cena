@@ -61,8 +61,12 @@ impl<S: ByteSource> SessionActor<S> {
         if self.state.lines_seen() == before {
             return None;
         }
-        let runs = self.state.stream(&text.stream).last()?;
-        Some(Arc::new(Line::new(text.stream.clone(), runs.clone())))
+        // The stream the model kept it on, which is not always the
+        // frame's: an unpopped `inv` list's round runs on as the main
+        // window's (`GameState::line_stream`).
+        let stream = self.state.line_stream(&text.stream);
+        let runs = self.state.stream(stream).last()?;
+        Some(Arc::new(Line::new(stream.to_owned(), runs.clone())))
     }
 
     /// Publish a finished line to every viewer, one [`Event::Line`] for
