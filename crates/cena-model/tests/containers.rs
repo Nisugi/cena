@@ -442,17 +442,11 @@ fn an_unrelated_line_with_a_link_is_not_a_container_event() {
     assert_eq!(state.containers, cena_model::Containers::default());
 }
 
+/// The crate review of 2026-10-01, MO-A-1: every item id changes at a login
+/// (`plan/59` §1b), so a kept list sent loot to a bag id that no longer
+/// existed. Both lists lapse, unchecked, and loot asks `stow list` again.
 #[test]
-fn both_lists_survive_a_reconnect() {
-    // **The contrast with `group`, which is cleared.** Both hold `exist` ids,
-    // but a group member is another player who leaves while we are gone,
-    // whereas a stow container is YOUR backpack -- and the list itself is a
-    // per-character setting the SERVER holds. Nothing about a dropped socket
-    // changes either.
-    //
-    // The failure this pins is silent: neither list is re-sent by the login
-    // burst, so clearing would leave a behavior with no stow container and no
-    // event ever coming to restore one.
+fn both_lists_lapse_at_a_reconnect() {
     let mut state = state_after(&[
         "You have the following containers set as stow targets:",
         &format!(
@@ -464,11 +458,13 @@ fn both_lists_survive_a_reconnect() {
         state.containers.stow(StowSlot::Gem).is_some(),
         "guard: known first"
     );
+    assert!(state.containers.stow_checked(), "guard: checked first");
     state.invalidate_for_reconnect();
     assert!(
-        state.containers.stow(StowSlot::Gem).is_some(),
-        "your backpack is still on your back"
+        state.containers.stow(StowSlot::Gem).is_none(),
+        "the backpack's id is dead"
     );
+    assert!(!state.containers.stow_checked(), "to be asked again");
 }
 
 mod anchored_as_lich_anchors {

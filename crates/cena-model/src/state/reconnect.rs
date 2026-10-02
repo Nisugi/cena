@@ -240,21 +240,17 @@ impl GameState {
         // says `You` again (`Group::emptied`).
         *group = Group::default();
 
-        // **The stow and ready lists are KEPT**, and the contrast with the
-        // group above is the point. Both hold `exist` ids, so the shallow
-        // rule -- "an id is a live handle, clear it" -- would clear these too.
-        //
-        // What differs is whose the ids are. A group member is another player
-        // who leaves while we are gone. A stow container is YOUR backpack, and
-        // it is still on your back; the list itself is a per-character setting
-        // the SERVER holds, which is why `stow list` restates it rather than
-        // rebuilding it. Nothing about a dropped socket changes either.
-        //
-        // The failure this avoids is silent: neither list is re-sent by the
-        // login burst -- only `stow list` and `ready list` teach them -- so
-        // clearing here would leave a behavior with no stow container and no
-        // event ever coming to restore one.
-        let _ = containers;
+        // **The stow and ready lists LAPSE: their ids are dead.** These were
+        // kept, on the reasoning that the backpack is still on your back. It
+        // is; its id is not. Every item id changes at a login (`plan/59`
+        // §1b, MEASURED 82 of 82; the stow `(box)` backpack itself was
+        // `#171006877` and then `#171232560`, the crate review of 2026-10-01,
+        // MO-A-1), so a kept list sent loot to `#171006877`, the game said it
+        // could not find it, and every item after was skipped. The lists are
+        // emptied and marked unchecked: loot and the town round ask `stow
+        // list` again before they need it. The store modes are settings, not
+        // ids, and are kept.
+        containers.lapse();
 
         // **The bank balance is KEPT.** Silver on deposit is not connection
         // state: nobody spends it while we are logged off, and the figure is

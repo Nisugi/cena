@@ -485,6 +485,17 @@ pub struct Containers {
 }
 
 impl Containers {
+    /// A new connection: every id in both lists is dead (every item id
+    /// changes at a login), so both are emptied and unchecked, to be asked
+    /// again. The store modes are settings and are kept
+    /// (`reconnect.rs`, MO-A-1).
+    pub(super) fn lapse(&mut self) {
+        self.stow.clear();
+        self.ready.clear();
+        self.stow_checked = false;
+        self.ready_checked = false;
+    }
+
     /// Apply one event. Returns whether anything changed.
     pub fn apply(&mut self, event: &ContainerEvent) -> bool {
         let before = self.clone();
