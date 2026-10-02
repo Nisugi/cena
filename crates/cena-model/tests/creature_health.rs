@@ -358,6 +358,17 @@ mod estimates_never_outlive_the_feed {
         assert_eq!(c.stunned_for(Some(101)), 0);
     }
 
+    /// The crate review of 2026-10-01, MO-D-1: the crit table's 999 means
+    /// "stunned, for how long unsaid", and was applied as 999 rounds:
+    /// `stunned_for` said about 83 minutes. Stunned, with no estimate.
+    #[test]
+    fn a_stun_of_unknown_length_is_stunned_with_no_estimate() {
+        let c = stunned_with_estimate(cena_model::crit::STUN_UNKNOWN, 100);
+        assert!(c.has_status(StatusName::Stunned, Some(100)));
+        assert_eq!(c.stun_rounds(Some(100)), None, "for how long is unknown");
+        assert_eq!(c.stunned_for(Some(110)), 0);
+    }
+
     #[test]
     fn a_second_crit_extends_a_stun_but_never_shortens_it() {
         // Two blows land; the longer estimate stands. Shortening on the

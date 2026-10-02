@@ -652,12 +652,14 @@ impl CreatureInstance {
 
     /// Record a crit-table stun estimate in rounds, anchored to `at`.
     /// Advisory: the boolean stays owned by the feed and the messages.
-    /// Extends, never shortens.
+    /// Extends, never shortens. The crit table's unknown length
+    /// (`crit::STUN_UNKNOWN`) is no estimate at all: it was applied as 999
+    /// rounds, about 83 minutes (the crate review of 2026-10-01, MO-D-1).
     pub fn add_stun_estimate(&mut self, rounds: u16, at: Option<u32>) {
         let Some(at) = at else {
             return;
         };
-        if rounds == 0 {
+        if rounds == 0 || rounds == crate::crit::STUN_UNKNOWN {
             return;
         }
         let until = at.saturating_add(u32::from(rounds) * STUN_ROUND_SECONDS);
