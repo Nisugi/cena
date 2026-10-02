@@ -132,6 +132,33 @@ fn a_nerve_wound_healed_by_herbs_is_worked_out_step_by_step() {
     );
 }
 
+/// The crate review of 2026-10-01, MO-C-7: a herb on a rank-1 wound leaves
+/// `Nsys1` showing either way (the wound gone, a rank-1 scar), so the rank
+/// cannot say whether it was the nerves' herb. Kept as "wound 1", the heal ate
+/// nerve-wound herbs for a scar 20 times. It is asked instead, whether the
+/// game sent the rank again or not.
+#[test]
+fn a_herb_that_leaves_a_rank_one_showing_asks() {
+    for again in [true, false] {
+        let (mut parser, mut state) = (Parser::new(), GameState::default());
+        chunk(&mut parser, &mut state, &image("nsys", "nsys"));
+        chunk(&mut parser, &mut state, &image("nsys", "Nsys1"));
+        assert_eq!(nsys(&state), Injury { wound: 1, scar: 0 }, "damage");
+        assert!(!state.character.take_nerve_question());
+        let bite = "You take a bite of your wolifrew lichen.\n";
+        let shown = if again {
+            image("nsys", "Nsys1")
+        } else {
+            String::new()
+        };
+        chunk(&mut parser, &mut state, &format!("{bite}{shown}"));
+        assert!(
+            state.character.take_nerve_question(),
+            "a wound or its scar: asked (rank sent again: {again})"
+        );
+    }
+}
+
 /// The first rank after logging in may be an old scar: shown as a wound,
 /// asked once, and settled by `health`.
 #[test]

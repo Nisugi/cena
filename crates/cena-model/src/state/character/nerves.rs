@@ -132,8 +132,25 @@ impl Character {
             let line = line.trim_start();
             HERB.iter().any(|start| line.starts_with(start))
         });
-        for rank in std::mem::take(&mut self.nerves.seen) {
+        let (was, seen) = (self.nerves.rank, std::mem::take(&mut self.nerves.seen));
+        let moved = seen.iter().any(|rank| *rank != was);
+        for rank in seen {
             self.read_nerve_rank(rank, herb);
+        }
+        // **A herb that leaves the rank showing where the nerves' herb would
+        // too** cannot be worked out: a rank-1 wound healed leaves a rank-1
+        // scar, `Nsys1` either way, and the herb may have been another
+        // part's. Kept as the wound, the heal ate wound herbs for a scar 20
+        // times (the crate review of 2026-10-01, MO-C-7). Asked instead.
+        let Injury { wound, scar } = self.nsys();
+        if herb
+            && !moved
+            && self.nerves.known
+            && self.nerves.settled
+            && herb_step(wound, scar, was).is_some_and(|step| step != (wound, scar))
+        {
+            self.nerves.settled = false;
+            self.nerves.asking = true;
         }
         if let Some((track, rank)) = nerve_line(lines) {
             let known = self.nsys();
