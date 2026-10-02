@@ -206,7 +206,7 @@ impl<S: ByteSource> SessionActor<S> {
             // Handled inline rather than queued: queueing it is the exact
             // defect `send_now` exists to remove (`plan/16` §1.3).
             crate::command::Inbox::SendNow {
-                line,
+                mut line,
                 origin,
                 generation,
                 gate,
@@ -225,6 +225,14 @@ impl<S: ByteSource> SessionActor<S> {
                 // Returned before `send_now`, so no prompt is booked for a
                 // line that never went out.
                 if reply.is_closed() {
+                    return None;
+                }
+                // A creature's tag the player typed, `kill 7QK`, as the queue's
+                // arm resolves it: a typed line comes this way (SE-A-1).
+                if !self.retarget_line(&mut line, origin) {
+                    let _ = reply.send(crate::command::Sent::Refused(
+                        crate::command::Refusal::Permanent,
+                    ));
                     return None;
                 }
                 // A `quit` sent at once -- Lich's, above all, whose `put`

@@ -165,24 +165,36 @@ impl<S: ByteSource> SessionActor<S> {
         &self,
         envelope: &mut super::Envelope,
     ) -> Option<crate::command::Outcome> {
-        let style = self.events.tags_creatures()?;
-        if envelope.origin != crate::command::Origin::Manual {
-            return None;
+        (!self.retarget_line(&mut envelope.line, envelope.origin))
+            .then_some(crate::command::Outcome::Handled)
+    }
+
+    /// [`Self::retarget`] for a line on its own: what a line the player
+    /// typed goes as, written at once (`SendNow`; the crate review of
+    /// 2026-10-01, SE-A-1). `false`: a tag two creatures share, said, and
+    /// nothing to send.
+    pub(super) fn retarget_line(&self, line: &mut String, origin: crate::command::Origin) -> bool {
+        let Some(style) = self.events.tags_creatures() else {
+            return true;
+        };
+        if origin != crate::command::Origin::Manual {
+            return true;
         }
         let here = self.state.creatures().in_room();
         match cena_model::targetid::resolve(
-            &envelope.line,
+            line,
             here.filter_map(|c| Some((c.id, c.mark()?))),
             style,
-        )? {
-            Ok(line) => {
-                envelope.line = line;
-                None
+        ) {
+            None => true,
+            Some(Ok(resolved)) => {
+                *line = resolved;
+                true
             }
-            Err(why) => {
+            Some(Err(why)) => {
                 let said = crate::notice::Notice::line(crate::notice::NoticeKind::Warn, why);
                 let _ = self.events.send(Event::Notice(said.answering()));
-                Some(crate::command::Outcome::Handled)
+                false
             }
         }
     }

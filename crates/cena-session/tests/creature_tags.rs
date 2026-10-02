@@ -60,10 +60,14 @@ async fn with_tags(on: bool) -> (Vec<String>, Vec<String>) {
         .send_manual_at(Generation::FIRST, "look", DEADLINE)
         .await;
     assert!(matches!(looked, Outcome::Confirmed(_)), "{looked:?}");
+    // As the player types it, at the GUI or the web page: written at once,
+    // not queued (the crate review of 2026-10-01, SE-A-1: this path was the
+    // one no test sent a tag through, and it did not resolve one).
     let killed = handle
-        .send_manual_at(Generation::FIRST, &format!("kill {key}"), DEADLINE)
+        .send_typed_at(Generation::FIRST, &format!("kill {key}"), DEADLINE)
         .await;
-    assert!(matches!(killed, Outcome::Confirmed(_)), "{killed:?}");
+    assert!(matches!(killed, Outcome::Sent), "{killed:?}");
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     (shown(&mut events), transcript.lines())
 }
 
