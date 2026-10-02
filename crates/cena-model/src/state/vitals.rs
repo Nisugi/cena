@@ -210,6 +210,13 @@ impl crate::GameState {
             // `ends_at: None` -- the spelling for an indefinite effect -- so
             // every buff in the login burst read as permanent (review).
             // `insert_lasting` holds the duration until a prompt anchors it.
+            //
+            // **And always the NEXT prompt** (the crate review of
+            // 2026-10-01, MO-E-2). A refill comes with the prompt that
+            // follows it, not the one before: stamped against the last
+            // prompt, a spell cast after three idle minutes read as ending
+            // three minutes early, already over, and was cast again. The
+            // anchoring prompt is a wire fact too, so replay equality holds.
             let effect = crate::effects::Effect {
                 category: dialog.to_owned(),
                 text: bar.text.clone(),
@@ -219,7 +226,7 @@ impl crate::GameState {
             match bar.time_remaining_secs {
                 Some(secs) => {
                     self.effects
-                        .insert_lasting(bar.id.clone(), effect, secs, self.game_time);
+                        .insert_lasting(bar.id.clone(), effect, secs, None);
                 }
                 None => self.effects.insert(bar.id.clone(), effect),
             }

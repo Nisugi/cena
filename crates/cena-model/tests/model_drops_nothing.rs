@@ -132,6 +132,8 @@ mod progress_bar {
             "<prompt time='1700000000'>&gt;</prompt>",
             "<dialogData id='Cooldowns'><progressBar id='110572' value='100' \
              text='Multi-Strike' time='00:00:37'/></dialogData>",
+            // The refill's own prompt, which dates it (MO-E-2).
+            "<prompt time='1700000000'>&gt;</prompt>",
         ]);
         let effect = state
             .effects

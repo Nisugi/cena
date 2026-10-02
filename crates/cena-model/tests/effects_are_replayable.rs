@@ -80,19 +80,21 @@ fn an_effects_end_time_does_not_depend_on_how_long_the_client_waited() {
     );
 }
 
-/// The end time is what the SERVER said, not what the client observed.
+/// The end time is what the SERVER said, not what the client observed: the
+/// duration counted from **the prompt the refill came with**, which follows
+/// it, never the prompt before.
 ///
-/// Stated separately from the equality test because it is the property that
-/// makes the equality hold, and it is the one a caller depends on: an effect
-/// ending at server-second N must read as ending at N however long ago the
-/// client learned the clock.
+/// The crate review of 2026-10-01, MO-E-2: stamped against the previous
+/// prompt, a spell cast after three idle minutes read as ending three
+/// minutes early, already over, and was cast again.
 #[test]
-fn an_end_time_is_the_server_clock_plus_the_duration() {
+fn an_end_time_is_the_refills_own_prompt_plus_the_duration() {
     let base = 1_789_775_821;
     let mut state = GameState::default();
     state.apply(&prompt_at(base));
-    std::thread::sleep(std::time::Duration::from_millis(1_100));
+    // Three minutes idle, then the cast: the refill, then its prompt.
     state.apply(&buff_with_remaining("101", 120));
+    state.apply(&prompt_at(base + 180));
 
     let ends_at = state
         .effects
@@ -102,10 +104,12 @@ fn an_end_time_is_the_server_clock_plus_the_duration() {
 
     assert_eq!(
         ends_at,
-        base + 120,
-        "the effect ends 120 server-seconds after the clock the SERVER sent. \
-         A second of local waiting between the prompt and the refill must not \
-         move it: the game did not say the spell lasts longer because the \
-         client was slow to read the next frame."
+        base + 180 + 120,
+        "the effect ends 120 server-seconds after the prompt it came with"
+    );
+    assert_eq!(
+        state.effects.active("101", base + 180),
+        Some(true),
+        "a spell just cast is up"
     );
 }

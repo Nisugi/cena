@@ -86,6 +86,8 @@ fn an_expired_effect_is_still_listed_but_is_not_active() {
         "<dialogData id='Buffs'>",
         r#"<progressBar id='515' value='100' text="Rapid Fire" time='00:00:10'/>"#,
         "</dialogData>\n",
+        // The refill's own prompt, which dates it (MO-E-2).
+        "<prompt time=\"1789777252\">&gt;</prompt>\n",
     );
     for frame in parser.push_bytes(burst.as_bytes()) {
         state.apply(&frame);
@@ -285,6 +287,10 @@ fn stated(wire: &str) -> (GameState, u32) {
         state.apply(&frame);
     }
     for frame in parser.push_bytes(wire.as_bytes()) {
+        state.apply(&frame);
+    }
+    // The prompt the wire came with, which dates what it said (MO-E-2).
+    for frame in parser.push_bytes(b"<prompt time=\"1789777252\">&gt;</prompt>\n") {
         state.apply(&frame);
     }
     (state, NOW)
@@ -514,6 +520,7 @@ fn a_reconnect_keeps_the_time_left_not_the_end_second() {
     let mut state = GameState::default();
     state.apply(&prompt(BEFORE));
     state.apply(&buff_row("Buffs", "515", "Rapid Fire", 120));
+    state.apply(&prompt(BEFORE)); // the refill's own prompt (MO-E-2)
     state.apply(&prompt(BEFORE + 20)); // 100 seconds left at the drop
 
     state.invalidate_for_reconnect();
