@@ -201,6 +201,31 @@ pub fn with_worker(state: &mut GameState) {
     });
 }
 
+/// These `(id, noun, name)` NPCs in the room, each a bold link.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors; only the bold depth matters"
+)]
+pub fn with_npcs(state: &mut GameState, npcs: &[(&str, &str, &str)]) {
+    let runs = npcs
+        .iter()
+        .map(|(id, noun, name)| {
+            let mut run = Run {
+                text: (*name).to_owned(),
+                style: Default::default(),
+                link: Some(link(id, noun, name)),
+                inner_link: None,
+            };
+            run.style.bold_depth = 1;
+            run
+        })
+        .collect();
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs },
+    });
+}
+
 pub fn pool_town() -> Town {
     Town {
         pool: true,
@@ -211,6 +236,26 @@ pub fn pool_town() -> Town {
 
 pub fn at_pool(tag: &str) -> Option<RoomId> {
     (tag == "locksmith pool").then_some(POOL)
+}
+
+/// The pool, and a bank to be sent to from it.
+pub fn pool_and_bank(tag: &str) -> Option<RoomId> {
+    match tag {
+        "locksmith pool" => Some(POOL),
+        "bank" => Some(BANK),
+        _ => None,
+    }
+}
+
+/// The worker's `Alright, here's your <box> back.`, as the ledger reads it.
+pub fn returned(id: &str, noun: &str, text: &str) -> LootFact {
+    LootFact::BoxReturned {
+        item: cena_session::containers::ItemRef {
+            id: id.to_owned(),
+            noun: noun.to_owned(),
+            text: text.to_owned(),
+        },
+    }
 }
 
 pub fn a_box() -> cena_session::containers::ItemRef {

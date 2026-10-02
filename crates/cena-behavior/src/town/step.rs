@@ -5,6 +5,25 @@ use cena_map::RoomId;
 #[cfg(doc)]
 use super::reply::Reply;
 
+/// How much of the round is run: all of it, at a hunt's rest and for
+/// `loot sell`, or one stop of it by itself (`plan/61` step 1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Round {
+    /// Every shop the bags call for, then the bank.
+    #[default]
+    All,
+    /// The locksmith pool alone (`;eloot pool`), whatever `sell_locksmith_pool`
+    /// says: the player asked.
+    Pool {
+        /// Give the worker the boxes carried.
+        drop: bool,
+        /// Ask for the boxes that are ready.
+        collect: bool,
+    },
+    /// The bank alone (`;eloot deposit`).
+    Bank,
+}
+
 /// One command for the driver to send, or the end.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Step {
@@ -63,8 +82,15 @@ pub enum Step {
     EmptyBox(String),
     /// `trash #id`: an emptied box into the room's receptacle.
     Trash(String),
-    /// `drop #id`: an emptied box, where there is no receptacle.
+    /// `drop #id`: an emptied box, where there is no receptacle; or a phased
+    /// box, which will not drop but comes back to the hand whole.
     Drop(String),
+    /// `look at #id`: a box, before the pool's worker takes it, to see
+    /// whether it is phased (`box_unphase`, `eloot.lic:2986-2996`).
+    LookAt(String),
+    /// `pluck #id`: the core out of a plinite the pool's worker handed back
+    /// (`box_loot`, `eloot.lic:5138-5140`).
+    Pluck(String),
     /// Put one thing in one bag.
     Stow {
         /// The item's id.

@@ -114,6 +114,9 @@ pub(crate) fn open(
             | Command::Stop
             | Command::Heal { .. }
             | Command::Stock { .. }
+            | Command::Loot(_)
+            | Command::LootSell(_)
+            | Command::LootLast
             | Command::Keep
             | Command::Waggle(_)
             | Command::Sc(_) => {
@@ -246,6 +249,9 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         Command::Unset { profile, key } => settings::unset(dir, who, &profile, &key, &say),
         Command::Show { profile, key } => settings::show(dir, who, &profile, key.as_deref(), &say),
         Command::Settings(of, setting) => settings::profile(dir, who, of, &setting, &say),
+        Command::ResetUnskinnable(creature) => {
+            settings::reset_unskinnable(dir, who, creature.as_deref(), &say);
+        }
         Command::Help(topic) => settings::help(topic, &say),
         Command::Setup => settings::setup(&say),
         Command::Run(_)
@@ -255,6 +261,9 @@ fn run(handle: &SessionHandle, dir: &Path, who: Option<&(String, String)>, comma
         | Command::Stop
         | Command::Heal { .. }
         | Command::Stock { .. }
+        | Command::Loot(_)
+        | Command::LootSell(_)
+        | Command::LootLast
         | Command::Keep
         | Command::Waggle(_)
         | Command::Sc(_)

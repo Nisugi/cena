@@ -20,19 +20,29 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use cena_session::containers::StowSlot;
 use cena_session::gameobj::ObjectTypes;
 use cena_session::{GameState, RoomItem};
 
+use super::learned::Learned;
 use super::outcome::Outcome;
 use super::profile::LootProfile;
 use super::skin::Skinning;
-use super::worth::{Verdict, is_special, lootable_by_verb, stow_slot, verdict};
+use super::worth::{Verdict, is_special, lootable_by_verb, verdict};
 use crate::stance::{self, Want};
 
+mod alone;
+mod bags;
 mod boxed;
 mod hands;
+mod learn;
+mod phase;
+mod step;
+pub(crate) use bags::{disks, named_bags};
 use boxed::Boxed;
+pub use boxed::Emptied;
+use hands::{PutAway, Side};
+use phase::Phasing;
+pub use step::{Left, Step};
 
 /// How many times a corpse is searched before it is given up on
 /// (`eloot.lic:5670`, `3.times`).
@@ -63,75 +73,6 @@ pub struct Memory {
     pub checked_bags: BTreeSet<String>,
     /// Creatures the game said cannot be skinned, by name.
     pub unskinnable: BTreeSet<String>,
-}
-
-/// One command for the driver to send, or the end.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Step {
-    /// A stance command (`loot_defensive`).
-    Stance(String),
-    /// Ask the game for a fact the planner needs: `stow list`.
-    Ask(&'static str),
-    /// Cast a spell: the sigil, after a failed search.
-    Cast(String),
-    /// `loot #id` on a corpse.
-    Search(i64),
-    /// `open #bag`: a critter's bag, or a bag that closes itself.
-    Open(String),
-    /// `look in #bag`: a critter's bag, to learn what it holds.
-    LookIn(String),
-    /// `loot room`: everything left on the floor is wanted.
-    LootRoom,
-    /// `loot #id` on one thing the game stows itself.
-    LootItem(String),
-    /// Drag one thing into one bag.
-    Drag {
-        /// The item's id.
-        item: String,
-        /// The bag's id.
-        bag: String,
-    },
-    /// `get #id`: the skinning weapon into a hand (`skin.rs`).
-    Wield(String),
-    /// `kneel`, before skinning.
-    Kneel,
-    /// `stand`, after skinning knelt.
-    Stand,
-    /// `skin #corpse <hand>`: the hand holding the skinner.
-    Skin {
-        /// The corpse's id.
-        corpse: i64,
-        /// `left` or `right`.
-        hand: &'static str,
-    },
-    /// `stow gem #id`: a gem that broke out of a corpse into the left hand.
-    StowGem(String),
-    /// `describe <noun>`: a creature whose form decides whether it skins.
-    Describe(String),
-    /// `get coins from #box`: a box's coins, by hand.
-    Coins(String),
-    /// `point <charm> at #box`: a box's coins, by the profile's charm.
-    Charm {
-        /// The charm, by name.
-        charm: String,
-        /// The box's id.
-        box_: String,
-    },
-    /// Nothing more to do here.
-    Done(Left),
-}
-
-/// How the looting ended.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Left {
-    /// Everything wanted is stowed.
-    Nothing,
-    /// Something wanted could go in no bag: a reason to rest (author:
-    /// *"too much loot"*).
-    BagsFull,
-    /// A box stayed in hand that no bag would take: a reason to rest
-    /// (author: *"we don't want to drop it, so we head in to rest"*).
-    BoxInHand,
 }
 
 /// Where a critter's bag is in being emptied (`bag_loot`, `eloot.lic:4980`).
@@ -169,6 +110,12 @@ pub struct Planner {
     skipped: BTreeSet<String>,
     /// Bags opened this visit, so `Closed` is not answered twice.
     opened: BTreeSet<String>,
+    /// Bags the game said are closed, by hand, to open before the next try.
+    closed: BTreeSet<String>,
+    /// Bags opened this visit and closed again before it ended.
+    reclosed: BTreeSet<String>,
+    /// What this visit learned that the profile does not hold yet.
+    learned: Learned,
     /// Critters' bags being emptied this visit.
     bags: BTreeMap<String, BagPhase>,
     room_looted: bool,
@@ -189,6 +136,20 @@ pub struct Planner {
     bags_full: bool,
     /// A box in hand being emptied, instead of corpses and a floor.
     boxed: Option<Boxed>,
+    /// Skin and stop: no search, no floor (`loot skin`).
+    only_skin: bool,
+    /// A step waiting for a hand to be freed for it (`hands.rs`).
+    pending: Option<Step>,
+    /// Tries at freeing a hand for the pending step.
+    free_tries: u8,
+    /// What was put away to free a hand, to give back at the end.
+    put_away: Vec<PutAway>,
+    /// The hand a creature's loot lands in, and the creature.
+    catch: Option<(Side, i64)>,
+    /// A box being dragged into a bag, to phase once it is in (`phase.rs`).
+    into_box: Option<String>,
+    /// A box being phased.
+    phasing: Option<Phasing>,
 }
 
 impl Planner {
@@ -197,7 +158,10 @@ impl Planner {
     pub fn new(profile: LootProfile, memory: Memory, corpses: &[i64]) -> Self {
         let mut memory = memory;
         memory.crumbly.extend(profile.crumbly.iter().cloned());
-        memory.unlootable.extend(profile.unlootable.iter().cloned());
+        // The list is read only when the profile remembers (`eloot.lic:5655`).
+        if profile.remember_unlootable {
+            memory.unlootable.extend(profile.unlootable.iter().cloned());
+        }
         memory
             .unskinnable
             .extend(profile.skin.unskinnable.iter().cloned());
@@ -209,6 +173,9 @@ impl Planner {
             tries: BTreeMap::new(),
             skipped: BTreeSet::new(),
             opened: BTreeSet::new(),
+            closed: BTreeSet::new(),
+            reclosed: BTreeSet::new(),
+            learned: Learned::default(),
             bags: BTreeMap::new(),
             room_looted: false,
             gathered: Vec::new(),
@@ -217,6 +184,13 @@ impl Planner {
             last: None,
             bags_full: false,
             boxed: None,
+            only_skin: false,
+            pending: None,
+            free_tries: 0,
+            put_away: Vec::new(),
+            catch: None,
+            into_box: None,
+            phasing: None,
         }
     }
 
@@ -235,22 +209,28 @@ impl Planner {
         planner
     }
 
-    /// The box emptied by [`Planner::for_box`] said it is locked: it goes
-    /// back in its bag.
-    #[must_use]
-    pub fn box_locked(&self) -> bool {
-        self.boxed.as_ref().is_some_and(Boxed::locked)
-    }
-
     /// What was learned, for the next room.
     #[must_use]
     pub fn memory(&self) -> &Memory {
         &self.memory
     }
 
-    /// The next command.
+    /// The next command. A hand is freed first for a step that needs one;
+    /// before the visit ends, what was put away is given back, and the bags
+    /// it opened are closed again when the profile keeps them closed.
     pub fn next(&mut self, state: &GameState) -> Step {
-        let step = self.decide(state);
+        let step = match self.pending.take() {
+            Some(step) => step,
+            None => self.decide(state),
+        };
+        let mut step = self.with_hand(state, step);
+        if matches!(step, Step::Done(_)) {
+            if let Some(back) = self.give_back(state) {
+                step = back;
+            } else if let Some(bag) = self.reclose(state) {
+                step = Step::Close(bag);
+            }
+        }
         self.last = Some(step.clone());
         step
     }
@@ -268,13 +248,26 @@ impl Planner {
                 return Step::Cast(SIGIL_OF_DETERMINATION.to_owned());
             }
         }
+        if let Some(step) = self.phase_step(state) {
+            return step;
+        }
+        if let Some(step) = self.stow_caught(state) {
+            return step;
+        }
         if let Some(step) = self.box_step(state) {
             return step;
         }
         if let Some(step) = self.skin(state) {
             return step;
         }
+        if self.only_skin {
+            return Step::Done(Left::Nothing);
+        }
         if let Some(corpse) = self.corpses.front().copied() {
+            if self.leaves_corpse(state, corpse) {
+                self.corpses.pop_front();
+                return self.decide(state);
+            }
             let key = corpse.to_string();
             if *self.tries.get(&key).unwrap_or(&0) >= SEARCH_TRIES {
                 self.corpses.pop_front();
@@ -301,6 +294,15 @@ impl Planner {
             }
         }
         if floor.specials.is_empty() && floor.unwanted == 0 && !self.room_looted {
+            // The bags the game stows into are opened first when the profile
+            // keeps them closed (`open_loot_containers`, `eloot.lic:3869-3889`).
+            for (_, types) in &floor.regular {
+                if let Some(bag) = self.bag_for(state, types)
+                    && let Some(open) = self.open_first(state, &bag)
+                {
+                    return open;
+                }
+            }
             self.room_looted = true;
             self.gathered = floor
                 .regular
@@ -328,7 +330,12 @@ impl Planner {
             return None;
         }
         if self.skinning.is_none() {
-            let corpses: Vec<i64> = self.corpses.iter().copied().collect();
+            let corpses: Vec<i64> = self
+                .corpses
+                .iter()
+                .copied()
+                .filter(|corpse| !self.leaves_corpse(state, *corpse))
+                .collect();
             let unskinnable: Vec<String> = self.memory.unskinnable.iter().cloned().collect();
             self.skinning = Some(Skinning::new(
                 self.profile.skin.clone(),
@@ -399,15 +406,17 @@ impl Planner {
             self.bags_full = true;
             return Some(Step::Done(Left::BagsFull));
         };
-        // Before either way of taking it: `loot #id` into a bag that closes
-        // itself is refused as a drag is.
-        if self.memory.autoclosers.contains(&bag) && !self.opened.contains(&bag) {
-            self.opened.insert(bag.clone());
-            return Some(Step::Open(bag));
+        // Before either way of taking it: `loot #id` into a shut bag is
+        // refused as a drag is.
+        if let Some(open) = self.open_first(state, &bag) {
+            return Some(open);
         }
         if lootable_by_verb(types) {
             self.into = Some(bag);
             return Some(Step::LootItem(item.id.clone()));
+        }
+        if types.is("box") {
+            self.may_phase(&item.id, &item.text, bags::is_disk(state, &bag));
         }
         Some(Step::Drag {
             item: item.id.clone(),
@@ -415,19 +424,23 @@ impl Planner {
         })
     }
 
-    /// The floor split into eloot's two passes and what is left.
+    /// The floor split into eloot's two passes and what is left. A thing
+    /// kept by name is a special, taken one by one (`loot_specials`,
+    /// `eloot.lic:5595`), whatever was learned of its name.
     fn split(&self, state: &GameState) -> Floor {
         let mut floor = Floor::default();
         for item in &state.room.objects {
+            let kept = self.profile.keeps(&item.text);
             if self.skipped.contains(&item.id)
-                || self.memory.crumbly.contains(&item.text)
-                || self.memory.unlootable.contains(&item.text)
+                || (!kept
+                    && (self.memory.crumbly.contains(&item.text)
+                        || self.memory.unlootable.contains(&item.text)))
             {
                 floor.unwanted += 1;
                 continue;
             }
             match verdict(item, &self.profile) {
-                Verdict::Take(types) if is_special(item, &types) => {
+                Verdict::Take(types) if kept || is_special(item, &types) => {
                     floor.specials.push((item.clone(), types));
                 }
                 Verdict::Take(types) => floor.regular.push((item.clone(), types)),
@@ -437,25 +450,13 @@ impl Planner {
         floor
     }
 
-    /// The bag for things of these kinds: the stow list's slot, else the
-    /// default, else the disk when the profile uses it; none that is known
-    /// full.
-    fn bag_for(&self, state: &GameState, types: &ObjectTypes) -> Option<String> {
-        let slot = stow_slot(types);
-        let mut candidates: Vec<String> = Vec::new();
-        for slot in [slot, StowSlot::Default] {
-            if let Some(bag) = state.containers.stow(slot) {
-                candidates.push(bag.id.clone());
-            }
-        }
-        if self.profile.disk
-            && let Some(disk) = own_disk(state)
-        {
-            candidates.push(disk);
-        }
-        candidates
-            .into_iter()
-            .find(|bag| !self.memory.full.contains(bag))
+    /// Whether a corpse is left unsearched and unskinned: one of the
+    /// profile's `leave_creatures`, or a child.
+    fn leaves_corpse(&self, state: &GameState, corpse: i64) -> bool {
+        state
+            .creatures()
+            .get(corpse)
+            .is_some_and(|creature| self.profile.leaves_creature(&creature.name))
     }
 
     /// How it ends when nothing wanted is left: a box in hand is a reason
@@ -476,10 +477,20 @@ impl Planner {
     /// What the game said to the last step. `state` is as it stands after
     /// the reply: the hands, for a gem a skinning broke out.
     pub fn outcome_in(&mut self, outcome: &Outcome, state: &GameState) {
+        if self.too_heavy(state, outcome) {
+            return;
+        }
         if let (Some(last), Some(skinning)) = (self.last.clone(), self.skinning.as_mut())
             && let Some(name) = skinning.outcome(&last, outcome, state)
+            && self.memory.unskinnable.insert(name.clone())
         {
-            self.memory.unskinnable.insert(name);
+            Learned::add(&mut self.learned.unskinnable, &name);
+        }
+        if *outcome == Outcome::Closed
+            && let Some(bag) = self.shut_bag()
+        {
+            self.closed_on(Some(state), &bag);
+            return;
         }
         self.outcome(outcome);
     }
@@ -488,6 +499,12 @@ impl Planner {
     pub fn outcome(&mut self, outcome: &Outcome) {
         if let Some(boxed) = self.boxed.as_mut() {
             boxed.outcome(outcome);
+        }
+        if *outcome == Outcome::Closed
+            && let Some(bag) = self.shut_bag()
+        {
+            self.closed_on(None, &bag);
+            return;
         }
         let Some(last) = self.last.clone() else {
             return;
@@ -520,18 +537,12 @@ impl Planner {
             (Step::Drag { bag, .. }, Outcome::WontFit) => {
                 self.memory.full.insert(bag);
             }
-            (Step::Drag { bag, .. }, Outcome::Closed) => {
-                self.memory.autoclosers.insert(bag);
-            }
+            (Step::Drag { item, .. }, Outcome::Stored) => self.stored(&item),
+            (Step::Cast(_), Outcome::Hindered) => self.hindered(),
             // `loot #id` names the item; the bag is the one it was bound for.
             (Step::LootItem(_), Outcome::WontFit) => {
                 if let Some(bag) = self.into.take() {
                     self.memory.full.insert(bag);
-                }
-            }
-            (Step::LootItem(_), Outcome::Closed) => {
-                if let Some(bag) = self.into.take() {
-                    self.memory.autoclosers.insert(bag);
                 }
             }
             (
@@ -543,33 +554,6 @@ impl Planner {
             _ => {}
         }
     }
-
-    /// A name learned crumbly or unlootable, by the item the last step
-    /// touched. The driver calls this with the item's name when the outcome
-    /// was [`Outcome::Crumbled`] or [`Outcome::Unlootable`].
-    pub fn learn(&mut self, outcome: &Outcome, name: &str) {
-        match outcome {
-            Outcome::Crumbled => {
-                self.memory.crumbly.insert(name.to_owned());
-            }
-            Outcome::Unlootable => {
-                self.memory.unlootable.insert(name.to_owned());
-            }
-            _ => {}
-        }
-    }
-}
-
-/// This character's own disk on the floor, by id: a `disk` whose name
-/// begins with the character's name.
-fn own_disk(state: &GameState) -> Option<String> {
-    let name = state.character.name.as_deref()?;
-    state
-        .room
-        .objects
-        .iter()
-        .find(|item| item.noun == "disk" && item.text.starts_with(name))
-        .map(|item| item.id.clone())
 }
 
 /// Is Sigil of Determination up, by the effects list?

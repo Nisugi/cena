@@ -70,6 +70,9 @@ pub enum Outcome {
     /// `You can only collect` / `You cannot hold any more silvers`: no more
     /// coins fit on the character.
     CoinsFull,
+    /// `[Spell Hindrance for ...]`: armour got in the way of a cast, which
+    /// is made again (`box_phase`, `eloot.lic:2982`; `cast::Answer::Hindered`).
+    Hindered,
 }
 
 /// Read one reply line. `None` when it says nothing about a loot command.
@@ -136,7 +139,9 @@ pub fn classify(line: &str) -> Option<Outcome> {
     if has("A huge scorpion tail rises high from the rear") {
         return Some(Outcome::ScorpionTail);
     }
-    if has("is locked") || has("seems to be locked") {
+    // *It appears to be locked.* is the line eloot waits on for a box
+    // (`box_loot_ground`, `eloot.lic:5151`; the pool, `:7270`).
+    if has("is locked") || has("seems to be locked") || has("appears to be locked") {
         return Some(Outcome::Locked);
     }
     if has("You gather the remaining") || has("reclaiming them") {
@@ -144,6 +149,9 @@ pub fn classify(line: &str) -> Option<Outcome> {
     }
     if has("You can only collect") || has("You cannot hold any more silvers") {
         return Some(Outcome::CoinsFull);
+    }
+    if text.starts_with("[Spell Hindrance for") {
+        return Some(Outcome::Hindered);
     }
     // `loot_all`'s "too much" alternation (`eloot.lic:5185`).
     if (has("up and stow") && has("treasure")) || has("but quickly realize") {

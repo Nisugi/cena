@@ -7,8 +7,9 @@
 //!
 //! So an agent may walk (`go2 <place>`, `go2 stop`), hunt (`hunt <profile>`,
 //! `quick`, `bounty`, `hunt stop`), heal (`heal`, `heal stock`, `heal fill`),
-//! keep spells up (`keep`) and waggle (`waggle`). Everything else is refused,
-//! each for its own reason:
+//! keep spells up (`keep`), waggle (`waggle`), and loot and sell by the
+//! character's loot profile (`loot` and its words; the author, `plan/61` §7
+//! item 2: *"yes"*). Everything else is refused, each for its own reason:
 //!
 //! - **what writes a setting or a profile**: a hunt profile's steps are game
 //!   commands, so editing one would get round the Commands level;
@@ -39,7 +40,8 @@ use tokio_util::sync::CancellationToken;
 /// What an agent is told it may run.
 pub(crate) const ALLOWED: &str = "go2 <place>, go2 stop, hunt <profile>, hunt <profile> quick, \
 hunt <profile> bounty, hunt stop, heal (spellcast, ranged, blood), heal stock, heal fill, keep, \
-waggle [names]";
+waggle [names], loot, loot skin, loot box, loot ground, loot sell [type|shop|item <what>], \
+loot pool [deposit|return], loot deposit";
 
 /// The authority travel's walks claim (`travel.rs`).
 pub(crate) const TRAVEL_TOKEN: AuthorityToken = AuthorityToken(2);
@@ -71,6 +73,8 @@ fn job(line: &str) -> Result<Job, String> {
             | hunt::Command::Stop
             | hunt::Command::Heal { .. }
             | hunt::Command::Stock { .. }
+            | hunt::Command::Loot(_)
+            | hunt::Command::LootSell(_)
             | hunt::Command::Keep
             | hunt::Command::Waggle(_)) => Ok(Job::Hunt(command)),
             hunt::Command::Group { .. } => Err(
@@ -360,6 +364,12 @@ mod tests {
             "heal fill",
             "keep",
             "waggle Nerten",
+            "loot",
+            "loot sell",
+            "loot sell type gem, skin",
+            "loot sell shop gemshop",
+            "loot sell item blue crystal",
+            "loot pool return",
         ] {
             assert!(job(line).is_ok(), "{line}: {:?}", job(line).err());
         }
@@ -369,6 +379,7 @@ mod tests {
             ("hunt ojandhaart with Nerten", "group"),
             ("sc 118 Nerten", "players"),
             ("heal set container pouch", "settings"),
+            ("loot set skin.enable on", "settings"),
             ("go2 save bank = current", "saves"),
             ("multi 2,drop sword", "may run"),
             ("foreach gem in sack;drop gem", "may run"),

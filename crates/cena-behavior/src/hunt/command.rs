@@ -25,6 +25,8 @@
 //! as travel's do. A line this module does not know answers `None`, which
 //! means *not hunt's*, and never *the game's*.
 
+use crate::loot::Errand;
+
 /// One thing asked about hunt profiles.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
@@ -79,6 +81,17 @@ pub enum Command {
         /// eherbs' `fill` rather than `stock`.
         fill: bool,
     },
+    /// `;loot` and its words: one part of looting or selling, by itself
+    /// (`plan/61` step 1).
+    Loot(Errand),
+    /// `;loot sell type|shop|item <what>`: the selling round, only as much
+    /// of it as chosen (`plan/61` step 6).
+    LootSell(crate::town::Choice),
+    /// `;loot last`: what the last selling round came to (`plan/61` step 2).
+    LootLast,
+    /// `;loot reset unskinnable [creature]`: forget every creature learned
+    /// unskinnable, or the one named (`plan/61` step 4).
+    ResetUnskinnable(Option<String>),
     /// `;sc <spell|alias> [target] [count]`: one spell, as set up.
     Sc(Vec<String>),
     /// `;sc alias|verb|stance|set ...`: change the spellcaster profile.
@@ -142,6 +155,8 @@ pub enum Topic {
     Waggle,
     /// `sc help`, or `sc` alone.
     Sc,
+    /// `loot help`.
+    Loot,
 }
 
 /// A character's own profile, changed from the game line.
@@ -151,6 +166,8 @@ pub enum Of {
     Heal,
     /// The waggle profile (`waggle.rs`).
     Waggle,
+    /// The loot profile, its `[skin]` and `[town]` with it (`loot/profile.rs`).
+    Loot,
 }
 
 impl Of {
@@ -160,6 +177,7 @@ impl Of {
         match self {
             Self::Heal => "heal",
             Self::Waggle => "waggle",
+            Self::Loot => "loot",
         }
     }
 }
@@ -194,64 +212,69 @@ const RESERVED: &[&str] = &[
     "setup",
 ];
 
+pub use super::help::help;
+
 /// What a wrongly said command is answered with.
 pub const USAGE: &str = "hunt <name> [quick|bounty], hunt <name> with <character>..., hunt stop, hunt list, hunt check <name>, hunt show <name> [setting], hunt set <name> <setting> <value>, hunt unset <name> <setting>, hunt import <bigshot yaml> [as <name>], hunt import-loot <eloot yaml>. `hunt help` says more.";
 
-/// What `hunt help`, `heal help` and `waggle help` say, a line each.
-#[must_use]
-pub const fn help(topic: Topic) -> &'static [&'static str] {
-    match topic {
-        Topic::Hunt => HUNT_HELP,
-        Topic::Heal => HEAL_HELP,
-        Topic::Waggle => WAGGLE_HELP,
-        Topic::Sc => SC_HELP,
+/// The words after `loot` that are the ledger's reports, and not this
+/// module's (`crates/cena/src/loot.rs`).
+const LOOT_REPORTS: &[&str] = &["summary", "recent", "boxes", "creatures", "cap", "lootcap"];
+
+/// `loot` and what follows; `None` for a report's word.
+fn loot_words(line: &str, words: &[&str]) -> Option<Result<Command, String>> {
+    if let Some(settings) = settings_words(Of::Loot, line, words) {
+        return Some(settings);
     }
+    let lower: Vec<String> = words.iter().map(|w| w.to_ascii_lowercase()).collect();
+    let lower: Vec<&str> = lower.iter().map(String::as_str).collect();
+    let errand = match lower.as_slice() {
+        [] => Errand::Room,
+        [word, ..] if LOOT_REPORTS.contains(word) => return None,
+        ["last"] => return Some(Ok(Command::LootLast)),
+        // The creature as typed: eloot matches it without regard to case.
+        ["reset", "unskinnable", rest @ ..] => {
+            let creature = (!rest.is_empty()).then(|| after_words(line, 3).to_owned());
+            return Some(Ok(Command::ResetUnskinnable(creature)));
+        }
+        ["skin"] => Errand::Skin,
+        ["box"] => Errand::Box,
+        ["ground"] => Errand::Ground,
+        ["sell"] => Errand::Sell,
+        // eloot's `--type`, `--sellable` and `--sell` (`eloot.lic:8033`).
+        [
+            "sell",
+            how @ ("type" | "types" | "shop" | "shops" | "item" | "items"),
+            ..,
+        ] => {
+            let chose = crate::town::Choice::parse(how, after_words(line, 3))
+                .map(Command::LootSell)
+                .map_err(|why| format!("Loot: {why}"));
+            return Some(chose);
+        }
+        ["deposit"] => Errand::Deposit,
+        ["pool"] => Errand::Pool {
+            drop: true,
+            collect: true,
+        },
+        ["pool", "deposit"] => Errand::Pool {
+            drop: true,
+            collect: false,
+        },
+        // eloot's three words for it (`eloot.lic:8018`).
+        ["pool", "return" | "check" | "loot"] => Errand::Pool {
+            drop: false,
+            collect: true,
+        },
+        _ => {
+            return Some(Err(
+                "loot, loot skin, loot box, loot ground, loot sell [type|shop|item <what>], loot pool [deposit|return], loot deposit, loot last; `loot help` says more."
+                    .to_owned(),
+            ));
+        }
+    };
+    Some(Ok(Command::Loot(errand)))
 }
-
-const HUNT_HELP: &[&str] = &[
-    "hunt <profile>                         hunt on a profile",
-    "hunt <profile> quick | bounty          clear this room | hunt until the bounty is done",
-    "hunt <profile> with <name> <name>...   lead these characters, each hunting its own <profile>",
-    "hunt stop                              stop",
-    "hunt list                              the profiles there are",
-    "hunt check <profile>                   read it as this character will run it: what is wrong, what is held",
-    "hunt show <profile> [setting]          every setting, or those under one: hunt show ojandhaart rest",
-    "hunt set <profile> <setting> <value>   change one: hunt set ojandhaart rooms.resting 29877",
-    "hunt unset <profile> <setting>         take one out, so the default decides it",
-    "hunt import <bigshot yaml> [as <name>] bring in a bigshot profile",
-    "hunt import-loot <eloot yaml>          bring in eloot's settings as this character's loot profile",
-    "hunt setup                             where the map's setup page is",
-    "A value is on or off, a number, a list [\"a\", \"b\"], a table { name = \"warg\", routine = \"a\" }, or words.",
-    "A setting in a list is picked by number from 1: hunt set ojandhaart targets.2.routine c",
-    "heal help, waggle help, keep list, go2 help: the other behaviors. `help` lists everything.",
-];
-
-const HEAL_HELP: &[&str] = &[
-    "heal [spellcast] [ranged] [blood]      heal with herbs: everything, or only what stops a cast, a shot, or the blood",
-    "heal show                              the heal settings, the defaults included",
-    "heal set <setting> <value>             change one: heal set container herb pouch",
-    "heal unset <setting>                   back to its default",
-    "heal stock | fill                      stock the herb container at the herbalist | buy one of each herb it lacks",
-    "A hunt heals at every rest once a container is set. `hunt stop` stops a heal under way.",
-];
-
-const SC_HELP: &[&str] = &[
-    "sc <spell|alias> [target] [count]      cast it: sc 401, sc 903 kobold, sc 111 3",
-    "sc alias <spell> <name>                call a spell by a name of yours: sc alias 211 bravery",
-    "sc verb <spell> <verb>                 cast it with this verb (channel, evoke, incant...)",
-    "sc stance <spell> <stance>             take this stance to cast it",
-    "sc set typed on|off                    cast a bare 401 or alias typed with no sc (on by default)",
-    "sc set conserve|safety|channel|stance on|off   keep mana, need a target, channel attacks, stance",
-    "A cast goes beside a running hunt, never in its place. The Spellcaster page in Settings has every setting.",
-];
-
-const WAGGLE_HELP: &[&str] = &[
-    "waggle [name] [name]...                cast the waggle spells on these people, or yourself",
-    "waggle show                            the waggle settings, the defaults included",
-    "waggle set <setting> <value>           change one: waggle set cast_list [101, 107, 401]",
-    "waggle unset <setting>                 back to its default",
-    "`hunt stop` stops a waggle under way.",
-];
 
 /// The hunt command a line is, **the command symbol already gone**. `None`:
 /// not hunt's. `Some(Err(_))`: hunt's, said wrongly.
@@ -261,6 +284,9 @@ pub fn parse(line: &str) -> Option<Result<Command, String>> {
     let first = words.next()?;
     if first.eq_ignore_ascii_case("heal") {
         return Some(heal_words(line, words));
+    }
+    if first.eq_ignore_ascii_case("loot") {
+        return loot_words(line, &words.collect::<Vec<_>>());
     }
     if first.eq_ignore_ascii_case("sc") {
         let rest: Vec<String> = words.map(str::to_owned).collect();
@@ -405,6 +431,7 @@ fn settings_words(of: Of, line: &str, words: &[&str]) -> Option<Result<Command, 
     let topic = match of {
         Of::Heal => Topic::Heal,
         Of::Waggle => Topic::Waggle,
+        Of::Loot => Topic::Loot,
     };
     Some(match (first.as_str(), words) {
         ("help", [_]) => Ok(Command::Help(topic)),
@@ -632,6 +659,87 @@ mod tests {
             Some(Ok(Command::Stock { fill: false }))
         );
         assert_eq!(parse("heal fill"), Some(Ok(Command::Stock { fill: true })));
+    }
+
+    /// `loot` alone loots the room (the author, `plan/61` §7 item 1); the
+    /// reports' words are left to the reports.
+    #[test]
+    fn loot_and_its_words() {
+        use crate::loot::Errand;
+        use crate::town::{Choice, Shop};
+        let loot = |line| parse(line).and_then(Result::ok);
+        assert_eq!(loot("loot"), Some(Command::Loot(Errand::Room)));
+        assert_eq!(loot("LOOT Skin"), Some(Command::Loot(Errand::Skin)));
+        assert_eq!(loot("loot box"), Some(Command::Loot(Errand::Box)));
+        assert_eq!(loot("loot ground"), Some(Command::Loot(Errand::Ground)));
+        assert_eq!(loot("loot sell"), Some(Command::Loot(Errand::Sell)));
+        // eloot's `--type`, `--sellable` and `--sell` (`plan/61` step 6).
+        let owned = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect();
+        assert_eq!(
+            loot("loot sell type gem, skin"),
+            Some(Command::LootSell(Choice::Kinds(owned(&["gem", "skin"]))))
+        );
+        assert_eq!(
+            loot("LOOT SELL SHOP gemshop furrier"),
+            Some(Command::LootSell(Choice::Shops(vec![
+                Shop::Gemshop,
+                Shop::Furrier
+            ])))
+        );
+        assert_eq!(
+            loot("loot sell item Blue Crystal, silver wand"),
+            Some(Command::LootSell(Choice::Names(owned(&[
+                "blue crystal",
+                "silver wand"
+            ]))))
+        );
+        assert!(matches!(
+            parse("loot sell type wnad"),
+            Some(Err(why)) if why.starts_with("Loot: ") && why.contains("wnad")
+        ));
+        assert!(matches!(parse("loot sell shop"), Some(Err(_))));
+        assert_eq!(loot("loot deposit"), Some(Command::Loot(Errand::Deposit)));
+        for (line, drop, collect) in [
+            ("loot pool", true, true),
+            ("loot pool deposit", true, false),
+            ("loot pool return", false, true),
+            ("loot pool check", false, true),
+        ] {
+            assert_eq!(
+                loot(line),
+                Some(Command::Loot(Errand::Pool { drop, collect })),
+                "{line}"
+            );
+        }
+        for report in [
+            "loot summary",
+            "loot recent 5 gem",
+            "loot boxes",
+            "loot cap last",
+        ] {
+            assert_eq!(parse(report), None, "{report}");
+        }
+        assert_eq!(loot("loot last"), Some(Command::LootLast));
+        assert_eq!(
+            loot("loot reset unskinnable"),
+            Some(Command::ResetUnskinnable(None))
+        );
+        assert_eq!(
+            loot("loot RESET unskinnable  Krag Dweller "),
+            Some(Command::ResetUnskinnable(Some("Krag Dweller".to_owned())))
+        );
+        assert!(matches!(parse("loot everything"), Some(Err(_))));
+        assert_eq!(parse("loot help"), Some(Ok(Command::Help(Topic::Loot))));
+        assert_eq!(
+            parse("loot set town.sell_keep_silver 5000"),
+            Some(Ok(Command::Settings(
+                Of::Loot,
+                Setting::Set {
+                    key: "town.sell_keep_silver".to_owned(),
+                    value: "5000".to_owned(),
+                }
+            )))
+        );
     }
 
     #[test]

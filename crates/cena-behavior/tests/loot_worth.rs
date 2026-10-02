@@ -104,6 +104,51 @@ fn excluded_names_match_whole_words_only() {
     );
 }
 
+/// `loot_keep`: taken whatever its kind, past the weapon rule and a name
+/// learned crumbly (`eloot.lic:5647`); `leave` still wins, and so does a
+/// curse not wanted (`:5588-5590`).
+#[test]
+fn a_thing_kept_by_name_is_taken_past_every_rule_but_leave_and_a_curse() {
+    let p = LootProfile {
+        keep: vec![
+            "greatsword".to_owned(),
+            "lyre".to_owned(),
+            "dagger".to_owned(),
+        ],
+        leave: vec!["black".to_owned()],
+        crumbly: vec!["ornate ruic lyre".to_owned()],
+        ..LootProfile::default()
+    };
+    for thing in [
+        item("1", "greatsword", "huge steel greatsword"),
+        item("2", "lyre", "ornate ruic lyre"),
+    ] {
+        let v = verdict(&thing, &p);
+        assert!(left(&v).is_none(), "{}: {v:?}", thing.text);
+    }
+    assert_eq!(
+        left(&verdict(&item("3", "dagger", "black steel dagger"), &p)),
+        Some("excluded by name")
+    );
+}
+
+/// The `unlootable` list is read only when the profile remembers them
+/// (`eloot.lic:5655`).
+#[test]
+fn the_unlootable_list_is_read_only_when_remembered() {
+    let mut p = LootProfile {
+        unlootable: vec!["peculiar glowing whatsit".to_owned()],
+        ..LootProfile::default()
+    };
+    let whatsit = item("10", "whatsit", "peculiar glowing whatsit");
+    assert!(left(&verdict(&whatsit, &p)).is_none());
+    p.remember_unlootable = true;
+    assert_eq!(
+        left(&verdict(&whatsit, &p)),
+        Some("could not be held before")
+    );
+}
+
 #[test]
 fn the_stow_slot_is_the_first_kind_that_names_one() {
     let p = nisugi().unwrap();

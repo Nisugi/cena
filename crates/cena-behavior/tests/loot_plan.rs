@@ -1,7 +1,7 @@
 //! The loot planner, driven step by step with no game (`plan/31` §3):
 //! eloot's order, the game's own sorter, and what a reply teaches.
 
-use cena_behavior::loot::{Left, LootProfile, Memory, Outcome, Planner, Step};
+use cena_behavior::loot::{Emptied, Left, LootProfile, Memory, Outcome, Planner, Step};
 use cena_session::containers::{ContainerEvent, ItemRef, StowSlot};
 use cena_session::{Frame, GameState, Link, LinkKind, RoomItem, Run, Runs};
 
@@ -29,6 +29,49 @@ fn inside(state: &mut GameState, container: &str, id: &str, noun: &str, text: &s
             }],
         },
     });
+}
+
+/// Dead creatures in the room, as the wire states them: one bold link each,
+/// in one `room objs` component, and each one's status.
+#[expect(
+    clippy::default_trait_access,
+    reason = "the run's style type is not re-exported for behaviors; only its bold depth matters"
+)]
+fn dead(state: &mut GameState, creatures: &[(i64, &str, &str)]) {
+    let runs = creatures
+        .iter()
+        .map(|(id, noun, name)| {
+            let mut run = Run {
+                text: (*name).to_owned(),
+                style: Default::default(),
+                link: Some(Link {
+                    kind: LinkKind::Exist {
+                        id: id.to_string(),
+                        noun: (*noun).to_owned(),
+                    },
+                    text: (*name).to_owned(),
+                    coord: None,
+                }),
+                inner_link: None,
+            };
+            run.style.bold_depth = 1;
+            run
+        })
+        .collect();
+    state.apply(&Frame::Component {
+        id: "room objs".into(),
+        body: Runs { runs },
+    });
+    for (id, _, _) in creatures {
+        state.apply(&Frame::CreatureStatus {
+            id: id.to_string(),
+            attrs: vec![
+                ("exist".to_owned(), id.to_string()),
+                ("hostile".to_owned(), "1".to_owned()),
+                ("dead".to_owned(), "1".to_owned()),
+            ],
+        });
+    }
 }
 
 fn nisugi() -> LootProfile {
@@ -248,11 +291,118 @@ fn a_bag_that_closed_on_the_games_verb_is_opened_before_the_next_try() {
     let state = state(&floor, true);
     let mut plan = Planner::new(profile(), Memory::default(), &[]);
     assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
-    plan.outcome(&Outcome::Closed);
-    assert!(plan.memory().autoclosers.contains("901"));
+    // The sack is not listed: closed by hand, not a bag that closes itself.
+    plan.outcome_in(&Outcome::Closed, &state);
+    assert!(plan.memory().autoclosers.is_empty());
+    assert!(plan.learned().autoclose.is_empty());
     assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
     plan.outcome(&Outcome::Stored);
     assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+}
+
+/// A bag still listed with its contents when the game says it is closed
+/// closed itself (`eloot.lic:4119-4124`): learned, named for the profile, and
+/// opened first from then on, in the next room too.
+#[test]
+fn a_bag_that_closes_itself_is_learned_and_named_for_the_profile() {
+    // The acantha is not wanted, so the floor goes item by item.
+    let floor = [
+        item("1", "emerald", "uncut emerald"),
+        item("2", "acantha", "acantha leaf"),
+    ];
+    let mut state = state(&floor, true);
+    inside(&mut state, "901", "5", "diamond", "blue diamond");
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+    plan.outcome_in(&Outcome::Closed, &state);
+    assert!(plan.memory().autoclosers.contains("901"));
+    assert_eq!(plan.learned().autoclose, ["sack"]);
+    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
+    let mut next = Planner::new(profile(), plan.memory().clone(), &[]);
+    assert_eq!(next.next(&state), Step::Open("901".to_owned()));
+    assert!(next.learned().is_empty(), "learned once a hunt");
+}
+
+/// A bag the profile names in `autoclose` is opened before anything goes in,
+/// `loot room` too (`open_loot_containers`, `eloot.lic:3864-3867`), and once
+/// a visit.
+#[test]
+fn a_bag_named_in_the_profile_is_opened_first() {
+    let floor = [item("1", "emerald", "uncut emerald")];
+    let state = state(&floor, true);
+    let mut p = profile();
+    p.autoclose = vec!["sack".to_owned()];
+    let mut plan = Planner::new(p, Memory::default(), &[]);
+    assert_eq!(plan.next(&state), Step::Open("901".to_owned()));
+    assert_eq!(plan.next(&state), Step::LootRoom);
+    plan.outcome(&Outcome::NothingHere);
+    assert_eq!(plan.next(&state), Step::LootItem("1".to_owned()));
+}
+
+/// `critter_exclude` and a child: never searched; the rest are.
+#[test]
+fn a_creature_the_profile_leaves_is_not_searched() {
+    let mut state = state(&[], true);
+    dead(
+        &mut state,
+        &[
+            (41, "kobold", "kobold"),
+            (42, "rat", "giant rat"),
+            (43, "child", "lost child"),
+        ],
+    );
+    let mut p = profile();
+    p.leave_creatures = vec!["kobold".to_owned()];
+    let mut plan = Planner::new(p, Memory::default(), &[41, 42, 43]);
+    assert_eq!(plan.next(&state), Step::Search(42));
+    plan.outcome(&Outcome::Searched);
+    assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
+}
+
+/// A thing kept by name is taken whatever its kind, one by one; `leave`
+/// still wins.
+#[test]
+fn a_thing_kept_by_name_is_taken_whatever_its_kind() {
+    let floor = [
+        item("1", "sword", "ora broadsword"),
+        item("2", "crystal", "blue crystal"),
+    ];
+    let state = state(&floor, true);
+    let mut p = profile();
+    p.keep = vec!["broadsword".to_owned(), "crystal".to_owned()];
+    p.leave = vec!["blue".to_owned()];
+    let mut plan = Planner::new(p, Memory::default(), &[]);
+    assert_eq!(
+        plan.next(&state),
+        Step::Drag {
+            item: "1".to_owned(),
+            bag: "902".to_owned()
+        },
+        "a weapon, kept: a special, dragged; the crystal is left"
+    );
+}
+
+/// What could not be held is named for the profile only when it remembers
+/// them, and only when the thing is of no known kind.
+#[test]
+fn what_could_not_be_held_is_remembered_only_when_asked() {
+    let state = state(&[], true);
+    let whatsit = item("3", "whatsit", "peculiar glowing whatsit");
+    let mut plan = Planner::new(profile(), Memory::default(), &[]);
+    plan.learn_item(&Outcome::Unlootable, &whatsit);
+    assert!(plan.learned().unlootable.is_empty());
+    assert!(
+        plan.memory()
+            .unlootable
+            .contains("peculiar glowing whatsit")
+    );
+    let mut p = profile();
+    p.remember_unlootable = true;
+    let mut plan = Planner::new(p, Memory::default(), &[]);
+    plan.learn_item(&Outcome::Unlootable, &whatsit);
+    plan.learn_item(&Outcome::Unlootable, &item("4", "emerald", "uncut emerald"));
+    assert_eq!(plan.learned().unlootable, ["peculiar glowing whatsit"]);
+    let _ = plan.next(&state);
 }
 
 #[test]
@@ -296,29 +446,6 @@ fn what_the_hand_held_before_the_looting_is_left_in_it() {
         plan.next(&state),
         Step::LootRoom,
         "the sword was not on the floor: it is not dragged anywhere"
-    );
-}
-
-#[test]
-fn the_disk_is_the_last_bag_when_the_profile_uses_it() {
-    let floor = [
-        item("2", "acantha", "acantha leaf"),
-        item("3", "whatsit", "peculiar glowing whatsit"),
-        item("77", "disk", "Ashryn disk"),
-    ];
-    let mut state = state(&floor, true);
-    state.character.name = Some("Ashryn".to_owned());
-    let mut p = profile();
-    p.disk = true;
-    let mut memory = Memory::default();
-    memory.full.insert("902".to_owned());
-    let mut plan = Planner::new(p, memory, &[]);
-    assert_eq!(
-        plan.next(&state),
-        Step::Drag {
-            item: "3".to_owned(),
-            bag: "77".to_owned()
-        }
     );
 }
 
@@ -492,7 +619,7 @@ fn a_box_in_hand_is_opened_its_coins_charmed_out_and_its_gem_taken() {
         id: "40".to_owned(),
     });
     assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
-    assert!(!plan.box_locked());
+    assert_eq!(plan.emptied(), Emptied::Out);
 }
 
 #[test]
@@ -502,7 +629,7 @@ fn a_locked_box_is_left_alone_and_said_to_be() {
     assert_eq!(plan.next(&state), Step::Open("40".to_owned()));
     plan.outcome(&Outcome::Locked);
     assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
-    assert!(plan.box_locked());
+    assert_eq!(plan.emptied(), Emptied::Locked);
 }
 
 #[test]
@@ -519,4 +646,25 @@ fn without_a_charm_the_coins_are_gathered_by_hand() {
     });
     inside(&mut state, "40", "41", "coins", "12 silver coins");
     assert_eq!(plan.next(&state), Step::Coins("40".to_owned()));
+}
+
+/// Coins the character cannot carry stay in the box, and the box says so:
+/// the caller banks and empties it again (`box_loot`, `eloot.lic:5109-5115`).
+#[test]
+fn coins_that_will_not_fit_are_said_to_be_left_in_the_box() {
+    let mut state = state(&[], true);
+    let mut plan = Planner::for_box(profile(), Memory::default(), "40", None);
+    plan.next(&state);
+    plan.next(&state);
+    state.apply(&Frame::Container {
+        id: "40".to_owned(),
+        title: Some("Coffer".to_owned()),
+        target: None,
+        attrs: Vec::new(),
+    });
+    inside(&mut state, "40", "41", "coins", "9,000 silver coins");
+    assert_eq!(plan.next(&state), Step::Coins("40".to_owned()));
+    plan.outcome(&Outcome::CoinsFull);
+    assert_eq!(plan.next(&state), Step::Done(Left::Nothing));
+    assert_eq!(plan.emptied(), Emptied::CoinsLeft);
 }

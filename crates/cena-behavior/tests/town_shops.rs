@@ -153,3 +153,24 @@ fn gold_rings_by_eloot_s_names() {
     assert!(!is_gold_ring("gold-inlaid ring"));
     assert!(!is_gold_ring("etched gold ring"));
 }
+
+/// eloot's odd ones for the gem shop (`check_items`, `eloot.lic:6523-6526`):
+/// a scarab when the profile sells scarabs, and a thorn the object data
+/// calls a gem.
+#[test]
+fn a_scarab_and_a_crystallized_thorn_go_to_the_gem_shop() {
+    let state = setup(&[], &[("5", "scarab", "jade scarab")]);
+    let scarabs = Town {
+        sell_types: vec!["scarab".to_owned()],
+        ..Town::default()
+    };
+    let seller = Seller::new(scarabs, &state, HOME).expect("a round");
+    assert_eq!(seller.shops(), [Shop::Gemshop]);
+    let state = setup(&[], &[("6", "thorn", "crystallized black thorn")]);
+    let gems = Town {
+        sell_types: vec!["gem".to_owned()],
+        ..Town::default()
+    };
+    let seller = Seller::new(gems, &state, HOME).expect("a round");
+    assert_eq!(seller.shops(), [Shop::Gemshop]);
+}

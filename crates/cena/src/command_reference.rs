@@ -142,6 +142,33 @@
 //! | `sc set conserve\|safety\|channel\|stance on\|off` | keep mana; need a target; channel attacks; take the stance |
 //! | `sc`, `sc help` | the table |
 //!
+//! # loot
+//!
+//! [`hunt`](crate::hunt) over [`cena_behavior::loot`] and
+//! [`cena_behavior::town`]; `plan/31`, `plan/61`. Each is eloot's command of
+//! the same name, run by the character's loot profile, with no hunt around
+//! it; a hunt loots and sells by the same settings. `stop` ends one. The
+//! reports under the same word are in *loot, combat* below.
+//!
+//! | Command | Does |
+//! |---|---|
+//! | `loot` | skin and search the dead here, take what the floor holds |
+//! | `loot skin` | only skin the dead here, whatever `skin.enable` says |
+//! | `loot box` | empty the open box in hand, then keep it or throw it out, in the pool's bin when there is none here; a reliquary is always kept |
+//! | `loot ground` | the same for each box on the ground, the hands put away first and given back after; a locked box is left where it lay |
+//! | `loot sell` | the selling round: the locksmith pool, the shops, the bank, and back |
+//! | `loot sell type <kinds>` | the round for only these kinds, as the object table names them, between commas or a space apart: `loot sell type gem, skin`. The pool too for `type box` |
+//! | `loot sell shop <shops>` | the round at only these shops: `gemshop`, `pawnshop`, `furrier`, `collectibles`, `chronomage`; no pool |
+//! | `loot sell item <names>` | the round for only things whose names hold one of these, between commas: `loot sell item blue crystal, silver wand`; no pool. Each of the three sells only what the profile sells |
+//! | `loot pool` | the locksmith pool alone: give it the boxes carried, collect what is ready, then bank, keeping the silver carried before |
+//! | `loot pool deposit` | only give boxes, then bank as `loot pool` does |
+//! | `loot pool return` (`check`, `loot`) | only collect them; no bank |
+//! | `loot deposit` | the bank alone, keeping the silver the profile says |
+//! | `loot last` | what the last selling round came to: silver by shop, the pool's boxes less its tips and fees, the bank, and what was appraised and kept. Said at the end of every round, a hunt's too |
+//! | `loot reset unskinnable [creature]` | forget every creature learned unskinnable, or the one named, in any case |
+//! | `loot show`, `loot set <setting> <value>`, `loot unset <setting>` | the loot profile, skinning and selling with it: `loot set skin.enable on`, `loot set town.sell_keep_silver 5000` |
+//! | `loot help` | the table |
+//!
 //! # go2, route2, room
 //!
 //! [`travel`](crate::travel) over [`cena_behavior::travel`];
@@ -200,7 +227,7 @@
 //!
 //! | Command | Does |
 //! |---|---|
-//! | `loot [summary [today\|month\|<hours>]]` | what was looted, the last 24 hours unless said (`midnight`, `monthly` also) |
+//! | `loot summary [today\|month\|<hours>]` | what was looted, the last 24 hours unless said (`midnight`, `monthly` also) |
 //! | `loot recent [<n>] [<type>]` | the last 20, or `<n>`, of everything or one type (`gem`, `box`, …; plurals taken) |
 //! | `loot boxes [<n>]` | the last 10 boxes |
 //! | `loot creatures [<n>] [today\|month\|<hours>]` | the 10 best creatures |
@@ -359,8 +386,9 @@
 /// to the same set, so a family added to one is added to the other.
 #[cfg(test)]
 const FAMILIES: &[&str] = &[
-    "hunt", "heal", "waggle", "keep", "sc", "trigger", "go2", "loot", "history", "sorter",
-    "targetid", "doll", "theme", "multi", "agent", "lich", "stop", "keys", "to", "<script>",
+    "hunt", "heal", "waggle", "keep", "sc", "trigger", "go2", "loot", "combat", "history",
+    "sorter", "targetid", "doll", "theme", "multi", "agent", "lich", "stop", "keys", "to",
+    "<script>",
 ];
 
 #[cfg(test)]

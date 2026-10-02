@@ -1,12 +1,18 @@
 //! The hunt driver's looting: the loot planner run through the gate
 //! (`plan/31` Stage 2), boxes emptied with it.
 
+use cena_session::containers::StowSlot;
 use cena_session::{CommandId, Notice, NoticeKind};
 
 use super::{BEAT, Driver, HuntEnd, LOOT_STEPS, Learned};
-use crate::loot::{Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify};
-use crate::town::Town;
-use crate::travel::TravelNotes;
+use crate::loot::{
+    Emptied, Errand, Left, LootProfile, Outcome as LootOutcome, Planner, Step, classify,
+};
+use crate::town::{self, Round, Town};
+use crate::travel::{TravelNotes, hands};
+
+/// How many boxes `loot ground` takes up in one go.
+const GROUND_BOXES: usize = 20;
 
 impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Driver<'_, F, W, L> {
     /// Loot with the planner (`plan/31` Stage 2): each step sent through the
@@ -17,35 +23,311 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Dri
         let Some(profile) = self.machine.loot_profile().cloned() else {
             return Ok(());
         };
+        self.recall_full(&profile);
         let memory = std::mem::take(&mut self.memory);
         let planner = Planner::new(profile, memory, corpses);
-        self.run_loot(planner, true).await?;
-        let fresh: Vec<String> = self
-            .memory
-            .unskinnable
-            .difference(&self.saved_unskinnable)
-            .cloned()
-            .collect();
-        if !fresh.is_empty() {
-            self.saved_unskinnable.extend(fresh.iter().cloned());
-            (self.learned)(Learned::Unskinnable(&fresh));
-        }
+        let planner = self.run_loot(planner, true).await?;
+        self.tell_learned(&planner);
+        self.share_full();
         Ok(())
     }
 
-    /// Empty the box in hand with the loot planner (`box_loot`), for the
-    /// selling round. `true` when the box would not open.
+    /// The bags known full as a visit starts: none when the profile tries
+    /// every bag each time (`track_full_sacks` off, `eloot.lic:7911-7914`);
+    /// else the hunt's, and what the desk's earlier runs found.
+    fn recall_full(&mut self, profile: &LootProfile) {
+        if !profile.track_full {
+            self.memory.full.clear();
+            return;
+        }
+        if let Some(shared) = self.machine.full_bags()
+            && let Ok(shared) = shared.lock()
+        {
+            self.memory.full.extend(shared.iter().cloned());
+        }
+    }
+
+    /// What is known full now, for the desk's next run.
+    pub(super) fn share_full(&self) {
+        if let Some(shared) = self.machine.full_bags()
+            && let Ok(mut shared) = shared.lock()
+        {
+            shared.clone_from(&self.memory.full);
+        }
+    }
+
+    /// Hand what a visit learned to whoever writes the profile. Each name
+    /// is learned once a hunt: the memory carries it to the next room.
+    fn tell_learned(&mut self, planner: &Planner) {
+        let learned = planner.learned();
+        if !learned.is_empty() {
+            (self.learned)(Learned::Loot(learned));
+        }
+    }
+
+    /// One part of looting or selling by itself (`plan/61` step 1), as
+    /// eloot's commands run them, and how it went, said.
+    pub(super) async fn loot_errand(&mut self, errand: Errand) -> Result<(), HuntEnd> {
+        let Some(profile) = self.machine.loot_profile().cloned() else {
+            return Ok(());
+        };
+        let corpses: Vec<i64> = self
+            .state
+            .creatures()
+            .in_room()
+            .filter(|creature| creature.corpse())
+            .map(|creature| creature.id)
+            .collect();
+        self.recall_full(&profile);
+        let ground: String;
+        let text = match errand {
+            Errand::Room | Errand::Skin => {
+                let memory = std::mem::take(&mut self.memory);
+                let planner = if errand == Errand::Skin {
+                    Planner::for_skinning(profile, memory, &corpses)
+                } else {
+                    Planner::new(profile, memory, &corpses)
+                };
+                let planner = self.run_loot(planner, false).await?;
+                self.tell_learned(&planner);
+                match planner.ended() {
+                    Some(Left::Nothing) => "done.",
+                    Some(Left::BagsFull) => "stopped: every bag that would take it is full.",
+                    Some(Left::BoxInHand) => "stopped: a box is in hand that no bag will take.",
+                    Some(Left::NoHand) => "stopped: neither hand is fit to loot with.",
+                    None => "gave up after too many steps.",
+                }
+            }
+            Errand::Box => self.box_errand(&profile).await?,
+            Errand::Ground => {
+                ground = self.ground_errand(&profile).await?;
+                &ground
+            }
+            Errand::Sell | Errand::Pool { .. } | Errand::Deposit => {
+                let (round, done, nothing) = match errand {
+                    Errand::Pool { drop, collect } => (
+                        Round::Pool { drop, collect },
+                        "the pool is done.",
+                        "no boxes to take to the pool.",
+                    ),
+                    Errand::Deposit => (Round::Bank, "deposited.", "the bank was not reached."),
+                    _ if *self.machine.choice() != town::Choice::All => (
+                        Round::All,
+                        "the selling round is done.",
+                        "nothing of that to sell: only what the profile sells is sold.",
+                    ),
+                    _ => (Round::All, "the selling round is done.", "nothing to sell."),
+                };
+                if self.sell_round(round).await? {
+                    done
+                } else {
+                    nothing
+                }
+            }
+        };
+        self.share_full();
+        self.handle
+            .say(Notice::line(NoticeKind::Info, format!("Loot: {text}")));
+        Ok(())
+    }
+
+    /// `loot box`: the open box in hand emptied, then kept when it is one
+    /// the profile sells empty, else thrown out (`box_loot` and
+    /// `save_trash_box`, `eloot.lic:5086`, `:7773`). Coins that would not
+    /// all fit send it to the bank and back to gather the rest
+    /// (`:5109-5115`). A box not known empty stays in hand.
+    async fn box_errand(&mut self, profile: &LootProfile) -> Result<&'static str, HuntEnd> {
+        let Some(id) = town::box_in_hand(&self.state) else {
+            return Ok("there is no box in hand.");
+        };
+        let mut emptied = self.empty_box(profile, &id).await?;
+        if emptied == Emptied::CoinsLeft {
+            self.sell_round(Round::Bank).await?;
+            emptied = self.empty_box(profile, &id).await?;
+        }
+        match emptied {
+            Emptied::Locked => Ok("the box is locked."),
+            Emptied::CoinsLeft => {
+                Ok("stopped: the box's coins will not all fit, even after the bank.")
+            }
+            Emptied::Unseen => Ok("stopped: what the box holds was not seen, so it is kept."),
+            Emptied::ThingsLeft => {
+                Ok("stopped: the box holds what no bag will take, so it is kept in hand.")
+            }
+            Emptied::Out => self.keep_or_toss(profile, &id, true).await,
+        }
+    }
+
+    /// `loot ground` (`box_loot_ground`, `eloot.lic:5144-5219`): the hands
+    /// put away as a trip puts them away, then each box on the ground taken
+    /// up, emptied, and kept or thrown out as `loot box` does; one that is
+    /// locked is put back where it lay, and so is one not known empty. Coins
+    /// that would not all fit stop it, as they stop eloot (`:5170-5173`), the
+    /// box put back with the rest of them in it. The hands are given back at
+    /// the end.
+    async fn ground_errand(&mut self, profile: &LootProfile) -> Result<String, HuntEnd> {
+        let boxes: Vec<String> = self
+            .state
+            .room
+            .objects
+            .iter()
+            .filter(|item| {
+                cena_session::Disk::read(item).is_none()
+                    && cena_session::gameobj::classify(&item.noun, &item.text).is("box")
+            })
+            .map(|item| item.id.clone())
+            .take(GROUND_BOXES)
+            .collect();
+        if boxes.is_empty() {
+            return Ok("there is no box on the ground.".to_owned());
+        }
+        let held = |this: &Self, id: &str| {
+            this.state.right_hand.holds(id) || this.state.left_hand.holds(id)
+        };
+        let stored = hands::store_commands(&self.state);
+        for (_, line) in &stored {
+            self.send(line, None).await?;
+        }
+        let (mut emptied, mut locked, mut missed) = (0_usize, 0_usize, 0_usize);
+        let (mut not_emptied, mut coins_left) = (0_usize, false);
+        for id in &boxes {
+            self.send(&format!("get #{id}"), None).await?;
+            self.hold(BEAT).await?;
+            if !held(self, id) {
+                missed += 1;
+                continue;
+            }
+            match self.empty_box(profile, id).await? {
+                Emptied::Out => {
+                    self.keep_or_toss(profile, id, false).await?;
+                    emptied += 1;
+                }
+                Emptied::Locked => {
+                    locked += 1;
+                    self.send(&format!("drop #{id}"), None).await?;
+                }
+                Emptied::Unseen | Emptied::ThingsLeft => {
+                    not_emptied += 1;
+                    self.send(&format!("drop #{id}"), None).await?;
+                }
+                Emptied::CoinsLeft => {
+                    coins_left = true;
+                    self.send(&format!("drop #{id}"), None).await?;
+                    break;
+                }
+            }
+        }
+        for (item, _) in &stored {
+            if !held(self, &item.id) {
+                let line = hands::take_back(&self.state, item);
+                self.send(&line, None).await?;
+            }
+        }
+        let mut parts = vec![format!("{emptied} emptied")];
+        if locked > 0 {
+            parts.push(format!("{locked} locked and left there"));
+        }
+        if missed > 0 {
+            parts.push(format!("{missed} could not be taken up"));
+        }
+        if not_emptied > 0 {
+            parts.push(format!(
+                "{not_emptied} put back not emptied, holding what no bag would take or not seen into"
+            ));
+        }
+        if coins_left {
+            parts.push(
+                "then stopped: no more coins can be carried, and the box was put back with the rest of them"
+                    .to_owned(),
+            );
+        }
+        Ok(format!("boxes on the ground: {}.", parts.join(", ")))
+    }
+
+    /// The emptied box `id` in hand kept, when it is one the profile sells
+    /// empty or a reliquary, else thrown out (`save_trash_box`,
+    /// `eloot.lic:7773-7810`). With no receptacle here, `to_a_bin` takes it
+    /// to the one in the nearest pool's room and comes back, as eloot's `loot
+    /// box` does (`:7786-7791`, `:7809`); without, or with none there either,
+    /// it is dropped where it is.
+    async fn keep_or_toss(
+        &mut self,
+        profile: &LootProfile,
+        id: &str,
+        to_a_bin: bool,
+    ) -> Result<&'static str, HuntEnd> {
+        let held = |this: &Self| this.state.right_hand.holds(id) || this.state.left_hand.holds(id);
+        if town::keeps_box(&Town::for_profile(profile), &self.state, id) {
+            let bag = self.state.containers.stow(StowSlot::Default);
+            if let Some(bag) = bag.map(|bag| bag.id.clone()) {
+                self.send(&format!("_drag #{id} #{bag}"), None).await?;
+            }
+            return Ok("the box is emptied and kept.");
+        }
+        let back = self.locate();
+        let mut went = None;
+        if !self.trash(id).await?
+            && to_a_bin
+            && held(self)
+            && let Some(bin) = back.and_then(|from| self.nearest_pool(from))
+        {
+            self.walk(bin).await?;
+            went = back;
+            self.trash(id).await?;
+        }
+        if held(self) {
+            self.send(&format!("drop #{id}"), None).await?;
+            self.hold(BEAT).await?;
+        }
+        if let Some(back) = went {
+            self.walk(back).await?;
+        }
+        Ok("the box is emptied.")
+    }
+
+    /// `trash #id`, sent again when the game asks to be sure; `false` when
+    /// there is no receptacle here (*You do not notice a trash receptacle*).
+    async fn trash(&mut self, id: &str) -> Result<bool, HuntEnd> {
+        for _ in 0..2 {
+            if !(self.state.right_hand.holds(id) || self.state.left_hand.holds(id)) {
+                break;
+            }
+            self.transcript.clear();
+            self.send(&format!("trash #{id}"), None).await?;
+            self.hold(BEAT).await?;
+            if self
+                .transcript
+                .lines()
+                .any(|line| town::classify(line) == Some(town::Reply::NoTrash))
+            {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// The nearest pool's room from `from`, by what this walker would pay:
+    /// every pool has a receptacle.
+    fn nearest_pool(&self, from: cena_map::RoomId) -> Option<cena_map::RoomId> {
+        let now = self.state.game_time_now().unwrap_or(0);
+        let walker = crate::travel::walker_from(&self.state, &self.notes, now);
+        town::route::shop_room(self.map, &walker, from, town::Shop::Pool.tag(), false)
+    }
+
+    /// Empty the box in hand with the loot planner (`box_loot`), and say
+    /// how it came out.
     pub(super) async fn empty_box(
         &mut self,
         profile: &LootProfile,
         id: &str,
-    ) -> Result<bool, HuntEnd> {
+    ) -> Result<Emptied, HuntEnd> {
         let town = Town::for_profile(profile);
         let memory = std::mem::take(&mut self.memory);
         let charm = (!town.charm.is_empty()).then(|| town.charm.clone());
         let planner = Planner::for_box(profile.clone(), memory, id, charm);
         let planner = self.run_loot(planner, false).await?;
-        Ok(planner.box_locked())
+        self.tell_learned(&planner);
+        Ok(planner.emptied())
     }
 
     /// Run a loot planner to its end: each step sent, each reply fed back.
@@ -74,15 +356,16 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Dri
                     }
                     break;
                 }
-                Step::Stance(line) | Step::Cast(line) => (line.clone(), None),
+                Step::Stance(line) | Step::Cast(line) | Step::Hand(line) => (line.clone(), None),
                 Step::Ask(what) => ((*what).to_owned(), None),
                 Step::Search(id) => (format!("loot #{id}"), None),
                 Step::LootRoom => ("loot room".to_owned(), None),
-                Step::LootItem(id) => (format!("loot #{id}"), self.floor_name(id)),
-                Step::Open(bag) => (format!("open #{bag}"), self.floor_name(bag)),
+                Step::LootItem(id) => (format!("loot #{id}"), self.floor_item(id)),
+                Step::Open(bag) => (format!("open #{bag}"), self.floor_item(bag)),
+                Step::Close(bag) => (format!("close #{bag}"), None),
                 Step::LookIn(bag) => (format!("look in #{bag}"), None),
                 Step::Drag { item, bag } => {
-                    (format!("_drag #{item} #{bag}"), self.floor_name(item))
+                    (format!("_drag #{item} #{bag}"), self.floor_item(item))
                 }
                 Step::Wield(id) => (format!("get #{id}"), None),
                 Step::Kneel => ("kneel".to_owned(), None),
@@ -98,8 +381,8 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Dri
             let outcomes: Vec<LootOutcome> = self.transcript.lines().filter_map(classify).collect();
             for outcome in &outcomes {
                 planner.outcome_in(outcome, &self.state);
-                if let Some(name) = &touched {
-                    planner.learn(outcome, name);
+                if let Some(item) = &touched {
+                    planner.learn_item(outcome, item);
                 }
             }
             if outcomes.is_empty() {

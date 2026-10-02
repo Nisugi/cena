@@ -140,6 +140,11 @@ pub struct Hunt {
     /// The character's loot profile, when one was imported (`plan/31`):
     /// corpses are then looted by the planner, not by a bare `loot #id`.
     pub(super) loot: Option<LootProfile>,
+    /// The bags found full, shared by every run on the desk (`errands.rs`).
+    pub(super) full_bags: Option<super::errands::FullBags>,
+    /// What of a selling round to sell: all of it but for `loot sell
+    /// type|shop|item` (`errands.rs`).
+    pub(super) choice: crate::town::Choice,
     /// A reason to rest the loot planner handed in, until the rest starts.
     pub(super) must_rest: Option<Why>,
     /// Why this turn waits, with the numbers: set by the rest arm, cleared
@@ -153,6 +158,8 @@ pub struct Hunt {
     pub(super) heal_only: Option<bool>,
     /// `;heal stock` / `;heal fill`: no hunt, one round; `fill` beside it.
     pub(super) stock_only: Option<(bool, bool)>,
+    /// `;loot` and its words: no hunt, one errand; `true` once asked for.
+    pub(super) loot_only: Option<(crate::loot::Errand, bool)>,
     /// `;keep`: no hunt, the listed spells kept up until stopped, with when
     /// each was last sent.
     pub(super) keep_only: Option<(KeepProfile, BTreeMap<u16, u32>)>,
@@ -251,12 +258,15 @@ impl Hunt {
             notes: Vec::new(),
             seed,
             loot: None,
+            full_bags: None,
+            choice: crate::town::Choice::All,
             must_rest: None,
             waiting: None,
             field_rest: false,
             heal: None,
             heal_only: None,
             stock_only: None,
+            loot_only: None,
             keep_only: None,
             waggle_only: None,
             send_only: None,
@@ -345,13 +355,15 @@ impl Hunt {
         self.loot.as_ref()
     }
 
-    /// The planner finished: how it left things. Bags full or a box in hand
-    /// is a reason to rest, taken up by the next tick.
+    /// The planner finished: how it left things. Bags full, a box in hand or
+    /// no hand fit to loot with is a reason to rest, taken up by the next
+    /// tick.
     pub fn loot_ended(&mut self, left: Left) {
         self.must_rest = match left {
             Left::Nothing => None,
             Left::BagsFull => Some(Why::Loaded),
             Left::BoxInHand => Some(Why::BoxInHand),
+            Left::NoHand => Some(Why::Injured),
         };
     }
 

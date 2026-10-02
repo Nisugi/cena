@@ -117,6 +117,20 @@ pub fn verdict(item: &RoomItem, profile: &LootProfile) -> Verdict {
         return Verdict::Leave("part of the room");
     }
     let name = item.text.as_str();
+    // Kept whatever its kind (`loot_keep`): past every rule that throws a
+    // thing out (`reject_invalid_loot`, `eloot.lic:5647`), but not the
+    // player's own `leave`, nor a curse not wanted (`loot_specials`,
+    // `:5588-5595`).
+    if profile.keeps(name) {
+        let types = classify(&item.noun, name);
+        if profile.leave.iter().any(|word| has_word(name, word)) {
+            return Verdict::Leave("excluded by name");
+        }
+        if types.is("cursed") && !profile.takes("cursed") {
+            return Verdict::Leave("cursed");
+        }
+        return Verdict::Take(types);
+    }
     if NOT_LOOT_NAMES.iter().any(|word| has_word(name, word)) {
         return Verdict::Leave("not loot");
     }
@@ -126,11 +140,13 @@ pub fn verdict(item: &RoomItem, profile: &LootProfile) -> Verdict {
     {
         return Verdict::Leave("not loot");
     }
-    // `Nisugi disk`: a player's disk is a capitalised name and the noun.
-    if item.noun == "disk" && name.chars().next().is_some_and(char::is_uppercase) {
+    // `Nisugi disk`, `fiery red Vasstryke disk`: anyone's, the character's
+    // own too (`reject_invalid_loot`, `eloot.lic:5651`).
+    if cena_session::Disk::read(item).is_some() {
         return Verdict::Leave("someone's disk");
     }
-    if profile.unlootable.iter().any(|known| known == name) {
+    // Read only when the profile remembers them (`eloot.lic:5655`).
+    if profile.remember_unlootable && profile.unlootable.iter().any(|known| known == name) {
         return Verdict::Leave("could not be held before");
     }
     if profile.crumbly.iter().any(|known| known == name) {
@@ -193,8 +209,11 @@ pub fn lootable_by_verb(types: &ObjectTypes) -> bool {
 }
 
 /// `word` occurs in `text` as whole words, case-insensitively: eloot's
-/// `build_word_boundary_regexes` (`eloot.lic:692`).
-fn has_word(text: &str, word: &str) -> bool {
+/// `build_word_boundary_regexes` (`eloot.lic:707`).
+pub(super) fn has_word(text: &str, word: &str) -> bool {
+    if word.trim().is_empty() {
+        return false;
+    }
     let text = text.to_ascii_lowercase();
     let word = word.to_ascii_lowercase();
     text.match_indices(&word).any(|(at, _)| {

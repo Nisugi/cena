@@ -28,6 +28,7 @@ pub(super) fn help(topic: Topic, say: Say<'_>) {
         Topic::Heal => "Heal",
         Topic::Waggle => "Waggle",
         Topic::Sc => "Sc",
+        Topic::Loot => "Loot",
     };
     for line in help_for(topic) {
         say(NoticeKind::Info, format!("{label}: {line}"));
@@ -286,12 +287,14 @@ fn loot_canonical(text: &str) -> Result<String, String> {
 }
 
 fn of_profile(of: Of) -> Profile {
-    let id = match of {
-        Of::Heal => "heal",
-        Of::Waggle => "waggle",
-    };
-    let [heal, waggle, ..] = profiles();
-    if id == heal.id { heal } else { waggle }
+    // The loot profile's own page: its file holds `[skin]` and `[town]` too,
+    // which `loot set skin.enable on` and `loot set town.<setting>` reach.
+    let [heal, waggle, _, _, loot, ..] = profiles();
+    match of {
+        Of::Heal => heal,
+        Of::Waggle => waggle,
+        Of::Loot => loot,
+    }
 }
 
 /// Set `key` in the profile at `path` to `value`, or put it back to its
@@ -400,6 +403,44 @@ fn show_profile(profile: &Profile, text: &str, say: Say<'_>) {
     }
 }
 
+/// `;loot reset unskinnable [creature]`: the creatures the loot profile
+/// learned cannot be skinned, forgotten, every one or the one named
+/// (`cena_behavior::loot::forget_unskinnable`). Read, changed and written
+/// with no other change to the file between, as every writer here.
+pub(super) fn reset_unskinnable(dir: &Path, who: Who<'_>, creature: Option<&str>, say: Say<'_>) {
+    let Some(path) = who.and_then(|(i, n)| loot::path(dir, i, n)) else {
+        say(
+            NoticeKind::Error,
+            "Loot: the game has not said who this is yet.".to_owned(),
+        );
+        return;
+    };
+    let done = cena_session::store::changing(&path, || {
+        let text = match settings::read_text(&path) {
+            Stored::Found(text) => text,
+            Stored::Missing => {
+                return Err(
+                    "there is no loot profile yet; `hunt import-loot <eloot yaml>` brings one in."
+                        .to_owned(),
+                );
+            }
+            Stored::Broken(why) => return Err(format!("nothing was changed: {why}")),
+        };
+        let (written, said) = loot::forget_unskinnable(&text, creature)?;
+        if let Some(text) = written {
+            settings::save(&path, &text).map_err(|e| format!("not saved: {e}"))?;
+        }
+        Ok(said)
+    });
+    match done {
+        Ok(said) => say(
+            NoticeKind::Info,
+            format!("Loot: {said} It takes effect the next time the hunt loots."),
+        ),
+        Err(why) => say(NoticeKind::Error, format!("Loot: {why}")),
+    }
+}
+
 fn split(who: Who<'_>) -> (Option<&str>, Option<&str>) {
     who.map_or((None, None), |(instance, character)| {
         (Some(instance.as_str()), Some(character.as_str()))
@@ -416,7 +457,7 @@ mod tests {
 
     use cena_behavior::hunt::command::{Of, Setting};
 
-    use super::{profile, set, show};
+    use super::{profile, reset_unskinnable, set, show};
 
     fn heal_set(
         dir: &Path,
@@ -540,6 +581,44 @@ mod tests {
             shown.iter().any(|t| t.contains("not set: stock")),
             "{shown:?}"
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// `loot reset unskinnable Krag Dweller` takes the one name off, in any
+    /// case; with none, the list is cleared; the head of the file is kept.
+    #[test]
+    fn the_unskinnable_list_is_reset_from_the_line() {
+        let dir = dir("the_unskinnable_list_is_reset_from_the_line").unwrap();
+        let who = ("prime".to_owned(), "Nisugi".to_owned());
+        let said = RefCell::new(Vec::new());
+        let say = |kind: NoticeKind, text: String| said.borrow_mut().push((kind, text));
+        let path = cena_behavior::loot::path(&dir, "prime", "Nisugi").unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &path,
+            "# imported\n\n[skin]\nenable = true\nunskinnable = [\"cave troll\", \"krag dweller\"]\n",
+        )
+        .unwrap();
+        let unskinnable = || {
+            cena_behavior::loot::LootProfile::parse(&std::fs::read_to_string(&path).unwrap())
+                .unwrap()
+                .skin
+                .unskinnable
+        };
+        reset_unskinnable(&dir, Some(&who), Some("Krag Dweller"), &say);
+        assert_eq!(unskinnable(), ["cave troll"]);
+        assert!(
+            std::fs::read_to_string(&path)
+                .unwrap()
+                .starts_with("# imported\n")
+        );
+        reset_unskinnable(&dir, Some(&who), Some("wolf"), &say);
+        assert_eq!(
+            said.borrow().last().map(|(kind, _)| *kind),
+            Some(NoticeKind::Error)
+        );
+        reset_unskinnable(&dir, Some(&who), None, &say);
+        assert!(unskinnable().is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

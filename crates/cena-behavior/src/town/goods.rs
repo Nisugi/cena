@@ -56,6 +56,20 @@ impl Shop {
     }
 }
 
+/// The shops a round visits, in its order: the enum's, but a round that
+/// sells in Mist Harbor (`fwi`) gives its gold rings first, before the
+/// town and its Chronomage are left for the island (`town/route.rs`).
+pub(super) fn in_order(
+    shops: std::collections::BTreeSet<Shop>,
+    fwi: bool,
+) -> std::collections::VecDeque<Shop> {
+    let mut shops: Vec<Shop> = shops.into_iter().collect();
+    if fwi {
+        shops.sort_by_key(|shop| *shop != Shop::Chronomage);
+    }
+    shops.into()
+}
+
 /// How a lot leaves the character.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum How {
@@ -159,31 +173,53 @@ fn is_thorn_or_berry(item: &RoomItem) -> bool {
     item.noun.contains("thorn") || item.noun.contains("berry")
 }
 
-/// The bags sold from, by the profile's `sell_container` slots, with their
+/// The bags sold from, by the profile's `sell_container` words, with their
 /// contents as the inventory lists them.
 pub(super) fn bags(town: &Town, state: &GameState) -> Vec<(String, Vec<RoomItem>)> {
-    let mut seen = BTreeSet::new();
-    let mut out = Vec::new();
+    selling_bags(town, state)
+        .into_iter()
+        .map(|bag| {
+            let items = state
+                .inventory
+                .container(&bag)
+                .map(|c| c.items.clone())
+                .unwrap_or_default();
+            (bag, items)
+        })
+        .collect()
+}
+
+/// The bags sold from, by id, once each: the stow list's for each
+/// `sell_container` word, and the profile's overflow containers for
+/// `overflow` (`set_selling_containers`, `eloot.lic:2415-2448`).
+#[must_use]
+pub fn selling_bags(town: &Town, state: &GameState) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
     for word in &town.containers {
-        let slot = match word.as_str() {
-            "default" => Some(StowSlot::Default),
-            "overflow" => None,
-            other => StowSlot::parse(other),
+        let ids = match word.as_str() {
+            "overflow" => crate::loot::plan::named_bags(state, &town.overflow),
+            "default" => stow_id(state, StowSlot::Default),
+            other => StowSlot::parse(other)
+                .map(|slot| stow_id(state, slot))
+                .unwrap_or_default(),
         };
-        let Some(bag) = slot.and_then(|slot| state.containers.stow(slot)) else {
-            continue;
-        };
-        if !seen.insert(bag.id.clone()) {
-            continue;
+        for id in ids {
+            if !out.contains(&id) {
+                out.push(id);
+            }
         }
-        let items = state
-            .inventory
-            .container(&bag.id)
-            .map(|c| c.items.clone())
-            .unwrap_or_default();
-        out.push((bag.id.clone(), items));
     }
     out
+}
+
+/// The stow list's bag for a slot, as a list of none or one.
+fn stow_id(state: &GameState, slot: StowSlot) -> Vec<String> {
+    state
+        .containers
+        .stow(slot)
+        .map(|bag| bag.id.clone())
+        .into_iter()
+        .collect()
 }
 
 /// Whether the profile parts with this at some shop: a sold category, a
@@ -196,15 +232,33 @@ fn wanted(town: &Town, item: &RoomItem, types: &ObjectTypes) -> bool {
         || (types.sells_to("furrier") && (town.sells("skin") || town.sells("reagent")))
 }
 
-/// Everything the round may part with: the item, its types, its bag.
-pub(super) fn goods(town: &Town, state: &GameState) -> Vec<(RoomItem, ObjectTypes, String)> {
+/// One thing the round may part with: the item, its types, and the bag it
+/// is in.
+pub(super) type Good = (RoomItem, ObjectTypes, String);
+
+/// Everything the round may part with: what the selling bags hold, and what
+/// is in `aside`, a box from the pool held in hand because no bag would take
+/// what is left in it. From that box a gold ingot is sold whatever the
+/// profile sells, as eloot sells one no bag takes at the gem shop on the
+/// spot (`handle_ingot`, `eloot.lic:7188-7203`).
+pub(super) fn goods(town: &Town, state: &GameState, aside: Option<&str>) -> Vec<Good> {
     let ready: BTreeSet<String> = ReadySlot::ALL
         .iter()
         .filter_map(|slot| state.containers.ready(*slot))
         .map(|item| item.id.clone())
         .collect();
+    let mut sources = bags(town, state);
+    if let Some(id) = aside {
+        let inside = state
+            .inventory
+            .container(id)
+            .map(|c| c.items.clone())
+            .unwrap_or_default();
+        sources.push((id.to_owned(), inside));
+    }
     let mut out = Vec::new();
-    for (bag, items) in bags(town, state) {
+    for (bag, items) in sources {
+        let from_aside = aside == Some(bag.as_str());
         for item in items {
             if ready.contains(&item.id)
                 || town.excludes(&item.text)
@@ -214,9 +268,15 @@ pub(super) fn goods(town: &Town, state: &GameState) -> Vec<(RoomItem, ObjectType
                 continue;
             }
             let types = classify(&item.noun, &item.text);
+            let ingot = from_aside && item.text.contains("gold ingot");
             // Boxes are the pool's, and sold only when the profile sells
-            // them (`check_items`, `:6503`).
-            if (types.is("box") && !town.sells("box")) || !wanted(town, &item, &types) {
+            // them (`check_items`, `:6529`); and only what the player chose
+            // of the rest (`choice.rs`).
+            if !ingot
+                && ((types.is("box") && !town.sells("box"))
+                    || !wanted(town, &item, &types)
+                    || !town.choice.takes(&item, &types))
+            {
                 continue;
             }
             out.push((item, types, bag.clone()));
@@ -263,9 +323,10 @@ pub(super) fn clerk(state: &GameState) -> Option<String> {
 }
 
 /// The bags that sell whole at `shop`: at the gem shop a bag with gems and
-/// no excluded gem (`gemshop`, `:6938`); at the furrier a bag with furrier
-/// goods and none excluded (`furrier`, `:6858`). A bag already sold whole
-/// this round is not offered again.
+/// no excluded gem (`gemshop`, `:6966-6969`); at the furrier a bag with
+/// furrier goods and none excluded (`furrier`, `:6858`); and of a choice,
+/// only a bag whose every such thing is chosen (`choice.rs`). A bag already
+/// sold whole this round is not offered again.
 pub(super) fn sacks(
     shop: Shop,
     town: &Town,
@@ -285,9 +346,13 @@ pub(super) fn sacks(
     bags(town, state)
         .into_iter()
         .filter(|(bag, items)| {
+            let kept = |item: &RoomItem| {
+                town.excludes(&item.text)
+                    || !town.choice.takes(item, &classify(&item.noun, &item.text))
+            };
             !sold.contains(bag)
                 && items.iter().any(takes)
-                && !items.iter().any(|i| takes(i) && town.excludes(&i.text))
+                && !items.iter().any(|i| takes(i) && kept(i))
         })
         .map(|(bag, _)| bag)
         .collect()
@@ -301,20 +366,22 @@ fn takes(shop: Shop, town: &Town, item: &RoomItem, types: &ObjectTypes) -> bool 
         || (shop == Shop::Pawnshop && types.is("clothing") && home == Some(Shop::Gemshop))
 }
 
-/// What to part with at `shop`, one lot at a time, leaving out `skipped`
-/// (what the round has given up on, and what the hands held when it began,
-/// which it gives back) and the bags about to sell whole.
+/// What to part with at `shop` of the round's `goods`, one lot at a time,
+/// leaving out what the round has given up on and the bags about to sell
+/// whole. The round's goods never hold what the hands held when it began,
+/// which it gives back (BE-E-6).
 pub(super) fn lots(
     shop: Shop,
     town: &Town,
     state: &GameState,
+    goods: Vec<Good>,
     skipped: &BTreeSet<String>,
     whole: &[String],
     onward: &Onward,
 ) -> Vec<Lot> {
     let clerk = clerk(state);
     let mut out = Vec::new();
-    for (item, types, bag) in goods(town, state) {
+    for (item, types, bag) in goods {
         let sent_on = shop == Shop::Pawnshop && onward.has(&item.id);
         if skipped.contains(&item.id) || !(sent_on || takes(shop, town, &item, &types)) {
             continue;
@@ -358,16 +425,12 @@ pub(super) fn lots(
     out
 }
 
-/// This character's own disk in the room, by id: a `disk` whose name begins
-/// with the character's name.
+/// This character's own disk in the room, by id (`Disk.mine`; the pool
+/// takes the own disk's boxes only, `find_boxes`, `eloot.lic:3107-3114`).
 pub(super) fn own_disk(state: &GameState) -> Option<String> {
-    let name = state.character.name.as_deref()?;
-    state
-        .room
-        .objects
-        .iter()
-        .find(|item| item.noun == "disk" && item.text.starts_with(name))
-        .map(|item| item.id.clone())
+    crate::loot::plan::disks(state, true, false)
+        .into_iter()
+        .next()
 }
 
 /// A note, scrip or chit in either hand (`read_note`, `:2445`).

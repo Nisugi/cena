@@ -47,6 +47,9 @@ pub enum Said {
     Stock(bool),
     /// Cast the waggle profile's spells on these people (`plan/37` Stage 5).
     Waggle(Vec<String>),
+    /// One part of looting or selling by itself, with no hunt around it
+    /// (`plan/61` step 1): the driver runs it to its end.
+    Errand(crate::loot::Errand),
     /// Nothing this tick.
     Nothing,
 }
@@ -70,6 +73,8 @@ pub enum Ending {
     Waggled,
     /// `;sc` sent its lines.
     Sent,
+    /// `;loot` or one of its words ran: no hunt, only that errand.
+    Looted(crate::loot::Errand),
     /// An injury refused an action again after a rest for it: nothing the
     /// rest did healed it.
     Injured,
@@ -116,6 +121,7 @@ impl fmt::Display for Ending {
             Self::Stocked => f.write_str("stocked"),
             Self::Waggled => f.write_str("waggled"),
             Self::Sent => f.write_str("sent"),
+            Self::Looted(errand) => write!(f, "{errand}"),
             Self::Rested(n) => write!(f, "rested {n} times, as rest.stop_after asks"),
             Self::NoWands => f.write_str("no fresh wand is left"),
             Self::Deader => f.write_str("a dead player is here"),

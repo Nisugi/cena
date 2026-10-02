@@ -37,7 +37,7 @@ pub const ELOOT_CATEGORIES: &[&str] = &[
 ];
 
 /// What a character takes, leaves and falls back on when looting.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[expect(
     clippy::struct_excessive_bools,
@@ -49,24 +49,52 @@ pub struct LootProfile {
     pub take: Vec<String>,
     /// Names, or words in names, never taken (`loot_exclude`).
     pub leave: Vec<String>,
+    /// Names, or words in names, taken whatever their kind (`loot_keep`):
+    /// `leave` still wins, and so does a curse not wanted.
+    pub keep: Vec<String>,
+    /// Creatures, by words in their names, never searched or skinned
+    /// (`critter_exclude`).
+    pub leave_creatures: Vec<String>,
     /// Go defensive to loot (`loot_defensive`).
     pub defensive: bool,
-    /// The disk is a container when the bags are full (`use_disk`).
+    /// A box goes on the character's own disk before any bag, and the
+    /// disk's boxes go to the pool too (`use_disk`; `single_drag_box`,
+    /// `eloot.lic:4035-4066`). Nothing but a box goes on a disk.
     pub disk: bool,
+    /// The group's disks take boxes too, the character's own first
+    /// (`use_disk_group`).
+    pub disk_group: bool,
     /// Cast Sigil of Determination when a corpse is *not in any condition*
     /// to be searched (`sigil_determination_on_fail`).
     pub sigil_on_fail: bool,
     /// Phase (704) a box before stowing it (`loot_phase`).
     pub phase_boxes: bool,
-    /// Containers tried, by name and in order, when the stow list's bag and
-    /// the default are full (`overflow_containers`).
+    /// Containers tried, by a word of their names and in order, when the
+    /// stow list's bag and the default are full (`overflow_containers`); a
+    /// round sells from them when `town.sell_container` names `overflow`.
     pub overflow: Vec<String>,
     /// Names learned to crumble when stowed; left where they lie.
     pub crumbly: Vec<String>,
-    /// Names the game refused to let this character hold; left.
+    /// Names the game refused to let this character hold; left, when
+    /// `remember_unlootable` is on.
     pub unlootable: Vec<String>,
-    /// Containers that close themselves; opened before a drag (`auto_close`).
+    /// Add to `unlootable` what the game will not let this character hold,
+    /// when it is of no kind the object table knows, and leave what it names
+    /// (`log_unlootables`); off, the list is not read.
+    pub remember_unlootable: bool,
+    /// Containers that close themselves; opened before anything goes in,
+    /// `loot room` too (`auto_close`).
     pub autoclose: Vec<String>,
+    /// The bags are kept closed: opened to loot or sell, and closed again
+    /// after (`keep_closed`).
+    pub keep_closed: bool,
+    /// A bag found full stays full until a selling round, across rooms and
+    /// runs (`track_full_sacks`, on by default as eloot's is); off, each
+    /// visit tries every bag again.
+    pub track_full: bool,
+    /// With both hands full, the left hand's thing is put away to loot
+    /// with, not the right's, when the left is fit to use (`favor_left`).
+    pub favor_left: bool,
     /// Skinning, when the profile turns it on (`skin_enable` and the
     /// `skin_*` keys; `plan/31` §5).
     #[serde(default, skip_serializing_if = "Skin::is_off")]
@@ -76,6 +104,34 @@ pub struct LootProfile {
     /// [`crate::town::Town`].
     #[serde(skip_serializing_if = "toml::Table::is_empty")]
     pub town: toml::Table,
+}
+
+impl Default for LootProfile {
+    /// Every switch off and every list empty, but `track_full`, on as
+    /// eloot's `track_full_sacks` is (`eloot.lic:508`).
+    fn default() -> Self {
+        Self {
+            take: Vec::new(),
+            leave: Vec::new(),
+            keep: Vec::new(),
+            leave_creatures: Vec::new(),
+            defensive: false,
+            disk: false,
+            disk_group: false,
+            sigil_on_fail: false,
+            phase_boxes: false,
+            overflow: Vec::new(),
+            crumbly: Vec::new(),
+            unlootable: Vec::new(),
+            remember_unlootable: false,
+            autoclose: Vec::new(),
+            keep_closed: false,
+            track_full: true,
+            favor_left: false,
+            skin: Skin::default(),
+            town: toml::Table::new(),
+        }
+    }
 }
 
 /// How corpses are skinned, eloot's Skinning tab (`eloot.lic:937-947`,
@@ -179,32 +235,25 @@ impl LootProfile {
     pub fn takes(&self, category: &str) -> bool {
         self.take.iter().any(|word| word == category)
     }
-}
 
-/// The profile file's text with these creatures added to what it has learned
-/// cannot be skinned, as eloot saves its profile on *You cannot skin*
-/// (`eloot.lic:5846`). `Ok(None)` when every name is already there.
-///
-/// # Errors
-///
-/// The text is not a loot profile, or cannot be written back as one.
-pub fn remember_unskinnable(text: &str, names: &[String]) -> Result<Option<String>, String> {
-    // The comments at the file's head are kept, as `;hunt set` keeps them
-    // (`settings::split`): written back from the profile alone, the first
-    // *You cannot skin* took the importer's notes of what it dropped out of
-    // the file (the review of 2026-09-29).
-    let (head, _) = crate::settings::split(text)?;
-    let mut profile = LootProfile::parse(text)?;
-    let before = profile.skin.unskinnable.len();
-    for name in names {
-        if !profile.skin.unskinnable.contains(name) {
-            profile.skin.unskinnable.push(name.clone());
-        }
+    /// Is a thing of this name taken whatever its kind (`keep`)?
+    #[must_use]
+    pub fn keeps(&self, name: &str) -> bool {
+        self.keep
+            .iter()
+            .any(|word| super::worth::has_word(name, word))
     }
-    if profile.skin.unskinnable.len() == before {
-        return Ok(None);
+
+    /// Is a corpse of this name left unsearched and unskinned: named in
+    /// `leave_creatures`, or a child (`search`, `eloot.lic:5714-5715`)?
+    #[must_use]
+    pub fn leaves_creature(&self, name: &str) -> bool {
+        super::worth::has_word(name, "child")
+            || self
+                .leave_creatures
+                .iter()
+                .any(|word| super::worth::has_word(name, word))
     }
-    Ok(Some(format!("{head}{}", profile.to_toml()?)))
 }
 
 /// The character's loot profile: `<data>/hunt/loot/<instance>_<character>.toml`,
@@ -234,6 +283,18 @@ pub const TABLE: &[crate::settings::Key] = {
             kind: KeyKind::Words,
         },
         Key {
+            name: "keep",
+            label: "Always take",
+            help: "Names, or words in names, taken whatever their kind. Never take still wins.",
+            kind: KeyKind::Words,
+        },
+        Key {
+            name: "leave_creatures",
+            label: "Never search",
+            help: "Creatures, by words in their names, never searched or skinned.",
+            kind: KeyKind::Words,
+        },
+        Key {
             name: "defensive",
             label: "Go defensive to loot",
             help: "Change to defensive stance before searching.",
@@ -242,7 +303,13 @@ pub const TABLE: &[crate::settings::Key] = {
         Key {
             name: "disk",
             label: "Use the disk",
-            help: "The disk holds what the bags cannot, and its boxes go to the pool.",
+            help: "A box goes on your disk before any bag, and the disk's boxes go to the pool. Nothing else goes on a disk.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "disk_group",
+            label: "The group's disks too",
+            help: "Boxes go on the group's disks as well, your own first.",
             kind: KeyKind::Toggle,
         },
         Key {
@@ -272,14 +339,38 @@ pub const TABLE: &[crate::settings::Key] = {
         Key {
             name: "unlootable",
             label: "Cannot be held",
-            help: "Names the game refused to let this character hold, left.",
+            help: "Names the game refused to let this character hold, left while the switch below is on.",
             kind: KeyKind::Words,
+        },
+        Key {
+            name: "remember_unlootable",
+            label: "Remember what cannot be held",
+            help: "Add to Cannot be held what the game will not let this character hold, when it is of no known kind, and leave it from then on. Off: that list is not read.",
+            kind: KeyKind::Toggle,
         },
         Key {
             name: "autoclose",
             label: "Containers that close themselves",
             help: "Opened before something is put in.",
             kind: KeyKind::Words,
+        },
+        Key {
+            name: "keep_closed",
+            label: "Keep the bags closed",
+            help: "Open the bags to loot or sell, and close them again after.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "track_full",
+            label: "Remember full bags",
+            help: "A bag found full is skipped until a selling round, across rooms and runs. Off: each visit tries every bag again.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
+            name: "favor_left",
+            label: "Free the left hand first",
+            help: "With both hands full, put away what the left holds to loot with, and give it back after. A hand too hurt to use is never the one looted with.",
+            kind: KeyKind::Toggle,
         },
     ]
 };

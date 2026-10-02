@@ -14,6 +14,89 @@ use crate::heal::HealProfile;
 use crate::keep::{self, KeepProfile};
 use crate::waggle::WaggleProfile;
 
+/// The bags found full, by id, shared by every run on one hunt desk: a bag
+/// eloot found full stays so across its runs until a selling round
+/// (`track_full_sacks`, `eloot.lic:7911-7914`), and a hunt, a `loot` and the
+/// next `loot` are runs here.
+pub type FullBags = std::sync::Arc<std::sync::Mutex<std::collections::BTreeSet<String>>>;
+
+impl Hunt {
+    /// Share the bags found full with the desk's other runs.
+    #[must_use]
+    pub fn with_full_bags(mut self, full: FullBags) -> Self {
+        self.full_bags = Some(full);
+        self
+    }
+
+    /// The bags found full, shared with the desk's other runs, when they are.
+    #[must_use]
+    pub fn full_bags(&self) -> Option<&FullBags> {
+        self.full_bags.as_ref()
+    }
+
+    /// Sell only this of the round (`loot sell type|shop|item`, `plan/61`
+    /// step 6).
+    #[must_use]
+    pub fn with_choice(mut self, choice: crate::town::Choice) -> Self {
+        self.choice = choice;
+        self
+    }
+
+    /// What of a selling round to sell.
+    #[must_use]
+    pub fn choice(&self) -> &crate::town::Choice {
+        &self.choice
+    }
+}
+
+impl super::desk::Desk {
+    /// `;loot last`: what the last selling round came to, as it was said.
+    pub(super) fn say_last_round(&self, handle: &cena_session::SessionHandle) {
+        use cena_session::{Notice, NoticeKind};
+        let lines = self.reports.last_round();
+        handle.say(if lines.is_empty() {
+            Notice::line(
+                NoticeKind::Info,
+                "Loot: no selling round has run since Hydra started.",
+            )
+            .answering()
+        } else {
+            Notice::table(NoticeKind::Info, lines).answering()
+        });
+    }
+
+    /// `;loot` and its words: the errand started by the character's loot
+    /// profile, a selling round only as much of it as `choice` says; said
+    /// and refused when there is none.
+    pub(super) fn loot_errand(
+        self: &std::sync::Arc<Self>,
+        handle: &cena_session::SessionHandle,
+        joined: (cena_session::Snapshot, impl Into<crate::travel::Heard>),
+        errand: crate::loot::Errand,
+        choice: crate::town::Choice,
+    ) -> Option<crate::operation::Underway<super::drive::HuntEnd>> {
+        use cena_session::{Notice, NoticeKind};
+        let character = &joined.0.state.character;
+        let Some(profile) = self.loot_profile(
+            handle,
+            character.instance.as_deref(),
+            character.name.as_deref(),
+        ) else {
+            handle.say(Notice::line(
+                NoticeKind::Error,
+                "Loot: no loot profile to go by. `hunt import-loot <eloot yaml>` brings yours in; `loot set take [\"gem\", \"box\"]` starts one.",
+            ).answering());
+            return None;
+        };
+        Some(self.start(
+            ("loot", "loot"),
+            handle.clone(),
+            (joined.0, joined.1.into()),
+            Hunt::loot_only(profile, errand).with_choice(choice),
+        ))
+    }
+}
+
 impl Hunt {
     /// `;heal`: a machine that heals once by `profile` and ends, with no
     /// hunt around it. `spellcast` and `ranged` are eherbs' flags.
@@ -31,6 +114,15 @@ impl Hunt {
     pub fn stock_only(profile: HealProfile, fill: bool) -> Self {
         let mut machine = Self::new(Profile::default(), 0).with_heal(profile);
         machine.stock_only = Some((false, fill));
+        machine
+    }
+
+    /// `;loot` and its words: a machine that runs one loot errand by
+    /// `profile` and ends (`plan/61` step 1).
+    #[must_use]
+    pub fn loot_only(profile: crate::loot::LootProfile, errand: crate::loot::Errand) -> Self {
+        let mut machine = Self::new(Profile::default(), 0).with_loot(profile);
+        machine.loot_only = Some((errand, false));
         machine
     }
 
@@ -119,6 +211,14 @@ impl Hunt {
                 Said::Done(Ending::Stocked)
             } else {
                 Said::Stock(fill)
+            });
+        }
+        if let Some((errand, asked)) = self.loot_only {
+            self.loot_only = Some((errand, true));
+            return Some(if asked {
+                Said::Done(Ending::Looted(errand))
+            } else {
+                Said::Errand(errand)
             });
         }
         if let Some(asked) = self.heal_only {

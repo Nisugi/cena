@@ -55,7 +55,9 @@ pub struct Desk {
     boards: OnceLock<Arc<Boards>>,
     /// What its runs are doing, turn by turn, for a hunt panel (`plan/47`
     /// step 8).
-    reports: Reports,
+    pub(super) reports: Reports,
+    /// The bags found full, shared by its runs (`errands.rs`).
+    full_bags: super::errands::FullBags,
 }
 
 /// A hunt under way: how to stop it, and how to know it is over.
@@ -81,6 +83,7 @@ impl Desk {
             map_sha256: None,
             boards: OnceLock::new(),
             reports: Reports::default(),
+            full_bags: super::errands::FullBags::default(),
         })
     }
 
@@ -206,6 +209,16 @@ impl Desk {
             Command::Stock { fill } => {
                 self.herbs(handle, joined, |profile| Hunt::stock_only(profile, fill))
             }
+            Command::Loot(errand) => {
+                self.loot_errand(handle, joined, errand, crate::town::Choice::All)
+            }
+            Command::LootSell(choice) => {
+                self.loot_errand(handle, joined, crate::loot::Errand::Sell, choice)
+            }
+            Command::LootLast => {
+                self.say_last_round(handle);
+                None
+            }
             Command::Run(name) => {
                 let character = &joined.0.state.character;
                 let loaded = chain::load(
@@ -230,20 +243,7 @@ impl Desk {
                 if self.refuses_map(&loaded.profile, say) {
                     return None;
                 }
-                for (place, step) in loaded.profile.held_steps() {
-                    say(
-                        NoticeKind::Warn,
-                        format!("{place} is held and will be skipped: `{}`", step.send),
-                    );
-                }
-                for sequence in loaded.profile.unwritten_sequences() {
-                    say(
-                        NoticeKind::Warn,
-                        format!(
-                            "sequence {sequence} has no steps and will be skipped; `hunt set <profile> sequences.{sequence}.steps [...]` writes them."
-                        ),
-                    );
-                }
+                said_skipped(&loaded.profile, say);
                 say(NoticeKind::Info, format!("hunting on {name}."));
                 let seed = joined.0.state.game_time_now().map_or(1, u64::from);
                 let machine = Hunt::new(loaded.profile, seed);
@@ -309,7 +309,7 @@ impl Desk {
 
     /// Start a run that is not a hunt, named `what` for its reports and
     /// `word`, as the player starts it, for the echo of its commands.
-    fn start(
+    pub(super) fn start(
         self: &Arc<Self>,
         (word, what): (&'static str, &str),
         handle: SessionHandle,
@@ -377,7 +377,9 @@ impl Desk {
         }
         let desk = Arc::clone(self);
         let steering = Steering::new(running.stop.clone());
-        let machine = machine.steered_by(steering.clone());
+        let machine = machine
+            .steered_by(steering.clone())
+            .with_full_bags(Arc::clone(&self.full_bags));
         let task = tokio::spawn(async move {
             let Running { number, stop, over } = running;
             if let Some(before) = before {
@@ -397,7 +399,7 @@ impl Desk {
     /// The character's loot profile (`plan/31` §6), when one has been
     /// imported and reads. Said either way, since it changes what a corpse
     /// gets.
-    fn loot_profile(
+    pub(super) fn loot_profile(
         &self,
         handle: &SessionHandle,
         instance: Option<&str>,
@@ -659,7 +661,9 @@ impl Desk {
         {
             let wrote = |notes: &TravelNotes| self.keep(handle, file.as_mut(), notes);
             let learned = |learned: Learned<'_>| match learned {
-                Learned::Unskinnable(names) => unskinnable(handle, loot_file.as_deref(), names),
+                Learned::Loot(learned) => {
+                    super::keep_learned::remember(handle, loot_file.as_deref(), learned);
+                }
                 Learned::Untargetable(names) => {
                     untargetable::keep(handle, &self.dir, who.as_ref(), names);
                 }
@@ -749,39 +753,22 @@ impl Desk {
     }
 }
 
-/// Write creatures learned unskinnable into the loot profile, as eloot saves
-/// its profile when the game says *You cannot skin* (`eloot.lic:5846`), so
-/// the next hunt does not try them. Said either way.
-fn unskinnable(handle: &SessionHandle, file: Option<&std::path::Path>, names: &[String]) {
-    let say = |kind, text: String| handle.say(Notice::line(kind, format!("Hunt: {text}")));
-    let Some(file) = file else { return };
-    // With no other change to the profile between its reading and its
-    // writing: a player may be changing it from the menu (the crate review
-    // of 2026-09-28, R5).
-    let saved = cena_session::store::changing(file, || {
-        std::fs::read_to_string(file)
-            .map_err(|e| e.to_string())
-            .and_then(|text| loot::remember_unskinnable(&text, names))
-            .and_then(|written| match written {
-                Some(text) => crate::settings::save(file, &text).map_err(|e| e.to_string()),
-                None => Ok(()),
-            })
-    });
-    match saved {
-        Ok(()) => say(
-            NoticeKind::Info,
-            format!(
-                "{} cannot be skinned; the loot profile remembers.",
-                names.join(", ")
-            ),
-        ),
-        Err(why) => say(
+/// Say what of `profile` the hunt will skip: each held step, and each
+/// sequence with no steps written.
+fn said_skipped(profile: &super::profile::Profile, say: impl Fn(NoticeKind, String)) {
+    for (place, step) in profile.held_steps() {
+        say(
+            NoticeKind::Warn,
+            format!("{place} is held and will be skipped: `{}`", step.send),
+        );
+    }
+    for sequence in profile.unwritten_sequences() {
+        say(
             NoticeKind::Warn,
             format!(
-                "{} cannot be skinned, but the loot profile could not be updated -- {why}.",
-                names.join(", ")
+                "sequence {sequence} has no steps and will be skipped; `hunt set <profile> sequences.{sequence}.steps [...]` writes them."
             ),
-        ),
+        );
     }
 }
 

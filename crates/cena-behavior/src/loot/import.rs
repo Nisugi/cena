@@ -66,7 +66,6 @@ const TOWN_PREFIXES: &[&str] = &[
     "appraisal_container",
     "charm_name",
     "coin_hand_name",
-    "favor_left",
     "gambling_toss_min",
     "between",
     "trash_dump_types",
@@ -76,16 +75,7 @@ const TOWN_PREFIXES: &[&str] = &[
 ];
 
 /// Keys that are eloot's own bookkeeping or display, dropped silently.
-const BOOKKEEPING: &[&str] = &[
-    "debug",
-    "debug_file",
-    "silence",
-    "keep_closed",
-    "track_full_sacks",
-    "log_unlootables",
-    "use_disk_group",
-    "tipping_test",
-];
+const BOOKKEEPING: &[&str] = &["debug", "debug_file", "silence", "tipping_test"];
 
 /// Read eloot's settings file.
 ///
@@ -109,7 +99,17 @@ pub fn import(yaml_text: &str) -> Result<Import, String> {
     };
     profile.take = list("loot_types", &mut source);
     profile.leave = list("loot_exclude", &mut source);
-    profile.overflow = list("overflow_containers", &mut source);
+    profile.keep = list("loot_keep", &mut source);
+    profile.leave_creatures = list("critter_exclude", &mut source);
+    // One string, the names comma-separated (`set_inventory`,
+    // `eloot.lic:2357`); an older file's list reads as well.
+    profile.overflow = list("overflow_containers", &mut source)
+        .iter()
+        .flat_map(|names| names.split(','))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_owned)
+        .collect();
     profile.crumbly = list("crumbly", &mut source);
     profile.unlootable = list("unlootable", &mut source);
     profile.autoclose = list("auto_close", &mut source);
@@ -119,8 +119,16 @@ pub fn import(yaml_text: &str) -> Result<Import, String> {
     };
     profile.defensive = flag("loot_defensive", &mut source);
     profile.disk = flag("use_disk", &mut source);
+    profile.disk_group = flag("use_disk_group", &mut source);
     profile.sigil_on_fail = flag("sigil_determination_on_fail", &mut source);
     profile.phase_boxes = flag("loot_phase", &mut source);
+    profile.remember_unlootable = flag("log_unlootables", &mut source);
+    profile.keep_closed = flag("keep_closed", &mut source);
+    profile.favor_left = flag("favor_left", &mut source);
+    // On unless the file says otherwise, as eloot's is (`eloot.lic:508`).
+    profile.track_full = source
+        .remove("track_full_sacks")
+        .is_none_or(|text| text != "false");
 
     // Skinning (`plan/31` §5): the five switches, the four names, the two lists.
     let text = |key: &str, source: &mut BTreeMap<String, String>| -> String {
@@ -138,16 +146,6 @@ pub fn import(yaml_text: &str) -> Result<Import, String> {
     profile.skin.exclude = list("skin_exclude", &mut source);
     profile.skin.unskinnable = list("unskinnable", &mut source);
 
-    for (key, what) in [
-        ("loot_keep", "names kept whatever their kind"),
-        ("critter_exclude", "corpses never searched"),
-    ] {
-        if let Some(text) = source.remove(key)
-            && !text.is_empty()
-        {
-            notes.push(format!("{key} ({what}) is not built; dropped: {text}"));
-        }
-    }
     if source
         .remove("use_bloodbands")
         .is_some_and(|text| text == "true")

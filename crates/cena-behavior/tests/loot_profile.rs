@@ -72,13 +72,18 @@ fn nothing_in_nisugis_file_is_dropped_unsaid() {
 }
 
 #[test]
-fn what_would_change_behavior_is_named_when_dropped() {
+fn what_would_change_behavior_is_carried_or_named_when_dropped() {
     let yaml = "---\n:loot_types:\n- gem\n:skin_enable: true\n:skin_weapon: knife\n\
-                :loot_keep:\n- blue crystal\n:use_bloodbands: true\n:mystery_key: 7\n";
+                :loot_keep:\n- blue crystal\n:critter_exclude:\n- kobold\n\
+                :log_unlootables: true\n:use_bloodbands: true\n:mystery_key: 7\n";
     let brought = import(yaml).unwrap();
     let notes = brought.notes.join("\n");
+    // Built (`plan/61` step 4): carried, not noted.
+    assert_eq!(brought.profile.keep, ["blue crystal"]);
+    assert_eq!(brought.profile.leave_creatures, ["kobold"]);
+    assert!(brought.profile.remember_unlootable);
     assert!(
-        notes.contains("loot_keep") && notes.contains("blue crystal"),
+        !notes.contains("loot_keep") && !notes.contains("critter_exclude"),
         "{notes}"
     );
     assert!(notes.contains("use_bloodbands"), "{notes}");

@@ -54,8 +54,6 @@ mod selling;
 mod send;
 mod walk;
 
-use fold::fold_into;
-
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -65,6 +63,7 @@ use cena_session::{
 };
 use tokio_util::sync::CancellationToken;
 
+use self::fold::fold_into;
 use self::party::{Membership, Seen};
 use super::engine::{Ending, Here, Hunt, Said};
 use super::report::{self, Reports, Status};
@@ -107,8 +106,10 @@ pub enum HuntEnd {
 /// What a hunt learned that outlives it, handed to the caller to keep.
 #[derive(Clone, Copy, Debug)]
 pub enum Learned<'a> {
-    /// Creatures that cannot be skinned: the loot profile's.
-    Unskinnable(&'a [String]),
+    /// What looting learned: creatures that cannot be skinned, things that
+    /// crumble or cannot be held, bags that close themselves. The loot
+    /// profile's (`loot/learned.rs`).
+    Loot(&'a crate::loot::Learned),
     /// Creatures the game would not let the hunt target: the character's
     /// settings (`hunt/untargetable.rs`).
     Untargetable(&'a [String]),
@@ -196,12 +197,6 @@ pub async fn hunt_in(
             return HuntEnd::Finished(Ending::NoHuntingRoom);
         }
     };
-    // What the profile already says cannot be skinned; a name learned beyond
-    // it is written back.
-    let saved_unskinnable = machine
-        .loot_profile()
-        .map(|profile| profile.skin.unskinnable.iter().cloned().collect())
-        .unwrap_or_default();
     let mut driver = Driver {
         handle,
         cancel,
@@ -220,7 +215,6 @@ pub async fn hunt_in(
         notes,
         wrote,
         learned,
-        saved_unskinnable,
         memory: Memory::default(),
         transcript: String::new(),
         said: fold::Reading::default(),
@@ -260,10 +254,8 @@ struct Driver<'a, F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Lear
     /// once and kept as a walk changes it.
     notes: TravelNotes,
     wrote: W,
-    /// Told the creatures learned unskinnable, to write into the profile.
+    /// Told what looting learned, to write into the profile.
     learned: L,
-    /// The unskinnable names the profile holds, and those already told.
-    saved_unskinnable: std::collections::BTreeSet<String>,
     /// What looting learned: full bags, autoclosers, crumbly names.
     memory: Memory,
     /// The main window's text since the last loot command was sent, for
@@ -375,6 +367,7 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Dri
                 Said::Heal => self.heal().await,
                 Said::Stock(fill) => self.stock(fill).await,
                 Said::Waggle(targets) => self.waggle(&targets).await,
+                Said::Errand(errand) => self.loot_errand(errand).await,
                 Said::Done(Ending::Trouble) => {
                     // The dead man's switch: out of the game, saved first.
                     self.handle.quit(QUIT_DEADLINE).await;

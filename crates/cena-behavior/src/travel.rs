@@ -53,7 +53,7 @@ mod command;
 mod desk;
 mod drive;
 mod facts;
-mod hands;
+pub(crate) mod hands;
 mod heard;
 mod itinerary;
 mod kept;

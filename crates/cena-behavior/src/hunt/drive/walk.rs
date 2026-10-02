@@ -93,9 +93,13 @@ impl<F: FnMut() -> CommandId, W: FnMut(&TravelNotes), L: FnMut(Learned<'_>)> Dri
         };
         self.notes = notes;
         (self.wrote)(&self.notes);
-        // A lag in the walk is caught up before anything after it in this
-        // turn decides, an errand's next step included (BE-A-10).
-        self.caught_up().await.map_err(HuntEnd::Stopped)?;
+        // The walk ends on its own copy's arrival; the room's lines are still
+        // queued on this stream, and a lag in the walk is caught up (BE-A-10).
+        // Both before anything after it in this turn decides -- an errand's
+        // next step, the selling round looking for the pool's worker or the
+        // Chronomage's clerk -- so it reads the room arrived in, not the one
+        // left.
+        self.drain().await?;
         if let Some(room) = travelled.last_room {
             self.last_room = Some(room);
         }

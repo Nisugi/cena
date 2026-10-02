@@ -8,6 +8,8 @@
 
 use toml::Table;
 
+use super::choice::Choice;
+
 /// How the character sells (`eloot.lic:2027-2072`, the `sell_*` keys).
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[expect(
@@ -41,6 +43,10 @@ pub struct Town {
     pub appraisal_container: String,
     /// Drop boxes in the locksmith pool (`sell_locksmith_pool`).
     pub pool: bool,
+    /// Ask the pool for its returns every round, with no box to drop off or
+    /// the pool not used for drop-offs at all (`always_check_pool`,
+    /// `process_boxes`, `eloot.lic:7696`, `:7714`).
+    pub always_check_pool: bool,
     /// The standard tip per box (`sell_locksmith_pool_tip`).
     pub pool_tip: u64,
     /// The tip is a percent of the box's value (`sell_locksmith_pool_tip_percent`).
@@ -53,9 +59,24 @@ pub struct Town {
     /// Scrolls kept for these spells (`sell_keep_scrolls`): `215` keeps a
     /// scroll holding 215 that is not vibrant, `215v` one that is.
     pub keep_scrolls: Vec<String>,
+    /// Sell on the Isle of Four Winds, wherever the round begins
+    /// (`sell_fwi`, `town/route.rs`).
+    pub fwi: bool,
     /// Boxes on the character's disk go to the pool too: the loot
     /// profile's `use_disk`, set by the driver.
     pub disk: bool,
+    /// The loot profile's overflow containers, by name: sold from when
+    /// `containers` names `overflow`.
+    pub overflow: Vec<String>,
+    /// The loot profile's `keep_closed`: the bags opened to sell from are
+    /// closed again after the round.
+    pub keep_closed: bool,
+    /// The loot profile's `loot_phase`: a box is looked at before the
+    /// pool's worker takes it, and unphased when it is phased.
+    pub phase_boxes: bool,
+    /// What of the round is sold this time (`loot sell type|shop|item`): all
+    /// of it but when the player chose. Not a setting; the driver sets it.
+    pub choice: Choice,
 }
 
 impl Default for Town {
@@ -73,12 +94,18 @@ impl Default for Town {
             keep_silver: 0,
             appraisal_container: String::new(),
             pool: false,
+            always_check_pool: false,
             pool_tip: 0,
             pool_tip_percent: false,
             charm: String::new(),
             pawn_recheck: false,
             keep_scrolls: Vec::new(),
+            fwi: false,
             disk: false,
+            overflow: Vec::new(),
+            keep_closed: false,
+            phase_boxes: false,
+            choice: Choice::All,
         }
     }
 }
@@ -143,12 +170,18 @@ impl Town {
             keep_silver: number(table, "sell_keep_silver", 0),
             appraisal_container: text(table, "appraisal_container"),
             pool: flag(table, "sell_locksmith_pool"),
+            always_check_pool: flag(table, "always_check_pool"),
             pool_tip: number(table, "sell_locksmith_pool_tip", 0),
             pool_tip_percent: flag(table, "sell_locksmith_pool_tip_percent"),
             charm: text(table, "charm_name"),
             pawn_recheck: flag(table, "sell_pawn_recheck"),
             keep_scrolls: list(table, "sell_keep_scrolls"),
+            fwi: flag(table, "sell_fwi"),
             disk: flag(table, "use_disk"),
+            overflow: Vec::new(),
+            keep_closed: false,
+            phase_boxes: false,
+            choice: Choice::All,
         }
     }
 
@@ -178,6 +211,10 @@ impl Town {
                 Some(Value::String(self.appraisal_container.clone())),
             ),
             ("sell_locksmith_pool", Some(Value::Boolean(self.pool))),
+            (
+                "always_check_pool",
+                Some(Value::Boolean(self.always_check_pool)),
+            ),
             ("sell_locksmith_pool_tip", number(self.pool_tip)),
             (
                 "sell_locksmith_pool_tip_percent",
@@ -186,6 +223,7 @@ impl Town {
             ("charm_name", Some(Value::String(self.charm.clone()))),
             ("sell_pawn_recheck", Some(Value::Boolean(self.pawn_recheck))),
             ("sell_keep_scrolls", Some(list(&self.keep_scrolls))),
+            ("sell_fwi", Some(Value::Boolean(self.fwi))),
         ];
         entries
             .into_iter()
@@ -199,6 +237,9 @@ impl Town {
     pub fn for_profile(profile: &crate::loot::LootProfile) -> Self {
         let mut town = Self::from_table(&profile.town);
         town.disk |= profile.disk;
+        town.overflow.clone_from(&profile.overflow);
+        town.keep_closed = profile.keep_closed;
+        town.phase_boxes = profile.phase_boxes;
         town
     }
 
@@ -318,6 +359,12 @@ pub const TABLE: &[crate::settings::Key] = {
             kind: KeyKind::Toggle,
         },
         Key {
+            name: "town.always_check_pool",
+            label: "Always check the pool",
+            help: "Ask the pool for its returns every round, even with no box to drop off.",
+            kind: KeyKind::Toggle,
+        },
+        Key {
             name: "town.sell_locksmith_pool_tip",
             label: "Pool tip",
             help: "The tip per box.",
@@ -347,12 +394,18 @@ pub const TABLE: &[crate::settings::Key] = {
             help: "Scrolls kept for these spells: 215 keeps one that is not vibrant, 215v one that is.",
             kind: KeyKind::Words,
         },
+        Key {
+            name: "town.sell_fwi",
+            label: "Sell in Mist Harbor",
+            help: "Sell on the Isle of Four Winds wherever the round begins, there and back by the trinket Travel's settings name.",
+            kind: KeyKind::Toggle,
+        },
     ]
 };
 
 #[cfg(test)]
 mod tests {
-    use super::{TABLE, Town};
+    use super::{Choice, TABLE, Town};
 
     /// A town of every setting, none at its default but the disk.
     fn every() -> Town {
@@ -369,12 +422,18 @@ mod tests {
             keep_silver: 5000,
             appraisal_container: "cloak".to_owned(),
             pool: true,
+            always_check_pool: true,
             pool_tip: 25,
             pool_tip_percent: true,
             charm: "silver charm".to_owned(),
             pawn_recheck: true,
             keep_scrolls: vec!["215v".to_owned()],
+            fwi: true,
             disk: false,
+            overflow: Vec::new(),
+            keep_closed: false,
+            phase_boxes: false,
+            choice: Choice::All,
         }
     }
 
