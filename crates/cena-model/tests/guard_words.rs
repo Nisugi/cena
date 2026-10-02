@@ -304,6 +304,17 @@ fn expiring_is_the_named_effect_down_or_in_its_last_seconds() {
         "the name is matched ignoring case"
     );
 
+    // The crate review of 2026-10-01, MO-F-1: the buff was the last effect,
+    // it lapsed, and the game restated Buffs empty. "Nothing is up" is known,
+    // and the refresh the word guards runs.
+    let mut lapsed = at(1_000);
+    lapsed.effects.clear_category("Buffs");
+    assert_eq!(
+        soon.holds(&Facts::new(&lapsed, None)),
+        Some(true),
+        "stated and empty: down, not unknown"
+    );
+
     let mut other = at(1_000);
     buff(&mut other, "515", "Rapid Fire", 1_060);
     assert_eq!(

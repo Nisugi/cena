@@ -43,7 +43,14 @@ impl Guard {
             }
             Self::Expiring { name, within } => {
                 let now = now?;
-                if state.effects.is_empty() {
+                // Unknown only when nothing is listed and no list has been
+                // stated: a list stated empty is "nothing is up", the very
+                // case this word is for (the crate review of 2026-10-01,
+                // MO-F-1: the last buff lapsed and was never refreshed).
+                let stated = ["Buffs", "Active Spells", "Cooldowns", "Debuffs"]
+                    .iter()
+                    .any(|dialog| state.effects.saw_category(dialog));
+                if state.effects.is_empty() && !stated {
                     return None;
                 }
                 // Lapsing unless some effect of that name is up with more
