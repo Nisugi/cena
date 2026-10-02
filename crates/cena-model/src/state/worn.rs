@@ -288,7 +288,7 @@ impl GameState {
     }
 
     /// The stream a line just completed on `stream` was kept on: the main
-    /// window's once an `inv` list has ended ([`Self::past_list`]). What a
+    /// window's once an `inv` list has ended (`past_list`). What a
     /// viewer is given the line on.
     #[must_use]
     pub fn line_stream<'a>(&self, stream: &'a str) -> &'a str {
